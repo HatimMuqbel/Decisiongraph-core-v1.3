@@ -113,19 +113,20 @@ def create_namespace_definition(
     parent_signer: str = None,
     creator: str = None,
     description: str = None,
-    prev_cell_hash: str = None
+    prev_cell_hash: str = None,
+    system_time: str = None
 ) -> DecisionCell:
     """Create a namespace definition cell."""
     if not validate_namespace(namespace):
         raise NamespaceError(f"Invalid namespace format: {namespace}")
-    
+
     metadata = NamespaceMetadata(
         owner=owner,
         sensitivity=sensitivity,
         description=description
     )
-    
-    ts = get_current_timestamp()
+
+    ts = system_time or get_current_timestamp()
     rule_content = f"NAMESPACE_CREATE: {namespace} BY {parent_signer or 'system'}"
     
     header = Header(
@@ -226,21 +227,24 @@ def create_bridge_rule(
     graph_id: str,
     prev_cell_hash: str,
     purpose: str = None,
-    expiry: str = None
+    expiry: str = None,
+    system_time: str = None,
+    valid_from: str = None
 ) -> DecisionCell:
     """Create a bridge rule cell. Requires signatures from BOTH namespace owners."""
     if not source_owner_signature or not target_owner_signature:
         raise BridgeApprovalError(
             "Bridge rules require signatures from BOTH namespace owners"
         )
-    
-    ts = get_current_timestamp()
+
+    ts = system_time or get_current_timestamp()
+    vf = valid_from or ts
     rule_content = (
         f"BRIDGE: {source_namespace} -> {target_namespace} "
         f"APPROVED_BY: {source_owner_signature.signer_id}, "
         f"{target_owner_signature.signer_id}"
     )
-    
+
     header = Header(
         version="1.3",
         graph_id=graph_id,
@@ -248,7 +252,7 @@ def create_bridge_rule(
         system_time=ts,
         prev_cell_hash=prev_cell_hash
     )
-    
+
     fact = Fact(
         namespace="system.bridges",
         subject=source_namespace,
@@ -256,7 +260,7 @@ def create_bridge_rule(
         object=target_namespace,
         confidence=1.0,
         source_quality=SourceQuality.VERIFIED,
-        valid_from=ts,
+        valid_from=vf,
         valid_to=expiry
     )
     

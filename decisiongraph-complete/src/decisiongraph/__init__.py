@@ -99,10 +99,13 @@ from .scholar import (
     QueryResult,
     VisibilityResult,
     AuthorizationBasis,
+    BridgeEffectiveness,
+    BridgeEffectivenessReason,
     ResolutionEvent,
     ResolutionReason,
     ScholarIndex,
-    build_index_from_chain
+    build_index_from_chain,
+    is_bridge_effective
 )
 
 __all__ = [
@@ -133,6 +136,7 @@ __all__ = [
     'create_bridge_revocation', 'build_registry_from_chain',
     # Scholar
     'Scholar', 'create_scholar', 'QueryResult', 'VisibilityResult',
-    'AuthorizationBasis', 'ResolutionEvent', 'ResolutionReason',
-    'ScholarIndex', 'build_index_from_chain'
+    'AuthorizationBasis', 'BridgeEffectiveness', 'BridgeEffectivenessReason',
+    'ResolutionEvent', 'ResolutionReason',
+    'ScholarIndex', 'build_index_from_chain', 'is_bridge_effective'
 ]

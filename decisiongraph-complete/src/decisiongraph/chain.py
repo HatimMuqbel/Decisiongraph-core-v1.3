@@ -179,31 +179,34 @@ class Chain:
         self,
         graph_name: str = "UniversalDecisionGraph",
         root_namespace: str = DEFAULT_ROOT_NAMESPACE,
-        creator: Optional[str] = None
+        creator: Optional[str] = None,
+        system_time: Optional[str] = None
     ) -> DecisionCell:
         """
         Initialize the chain with a Genesis cell.
-        
+
         This is the "Big Bang" - can only be called once.
-        
+
         Args:
             graph_name: Name for this graph instance
             root_namespace: Root namespace for the graph (no dots)
             creator: Who/what is creating this graph
-        
+            system_time: Optional timestamp (defaults to now, must be ISO 8601 UTC)
+
         Returns:
             The Genesis cell
-        
+
         Raises:
             GenesisViolation: If Genesis already exists
         """
         if self.has_genesis():
             raise GenesisViolation("Genesis already exists. Cannot reinitialize.")
-        
+
         genesis = create_genesis_cell(
             graph_name=graph_name,
             root_namespace=root_namespace,
-            creator=creator
+            creator=creator,
+            system_time=system_time
         )
         
         self.cells.append(genesis)
@@ -532,16 +535,18 @@ class Chain:
 def create_chain(
     graph_name: str = "UniversalDecisionGraph",
     root_namespace: str = DEFAULT_ROOT_NAMESPACE,
-    creator: Optional[str] = None
+    creator: Optional[str] = None,
+    system_time: Optional[str] = None
 ) -> Chain:
     """
     Convenience function to create and initialize a new chain.
-    
+
     Args:
         graph_name: Name for this graph instance
         root_namespace: Root namespace for the graph (default: "corp")
         creator: Who/what is creating this graph
-    
+        system_time: Optional timestamp for genesis (defaults to now, must be ISO 8601 UTC)
+
     Returns:
         A new Chain with Genesis cell
     """
@@ -549,7 +554,8 @@ def create_chain(
     chain.initialize(
         graph_name=graph_name,
         root_namespace=root_namespace,
-        creator=creator
+        creator=creator,
+        system_time=system_time
     )
     return chain
 

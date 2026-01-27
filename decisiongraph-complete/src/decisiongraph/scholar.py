@@ -46,6 +46,15 @@ class ResolutionReason(str, Enum):
     SINGLE_CANDIDATE = "single"         # Only one candidate, no conflict
 
 
+class BridgeEffectivenessReason(str, Enum):
+    """Why a bridge was or was not effective at query time"""
+    AUTHORIZED = "authorized"                     # Bridge valid and active
+    BRIDGE_NOT_YET_KNOWN = "bridge_not_yet_known" # Bridge system_time > query system_time
+    BRIDGE_NOT_ACTIVE = "bridge_not_active"       # Bridge valid_from > query valid_time
+    BRIDGE_EXPIRED = "bridge_expired"             # Bridge valid_to <= query valid_time
+    BRIDGE_REVOKED = "bridge_revoked"             # Bridge explicitly revoked
+
+
 # Source quality ranking (higher = better)
 SOURCE_QUALITY_RANK = {
     SourceQuality.VERIFIED: 3,
@@ -68,11 +77,20 @@ class ResolutionEvent:
 
 
 @dataclass
+class BridgeEffectiveness:
+    """Record of bridge evaluation at query time (for audit/proof)"""
+    bridge_cell_id: str
+    effective: bool
+    reason: BridgeEffectivenessReason
+
+
+@dataclass
 class AuthorizationBasis:
     """Record of WHY access was granted"""
     allowed: bool
-    reason: str  # e.g., "same_namespace", "parent_namespace", "child_namespace", "bridge", "bridge_via_parent"
+    reason: str  # e.g., "same_namespace", "parent_namespace", "child_namespace", "bridge", "bridge_via_parent", "no_access"
     bridges_used: List[str] = field(default_factory=list)
+    bridge_effectiveness: List[BridgeEffectiveness] = field(default_factory=list)
 
 
 @dataclass
@@ -112,6 +130,10 @@ class QueryResult:
 
         All lists are sorted and keys are alphabetically ordered for
         byte-identical output given the same query.
+
+        v1.3 additions:
+        - time_filters: explicit bitemporal coordinates
+        - bridge_effectiveness: why each bridge was accepted/rejected
         """
         # Sort fact_cell_ids
         fact_cell_ids = sorted([f.cell_id for f in self.facts])
@@ -134,10 +156,25 @@ class QueryResult:
             for e in sorted_events
         ]
 
+        # Sort bridge_effectiveness by cell_id for deterministic output
+        sorted_bridge_effectiveness = sorted(
+            self.authorization.bridge_effectiveness,
+            key=lambda be: be.bridge_cell_id
+        )
+        bridge_effectiveness = [
+            {
+                "bridge_cell_id": be.bridge_cell_id,
+                "effective": be.effective,
+                "reason": be.reason.value
+            }
+            for be in sorted_bridge_effectiveness
+        ]
+
         # Build proof bundle with alphabetically ordered keys
         return {
             "authorization_basis": {
                 "allowed": self.authorization.allowed,
+                "bridge_effectiveness": bridge_effectiveness,
                 "bridges_used": sorted(self.authorization.bridges_used),
                 "reason": self.authorization.reason
             },
@@ -149,15 +186,17 @@ class QueryResult:
             },
             "query": {
                 "namespace_scope": self.namespace_scope,
-                "requester_id": self.requester_id,
-                "system_time": self.system_time,
-                "valid_time": self.valid_time
+                "requester_id": self.requester_id
             },
             "results": {
                 "fact_cell_ids": fact_cell_ids,
                 "fact_count": len(self.facts)
             },
-            "scholar_version": "1.0"
+            "scholar_version": "1.3",
+            "time_filters": {
+                "as_of_system_time": self.system_time,
+                "at_valid_time": self.valid_time
+            }
         }
 
 
@@ -167,6 +206,7 @@ class VisibilityResult:
     allowed: bool
     reason: str
     bridges_used: List[str] = field(default_factory=list)
+    bridge_effectiveness: List[BridgeEffectiveness] = field(default_factory=list)
 
 
 # ============================================================================
@@ -260,6 +300,54 @@ def build_index_from_chain(chain: Chain) -> ScholarIndex:
 
 
 # ============================================================================
+# BRIDGE BITEMPORAL LOGIC
+# ============================================================================
+
+def is_bridge_effective(
+    bridge_cell: DecisionCell,
+    at_valid_time: str,
+    as_of_system_time: str,
+    is_revoked: bool = False
+) -> Tuple[bool, BridgeEffectivenessReason]:
+    """
+    Check if a bridge is effective at the given bitemporal coordinates.
+
+    Two clocks must be satisfied:
+    - Clock A (knowledge): bridge.system_time <= as_of_system_time
+    - Clock B (validity): bridge.valid_from <= at_valid_time < bridge.valid_to
+
+    Args:
+        bridge_cell: The bridge rule cell
+        at_valid_time: The valid time for the query (when the truth applies)
+        as_of_system_time: The system time for the query (what was known)
+        is_revoked: Whether this bridge has been explicitly revoked
+
+    Returns:
+        (effective: bool, reason: BridgeEffectivenessReason)
+    """
+    if is_revoked:
+        return (False, BridgeEffectivenessReason.BRIDGE_REVOKED)
+
+    # Clock A: Was the bridge known at query time?
+    # Bridge must have been recorded before the query's system_time
+    if bridge_cell.header.system_time > as_of_system_time:
+        return (False, BridgeEffectivenessReason.BRIDGE_NOT_YET_KNOWN)
+
+    # Clock B: Was the bridge active at query's valid_time?
+    # valid_from must be <= at_valid_time
+    bridge_valid_from = bridge_cell.fact.valid_from
+    if bridge_valid_from and bridge_valid_from > at_valid_time:
+        return (False, BridgeEffectivenessReason.BRIDGE_NOT_ACTIVE)
+
+    # valid_to must be > at_valid_time (or None for open-ended)
+    bridge_valid_to = bridge_cell.fact.valid_to
+    if bridge_valid_to is not None and bridge_valid_to <= at_valid_time:
+        return (False, BridgeEffectivenessReason.BRIDGE_EXPIRED)
+
+    return (True, BridgeEffectivenessReason.AUTHORIZED)
+
+
+# ============================================================================
 # SCHOLAR (THE RESOLVER)
 # ============================================================================
 
@@ -289,19 +377,24 @@ class Scholar:
         self,
         requester_namespace: str,
         target_namespace: str,
-        as_of_system_time: Optional[str] = None
+        at_valid_time: str,
+        as_of_system_time: str
     ) -> VisibilityResult:
         """
-        Check if requester can access target namespace.
-        
+        Check if requester can access target namespace at given bitemporal coordinates.
+
         Rules (in order):
         1. Same namespace -> allowed
         2. Parent/child relationship -> allowed
-        3. Explicit bridge exists -> allowed
-        4. Bridge via parent namespace -> allowed
+        3. Explicit bridge exists AND is effective -> allowed
+        4. Bridge via parent namespace AND is effective -> allowed
         5. Otherwise -> denied
-        
-        Returns VisibilityResult with bridges_used for proof.
+
+        Bridge effectiveness requires both clocks to be satisfied:
+        - Clock A (knowledge): bridge.system_time <= as_of_system_time
+        - Clock B (validity): bridge.valid_from <= at_valid_time < bridge.valid_to
+
+        Returns VisibilityResult with bridges_used and bridge_effectiveness for proof.
         """
         # Same namespace
         if requester_namespace == target_namespace:
@@ -314,18 +407,29 @@ class Scholar:
         # Child can see parent
         if is_namespace_prefix(target_namespace, requester_namespace):
             return VisibilityResult(True, "child_namespace")
-        
-        # Check for bridge
+
+        # Check for bridge with bitemporal validation
         bridges_used = []
-        
+        bridge_effectiveness_list = []
+
         # Direct bridge
         bridge_key = (requester_namespace, target_namespace)
         if bridge_key in self.registry.bridges:
             bridge_cell = self.registry.bridges[bridge_key]
-            if bridge_cell.cell_id not in self.registry.revoked_bridges:
-                # TODO: Check bridge validity at as_of_system_time
+            is_revoked = bridge_cell.cell_id in self.registry.revoked_bridges
+
+            effective, reason = is_bridge_effective(
+                bridge_cell, at_valid_time, as_of_system_time, is_revoked
+            )
+            bridge_effectiveness_list.append(
+                BridgeEffectiveness(bridge_cell.cell_id, effective, reason)
+            )
+
+            if effective:
                 bridges_used.append(bridge_cell.cell_id)
-                return VisibilityResult(True, "bridge", bridges_used)
+                return VisibilityResult(
+                    True, "bridge", bridges_used, bridge_effectiveness_list
+                )
 
         # Bridge via parent
         parent = get_parent_namespace(requester_namespace)
@@ -333,12 +437,23 @@ class Scholar:
             parent_bridge_key = (parent, target_namespace)
             if parent_bridge_key in self.registry.bridges:
                 bridge_cell = self.registry.bridges[parent_bridge_key]
-                if bridge_cell.cell_id not in self.registry.revoked_bridges:
+                is_revoked = bridge_cell.cell_id in self.registry.revoked_bridges
+
+                effective, reason = is_bridge_effective(
+                    bridge_cell, at_valid_time, as_of_system_time, is_revoked
+                )
+                bridge_effectiveness_list.append(
+                    BridgeEffectiveness(bridge_cell.cell_id, effective, reason)
+                )
+
+                if effective:
                     bridges_used.append(bridge_cell.cell_id)
-                    return VisibilityResult(True, "bridge_via_parent", bridges_used)
+                    return VisibilityResult(
+                        True, "bridge_via_parent", bridges_used, bridge_effectiveness_list
+                    )
             parent = get_parent_namespace(parent)
 
-        return VisibilityResult(False, "no_access")
+        return VisibilityResult(False, "no_access", [], bridge_effectiveness_list)
     
     def visible_namespaces(
         self,
@@ -616,15 +731,18 @@ class Scholar:
         now = get_current_timestamp()
         valid_time = at_valid_time or now
         system_time = as_of_system_time or now
-        
-        # Check visibility
-        visibility = self.check_visibility(requester_namespace, namespace, system_time)
 
-        # Convert VisibilityResult to AuthorizationBasis
+        # Check visibility with bitemporal coordinates
+        visibility = self.check_visibility(
+            requester_namespace, namespace, valid_time, system_time
+        )
+
+        # Convert VisibilityResult to AuthorizationBasis (includes bridge_effectiveness)
         authorization = AuthorizationBasis(
             allowed=visibility.allowed,
             reason=visibility.reason,
-            bridges_used=visibility.bridges_used.copy()
+            bridges_used=visibility.bridges_used.copy(),
+            bridge_effectiveness=visibility.bridge_effectiveness.copy()
         )
 
         if not visibility.allowed:
@@ -790,8 +908,13 @@ __all__ = [
     'QueryResult',
     'VisibilityResult',
     'AuthorizationBasis',
+    'BridgeEffectiveness',
+    'BridgeEffectivenessReason',
     'ResolutionEvent',
     'ResolutionReason',
+
+    # Bridge evaluation
+    'is_bridge_effective',
 
     # Index
     'ScholarIndex',
