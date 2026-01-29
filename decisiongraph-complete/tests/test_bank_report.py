@@ -167,11 +167,11 @@ class TestReportConfig:
         """Test default configuration values."""
         config = ReportConfig()
 
-        assert config.line_width == 72
+        assert config.line_width == 80
         assert config.include_citations is True
         assert config.include_feedback_scores is True
         assert config.include_audit_trail is True
-        assert config.template_id == "bank_grade_v1"
+        assert config.template_id == "bank_grade_v2"
 
     def test_custom_config(self):
         """Test custom configuration values."""
@@ -359,7 +359,7 @@ class TestBankReportRenderer:
         # Check for expected sections
         assert "CASE SUMMARY" in report_text
         assert "TEST-001" in report_text
-        assert "END OF REPORT" in report_text
+        assert "END OF ALERT REPORT" in report_text
 
     def test_render_with_signals(self):
         """Test rendering a report with signals."""
@@ -391,7 +391,7 @@ class TestBankReportRenderer:
 
         report_text = report_bytes.decode('utf-8')
 
-        assert "INHERENT RISKS DETECTED" in report_text
+        assert "RISK INDICATORS DETECTED" in report_text or "REGULATORY OBLIGATIONS TRIGGERED" in report_text
         assert "TXN_LARGE_CASH" in report_text
 
     def test_render_with_verdict(self):
@@ -517,9 +517,10 @@ class TestBankReportRenderer:
         report_text = report_bytes.decode('utf-8')
 
         assert "GATE 1: CONTEXTUAL TYPOLOGY" in report_text
-        assert "GATE 2: INHERENT RISKS DETECTED" in report_text
+        assert "GATE 2A: REGULATORY OBLIGATIONS TRIGGERED" in report_text
+        assert "GATE 2B: RISK INDICATORS DETECTED" in report_text
         assert "GATE 3: RESIDUAL RISK CALCULATION" in report_text
-        assert "GATE 4: INTEGRITY AUDIT" in report_text
+        assert "CASE INTEGRITY" in report_text
 
 
 class TestRenderBankReport:

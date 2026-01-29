@@ -591,14 +591,14 @@ class TestScoringRule:
             ]
         )
 
-        inherent, mit_sum, residual, gate = rule.compute_score(
+        inherent_raw, inherent_norm, mit_sum, residual_raw, residual_norm, gate = rule.compute_score(
             ["HIGH_VALUE"],
             []  # No mitigations
         )
 
-        assert inherent == "0.5"
+        assert inherent_raw == "0.5"
         assert mit_sum == "0.0"
-        assert residual == "0.5"
+        assert residual_raw == "0.5"
         assert gate == "REVIEW"  # 0.5 >= 0.30 but < 0.60
 
     def test_compute_score_with_mitigations(self):
@@ -613,15 +613,15 @@ class TestScoringRule:
             ]
         )
 
-        inherent, mit_sum, residual, gate = rule.compute_score(
+        inherent_raw, inherent_norm, mit_sum, residual_raw, residual_norm, gate = rule.compute_score(
             ["HIGH_VALUE"],
             ["-0.30"]  # Mitigation reduces by 0.30
         )
 
-        assert inherent == "0.5"
+        assert inherent_raw == "0.5"
         assert mit_sum == "-0.3"
-        assert residual == "0.2"
-        assert gate == "CLEAR"  # 0.2 < 0.30
+        assert residual_raw == "0.2"
+        assert gate == "CLEAR"  # 0.2 < 0.30 (normalized)
 
     def test_compute_score_floor_at_zero(self):
         """Test score doesn't go negative."""
@@ -634,12 +634,12 @@ class TestScoringRule:
             ]
         )
 
-        _, _, residual, _ = rule.compute_score(
+        _, _, _, residual_raw, _, _ = rule.compute_score(
             ["LOW_RISK"],
             ["-0.50"]  # Would be -0.40 without floor
         )
 
-        assert residual == "0.0"
+        assert residual_raw == "0.0"
 
 
 # =============================================================================
