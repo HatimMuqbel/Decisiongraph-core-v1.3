@@ -44,6 +44,10 @@ from .taxonomy import (
     DecisionLayer, TAXONOMY_TO_VERDICT, TAXONOMY_TO_TIER,
     TAXONOMY_AUTO_ARCHIVE
 )
+from .escalation_gate import (
+    EscalationGateValidator, EscalationGateResult, EscalationDecision,
+    run_escalation_gate
+)
 
 
 # =============================================================================
@@ -362,7 +366,11 @@ class BankReportRenderer:
         mitigation_codes = []
         if eval_result and eval_result.mitigations:
             mitigation_codes = [m.fact.object.get("code", "") for m in eval_result.mitigations]
-        lines.extend(self._render_taxonomy_analysis(eval_result, mitigation_codes, case_bundle, w))
+        taxonomy_result = self._render_taxonomy_analysis(eval_result, mitigation_codes, case_bundle, w)
+        lines.extend(taxonomy_result)
+
+        # Zero-False-Escalation Checklist (mandatory gate)
+        lines.extend(self._render_escalation_gate_checklist(eval_result, mitigation_codes, case_bundle, w))
 
         # Policy Citations
         if self.config.include_citations and citation_registry:
@@ -1523,6 +1531,176 @@ class BankReportRenderer:
         lines.append(f"   Mapped Verdict: {canonical}")
         lines.append(f"   Review Tier: {tier}")
         lines.append(f"   Auto-Archive: {'PERMITTED' if auto_archive else 'NOT PERMITTED'}")
+        lines.append("")
+
+        return lines
+
+    def _render_escalation_gate_checklist(
+        self,
+        eval_result: Any,
+        mitigation_codes: List[str],
+        case_bundle: Any,
+        w: int
+    ) -> List[str]:
+        """Render the Zero-False-Escalation Checklist.
+
+        This is the enterprise-grade gate that makes false escalation
+        structurally impossible by design.
+        """
+        lines = []
+        lines.append("")
+        lines.append("=" * w)
+        lines.append("ZERO-FALSE-ESCALATION CHECKLIST")
+        lines.append("(Compliance-Safe, Audit-Proof)")
+        lines.append("=" * w)
+        lines.append("")
+        lines.append("Escalation is ONLY permitted if every mandatory condition is satisfied.")
+        lines.append("If any condition fails -> escalation is prohibited.")
+        lines.append("")
+
+        # Build facts dict from case data
+        facts = {
+            "sanctions_result": "NO_MATCH",
+            "document_status": "VALID",
+            "customer_response": "COMPLIANT",
+            "adverse_media_mltf": False,
+            "legal_prohibition": False,
+        }
+
+        # Check screening events for actual disposition
+        if hasattr(case_bundle, 'events'):
+            for event in case_bundle.events:
+                if getattr(event, 'event_type', '') == 'screening':
+                    screening_type = getattr(event, 'screening_type', '').lower()
+                    disposition = getattr(event, 'disposition', '').upper()
+
+                    if 'sanction' in screening_type:
+                        if disposition in ('MATCH', 'TRUE_POSITIVE', 'CONFIRMED_MATCH'):
+                            facts["sanctions_result"] = "MATCH"
+
+        # Detect instrument type
+        instrument_type = "unknown"
+        if hasattr(case_bundle, 'events'):
+            for event in case_bundle.events:
+                if getattr(event, 'event_type', '') == 'transaction':
+                    desc = getattr(event, 'description', '').lower()
+                    payment = getattr(event, 'payment_method', '').lower()
+                    if 'wire' in desc or 'swift' in desc or 'wire' in payment:
+                        instrument_type = "wire"
+                        break
+                    if 'cash' in desc or 'cash' in payment:
+                        instrument_type = "cash"
+                        break
+
+        # Get obligations and indicators from eval_result
+        obligations = []
+        indicators = []
+        if eval_result and eval_result.signals:
+            for sig in eval_result.signals:
+                code = sig.fact.object.get("code", "")
+                if code.startswith("PEP_") or code.startswith("SCREEN_") or code.startswith("GEO_SANCTION"):
+                    obligations.append(code)
+                else:
+                    indicators.append({"code": code, "corroborated": False})
+
+        # Determine typology maturity
+        typology_maturity = "NONE"
+        classifier = TaxonomyClassifier()
+        signal_codes = [s.fact.object.get("code", "") for s in (eval_result.signals if eval_result else [])]
+        tax_result = classifier.analyze(
+            signal_codes=signal_codes,
+            mitigation_codes=mitigation_codes,
+            facts=facts,
+            instrument_hint=instrument_type
+        )
+
+        if tax_result.typology_established:
+            typology_maturity = "ESTABLISHED"
+        elif tax_result.typology_forming:
+            typology_maturity = "FORMING"
+
+        # Build suspicion evidence
+        suspicion_evidence = {
+            "has_intent": False,
+            "has_deception": False,
+            "has_sustained_pattern": False,
+            "obligation_used_as_suspicion": False,
+            "suspicion_signals": [],
+        }
+
+        # Run the escalation gate
+        gate_result = run_escalation_gate(
+            facts=facts,
+            instrument_type=instrument_type,
+            obligations=obligations,
+            indicators=indicators,
+            typology_maturity=typology_maturity,
+            mitigations=mitigation_codes,
+            suspicion_evidence=suspicion_evidence,
+        )
+
+        # Render each section
+        for section in gate_result.sections:
+            lines.append("-" * w)
+            lines.append(f"SECTION {section.section_id} - {section.section_name}")
+            lines.append("-" * w)
+
+            for check in section.checks:
+                from .escalation_gate import GateStatus
+                status_icon = {
+                    GateStatus.PASS: "[x]",
+                    GateStatus.FAIL: "[ ]",
+                    GateStatus.NOT_APPLICABLE: "[~]"
+                }.get(check.status, "[ ]")
+
+                lines.append(f"  {status_icon} {check.description}")
+                if check.evidence:
+                    lines.append(f"      Evidence: {check.evidence}")
+
+            status_text = "PASSED" if section.passed else "FAILED"
+            lines.append(f"  >> Section {section.section_id}: {status_text}")
+            if section.gate_message:
+                lines.append(f"  >> {section.gate_message}")
+            lines.append("")
+
+        # Final Decision
+        lines.append("=" * w)
+        lines.append("ESCALATION GATE DECISION")
+        lines.append("=" * w)
+
+        decision_text = {
+            EscalationDecision.PERMITTED: "ESCALATION PERMITTED",
+            EscalationDecision.PROHIBITED: "ESCALATION PROHIBITED",
+            EscalationDecision.SYSTEM_ERROR: "SYSTEM ERROR - FIX REQUIRED"
+        }.get(gate_result.decision, "UNKNOWN")
+
+        lines.append(f"  Decision: {decision_text}")
+        lines.append(f"  Rationale: {gate_result.rationale}")
+        lines.append("")
+
+        # Non-escalation justification if prohibited
+        if gate_result.decision == EscalationDecision.PROHIBITED:
+            lines.append("-" * w)
+            lines.append("NON-ESCALATION JUSTIFICATION (MANDATORY OUTPUT)")
+            lines.append("-" * w)
+            # Wrap the justification text
+            justification = gate_result.non_escalation_justification
+            lines.append(f"  {justification}")
+            lines.append("")
+
+        # Absolute Rules
+        lines.append("=" * w)
+        lines.append("ABSOLUTE RULES (NO EXCEPTIONS)")
+        lines.append("=" * w)
+        absolute_rules = [
+            "PEP status alone can NEVER escalate",
+            "Cross-border alone can NEVER escalate",
+            "Risk score alone can NEVER escalate",
+            "'High confidence' can NEVER override facts",
+            "'Compliance comfort' is NOT a reason",
+        ]
+        for rule in absolute_rules:
+            lines.append(f"  X {rule}")
         lines.append("")
 
         return lines

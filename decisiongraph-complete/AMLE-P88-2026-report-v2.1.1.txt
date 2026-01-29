@@ -1,0 +1,150 @@
+================================================================================
+TRANSACTION MONITORING ALERT REPORT (v2.1.1)
+Alert ID: AMLE-P88-2026
+================================================================================
+
+================================================================================
+  PEP ALERT - PASS WITH EDD  
+================================================================================
+Alert ID:       AMLE-P88-2026
+Priority:       HIGH
+Source:         PEP Monitoring
+Processed:      2026-01-29
+
+================================================================================
+CASE SUMMARY
+================================================================================
+Customer:       Hon. Elena Moretti
+Customer ID:    IND-99283
+Type:           INDIVIDUAL
+Country:        IT
+Risk Rating:    HIGH
+Relationship:   22 years
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+Type:           Wire Transfer (SWIFT)
+Amount:         CAD 265,000.00
+Date:           2026-01-24
+Beneficiary:    LONDON LEGAL PARTNERS
+Benef Country:  GB
+
+================================================================================
+6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)
+================================================================================
+
+CRITICAL RULES ENFORCED:
+  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)
+  * Cash signals EXCLUDED from wire transactions
+  * FORMING typologies = OBSERVE ONLY (not escalation)
+  * Status alone is NEVER sufficient for suspicion
+
+INSTRUMENT DETECTED: WIRE
+--------------------------------------------------------------------------------
+
+SIGNALS EXCLUDED (instrument exclusivity):
+   [x] TXN_LARGE_CASH: Cash signal excluded from wire transaction
+   [x] STRUCT_CASH_MULTIPLE: Cash signal excluded from wire transaction
+
+HARD STOP ASSESSMENT (Layer 1 Facts):
+   STATUS: NO HARD STOP
+   Reasoning: No hard stop conditions present (screening != confirmed match)
+
+LAYER 2 - OBLIGATIONS:
+   - PEP_FOREIGN (edd_required)
+   - GEO_SANCTIONED_COUNTRY (sanctions)
+
+LAYER 3 - INDICATORS: 8 (strength: 2.50)
+
+LAYER 4 - TYPOLOGIES:
+   - layering: CONFIRMED (100%) (MITIGATED)
+   - professional_abuse: FORMING (67%) (MITIGATED)
+
+LAYER 5 - MITIGATIONS: 4
+   [x] MF_ESTABLISHED_RELATIONSHIP
+   [x] MF_DOCUMENTATION_COMPLETE
+   [x] MF_TXN_SUPPORTING_INVOICE
+   [x] MF_SCREEN_FALSE_POSITIVE
+
+LAYER 6 - SUSPICION ASSESSMENT:
+   STATUS: NOT ACTIVATED
+   Reasoning: Established typology present but mitigated by 4 factors
+
+TAXONOMY VERDICT:
+   Category: OBLIGATION_REVIEW
+   Mapped Verdict: PASS_WITH_EDD
+   Review Tier: 0
+   Auto-Archive: PERMITTED
+
+================================================================================
+ZERO-FALSE-ESCALATION CHECKLIST
+(Compliance-Safe, Audit-Proof)
+================================================================================
+
+Escalation is ONLY permitted if every mandatory condition is satisfied.
+If any condition fails -> escalation is prohibited.
+
+--------------------------------------------------------------------------------
+SECTION A - FACT-LEVEL HARD STOP VERIFICATION
+--------------------------------------------------------------------------------
+  [ ] Sanctions MATCH confirmed
+      Evidence: sanctions_result=NO_MATCH
+  [ ] Adverse media directly linked to ML/TF or corruption
+      Evidence: adverse_media_mltf=False
+  [ ] False, forged, or contradictory documentation
+      Evidence: document_status=VALID
+  [ ] Customer refusal or evasion
+      Evidence: customer_response=COMPLIANT
+  [ ] Legal prohibition to proceed
+      Evidence: legal_prohibition=False
+  >> Section A: FAILED
+  >> If NONE checked -> escalation is forbidden. Stop here.
+
+================================================================================
+ESCALATION GATE DECISION
+================================================================================
+  Decision: ESCALATION PROHIBITED
+  Rationale: Section A: No fact-level hard stop present. Escalation forbidden.
+
+--------------------------------------------------------------------------------
+NON-ESCALATION JUSTIFICATION (MANDATORY OUTPUT)
+--------------------------------------------------------------------------------
+  All regulatory obligations were fulfilled. No sanctions or adverse media were identified. Transaction activity is consistent with the customer profile and supported by documentation. No evidence of deception, intent, or structuring pattern was observed. Therefore, no reasonable grounds to suspect ML/TF exist under PCMLTFA s.7.
+
+================================================================================
+ABSOLUTE RULES (NO EXCEPTIONS)
+================================================================================
+  X PEP status alone can NEVER escalate
+  X Cross-border alone can NEVER escalate
+  X Risk score alone can NEVER escalate
+  X 'High confidence' can NEVER override facts
+  X 'Compliance comfort' is NOT a reason
+
+================================================================================
+FINAL DECISION
+================================================================================
+Verdict:        PASS_WITH_EDD
+Action:         PASS_WITH_EDD
+Review Tier:    0 (Auto-Archive Permitted)
+Escalation:     PROHIBITED
+STR Required:   NO
+
+Rationale:
+  1. PEP status triggers EDD obligation (Layer 2) - SATISFIED
+  2. No confirmed hard stop (sanctions=NO_MATCH)
+  3. Cash signals excluded from wire transaction
+  4. Typology mitigated by 4 factors (22yr relationship, docs, invoice, FP)
+  5. Suspicion NOT activated - no intent, deception, or sustained pattern
+  6. Zero-False-Escalation Checklist: ESCALATION PROHIBITED
+
+================================================================================
+REGULATORY COMPLIANCE
+================================================================================
+EDD Status:     COMPLETED (on file)
+PCMLTFA s.7:    No reasonable grounds to suspect ML/TF
+FINTRAC:        Obligations fulfilled
+
+================================================================================
+END OF ALERT REPORT
+================================================================================

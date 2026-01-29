@@ -781,3 +781,16 @@ from .pack_loader import (
     PackValidationError,
     PackCompilationError,
 )
+
+# Escalation Gate (Zero-False-Escalation Checklist)
+from .escalation_gate import (
+    GateStatus as EscalationGateStatus,
+    EscalationDecision,
+    GateCheck,
+    SectionResult,
+    EscalationGateResult,
+    EscalationGateValidator,
+    run_escalation_gate,
+    ABSOLUTE_RULES,
+    NON_ESCALATION_TEMPLATE,
+)
