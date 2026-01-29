@@ -25,6 +25,8 @@ from decisiongraph.rules import (
     RuleEvaluationError,
     # Severity
     Severity,
+    # Evidence anchoring
+    DetailedEvidenceAnchor,
     # Conditions
     FactPattern,
     Condition,
@@ -943,3 +945,168 @@ class TestAMLExampleEngine:
 
         assert "HIGH_VALUE_CRYPTO" in codes
         assert "HIGH_RISK_JURISDICTION" in codes
+
+
+# =============================================================================
+# DETAILED EVIDENCE ANCHOR TESTS
+# =============================================================================
+
+class TestDetailedEvidenceAnchor:
+    """Tests for DetailedEvidenceAnchor."""
+
+    def test_evidence_anchor_creation(self):
+        """Test creating an evidence anchor."""
+        anchor = DetailedEvidenceAnchor(
+            field="crypto_source",
+            value="KRAKEN",
+            source="case.evidence.crypto_source",
+            cell_id="cell_123"
+        )
+
+        assert anchor.field == "crypto_source"
+        assert anchor.value == "KRAKEN"
+        assert anchor.source == "case.evidence.crypto_source"
+        assert anchor.cell_id == "cell_123"
+
+    def test_evidence_anchor_to_dict(self):
+        """Test serializing anchor to dict."""
+        anchor = DetailedEvidenceAnchor(
+            field="tenure_years",
+            value="7",
+            source="case.customer.tenure_years",
+            cell_id="cell_456"
+        )
+
+        d = anchor.to_dict()
+        assert d["field"] == "tenure_years"
+        assert d["value"] == "7"
+        assert d["source"] == "case.customer.tenure_years"
+        assert d["cell_id"] == "cell_456"
+
+    def test_evidence_anchor_to_dict_no_cell_id(self):
+        """Test serializing anchor without cell_id."""
+        anchor = DetailedEvidenceAnchor(
+            field="amount",
+            value="50000",
+            source="txn.amount"
+        )
+
+        d = anchor.to_dict()
+        assert d["field"] == "amount"
+        assert "cell_id" not in d
+
+    def test_evidence_anchor_from_fact(self):
+        """Test creating anchor from a Fact."""
+        fact = Fact(
+            namespace="aml_case",
+            subject="TXN-001",
+            predicate="customer.tenure_years",
+            object="5",
+            confidence=1.0,
+            source_quality=SourceQuality.VERIFIED
+        )
+
+        anchor = DetailedEvidenceAnchor.from_fact(fact, "cell_789")
+
+        assert anchor.field == "tenure_years"
+        assert anchor.value == "5"
+        assert anchor.source == "aml_case.customer.tenure_years"
+        assert anchor.cell_id == "cell_789"
+
+    def test_evidence_anchor_from_fact_dict_object(self):
+        """Test creating anchor from fact with dict object."""
+        fact = Fact(
+            namespace="screening",
+            subject="CUS-001",
+            predicate="disposition",
+            object={"status": "false_positive", "reason": "name mismatch"},
+            confidence=1.0,
+            source_quality=SourceQuality.VERIFIED
+        )
+
+        anchor = DetailedEvidenceAnchor.from_fact(fact)
+
+        assert anchor.field == "disposition"
+        assert "false_positive" in anchor.value or "status" in anchor.value
+        assert anchor.source == "screening.disposition"
+
+
+class TestMitigationEvidenceAnchors:
+    """Tests for evidence anchoring in mitigation cells."""
+
+    def test_mitigation_cell_has_evidence_anchors(self):
+        """Test that mitigation cells include evidence anchors."""
+        engine = RulesEngine()
+
+        engine.add_signal_rule(SignalRule(
+            rule_id="sig_test",
+            code="TEST_SIGNAL",
+            name="Test Signal",
+            severity=Severity.MEDIUM,
+            conditions=[
+                Condition(
+                    pattern=FactPattern(
+                        predicate="test.indicator",
+                        object_value="FLAGGED"
+                    )
+                )
+            ]
+        ))
+
+        engine.add_mitigation_rule(MitigationRule(
+            rule_id="mit_test",
+            code="MF_TEST",
+            name="Test Mitigation",
+            weight="-0.25",
+            applies_to_signals=["TEST_SIGNAL"],
+            conditions=[
+                Condition(
+                    pattern=FactPattern(
+                        predicate="test.mitigator",
+                        object_value="SAFE"
+                    )
+                )
+            ]
+        ))
+
+        facts = [
+            Fact(
+                namespace="test",
+                subject="CASE-001",
+                predicate="test.indicator",
+                object="FLAGGED",
+                confidence=1.0,
+                source_quality=SourceQuality.VERIFIED
+            ),
+            Fact(
+                namespace="test",
+                subject="CASE-001",
+                predicate="test.mitigator",
+                object="SAFE",
+                confidence=1.0,
+                source_quality=SourceQuality.VERIFIED
+            ),
+        ]
+
+        context = EvaluationContext(
+            graph_id="graph:test",
+            namespace="test",
+            case_id="CASE-001"
+        )
+
+        result = engine.evaluate(facts, context)
+
+        # Should have one mitigation
+        assert len(result.mitigations) == 1
+        mit_cell = result.mitigations[0]
+
+        # Check evidence anchors in payload
+        payload = mit_cell.fact.object
+        assert "evidence_anchors" in payload
+        assert len(payload["evidence_anchors"]) > 0
+
+        # First anchor should have field, value, source
+        anchor = payload["evidence_anchors"][0]
+        assert "field" in anchor
+        assert "value" in anchor
+        assert "source" in anchor

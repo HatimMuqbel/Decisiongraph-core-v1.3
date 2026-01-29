@@ -292,6 +292,7 @@ from .rules import (
     RuleEvaluationError,
     ConditionError,
     Severity,
+    DetailedEvidenceAnchor,
     FactPattern,
     Condition,
     SignalRule,
@@ -369,6 +370,78 @@ from .template import (
     create_aml_alert_template,
     template_to_dict,
     template_from_dict,
+)
+
+# Citations (v2.0 - policy citation infrastructure)
+from .citations import (
+    CitationError,
+    CitationNotFoundError,
+    PolicyCitation,
+    CitationCompact,
+    CitationQuality,
+    CitationRegistry,
+    compute_citation_hash,
+    build_registry_from_pack,
+    format_citation_for_report,
+    format_citations_section,
+    format_citation_quality_section,
+)
+
+# Bank Report (v2.0 - 4-gate protocol bank-grade reports)
+from .bank_report import (
+    BankReportError,
+    TypologyClass,
+    ReportConfig,
+    EvidenceAnchor,
+    EvidenceAnchorGrid,
+    FeedbackScores,
+    RequiredAction,
+    BankReportRenderer,
+    render_bank_report,
+)
+
+# Gates (v2.0 - 4-gate protocol evaluation engine)
+from .gates import (
+    GateError,
+    GateConfigError,
+    GateEvaluationError,
+    GateStatus,
+    GateNumber,
+    GateResult,
+    TypologyGateConfig,
+    InherentMitigatingGateConfig,
+    ResidualRiskGateConfig,
+    IntegrityAuditGateConfig,
+    GateConfig,
+    GateEvaluator,
+)
+
+# Confidence (v2.0 - weighted confidence calculation)
+from .confidence import (
+    ConfidenceError,
+    ConfigurationError,
+    ConfidenceWeights,
+    ConfidenceConfig,
+    ConfidenceFactor,
+    ConfidenceResult,
+    ConfidenceCalculator,
+    compute_confidence,
+)
+
+# Actions (v2.0 - required actions with SLA)
+from .actions import (
+    ActionError,
+    TriggerParseError,
+    ActionConfigError,
+    TriggerType,
+    ActionPriority,
+    ActionRule,
+    GeneratedAction,
+    ActionConfig,
+    TriggerEvaluator,
+    ActionGenerator,
+    generate_required_actions,
+    format_actions_for_report,
 )
 
 __all__ = [
@@ -584,6 +657,30 @@ __all__ = [
     'create_aml_alert_template',
     'template_to_dict',
     'template_from_dict',
+    # Citations (v2.0 - policy citation infrastructure)
+    'CitationError',
+    'CitationNotFoundError',
+    'PolicyCitation',
+    'CitationCompact',
+    'CitationQuality',
+    'CitationRegistry',
+    'compute_citation_hash',
+    'build_registry_from_pack',
+    'format_citation_for_report',
+    'format_citations_section',
+    'format_citation_quality_section',
+    # Bank Report (v2.0 - 4-gate protocol bank-grade reports)
+    'BankReportError',
+    'TypologyClass',
+    'GateStatus',
+    'ReportConfig',
+    'EvidenceAnchor',
+    'EvidenceAnchorGrid',
+    'FeedbackScores',
+    'RequiredAction',
+    'GateResult',
+    'BankReportRenderer',
+    'render_bank_report',
     # Case Schema (Financial Crime)
     'CaseType',
     'CasePhase',

@@ -103,6 +103,8 @@ from .case_mapper import (
     MappingError,
     MappingResult,
 )
+from .citations import CitationRegistry, build_registry_from_pack
+from .bank_report import BankReportRenderer, ReportConfig, render_bank_report
 
 
 # ============================================================================
@@ -768,6 +770,8 @@ def write_bundle(
     sign_key: Optional[Path] = None,
     strict_mode: bool = False,
     legal_hold: bool = False,
+    template: str = "simple",
+    pack_data: Optional[dict] = None,
 ) -> dict:
     """Write all bank-ready deliverables to output directory."""
     case_dir = output_dir / case_id
@@ -787,8 +791,33 @@ def write_bundle(
 
     # 1. Render report.txt (deterministic bytes)
     print_step(1, 8 if sign_key else 7, "Rendering report...")
-    report_text = render_report_text(case_id, pack_runtime, chain, eval_result, bundle, strict_mode)
-    report_bytes = report_text.encode('utf-8')
+
+    if template == "bank":
+        # Use bank-grade 4-gate protocol report
+        citation_registry = None
+        if pack_data:
+            citation_registry = build_registry_from_pack(pack_data)
+
+        report_bytes = render_bank_report(
+            case_bundle=bundle,
+            eval_result=eval_result,
+            pack_runtime=pack_runtime,
+            chain=chain,
+            citation_registry=citation_registry,
+            config=ReportConfig(
+                line_width=72,
+                include_citations=True,
+                include_feedback_scores=True,
+                include_audit_trail=True,
+                include_case_integrity=True,
+                include_required_actions=True,
+            ),
+        )
+        report_text = report_bytes.decode('utf-8')
+    else:
+        # Use simple/full report (existing render_report_text)
+        report_text = render_report_text(case_id, pack_runtime, chain, eval_result, bundle, strict_mode)
+        report_bytes = report_text.encode('utf-8')
     report_path = case_dir / "report.txt"
     with open(report_path, 'wb') as f:
         f.write(report_bytes)
@@ -890,8 +919,26 @@ def write_bundle(
         verification["overall"] = "FAIL"
 
     # Check: Determinism (re-render and compare)
-    report_text_2 = render_report_text(case_id, pack_runtime, chain, eval_result, bundle, strict_mode)
-    report_hash_2 = compute_sha256(report_text_2.encode('utf-8'))
+    if template == "bank":
+        report_bytes_2 = render_bank_report(
+            case_bundle=bundle,
+            eval_result=eval_result,
+            pack_runtime=pack_runtime,
+            chain=chain,
+            citation_registry=citation_registry if pack_data else None,
+            config=ReportConfig(
+                line_width=72,
+                include_citations=True,
+                include_feedback_scores=True,
+                include_audit_trail=True,
+                include_case_integrity=True,
+                include_required_actions=True,
+            ),
+        )
+        report_hash_2 = compute_sha256(report_bytes_2)
+    else:
+        report_text_2 = render_report_text(case_id, pack_runtime, chain, eval_result, bundle, strict_mode)
+        report_hash_2 = compute_sha256(report_text_2.encode('utf-8'))
     determinism_pass = (report_hash == report_hash_2)
     verification["checks"].append({
         "name": "determinism",
@@ -1342,6 +1389,16 @@ def cmd_run_case(args):
     # Get legal_hold flag
     legal_hold = getattr(args, 'legal_hold', False)
 
+    # Get template selection
+    template = getattr(args, 'template', 'simple')
+
+    # Load pack data for bank template (needed for citations)
+    pack_data = None
+    if template == "bank":
+        import yaml
+        with open(pack_path, 'r', encoding='utf-8') as f:
+            pack_data = yaml.safe_load(f)
+
     verification = write_bundle(
         output_dir=output_dir,
         case_id=case_id,
@@ -1355,6 +1412,8 @@ def cmd_run_case(args):
         sign_key=sign_key,
         strict_mode=strict_mode,
         legal_hold=legal_hold,
+        template=template,
+        pack_data=pack_data,
     )
 
     # Final summary
@@ -1948,6 +2007,9 @@ Examples:
                            help="Strict mode: mark non-PASS cases as NOT APPROVED")
     run_parser.add_argument("--legal-hold", action="store_true",
                            help="Mark case as under legal hold (indefinite retention)")
+    run_parser.add_argument("--template", "-t", choices=["simple", "full", "bank"],
+                           default="simple",
+                           help="Report template: simple (default), full, or bank (4-gate protocol)")
     run_parser.set_defaults(func=cmd_run_case)
 
     # verify-bundle

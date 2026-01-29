@@ -50,6 +50,62 @@ from .canon import score_to_string
 
 
 # =============================================================================
+# EVIDENCE ANCHORING
+# =============================================================================
+
+@dataclass
+class DetailedEvidenceAnchor:
+    """
+    Detailed evidence anchor for audit trail.
+
+    Links a mitigation to the specific evidence that supports it.
+    This creates a traceable path from decision back to source data.
+    """
+    field: str           # Data field (e.g., "crypto_source", "tenure_years")
+    value: str           # The actual value that matched
+    source: str          # Full source path (e.g., "case.customer.tenure_years")
+    cell_id: str = ""    # Reference to source fact cell (if available)
+
+    def to_dict(self) -> Dict[str, str]:
+        """Serialize to dict for cell payload."""
+        d = {
+            "field": self.field,
+            "value": self.value,
+            "source": self.source,
+        }
+        if self.cell_id:
+            d["cell_id"] = self.cell_id
+        return d
+
+    @classmethod
+    def from_fact(cls, fact: Fact, cell_id: str = "") -> "DetailedEvidenceAnchor":
+        """
+        Create evidence anchor from a triggering fact.
+
+        Extracts field, value, and source from the fact's structure.
+        """
+        # Extract field from predicate (e.g., "txn.amount" -> "amount")
+        field = fact.predicate.split(".")[-1] if "." in fact.predicate else fact.predicate
+
+        # Extract value - handle different object types
+        if isinstance(fact.object, dict):
+            # For structured objects, use the first meaningful value or stringify
+            value = str(fact.object.get("value", fact.object))
+        else:
+            value = str(fact.object)
+
+        # Build source path from namespace + predicate
+        source = f"{fact.namespace}.{fact.predicate}" if fact.namespace else fact.predicate
+
+        return cls(
+            field=field,
+            value=value,
+            source=source,
+            cell_id=cell_id
+        )
+
+
+# =============================================================================
 # EXCEPTIONS
 # =============================================================================
 
@@ -755,16 +811,15 @@ class RulesEngine:
                 result.mitigations_applied += 1
                 mitigation_weights.append(rule.weight)
 
-                anchor_ids = self._get_fact_cell_ids(anchor_facts)
                 # Get cell IDs of mitigated signals
                 mitigated_signal_cell_ids = [
                     cell.cell_id for cell in result.signals
                     if cell.fact.object.get("code") in mitigated_signals
                 ]
 
-                # Create MITIGATION cell
+                # Create MITIGATION cell with detailed evidence anchors
                 mit_cell = self._create_mitigation_cell(
-                    rule, anchor_ids, mitigated_signal_cell_ids, context, prev_hash
+                    rule, anchor_facts, mitigated_signal_cell_ids, context, prev_hash
                 )
                 result.mitigations.append(mit_cell)
                 mitigation_cell_ids.append(mit_cell.cell_id)
@@ -824,6 +879,7 @@ class RulesEngine:
         payload = {
             "schema_version": "1.0",
             "code": rule.code,
+            "name": rule.name,
             "severity": rule.severity.value,
             "trigger_facts": trigger_fact_ids,
             "policy_refs": rule.policy_ref_ids,
@@ -860,17 +916,30 @@ class RulesEngine:
     def _create_mitigation_cell(
         self,
         rule: MitigationRule,
-        anchor_fact_ids: List[str],
+        anchor_facts: List[Fact],
         applies_to_signal_ids: List[str],
         context: EvaluationContext,
         prev_hash: str
     ) -> DecisionCell:
-        """Create a MITIGATION cell."""
+        """Create a MITIGATION cell with detailed evidence anchors."""
+        # Build detailed evidence anchors from anchor facts
+        evidence_anchors = []
+        anchor_cell_ids = []
+        for fact in anchor_facts:
+            # Try to get cell_id from fact if it has one (stored as attribute)
+            cell_id = getattr(fact, '_cell_id', "")
+            anchor = DetailedEvidenceAnchor.from_fact(fact, cell_id)
+            evidence_anchors.append(anchor.to_dict())
+            if cell_id:
+                anchor_cell_ids.append(cell_id)
+
         payload = {
             "schema_version": "1.0",
             "code": rule.code,
+            "name": rule.name,
             "weight": rule.weight,
-            "anchors": anchor_fact_ids,
+            "anchors": anchor_cell_ids,  # Backward-compatible cell ID list
+            "evidence_anchors": evidence_anchors,  # NEW: detailed evidence
             "applies_to_signals": applies_to_signal_ids,
         }
 
@@ -1129,6 +1198,8 @@ __all__ = [
     'ConditionError',
     # Severity
     'Severity',
+    # Evidence anchoring
+    'DetailedEvidenceAnchor',
     # Conditions
     'FactPattern',
     'Condition',
