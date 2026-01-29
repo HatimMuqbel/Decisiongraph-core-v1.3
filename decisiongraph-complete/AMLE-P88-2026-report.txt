@@ -114,13 +114,17 @@ GATE 1: CONTEXTUAL TYPOLOGY
 
 GATE 2A: REGULATORY OBLIGATIONS TRIGGERED
 ------------------------------------------------------------------------
+   PEP STATUS: PEP_FOREIGN (Resolved)
+      Classification: Foreign PEP Identified
+      Obligation: Enhanced Due Diligence required (PCMLTFR s.9.3)
+      Also Evaluated: PEP_DOMESTIC, PEP_HIO, PEP_FAMILY_ASSOCIATE
+
    TXN_LARGE_CASH: Large Cash Transaction
+      Obligation: LCTR reporting threshold (PCMLTFR s.12)
    GEO_SANCTIONED_COUNTRY: Sanctioned Jurisdiction
-   PEP_FOREIGN: Foreign PEP Identified
-   PEP_DOMESTIC: Domestic PEP Identified
-   PEP_HIO: Head of International Organization
-   PEP_FAMILY_ASSOCIATE: PEP Family Member or Close Associate
+      Obligation: Sanctions screening required (SEMA)
    SCREEN_SANCTIONS_HIT: Sanctions List Match
+      Obligation: Manual disposition required (SEMA)
 
 GATE 2B: RISK INDICATORS DETECTED
 ------------------------------------------------------------------------
@@ -140,14 +144,14 @@ GATE 2C: MITIGATING FACTORS (Pause & Pivot)
       Source: fincrime.assertion.relationship_tenure
       Regulatory Effect: -0.25 contextual risk adjustment
       Limitation: Applies to risk assessment only
-      Citation: 400020c4c50c3f48...
+      Citation: f1ee26d9ffaa9505...
 
    MF_DOCUMENTATION_COMPLETE: Documentation Complete
       Evidence: documentation_status: complete
       Source: fincrime.assertion.documentation_status
       Regulatory Effect: -0.25 contextual risk adjustment
       Limitation: Applies to risk assessment only
-      Citation: 3c38624e6347eb6f...
+      Citation: f40e71950490a9ef...
 
    MF_TXN_SUPPORTING_INVOICE: Supporting Invoice/Contract
       Evidence: evidence_collected: {'evidence_id': 'EV-001', 'evidence_t...
@@ -156,19 +160,28 @@ GATE 2C: MITIGATING FACTORS (Pause & Pivot)
       Source: fincrime.evidence.evidence_collected
       Regulatory Effect: -0.25 contextual risk adjustment
       Limitation: Applies to risk assessment only
-      Citation: 546930b39e1f2f43...
+      Citation: 1716c96607b263c1...
 
    MF_SCREEN_FALSE_POSITIVE: Confirmed False Positive
       Evidence: screening_completed: {'event_id': 'SCR-001', 'event_type':...
       Source: fincrime.screening.screening_completed
       Regulatory Effect: -0.50 contextual risk adjustment
       Limitation: Does NOT override EDD obligations
-      Citation: 853ccce049e08825...
+      Citation: cc584da1ae02545a...
 
 MITIGATION ASSESSMENT
 ------------------------------------------------------------------------
    Status: Mitigations applied but INSUFFICIENT to clear gate
    Reason: Residual risk remains above automated clearance threshold
+
+REGULATORY OBLIGATIONS SUMMARY
+------------------------------------------------------------------------
+   Obligation                          Status
+   ----------------------------------------------------
+   PEP Enhanced Due Diligence          REQUIRED
+   Sanctions Disposition               REQUIRED
+   Transaction Review                  REQUIRED
+   Automated Clearance                 NOT_PERMITTED
 
 GATE 3: RESIDUAL RISK CALCULATION
 ------------------------------------------------------------------------
@@ -186,8 +199,11 @@ GATE 3: RESIDUAL RISK CALCULATION
       <=0.25 = AUTO_CLOSE
       0.26-0.50 = ANALYST_REVIEW
       0.51-0.75 = SENIOR_REVIEW
-      0.76-1.00 = COMPLIANCE_REVIEW
-      >1.00 = STR_CONSIDERATION
+      0.76-0.89 = COMPLIANCE_REVIEW
+      >=0.90 = STR_CONSIDERATION*
+
+   * STR consideration also triggered by hard obligation gates
+     (sanctions match, designated PEP categories)
 
 CLEARANCE CONDITIONS (COUNTERFACTUAL ANALYSIS)
 ------------------------------------------------------------------------
@@ -354,10 +370,11 @@ Citation Quality:   100%
 ========================================================================
 DECISION
 ========================================================================
-Action:         ESCALATE
+Verdict:        ESCALATE_COMPLIANCE
+Action:         ESCALATE_COMPLIANCE
+Review Tier:    3 (COMPLIANCE_OFFICER)
 Confidence:     80%
-Tier:           2
-Escalate To:    SENIOR ANALYST
+Auto-Archive:   NOT PERMITTED
 
 Rationale:
   1. ADJUDICATION: COMPLIANCE_ESCALATION
@@ -378,9 +395,12 @@ Automated Components:
 
 Human-Required Actions:
   * Final adjudication decision
-  * STR filing determination (if applicable)
+  * STR consideration subject to compliance officer determination
   * Enhanced due diligence approval
   * Customer communication (if required)
+
+Automated processing was intentionally halted at the compliance
+escalation boundary in accordance with internal policy.
 
 No automated adverse action has been taken.
 Final disposition requires human judgment.

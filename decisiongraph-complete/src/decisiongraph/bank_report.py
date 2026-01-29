@@ -1026,38 +1026,68 @@ class BankReportRenderer:
         lines = []
 
         # Classify signals into obligations vs risk indicators
-        obligations = []
+        pep_signals = []
+        other_obligations = []
         risk_indicators = []
 
-        # Signal codes that represent regulatory OBLIGATIONS (not discretionary)
-        obligation_codes = {
-            'PEP_FOREIGN', 'PEP_DOMESTIC', 'PEP_HIO', 'PEP_FAMILY_ASSOCIATE',
-            'SCREEN_SANCTIONS_HIT', 'GEO_SANCTIONED_COUNTRY',
-            'TXN_LARGE_CASH',  # Reporting threshold
+        # PEP hierarchy (highest priority first)
+        pep_hierarchy = ['PEP_FOREIGN', 'PEP_DOMESTIC', 'PEP_HIO', 'PEP_FAMILY_ASSOCIATE']
+
+        # Non-PEP obligations
+        non_pep_obligations = {
+            'SCREEN_SANCTIONS_HIT', 'GEO_SANCTIONED_COUNTRY', 'TXN_LARGE_CASH'
         }
 
         if eval_result and eval_result.signals:
             for signal in eval_result.signals:
                 obj = signal.fact.object
                 code = obj.get("code", "UNKNOWN")
-                if code in obligation_codes:
-                    obligations.append(signal)
+                if code in pep_hierarchy:
+                    pep_signals.append((pep_hierarchy.index(code), signal))
+                elif code in non_pep_obligations:
+                    other_obligations.append(signal)
                 else:
                     risk_indicators.append(signal)
 
         # GATE 2A: Regulatory Obligations
         lines.append("GATE 2A: REGULATORY OBLIGATIONS TRIGGERED")
         lines.append("-" * w)
-        if obligations:
-            for signal in obligations:
-                obj = signal.fact.object
-                code = obj.get("code", "UNKNOWN")
-                name = obj.get("name", code)
-                policy_ref = obj.get("policy_ref", "")
-                lines.append(f"   {code}: {name}")
-                if policy_ref:
-                    lines.append(f"      Obligation: Enhanced due diligence required ({policy_ref})")
-        else:
+
+        has_obligations = False
+
+        # Resolve PEP classification (show only highest priority)
+        if pep_signals:
+            has_obligations = True
+            pep_signals.sort(key=lambda x: x[0])  # Sort by hierarchy
+            resolved_pep = pep_signals[0][1]
+            resolved_code = resolved_pep.fact.object.get("code", "UNKNOWN")
+            resolved_name = resolved_pep.fact.object.get("name", resolved_code)
+
+            lines.append(f"   PEP STATUS: {resolved_code} (Resolved)")
+            lines.append(f"      Classification: {resolved_name}")
+            lines.append("      Obligation: Enhanced Due Diligence required (PCMLTFR s.9.3)")
+
+            # Show what was evaluated
+            if len(pep_signals) > 1:
+                considered = [s[1].fact.object.get("code", "") for s in pep_signals[1:]]
+                lines.append(f"      Also Evaluated: {', '.join(considered)}")
+            lines.append("")
+
+        # Show other (non-PEP) obligations
+        for signal in other_obligations:
+            has_obligations = True
+            obj = signal.fact.object
+            code = obj.get("code", "UNKNOWN")
+            name = obj.get("name", code)
+            lines.append(f"   {code}: {name}")
+            if code == 'SCREEN_SANCTIONS_HIT':
+                lines.append("      Obligation: Manual disposition required (SEMA)")
+            elif code == 'TXN_LARGE_CASH':
+                lines.append("      Obligation: LCTR reporting threshold (PCMLTFR s.12)")
+            elif code == 'GEO_SANCTIONED_COUNTRY':
+                lines.append("      Obligation: Sanctions screening required (SEMA)")
+
+        if not has_obligations:
             lines.append("   (none)")
         lines.append("")
 
@@ -1124,6 +1154,31 @@ class BankReportRenderer:
             lines.append("   Status: No mitigating factors applicable")
         lines.append("")
 
+        # Regulatory Obligation Summary Table
+        lines.append("REGULATORY OBLIGATIONS SUMMARY")
+        lines.append("-" * w)
+        lines.append("   Obligation                          Status")
+        lines.append("   " + "-" * 52)
+
+        # Determine obligation statuses based on signals
+        has_pep = any(pep_signals)
+        has_sanctions = any(s.fact.object.get("code") == "SCREEN_SANCTIONS_HIT" for s in other_obligations)
+        has_lctr = any(s.fact.object.get("code") == "TXN_LARGE_CASH" for s in other_obligations)
+
+        if has_pep:
+            lines.append("   PEP Enhanced Due Diligence          REQUIRED")
+        else:
+            lines.append("   PEP Enhanced Due Diligence          NOT_APPLICABLE")
+
+        if has_sanctions:
+            lines.append("   Sanctions Disposition               REQUIRED")
+        else:
+            lines.append("   Sanctions Disposition               CLEAR")
+
+        lines.append("   Transaction Review                  REQUIRED")
+        lines.append("   Automated Clearance                 NOT_PERMITTED")
+        lines.append("")
+
         return lines
 
     def _render_gate_3(self, eval_result: Any, anchor_grid: EvidenceAnchorGrid, w: int) -> List[str]:
@@ -1157,8 +1212,11 @@ class BankReportRenderer:
         lines.append("      <=0.25 = AUTO_CLOSE")
         lines.append("      0.26-0.50 = ANALYST_REVIEW")
         lines.append("      0.51-0.75 = SENIOR_REVIEW")
-        lines.append("      0.76-1.00 = COMPLIANCE_REVIEW")
-        lines.append("      >1.00 = STR_CONSIDERATION")
+        lines.append("      0.76-0.89 = COMPLIANCE_REVIEW")
+        lines.append("      >=0.90 = STR_CONSIDERATION*")
+        lines.append("")
+        lines.append("   * STR consideration also triggered by hard obligation gates")
+        lines.append("     (sanctions match, designated PEP categories)")
         lines.append("")
 
         return lines
@@ -1269,7 +1327,7 @@ class BankReportRenderer:
         return lines
 
     def _render_decision(self, eval_result: Any, anchor_grid: EvidenceAnchorGrid, w: int) -> List[str]:
-        """Render decision section."""
+        """Render decision section with canonical vocabulary."""
         lines = []
         lines.append("=" * w)
         lines.append("DECISION")
@@ -1282,38 +1340,49 @@ class BankReportRenderer:
             verdict = obj.get("verdict", "PENDING")
             auto_archive = obj.get("auto_archive_permitted", False)
 
+        # Canonical verdict mapping (for consistency across report)
+        verdict_display_map = {
+            "CLEAR_AND_CLOSE": "CLEAR",
+            "AUTO_CLOSE": "AUTO_CLEAR",
+            "ANALYST_REVIEW": "REVIEW_L1",
+            "SENIOR_REVIEW": "REVIEW_L2",
+            "COMPLIANCE_REVIEW": "REVIEW_COMPLIANCE",
+            "COMPLIANCE_ESCALATION": "ESCALATE_COMPLIANCE",
+            "STR_CONSIDERATION": "ESCALATE_STR",
+        }
+        canonical_verdict = verdict_display_map.get(verdict, verdict)
+
         # Map verdict to action
         action = "REVIEW"
         if verdict in ["CLEAR_AND_CLOSE", "AUTO_CLOSE"]:
             action = "APPROVE"
-        elif verdict in ["COMPLIANCE_ESCALATION", "STR_CONSIDERATION"]:
-            action = "ESCALATE"
+        elif verdict in ["COMPLIANCE_ESCALATION", "COMPLIANCE_REVIEW"]:
+            action = "ESCALATE_COMPLIANCE"
+        elif verdict in ["STR_CONSIDERATION"]:
+            action = "ESCALATE_STR"
 
         # Determine tier
         tier = 1
+        tier_name = "L1_ANALYST"
         if verdict in ["ANALYST_REVIEW"]:
-            tier = 1
-        elif verdict in ["SENIOR_REVIEW", "COMPLIANCE_ESCALATION"]:
-            tier = 2
+            tier, tier_name = 1, "L1_ANALYST"
+        elif verdict in ["SENIOR_REVIEW"]:
+            tier, tier_name = 2, "L2_SENIOR"
+        elif verdict in ["COMPLIANCE_REVIEW", "COMPLIANCE_ESCALATION"]:
+            tier, tier_name = 3, "COMPLIANCE_OFFICER"
         elif verdict in ["STR_CONSIDERATION"]:
-            tier = 3
-
-        # Escalate to
-        escalate_map = {
-            1: "AML ANALYST",
-            2: "SENIOR ANALYST",
-            3: "COMPLIANCE OFFICER"
-        }
+            tier, tier_name = 4, "MLRO"
 
         # Calculate confidence
         confidence = 85 if auto_archive else 70
         if anchor_grid.mitigation_sum < 0:
             confidence += 10
 
+        lines.append(f"Verdict:        {canonical_verdict}")
         lines.append(f"Action:         {action}")
+        lines.append(f"Review Tier:    {tier} ({tier_name})")
         lines.append(f"Confidence:     {confidence}%")
-        lines.append(f"Tier:           {tier}")
-        lines.append(f"Escalate To:    {escalate_map.get(tier, 'AML ANALYST')}")
+        lines.append(f"Auto-Archive:   {'PERMITTED' if auto_archive else 'NOT PERMITTED'}")
         lines.append("")
         lines.append("Rationale:")
         lines.append(f"  1. ADJUDICATION: {verdict}")
@@ -1357,9 +1426,12 @@ class BankReportRenderer:
             lines.append("")
             lines.append("Human-Required Actions:")
             lines.append("  * Final adjudication decision")
-            lines.append("  * STR filing determination (if applicable)")
+            lines.append("  * STR consideration subject to compliance officer determination")
             lines.append("  * Enhanced due diligence approval")
             lines.append("  * Customer communication (if required)")
+            lines.append("")
+            lines.append("Automated processing was intentionally halted at the compliance")
+            lines.append("escalation boundary in accordance with internal policy.")
             lines.append("")
             lines.append("No automated adverse action has been taken.")
             lines.append("Final disposition requires human judgment.")
