@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""
+DecisionGraph CLI entry point.
+
+Usage:
+    ./dg run-case --case bundle.json --pack packs/fincrime_canada.yaml --out results/
+    ./dg validate-pack --pack packs/fincrime_canada.yaml
+    ./dg validate-case --case bundle.json
+    ./dg pack-info --pack packs/fincrime_canada.yaml
+"""
+
+import sys
+from pathlib import Path
+
+# Add source path (decisiongraph-complete has all modules)
+complete_path = Path(__file__).parent / "decisiongraph-complete" / "src"
+if complete_path.exists():
+    sys.path.insert(0, str(complete_path))
+
+from decisiongraph.cli import main
+
+if __name__ == "__main__":
+    sys.exit(main())

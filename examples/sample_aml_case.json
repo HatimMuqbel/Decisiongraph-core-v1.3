@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "id": "AML-2026-00142",
+    "case_type": "aml_alert",
+    "case_phase": "analysis",
+    "created_at": "2026-01-29T10:30:00Z",
+    "jurisdiction": "CA",
+    "primary_entity_type": "individual",
+    "primary_entity_id": "IND-001",
+    "status": "open",
+    "priority": "high",
+    "sensitivity": "confidential",
+    "access_tags": ["aml", "fincrime"]
+  },
+  "individuals": [
+    {
+      "id": "IND-001",
+      "given_name": "John",
+      "family_name": "Smith",
+      "date_of_birth": "1975-03-15",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "none",
+      "risk_rating": "medium",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    }
+  ],
+  "organizations": [],
+  "accounts": [
+    {
+      "id": "ACC-001",
+      "account_number": "****4567",
+      "account_type": "checking",
+      "currency": "CAD",
+      "status": "active",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "REL-001",
+      "relationship_type": "account_holder",
+      "from_entity_type": "individual",
+      "from_entity_id": "IND-001",
+      "to_entity_type": "individual",
+      "to_entity_id": "ACC-001",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EV-001",
+      "evidence_type": "transaction_records",
+      "description": "Wire transfer records for January 2026",
+      "collected_date": "2026-01-29",
+      "source": "core_banking",
+      "verified": true,
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "EV-002",
+      "evidence_type": "sanctions_result",
+      "description": "Sanctions screening result - no hits",
+      "collected_date": "2026-01-29",
+      "source": "screening_vendor",
+      "verified": true,
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "events": [
+    {
+      "id": "TXN-001",
+      "event_type": "transaction",
+      "timestamp": "2026-01-15T14:30:00Z",
+      "description": "International wire transfer",
+      "amount": "25000.00",
+      "currency": "CAD",
+      "direction": "outbound",
+      "counterparty_name": "Global Trading Ltd",
+      "counterparty_country": "KY",
+      "payment_method": "wire",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "TXN-002",
+      "event_type": "transaction",
+      "timestamp": "2026-01-20T09:15:00Z",
+      "description": "Cash deposit",
+      "amount": "9500.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "payment_method": "cash",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "TXN-003",
+      "event_type": "transaction",
+      "timestamp": "2026-01-22T11:00:00Z",
+      "description": "Cash deposit",
+      "amount": "9800.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "payment_method": "cash",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "ALERT-001",
+      "event_type": "alert",
+      "timestamp": "2026-01-28T08:00:00Z",
+      "description": "Potential structuring activity detected",
+      "alert_type": "structuring",
+      "rule_id": "STRUCT-001",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "SCREEN-001",
+      "event_type": "screening",
+      "timestamp": "2026-01-28T08:05:00Z",
+      "description": "Sanctions screening - no match",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "false_positive",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "assertions": [
+    {
+      "id": "ASSERT-001",
+      "subject_type": "individual",
+      "subject_id": "IND-001",
+      "predicate": "relationship_tenure",
+      "value": "7",
+      "asserted_at": "2026-01-28T08:10:00Z",
+      "asserted_by": "system",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "ASSERT-002",
+      "subject_type": "individual",
+      "subject_id": "IND-001",
+      "predicate": "documentation_status",
+      "value": "complete",
+      "asserted_at": "2026-01-28T08:10:00Z",
+      "asserted_by": "system",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "ASSERT-003",
+      "subject_type": "individual",
+      "subject_id": "IND-001",
+      "predicate": "source_of_wealth",
+      "value": "verified",
+      "asserted_at": "2026-01-28T08:10:00Z",
+      "asserted_by": "analyst",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ]
+}

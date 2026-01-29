@@ -1,0 +1,1012 @@
+# ============================================================================
+# Canadian Financial Crime Pack v1.0
+# ============================================================================
+#
+# Scope: KYC + AML + EDD + Sanctions (one Financial Crime department)
+# Jurisdiction: Canada
+# Regulatory Framework:
+#   - PCMLTFA (Proceeds of Crime Money Laundering and Terrorist Financing Act)
+#   - PCMLTFR (Regulations - SOR/2002-184)
+#   - FINTRAC Guidelines
+#   - OSFI B-8 Guideline (for banks)
+#
+# Key Reports:
+#   - STR (Suspicious Transaction Report) - not SAR
+#   - LCTR (Large Cash Transaction Report) - $10K+ CAD
+#   - EFT Report (Electronic Funds Transfer) - $10K+ CAD
+#
+# This pack defines:
+#   - Signals: Risk indicators that INCREASE inherent score
+#   - Mitigations: Factors that DECREASE residual score (KEY DIFFERENTIATOR)
+#   - Scoring: How signals/mitigations combine into risk score
+#   - Verdicts: Decision outcomes based on score thresholds
+#   - Shadow Questions: Audit trail justifications
+#
+# Formula:
+#   residual_score = inherent_score + sum(mitigation_weights)
+#   where mitigation_weights are NEGATIVE (e.g., -0.25)
+#
+# ============================================================================
+
+pack_id: fincrime_canada_v1
+name: Canadian Financial Crime Pack
+version: "1.0.0"
+description: |
+  Comprehensive Financial Crime pack for Canadian jurisdiction.
+  Covers KYC onboarding, AML transaction monitoring, EDD reviews,
+  and sanctions screening - aligned to PCMLTFA/PCMLTFR requirements.
+domain: financial_crime
+jurisdiction: CA
+author: DecisionGraph
+created_at: "2026-01-29T00:00:00Z"
+
+# ============================================================================
+# REGULATORY REFERENCES
+# ============================================================================
+
+regulatory_framework:
+  primary_legislation: PCMLTFA
+  primary_regulations: PCMLTFR (SOR/2002-184)
+  regulator: FINTRAC
+  bank_guideline: OSFI B-8
+
+  reporting_thresholds:
+    lctr_threshold: "10000"  # CAD - Large Cash Transaction Report
+    eft_threshold: "10000"   # CAD - Electronic Funds Transfer Report
+
+  pep_categories:
+    - code: DPEP
+      description: Domestic Politically Exposed Person
+      citation: PCMLTFR s. 9.3(1)
+    - code: FPEP
+      description: Foreign Politically Exposed Person
+      citation: PCMLTFR s. 9.3(3)
+    - code: HIO
+      description: Head of International Organization
+      citation: PCMLTFR s. 9.3(2)
+    - code: FAMILY
+      description: Family member of PEP
+      citation: PCMLTFR s. 9.3(4)
+    - code: ASSOCIATE
+      description: Close associate of PEP
+      citation: PCMLTFR s. 9.3(4)
+
+# ============================================================================
+# SIGNALS - Risk Indicators (INCREASE inherent score)
+# ============================================================================
+# Each signal has:
+#   - code: Unique identifier
+#   - severity: LOW (0.25), MEDIUM (0.50), HIGH (0.75), CRITICAL (1.00)
+#   - condition: What triggers it (references fact predicates)
+#   - policy_ref: Regulatory citation
+#
+# Signal codes are prefixed by category:
+#   TXN_*   - Transaction-based signals
+#   CDD_*   - Customer due diligence signals
+#   GEO_*   - Geographic risk signals
+#   PEP_*   - Politically exposed person signals
+#   STRUCT_* - Structuring/pattern signals
+#   SCREEN_* - Screening hit signals
+# ============================================================================
+
+signals:
+
+  # ---------------------------------------------------------------------------
+  # Transaction Signals (TXN_*)
+  # ---------------------------------------------------------------------------
+
+  - code: TXN_LARGE_CASH
+    name: Large Cash Transaction
+    description: Cash transaction at or above $10,000 CAD reporting threshold
+    severity: MEDIUM
+    policy_ref: PCMLTFR s. 12
+    condition:
+      pattern:
+        namespace: fincrime.transaction
+        predicate: transaction_occurred
+      extract_path: amount
+      compare_op: gte
+      compare_value: "10000"
+      additional_match:
+        payment_method: cash
+    shadow_question: Was this cash transaction reported via LCTR?
+
+  - code: TXN_JUST_BELOW_THRESHOLD
+    name: Transaction Just Below Threshold
+    description: Transaction between $9,000-$9,999 CAD (potential structuring)
+    severity: HIGH
+    policy_ref: FINTRAC Guideline 2
+    condition:
+      pattern:
+        namespace: fincrime.transaction
+        predicate: transaction_occurred
+      extract_path: amount
+      compare_op: gte
+      compare_value: "9000"
+      compare_op_2: lt
+      compare_value_2: "10000"
+    shadow_question: Is there evidence of intentional threshold avoidance?
+
+  - code: TXN_RAPID_MOVEMENT
+    name: Rapid Movement of Funds
+    description: Funds moved out within 24-48 hours of receipt
+    severity: MEDIUM
+    policy_ref: FINTRAC Guideline 3
+    condition:
+      pattern:
+        namespace: fincrime.alert
+        predicate: alert_triggered
+      object_contains: rapid_movement
+    shadow_question: What is the stated purpose for rapid fund movement?
+
+  - code: TXN_ROUND_AMOUNT
+    name: Unusual Round Amounts
+    description: Multiple transactions in round amounts suggesting structuring
+    severity: LOW
+    policy_ref: FINTRAC Guideline 2
+    condition:
+      pattern:
+        namespace: fincrime.alert
+        predicate: alert_triggered
+        alert_type: round_amounts
+    shadow_question: Is there a legitimate business reason for round amounts?
+
+  - code: TXN_CRYPTO
+    name: Virtual Currency Transaction
+    description: Transaction involving virtual currency/cryptocurrency
+    severity: MEDIUM
+    policy_ref: PCMLTFR Part 1.1
+    condition:
+      pattern:
+        namespace: fincrime.transaction
+        predicate: transaction_occurred
+      object_contains: crypto
+    shadow_question: Is the source of virtual currency documented?
+
+  - code: TXN_UNUSUAL_PATTERN
+    name: Unusual Transaction Pattern
+    description: Pattern inconsistent with customer profile or stated business
+    severity: HIGH
+    policy_ref: FINTRAC Guideline 3
+    condition:
+      pattern:
+        namespace: fincrime.alert
+        predicate: alert_triggered
+        alert_type: unusual_pattern
+    shadow_question: Does the pattern match any known typology?
+
+  # ---------------------------------------------------------------------------
+  # Geographic Risk Signals (GEO_*)
+  # ---------------------------------------------------------------------------
+
+  - code: GEO_HIGH_RISK_COUNTRY
+    name: High-Risk Jurisdiction
+    description: Transaction or relationship involves FATF high-risk jurisdiction
+    severity: HIGH
+    policy_ref: PCMLTFR s. 9.6
+    condition:
+      patterns:
+        - pattern:
+            namespace: fincrime.transaction
+            predicate: transaction_occurred
+          object_contains_any:
+            - counterparty_country: IR  # Iran
+            - counterparty_country: KP  # North Korea
+            - counterparty_country: MM  # Myanmar
+        - pattern:
+            namespace: fincrime.entity
+            predicate: entity_profile
+          object_contains_any:
+            - country_of_residence: IR
+            - country_of_residence: KP
+            - nationality: IR
+            - nationality: KP
+      match_mode: any
+    shadow_question: Is there a legitimate business purpose for this jurisdiction exposure?
+
+  - code: GEO_SANCTIONED_COUNTRY
+    name: Sanctioned Jurisdiction
+    description: Transaction or entity linked to comprehensively sanctioned country
+    severity: CRITICAL
+    policy_ref: SEMA (Special Economic Measures Act)
+    condition:
+      pattern:
+        namespace: fincrime.screening
+        predicate: screening_completed
+        screening_type: sanctions
+      object_contains: sanctioned_country
+    shadow_question: Has sanctions compliance been consulted?
+
+  - code: GEO_TAX_HAVEN
+    name: Tax Haven Jurisdiction
+    description: Entity or transaction involves known tax haven jurisdiction
+    severity: MEDIUM
+    policy_ref: FINTRAC Guideline 6
+    condition:
+      patterns:
+        - pattern:
+            namespace: fincrime.entity
+            predicate: entity_profile
+            entity_type: organization
+          object_contains_any:
+            - jurisdiction: KY  # Cayman Islands
+            - jurisdiction: VG  # BVI
+            - jurisdiction: PA  # Panama
+            - jurisdiction: BZ  # Belize
+      match_mode: any
+    shadow_question: Is there legitimate business rationale for offshore structure?
+
+  # ---------------------------------------------------------------------------
+  # PEP Signals (PEP_*)
+  # ---------------------------------------------------------------------------
+
+  - code: PEP_FOREIGN
+    name: Foreign PEP Identified
+    description: Customer or beneficial owner is a foreign politically exposed person
+    severity: HIGH
+    policy_ref: PCMLTFR s. 9.3(3)
+    condition:
+      pattern:
+        namespace: fincrime.entity
+        predicate: entity_profile
+      object_match:
+        pep_status: fpep
+    shadow_question: Has senior management approved this FPEP relationship?
+
+  - code: PEP_DOMESTIC
+    name: Domestic PEP Identified
+    description: Customer or beneficial owner is a domestic politically exposed person
+    severity: MEDIUM
+    policy_ref: PCMLTFR s. 9.3(1)
+    condition:
+      pattern:
+        namespace: fincrime.entity
+        predicate: entity_profile
+      object_match:
+        pep_status: dpep
+    shadow_question: Is the source of wealth consistent with known position?
+
+  - code: PEP_HIO
+    name: Head of International Organization
+    description: Customer or beneficial owner heads an international organization
+    severity: MEDIUM
+    policy_ref: PCMLTFR s. 9.3(2)
+    condition:
+      pattern:
+        namespace: fincrime.entity
+        predicate: entity_profile
+      object_match:
+        pep_status: hio
+    shadow_question: Has enhanced due diligence been completed?
+
+  - code: PEP_FAMILY_ASSOCIATE
+    name: PEP Family Member or Close Associate
+    description: Customer is family member or close associate of a PEP
+    severity: MEDIUM
+    policy_ref: PCMLTFR s. 9.3(4)
+    condition:
+      pattern:
+        namespace: fincrime.entity
+        predicate: entity_profile
+      object_match_any:
+        pep_status:
+          - family
+          - associate
+    shadow_question: What is the nature of the relationship to the PEP?
+
+  # ---------------------------------------------------------------------------
+  # Structuring Signals (STRUCT_*)
+  # ---------------------------------------------------------------------------
+
+  - code: STRUCT_CASH_MULTIPLE
+    name: Multiple Cash Deposits
+    description: Multiple cash deposits in single day across locations
+    severity: HIGH
+    policy_ref: FINTRAC Guideline 2
+    condition:
+      pattern:
+        namespace: fincrime.alert
+        predicate: alert_triggered
+        alert_type: structuring
+      min_count: 1
+    shadow_question: Is there evidence of coordinated structuring activity?
+
+  - code: STRUCT_SMURFING
+    name: Potential Smurfing Activity
+    description: Pattern suggests use of multiple individuals to structure deposits
+    severity: CRITICAL
+    policy_ref: FINTRAC ML/TF Typologies
+    condition:
+      pattern:
+        namespace: fincrime.alert
+        predicate: alert_triggered
+        alert_type: smurfing
+    shadow_question: Have all related parties been identified and documented?
+
+  # ---------------------------------------------------------------------------
+  # Screening Signals (SCREEN_*)
+  # ---------------------------------------------------------------------------
+
+  - code: SCREEN_SANCTIONS_HIT
+    name: Sanctions List Match
+    description: Name match against sanctions list (OFAC, UN, Canada)
+    severity: CRITICAL
+    policy_ref: SEMA, PCMLTFA s. 11.42
+    condition:
+      pattern:
+        namespace: fincrime.screening
+        predicate: screening_completed
+        screening_type: sanctions
+      object_match:
+        disposition: confirmed
+    shadow_question: Has the match been escalated to sanctions compliance?
+
+  - code: SCREEN_ADVERSE_MEDIA
+    name: Adverse Media Hit
+    description: Negative news or adverse media identified
+    severity: MEDIUM
+    policy_ref: FINTRAC Guideline 6
+    condition:
+      pattern:
+        namespace: fincrime.screening
+        predicate: screening_completed
+        screening_type: adverse_media
+      object_match:
+        disposition: confirmed
+    shadow_question: What is the nature and recency of the adverse media?
+
+  # ---------------------------------------------------------------------------
+  # CDD/KYC Signals (CDD_*)
+  # ---------------------------------------------------------------------------
+
+  - code: CDD_INCOMPLETE_ID
+    name: Incomplete Identity Verification
+    description: Customer identity not fully verified per PCMLTFR requirements
+    severity: HIGH
+    policy_ref: PCMLTFR s. 64
+    condition:
+      pattern:
+        namespace: fincrime.verification
+        predicate: verification_completed
+        verification_type: identity
+      object_match:
+        result: fail
+    shadow_question: What identity documents are missing?
+
+  - code: CDD_UBO_UNKNOWN
+    name: Unknown Beneficial Owner
+    description: Unable to identify or verify beneficial owner(s)
+    severity: HIGH
+    policy_ref: PCMLTFR s. 11.1
+    condition:
+      patterns:
+        - pattern:
+            namespace: fincrime.assertion
+            predicate: ubo_verified
+          object_match:
+            value: "false"
+      match_mode: any
+    shadow_question: What steps were taken to identify the UBO?
+
+  - code: CDD_SOW_UNDOCUMENTED
+    name: Source of Wealth Undocumented
+    description: Source of wealth not documented for high-risk customer
+    severity: MEDIUM
+    policy_ref: PCMLTFR s. 9.6
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: source_of_wealth
+      object_match:
+        value: undocumented
+    shadow_question: Has customer been asked to provide SOW documentation?
+
+  - code: CDD_SHELL_COMPANY
+    name: Potential Shell Company
+    description: Entity shows characteristics of shell company (no operations, nominee directors)
+    severity: HIGH
+    policy_ref: FINTRAC Guideline 6
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: entity_characteristic
+      object_contains: shell_company_indicator
+    shadow_question: Is there evidence of legitimate business operations?
+
+  - code: CDD_HIGH_RISK_INDUSTRY
+    name: High-Risk Industry
+    description: Customer operates in high-risk industry (MSB, gaming, crypto, etc.)
+    severity: MEDIUM
+    policy_ref: PCMLTFR s. 9.6
+    condition:
+      pattern:
+        namespace: fincrime.entity
+        predicate: entity_profile
+      object_contains_any:
+        industry_code:
+          - "523130"  # Commodity contracts
+          - "522390"  # Other credit intermediation (MSB)
+          - "713210"  # Casinos
+          - "713290"  # Gambling
+    shadow_question: Are industry-specific controls in place?
+
+
+# ============================================================================
+# MITIGATIONS - Risk Reducers (DECREASE residual score)
+# ============================================================================
+# This is the KEY DIFFERENTIATOR of DecisionGraph.
+# Other systems only flag risks. DecisionGraph uses mitigations to PREVENT
+# over-escalation when evidence supports lower risk.
+#
+# Each mitigation has:
+#   - code: Unique identifier (MF_* prefix for Mitigating Factor)
+#   - weight: NEGATIVE value (e.g., "-0.25") that reduces score
+#   - applies_to: Which signals this can mitigate
+#   - condition: What evidence must exist
+#
+# Formula reminder:
+#   residual_score = inherent_score + sum(mitigation_weights)
+# ============================================================================
+
+mitigations:
+
+  # ---------------------------------------------------------------------------
+  # Relationship Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_ESTABLISHED_RELATIONSHIP
+    name: Established Customer Relationship
+    description: Customer has 5+ year relationship with no prior concerns
+    weight: "-0.25"
+    applies_to:
+      - TXN_LARGE_CASH
+      - TXN_UNUSUAL_PATTERN
+      - TXN_RAPID_MOVEMENT
+      - GEO_TAX_HAVEN
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: relationship_tenure
+      extract_path: value
+      compare_op: gte
+      compare_value: "5"
+    policy_ref: Risk-based approach (PCMLTFR s. 9.6)
+    shadow_question: Has customer relationship been free of prior concerns?
+
+  - code: MF_KNOWN_CUSTOMER_PATTERN
+    name: Known Customer Pattern
+    description: Transaction consistent with established customer behavior
+    weight: "-0.30"
+    applies_to:
+      - TXN_UNUSUAL_PATTERN
+      - TXN_ROUND_AMOUNT
+      - TXN_RAPID_MOVEMENT
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: pattern_consistent
+      object_match:
+        value: "true"
+    policy_ref: Risk-based approach
+    shadow_question: Is current activity within customer's normal range?
+
+  # ---------------------------------------------------------------------------
+  # Documentation Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_DOCUMENTATION_COMPLETE
+    name: Documentation Complete
+    description: All required CDD/EDD documentation is current and verified
+    weight: "-0.25"
+    applies_to:
+      - CDD_INCOMPLETE_ID
+      - CDD_SOW_UNDOCUMENTED
+      - PEP_FOREIGN
+      - PEP_DOMESTIC
+      - GEO_HIGH_RISK_COUNTRY
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: documentation_status
+      object_match:
+        value: complete
+    policy_ref: PCMLTFR s. 64
+    shadow_question: When was documentation last reviewed and updated?
+
+  - code: MF_SOW_VERIFIED
+    name: Source of Wealth Verified
+    description: Source of wealth documented and consistent with profile
+    weight: "-0.35"
+    applies_to:
+      - CDD_SOW_UNDOCUMENTED
+      - PEP_FOREIGN
+      - PEP_DOMESTIC
+      - PEP_HIO
+      - TXN_LARGE_CASH
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: source_of_wealth
+      object_match:
+        value: verified
+    policy_ref: PCMLTFR s. 9.6
+    shadow_question: What evidence supports the stated source of wealth?
+
+  - code: MF_UBO_FULLY_IDENTIFIED
+    name: Beneficial Owners Fully Identified
+    description: All beneficial owners identified, verified, and documented
+    weight: "-0.30"
+    applies_to:
+      - CDD_UBO_UNKNOWN
+      - CDD_SHELL_COMPANY
+      - GEO_TAX_HAVEN
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: ubo_verified
+      object_match:
+        value: "true"
+    policy_ref: PCMLTFR s. 11.1
+    shadow_question: Are all 25%+ beneficial owners identified?
+
+  # ---------------------------------------------------------------------------
+  # PEP Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_PEP_SENIOR_APPROVAL
+    name: PEP Senior Management Approval
+    description: PEP relationship approved by senior management
+    weight: "-0.20"
+    applies_to:
+      - PEP_FOREIGN
+      - PEP_DOMESTIC
+      - PEP_HIO
+      - PEP_FAMILY_ASSOCIATE
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: senior_approval
+      object_match:
+        value: approved
+    policy_ref: PCMLTFR s. 9.3
+    shadow_question: When was senior management approval obtained?
+
+  - code: MF_PEP_EDD_CURRENT
+    name: PEP Enhanced Due Diligence Current
+    description: Enhanced due diligence for PEP completed within last 12 months
+    weight: "-0.25"
+    applies_to:
+      - PEP_FOREIGN
+      - PEP_DOMESTIC
+      - PEP_HIO
+      - PEP_FAMILY_ASSOCIATE
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: edd_status
+      object_match:
+        value: current
+    policy_ref: PCMLTFR s. 9.6
+    shadow_question: When was EDD last updated?
+
+  # ---------------------------------------------------------------------------
+  # Transaction Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_TXN_DOCUMENTED_PURPOSE
+    name: Transaction Purpose Documented
+    description: Clear, legitimate business purpose documented for transaction
+    weight: "-0.20"
+    applies_to:
+      - TXN_LARGE_CASH
+      - TXN_RAPID_MOVEMENT
+      - TXN_UNUSUAL_PATTERN
+      - GEO_HIGH_RISK_COUNTRY
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: transaction_purpose
+      object_match:
+        value: documented
+    policy_ref: Risk-based approach
+    shadow_question: What is the stated purpose and is it consistent with business?
+
+  - code: MF_TXN_SUPPORTING_INVOICE
+    name: Supporting Invoice/Contract
+    description: Transaction supported by invoice, contract, or other documentation
+    weight: "-0.25"
+    applies_to:
+      - TXN_LARGE_CASH
+      - TXN_UNUSUAL_PATTERN
+      - GEO_HIGH_RISK_COUNTRY
+      - GEO_TAX_HAVEN
+    condition:
+      pattern:
+        namespace: fincrime.evidence
+        predicate: evidence_collected
+      object_match_any:
+        evidence_type:
+          - financial_statements
+          - sale_proceeds
+    policy_ref: Risk-based approach
+    shadow_question: Does supporting documentation match transaction details?
+
+  - code: MF_TXN_CONSISTENT_WITH_BUSINESS
+    name: Consistent with Business Type
+    description: Transaction type and volume consistent with stated business
+    weight: "-0.30"
+    applies_to:
+      - TXN_LARGE_CASH
+      - TXN_ROUND_AMOUNT
+      - TXN_UNUSUAL_PATTERN
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: business_consistency
+      object_match:
+        value: consistent
+    policy_ref: Risk-based approach
+    shadow_question: Does transaction volume match declared business activity?
+
+  # ---------------------------------------------------------------------------
+  # Geographic Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_GEO_LEGITIMATE_BUSINESS_NEXUS
+    name: Legitimate Business Nexus
+    description: Clear business reason for high-risk jurisdiction connection
+    weight: "-0.25"
+    applies_to:
+      - GEO_HIGH_RISK_COUNTRY
+      - GEO_TAX_HAVEN
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: business_nexus
+      object_match:
+        value: documented
+    policy_ref: Risk-based approach
+    shadow_question: What is the business rationale for jurisdiction exposure?
+
+  - code: MF_GEO_CORRESPONDENT_CONTROLS
+    name: Correspondent Bank Controls
+    description: Transaction through correspondent with strong AML controls
+    weight: "-0.15"
+    applies_to:
+      - GEO_HIGH_RISK_COUNTRY
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: correspondent_controls
+      object_match:
+        value: adequate
+    policy_ref: OSFI B-8
+    shadow_question: Has correspondent bank's AML program been assessed?
+
+  # ---------------------------------------------------------------------------
+  # Screening Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_SCREEN_FALSE_POSITIVE
+    name: Confirmed False Positive
+    description: Screening hit confirmed as false positive with documentation
+    weight: "-0.50"
+    applies_to:
+      - SCREEN_SANCTIONS_HIT
+      - SCREEN_ADVERSE_MEDIA
+    condition:
+      pattern:
+        namespace: fincrime.screening
+        predicate: screening_completed
+      object_match:
+        disposition: false_positive
+    policy_ref: Screening best practices
+    shadow_question: What evidence confirms this is a false positive?
+
+  - code: MF_ADVERSE_MEDIA_RESOLVED
+    name: Adverse Media Issue Resolved
+    description: Adverse media relates to resolved/historical matter
+    weight: "-0.30"
+    applies_to:
+      - SCREEN_ADVERSE_MEDIA
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: adverse_media_status
+      object_match:
+        value: resolved
+    policy_ref: Risk-based approach
+    shadow_question: When was the matter resolved and what was the outcome?
+
+  # ---------------------------------------------------------------------------
+  # Industry Mitigations
+  # ---------------------------------------------------------------------------
+
+  - code: MF_INDUSTRY_LICENSED
+    name: Industry Properly Licensed
+    description: High-risk industry customer holds appropriate licenses
+    weight: "-0.20"
+    applies_to:
+      - CDD_HIGH_RISK_INDUSTRY
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: license_status
+      object_match:
+        value: valid
+    policy_ref: PCMLTFR
+    shadow_question: When were licenses last verified?
+
+  - code: MF_INDUSTRY_CONTROLS_VERIFIED
+    name: Industry-Specific Controls
+    description: Industry-specific AML controls verified (e.g., MSB registration)
+    weight: "-0.25"
+    applies_to:
+      - CDD_HIGH_RISK_INDUSTRY
+    condition:
+      pattern:
+        namespace: fincrime.assertion
+        predicate: industry_controls
+      object_match:
+        value: verified
+    policy_ref: FINTRAC MSB Guidelines
+    shadow_question: What industry-specific controls are in place?
+
+
+# ============================================================================
+# SCORING RULES
+# ============================================================================
+# Converts signals + mitigations into a risk score
+# Score determines which threshold gate applies
+# ============================================================================
+
+scoring:
+  rule_id: fincrime_canada_score_v1
+  name: Canadian Financial Crime Risk Score
+  description: Aggregates signals and mitigations into residual risk score
+
+  # Signal severity weights (string-encoded decimals)
+  signal_weights:
+    # Critical (1.00)
+    STRUCT_SMURFING: "1.00"
+    SCREEN_SANCTIONS_HIT: "1.00"
+    GEO_SANCTIONED_COUNTRY: "1.00"
+    # High (0.75)
+    GEO_HIGH_RISK_COUNTRY: "0.75"
+    PEP_FOREIGN: "0.75"
+    TXN_JUST_BELOW_THRESHOLD: "0.75"
+    STRUCT_CASH_MULTIPLE: "0.75"
+    CDD_INCOMPLETE_ID: "0.75"
+    CDD_UBO_UNKNOWN: "0.75"
+    CDD_SHELL_COMPANY: "0.75"
+    TXN_UNUSUAL_PATTERN: "0.75"
+    # Medium (0.50)
+    TXN_LARGE_CASH: "0.50"
+    TXN_CRYPTO: "0.50"
+    TXN_RAPID_MOVEMENT: "0.50"
+    PEP_DOMESTIC: "0.50"
+    PEP_HIO: "0.50"
+    PEP_FAMILY_ASSOCIATE: "0.50"
+    GEO_TAX_HAVEN: "0.50"
+    SCREEN_ADVERSE_MEDIA: "0.50"
+    CDD_SOW_UNDOCUMENTED: "0.50"
+    CDD_HIGH_RISK_INDUSTRY: "0.50"
+    # Low (0.25)
+    TXN_ROUND_AMOUNT: "0.25"
+
+  default_signal_weight: "0.50"
+
+  # Threshold gates (ordered by max_score ascending)
+  # Score < max_score triggers the gate
+  threshold_gates:
+    - code: AUTO_CLOSE
+      max_score: "0.25"
+      description: Very low risk - system auto-closes with audit trail
+
+    - code: ANALYST_REVIEW
+      max_score: "0.50"
+      description: Low-medium risk - L1 analyst review required
+
+    - code: SENIOR_REVIEW
+      max_score: "0.75"
+      description: Medium risk - Senior analyst/supervisor review
+
+    - code: COMPLIANCE_REVIEW
+      max_score: "1.00"
+      description: High risk - Compliance officer review required
+
+    - code: STR_CONSIDERATION
+      max_score: "999.00"
+      description: Very high risk - STR filing consideration required
+
+
+# ============================================================================
+# VERDICT RULES
+# ============================================================================
+# Maps threshold gates to final verdicts and actions
+# ============================================================================
+
+verdicts:
+  rule_id: fincrime_canada_verdict_v1
+  name: Canadian Financial Crime Verdict
+
+  gate_verdicts:
+    AUTO_CLOSE:
+      verdict: CLEAR_AND_CLOSE
+      auto_archive_permitted: true
+      action: No further action required
+      filing: none
+
+    ANALYST_REVIEW:
+      verdict: ANALYST_REVIEW
+      auto_archive_permitted: false
+      action: L1 analyst to review and document findings
+      filing: none
+
+    SENIOR_REVIEW:
+      verdict: SENIOR_REVIEW
+      auto_archive_permitted: false
+      action: Supervisor review with additional documentation
+      filing: none
+
+    COMPLIANCE_REVIEW:
+      verdict: COMPLIANCE_ESCALATION
+      auto_archive_permitted: false
+      action: Compliance officer must review within 5 business days
+      filing: possible_str
+
+    STR_CONSIDERATION:
+      verdict: STR_CONSIDERATION
+      auto_archive_permitted: false
+      action: Formal STR determination required per PCMLTFR s. 9
+      filing: str_required
+
+  default_verdict: MANUAL_REVIEW
+  default_auto_archive: false
+
+
+# ============================================================================
+# SHADOW QUESTIONS - Audit Trail Justifications
+# ============================================================================
+# Shadow questions create the audit trail by forcing the system to
+# document WHY a decision was made, not just WHAT decision was made.
+# ============================================================================
+
+shadow_questions:
+  universal:
+    - id: basis_facts
+      question: Which facts triggered this signal/decision?
+      required: true
+
+    - id: evidence_sufficient
+      question: Is the available evidence sufficient for this determination?
+      required: true
+
+    - id: missing_evidence
+      question: What additional evidence would change this assessment?
+      required: true
+
+    - id: counterfactuals
+      question: What would need to be true to falsify this conclusion?
+      required: true
+
+    - id: policy_refs
+      question: Which regulatory requirements apply?
+      required: true
+
+    - id: needs_human_review
+      question: Does this require human review before finalization?
+      required: true
+
+  str_specific:
+    - id: str_grounds
+      question: What are the grounds for reasonable suspicion per PCMLTFR s. 9?
+      required: true
+
+    - id: str_timeline
+      question: When did the grounds for suspicion become apparent?
+      required: true
+
+    - id: str_indicator_combination
+      question: Which combination of indicators supports the STR determination?
+      required: true
+
+    - id: str_prior_history
+      question: Has this customer been subject to prior STR filings?
+      required: true
+
+
+# ============================================================================
+# PREDICATES - Valid predicates for this pack
+# ============================================================================
+
+predicates:
+  # Case predicates
+  - code: case_opened
+    cell_types: [fact]
+    description: Financial crime case opened
+
+  # Entity predicates
+  - code: entity_profile
+    cell_types: [fact]
+    description: Entity (individual/organization) profile
+
+  # Account predicates
+  - code: account_profile
+    cell_types: [fact]
+    description: Account information
+
+  # Relationship predicates
+  - code: ubo
+    cell_types: [fact]
+    description: Beneficial ownership relationship
+
+  # Transaction predicates
+  - code: transaction_occurred
+    cell_types: [fact]
+    description: Financial transaction
+
+  # Alert predicates
+  - code: alert_triggered
+    cell_types: [fact]
+    description: Monitoring alert triggered
+
+  # Screening predicates
+  - code: screening_completed
+    cell_types: [fact]
+    description: Screening (sanctions/PEP/adverse media) completed
+
+  # Verification predicates
+  - code: verification_completed
+    cell_types: [fact]
+    description: Verification event completed
+
+  # Assertion predicates (KYC → AML bridge)
+  - code: risk_rating
+    cell_types: [fact]
+    description: Customer risk rating assertion
+
+  - code: relationship_tenure
+    cell_types: [fact]
+    description: Length of customer relationship
+
+  - code: source_of_wealth
+    cell_types: [fact]
+    description: Source of wealth documentation status
+
+  - code: ubo_verified
+    cell_types: [fact]
+    description: Beneficial owner verification status
+
+  - code: pattern_consistent
+    cell_types: [fact]
+    description: Transaction pattern consistency with profile
+
+  - code: documentation_status
+    cell_types: [fact]
+    description: CDD documentation completeness
+
+  - code: senior_approval
+    cell_types: [fact]
+    description: Senior management approval status
+
+  - code: edd_status
+    cell_types: [fact]
+    description: Enhanced due diligence status
+
+  # Signal/Mitigation/Score predicates (output)
+  - code: signal.fired
+    cell_types: [signal]
+    description: Risk signal triggered
+
+  - code: mitigation.applied
+    cell_types: [mitigation]
+    description: Mitigating factor applied
+
+  - code: score.computed
+    cell_types: [score]
+    description: Risk score computed
+
+  - code: verdict.rendered
+    cell_types: [verdict]
+    description: Case verdict determined
