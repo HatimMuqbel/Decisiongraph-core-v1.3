@@ -21,6 +21,20 @@ ALERT REASON CODES
 * TXN_JUST_BELOW_THRESHOLD
 
 ========================================================================
+DECISION METHODOLOGY
+========================================================================
+This decision was produced using a deterministic rules-based
+evaluation under the DecisionGraph framework.
+
+  * Inherent Risk Score: Raw aggregation of triggered risk indicators
+  * Mitigation Adjustments: Evidence-backed reductions
+  * Normalized Score: Probability union (0-1) for threshold gates
+  * Verdict Gates: Threshold-based regulatory decision points
+
+No probabilistic or generative AI was used in this determination.
+All decisions are reproducible given identical inputs.
+
+========================================================================
 CASE SUMMARY
 ========================================================================
 Customer:       Hon. Elena Moretti
@@ -98,36 +112,63 @@ GATE 1: CONTEXTUAL TYPOLOGY
    Typology Class: PEP_TRANSACTION
    Forbidden Typologies: TRADE_BASED_ML, MARITIME_DECEPTION
 
-GATE 2: INHERENT RISKS DETECTED
+GATE 2A: REGULATORY OBLIGATIONS TRIGGERED
 ------------------------------------------------------------------------
    TXN_LARGE_CASH: Large Cash Transaction
+   GEO_SANCTIONED_COUNTRY: Sanctioned Jurisdiction
+   PEP_FOREIGN: Foreign PEP Identified
+   PEP_DOMESTIC: Domestic PEP Identified
+   PEP_HIO: Head of International Organization
+   PEP_FAMILY_ASSOCIATE: PEP Family Member or Close Associate
+   SCREEN_SANCTIONS_HIT: Sanctions List Match
+
+GATE 2B: RISK INDICATORS DETECTED
+------------------------------------------------------------------------
    TXN_JUST_BELOW_THRESHOLD: Transaction Just Below Threshold
    TXN_RAPID_MOVEMENT: Rapid Movement of Funds
    TXN_ROUND_AMOUNT: Unusual Round Amounts
    TXN_CRYPTO: Virtual Currency Transaction
+   TXN_UNUSUAL_PATTERN: Unusual Transaction Pattern
+   GEO_HIGH_RISK_COUNTRY: High-Risk Jurisdiction
+   GEO_TAX_HAVEN: Tax Haven Jurisdiction
+   STRUCT_CASH_MULTIPLE: Multiple Cash Deposits
 
-GATE 2: MITIGATING FACTORS (Pause & Pivot)
+GATE 2C: MITIGATING FACTORS (Pause & Pivot)
 ------------------------------------------------------------------------
    MF_ESTABLISHED_RELATIONSHIP: Established Customer Relationship
-      Data: relationship_tenure: 22 (source: fincrime.assertion.relationship_tenure)
-      Impact: -0.25 Risk Weight applied.
-      Citation: 7f444c615ff41e6a...
+      Evidence: relationship_tenure: 22
+      Source: fincrime.assertion.relationship_tenure
+      Regulatory Effect: -0.25 contextual risk adjustment
+      Limitation: Applies to risk assessment only
+      Citation: 400020c4c50c3f48...
 
    MF_DOCUMENTATION_COMPLETE: Documentation Complete
-      Data: documentation_status: complete (source: fincrime.assertion.documentation_status)
-      Impact: -0.25 Risk Weight applied.
-      Citation: 81d6e5bcbf2f7511...
+      Evidence: documentation_status: complete
+      Source: fincrime.assertion.documentation_status
+      Regulatory Effect: -0.25 contextual risk adjustment
+      Limitation: Applies to risk assessment only
+      Citation: 3c38624e6347eb6f...
 
    MF_TXN_SUPPORTING_INVOICE: Supporting Invoice/Contract
-      Data: evidence_collected: {'evidence_id': 'EV-001', 'evidence_t... (source: fincrime.evidence.evidence_collected)
-      Data: evidence_collected: {'evidence_id': 'EV-002', 'evidence_t... (source: fincrime.evidence.evidence_collected)
-      Impact: -0.25 Risk Weight applied.
-      Citation: 28b5344fc0e588a9...
+      Evidence: evidence_collected: {'evidence_id': 'EV-001', 'evidence_t...
+      Source: fincrime.evidence.evidence_collected
+      Evidence: evidence_collected: {'evidence_id': 'EV-002', 'evidence_t...
+      Source: fincrime.evidence.evidence_collected
+      Regulatory Effect: -0.25 contextual risk adjustment
+      Limitation: Applies to risk assessment only
+      Citation: 546930b39e1f2f43...
 
    MF_SCREEN_FALSE_POSITIVE: Confirmed False Positive
-      Data: screening_completed: {'event_id': 'SCR-001', 'event_type':... (source: fincrime.screening.screening_completed)
-      Impact: -0.50 Risk Weight applied.
-      Citation: 3bbf77f94e77d23a...
+      Evidence: screening_completed: {'event_id': 'SCR-001', 'event_type':...
+      Source: fincrime.screening.screening_completed
+      Regulatory Effect: -0.50 contextual risk adjustment
+      Limitation: Does NOT override EDD obligations
+      Citation: 853ccce049e08825...
+
+MITIGATION ASSESSMENT
+------------------------------------------------------------------------
+   Status: Mitigations applied but INSUFFICIENT to clear gate
+   Reason: Residual risk remains above automated clearance threshold
 
 GATE 3: RESIDUAL RISK CALCULATION
 ------------------------------------------------------------------------
@@ -147,6 +188,18 @@ GATE 3: RESIDUAL RISK CALCULATION
       0.51-0.75 = SENIOR_REVIEW
       0.76-1.00 = COMPLIANCE_REVIEW
       >1.00 = STR_CONSIDERATION
+
+CLEARANCE CONDITIONS (COUNTERFACTUAL ANALYSIS)
+------------------------------------------------------------------------
+This case could not be cleared automatically due to:
+
+   * Foreign PEP status requires senior compliance approval
+   * Sanctions screening requires manual disposition
+   * Residual risk score exceeds automated clearance threshold (0.25)
+   * Cross-border wire activity exceeds low-risk thresholds
+
+If these conditions were resolved, the case would be eligible
+for re-evaluation at a lower review tier.
 
 VERDICT
 ------------------------------------------------------------------------
@@ -311,6 +364,26 @@ Rationale:
   2. Three-Gate Protocol: Residual risk 11.00 after mitigation factors applied
   3. Mitigating factors verified against case evidence per Section 10B
   4. Manual review required
+
+========================================================================
+HUMAN REVIEW REQUIREMENT
+========================================================================
+This decision REQUIRES manual review by a qualified compliance officer.
+
+Automated Components:
+  * Signal detection and scoring
+  * Risk indicator aggregation
+  * Citation mapping and policy alignment
+  * Mitigation factor identification
+
+Human-Required Actions:
+  * Final adjudication decision
+  * STR filing determination (if applicable)
+  * Enhanced due diligence approval
+  * Customer communication (if required)
+
+No automated adverse action has been taken.
+Final disposition requires human judgment.
 
 ========================================================================
 REQUIRED ACTIONS

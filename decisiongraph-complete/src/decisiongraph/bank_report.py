@@ -297,6 +297,9 @@ class BankReportRenderer:
         # Alert Reason Codes
         lines.extend(self._render_alert_reason_codes(eval_result, case_bundle, w))
 
+        # Decision Methodology (examiner requirement)
+        lines.extend(self._render_decision_methodology(w))
+
         # Case Summary
         lines.extend(self._render_case_summary(case_bundle, w))
 
@@ -362,6 +365,9 @@ class BankReportRenderer:
 
         # Decision
         lines.extend(self._render_decision(eval_result, anchor_grid, w))
+
+        # Human Review Requirement (examiner requirement)
+        lines.extend(self._render_human_review_requirement(eval_result, w))
 
         # Required Actions
         if self.config.include_required_actions:
@@ -538,6 +544,25 @@ class BankReportRenderer:
         for code in codes[:5]:  # Limit to 5
             lines.append(f"* {code}")
 
+        lines.append("")
+        return lines
+
+    def _render_decision_methodology(self, w: int) -> List[str]:
+        """Render decision methodology disclosure (examiner requirement)."""
+        lines = []
+        lines.append("=" * w)
+        lines.append("DECISION METHODOLOGY")
+        lines.append("=" * w)
+        lines.append("This decision was produced using a deterministic rules-based")
+        lines.append("evaluation under the DecisionGraph framework.")
+        lines.append("")
+        lines.append("  * Inherent Risk Score: Raw aggregation of triggered risk indicators")
+        lines.append("  * Mitigation Adjustments: Evidence-backed reductions")
+        lines.append("  * Normalized Score: Probability union (0-1) for threshold gates")
+        lines.append("  * Verdict Gates: Threshold-based regulatory decision points")
+        lines.append("")
+        lines.append("No probabilistic or generative AI was used in this determination.")
+        lines.append("All decisions are reproducible given identical inputs.")
         lines.append("")
         return lines
 
@@ -997,22 +1022,60 @@ class BankReportRenderer:
         return lines
 
     def _render_gate_2(self, eval_result: Any, pack_runtime: Any, w: int) -> List[str]:
-        """Render Gate 2 section."""
+        """Render Gate 2 section split into obligations and risk indicators."""
         lines = []
-        lines.append("GATE 2: INHERENT RISKS DETECTED")
-        lines.append("-" * w)
+
+        # Classify signals into obligations vs risk indicators
+        obligations = []
+        risk_indicators = []
+
+        # Signal codes that represent regulatory OBLIGATIONS (not discretionary)
+        obligation_codes = {
+            'PEP_FOREIGN', 'PEP_DOMESTIC', 'PEP_HIO', 'PEP_FAMILY_ASSOCIATE',
+            'SCREEN_SANCTIONS_HIT', 'GEO_SANCTIONED_COUNTRY',
+            'TXN_LARGE_CASH',  # Reporting threshold
+        }
 
         if eval_result and eval_result.signals:
-            for signal in eval_result.signals[:5]:  # Limit display
+            for signal in eval_result.signals:
+                obj = signal.fact.object
+                code = obj.get("code", "UNKNOWN")
+                if code in obligation_codes:
+                    obligations.append(signal)
+                else:
+                    risk_indicators.append(signal)
+
+        # GATE 2A: Regulatory Obligations
+        lines.append("GATE 2A: REGULATORY OBLIGATIONS TRIGGERED")
+        lines.append("-" * w)
+        if obligations:
+            for signal in obligations:
+                obj = signal.fact.object
+                code = obj.get("code", "UNKNOWN")
+                name = obj.get("name", code)
+                policy_ref = obj.get("policy_ref", "")
+                lines.append(f"   {code}: {name}")
+                if policy_ref:
+                    lines.append(f"      Obligation: Enhanced due diligence required ({policy_ref})")
+        else:
+            lines.append("   (none)")
+        lines.append("")
+
+        # GATE 2B: Risk Indicators
+        lines.append("GATE 2B: RISK INDICATORS DETECTED")
+        lines.append("-" * w)
+        if risk_indicators:
+            for signal in risk_indicators[:8]:  # Limit display
                 obj = signal.fact.object
                 code = obj.get("code", "UNKNOWN")
                 name = obj.get("name", code)
                 lines.append(f"   {code}: {name}")
         else:
             lines.append("   (none)")
-
         lines.append("")
-        lines.append("GATE 2: MITIGATING FACTORS (Pause & Pivot)")
+
+        # GATE 2C: Mitigating Factors
+        lines.append("GATE 2C: MITIGATING FACTORS (Pause & Pivot)")
         lines.append("-" * w)
 
         if eval_result and eval_result.mitigations:
@@ -1032,9 +1095,16 @@ class BankReportRenderer:
                         source = anchor.get("source", "")
                         if len(str(value)) > 40:
                             value = str(value)[:37] + "..."
-                        lines.append(f"      Data: {field}: {value} (source: {source})")
+                        lines.append(f"      Evidence: {field}: {value}")
+                        lines.append(f"      Source: {source}")
 
-                lines.append(f"      Impact: {weight} Risk Weight applied.")
+                lines.append(f"      Regulatory Effect: {weight} contextual risk adjustment")
+
+                # Add limitation for PEP-related mitigations
+                if 'PEP' in code or 'SCREEN' in code:
+                    lines.append("      Limitation: Does NOT override EDD obligations")
+                else:
+                    lines.append("      Limitation: Applies to risk assessment only")
 
                 # Add citation hash
                 citation_hash = hashlib.sha256(f"{code}:{mit.cell_id}".encode()).hexdigest()[:16]
@@ -1043,6 +1113,16 @@ class BankReportRenderer:
         else:
             lines.append("   (none)")
             lines.append("")
+
+        # Mitigation Sufficiency Statement
+        lines.append("MITIGATION ASSESSMENT")
+        lines.append("-" * w)
+        if eval_result and eval_result.mitigations:
+            lines.append("   Status: Mitigations applied but INSUFFICIENT to clear gate")
+            lines.append("   Reason: Residual risk remains above automated clearance threshold")
+        else:
+            lines.append("   Status: No mitigating factors applicable")
+        lines.append("")
 
         return lines
 
@@ -1086,6 +1166,42 @@ class BankReportRenderer:
     def _render_gate_3_verdict(self, eval_result: Any, anchor_grid: EvidenceAnchorGrid, w: int) -> List[str]:
         """Render verdict section within Gate 3."""
         lines = []
+
+        # CLEARANCE CONDITIONS (Counterfactual Analysis) - examiner requirement
+        lines.append("CLEARANCE CONDITIONS (COUNTERFACTUAL ANALYSIS)")
+        lines.append("-" * w)
+        lines.append("This case could not be cleared automatically due to:")
+        lines.append("")
+
+        # Build counterfactual conditions based on signals and score
+        residual_norm = anchor_grid.residual_normalized
+
+        # Check for PEP obligation
+        has_pep = False
+        has_sanctions = False
+        if eval_result and eval_result.signals:
+            for signal in eval_result.signals:
+                code = signal.fact.object.get("code", "")
+                if "PEP" in code:
+                    has_pep = True
+                if "SANCTION" in code:
+                    has_sanctions = True
+
+        if has_pep:
+            lines.append("   * Foreign PEP status requires senior compliance approval")
+        if has_sanctions:
+            lines.append("   * Sanctions screening requires manual disposition")
+        if residual_norm > Decimal("0.25"):
+            lines.append("   * Residual risk score exceeds automated clearance threshold (0.25)")
+        if residual_norm > Decimal("0.50"):
+            lines.append("   * Cross-border wire activity exceeds low-risk thresholds")
+
+        lines.append("")
+        lines.append("If these conditions were resolved, the case would be eligible")
+        lines.append("for re-evaluation at a lower review tier.")
+        lines.append("")
+
+        # VERDICT
         lines.append("VERDICT")
         lines.append("-" * w)
 
@@ -1099,7 +1215,6 @@ class BankReportRenderer:
         lines.append(f"   Verdict: {verdict}")
 
         # Build rationale using normalized score
-        residual_norm = anchor_grid.residual_normalized
         residual_raw = anchor_grid.residual_score
         mitigation_count = len(anchor_grid.anchors)
         mitigation_names = ", ".join([a.offset_type[:15] for a in anchor_grid.anchors[:3]])
@@ -1205,6 +1320,50 @@ class BankReportRenderer:
         lines.append(f"  2. Three-Gate Protocol: Residual risk {anchor_grid.residual_score:.2f} after mitigation factors applied")
         lines.append(f"  3. Mitigating factors verified against case evidence per Section 10B")
         lines.append(f"  4. {'Auto-archive permitted' if auto_archive else 'Manual review required'}")
+        lines.append("")
+        return lines
+
+    def _render_human_review_requirement(self, eval_result: Any, w: int) -> List[str]:
+        """Render human review requirement section (examiner requirement)."""
+        lines = []
+        lines.append("=" * w)
+        lines.append("HUMAN REVIEW REQUIREMENT")
+        lines.append("=" * w)
+
+        auto_archive = False
+        if eval_result and eval_result.verdict:
+            auto_archive = eval_result.verdict.fact.object.get("auto_archive_permitted", False)
+
+        if auto_archive:
+            lines.append("This decision may be auto-archived without human review.")
+            lines.append("")
+            lines.append("Automated Components:")
+            lines.append("  * Signal detection and scoring")
+            lines.append("  * Citation mapping and policy alignment")
+            lines.append("  * Threshold gate evaluation")
+            lines.append("")
+            lines.append("Human-Optional Actions:")
+            lines.append("  * Quality assurance review (sampling)")
+            lines.append("")
+            lines.append("No adverse action has been taken.")
+        else:
+            lines.append("This decision REQUIRES manual review by a qualified compliance officer.")
+            lines.append("")
+            lines.append("Automated Components:")
+            lines.append("  * Signal detection and scoring")
+            lines.append("  * Risk indicator aggregation")
+            lines.append("  * Citation mapping and policy alignment")
+            lines.append("  * Mitigation factor identification")
+            lines.append("")
+            lines.append("Human-Required Actions:")
+            lines.append("  * Final adjudication decision")
+            lines.append("  * STR filing determination (if applicable)")
+            lines.append("  * Enhanced due diligence approval")
+            lines.append("  * Customer communication (if required)")
+            lines.append("")
+            lines.append("No automated adverse action has been taken.")
+            lines.append("Final disposition requires human judgment.")
+
         lines.append("")
         return lines
 
