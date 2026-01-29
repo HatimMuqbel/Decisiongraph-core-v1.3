@@ -111,33 +111,38 @@ GATE 2: MITIGATING FACTORS (Pause & Pivot)
    MF_ESTABLISHED_RELATIONSHIP: Established Customer Relationship
       Data: relationship_tenure: 22 (source: fincrime.assertion.relationship_tenure)
       Impact: -0.25 Risk Weight applied.
-      Citation: fbc2674e2254517f...
+      Citation: 7f444c615ff41e6a...
 
    MF_DOCUMENTATION_COMPLETE: Documentation Complete
       Data: documentation_status: complete (source: fincrime.assertion.documentation_status)
       Impact: -0.25 Risk Weight applied.
-      Citation: a72a2fe4501bd1ab...
+      Citation: 81d6e5bcbf2f7511...
 
    MF_TXN_SUPPORTING_INVOICE: Supporting Invoice/Contract
       Data: evidence_collected: {'evidence_id': 'EV-001', 'evidence_t... (source: fincrime.evidence.evidence_collected)
       Data: evidence_collected: {'evidence_id': 'EV-002', 'evidence_t... (source: fincrime.evidence.evidence_collected)
       Impact: -0.25 Risk Weight applied.
-      Citation: 36ffa901ec41b541...
+      Citation: 28b5344fc0e588a9...
 
    MF_SCREEN_FALSE_POSITIVE: Confirmed False Positive
       Data: screening_completed: {'event_id': 'SCR-001', 'event_type':... (source: fincrime.screening.screening_completed)
       Impact: -0.50 Risk Weight applied.
-      Citation: 2d210554382d1705...
+      Citation: 3bbf77f94e77d23a...
 
 GATE 3: RESIDUAL RISK CALCULATION
 ------------------------------------------------------------------------
-   Inherent Score:     12.25
-   Mitigation Weight:  -1.25
-   Tenure Offset:      -0.25
-   Residual Score:     11.00
+   RAW SCORES (Additive - for transparency):
+      Inherent (raw):     12.25
+      Mitigations:        -1.25
+      Residual (raw):     11.00
 
-   Threshold Gate:
-      <=0.25 = CLEAR_AND_CLOSE
+   NORMALIZED SCORES (Probability union - for thresholds):
+      Inherent (norm):    1.00
+      Residual (norm):    0.90
+      Risk Reduction:     10%
+
+   THRESHOLD GATES (applied to normalized score):
+      <=0.25 = AUTO_CLOSE
       0.26-0.50 = ANALYST_REVIEW
       0.51-0.75 = SENIOR_REVIEW
       0.76-1.00 = COMPLIANCE_REVIEW
@@ -145,8 +150,8 @@ GATE 3: RESIDUAL RISK CALCULATION
 
 VERDICT
 ------------------------------------------------------------------------
-   Verdict: STR_CONSIDERATION
-   Rationale: Residual Risk: 11.00. Mitigating factors applied: Established Cus, Documentation C, Supporting Invo. Risk reduction: 10%. Verdict: Review required.
+   Verdict: COMPLIANCE_ESCALATION
+   Rationale: Normalized Risk: 0.90 (raw: 11.00). Mitigating factors: Established Cus, Documentation C, Supporting Invo. Risk reduction: 10%. Manual review required.
 
 ========================================================================
 
@@ -298,11 +303,11 @@ DECISION
 ========================================================================
 Action:         ESCALATE
 Confidence:     80%
-Tier:           3
-Escalate To:    COMPLIANCE OFFICER
+Tier:           2
+Escalate To:    SENIOR ANALYST
 
 Rationale:
-  1. ADJUDICATION: STR_CONSIDERATION
+  1. ADJUDICATION: COMPLIANCE_ESCALATION
   2. Three-Gate Protocol: Residual risk 11.00 after mitigation factors applied
   3. Mitigating factors verified against case evidence per Section 10B
   4. Manual review required

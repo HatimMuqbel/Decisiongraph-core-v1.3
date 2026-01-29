@@ -577,42 +577,81 @@ class ScoringRule:
         self,
         signal_codes: List[str],
         mitigation_weights: List[str]
-    ) -> Tuple[str, str, str, str]:
+    ) -> Tuple[str, str, str, str, str, str]:
         """
-        Compute risk score.
+        Compute risk score using dual-score methodology.
+
+        Raw scores are additive (sum of weights) for explainability.
+        Normalized scores use probability union formula for threshold matching.
 
         Args:
             signal_codes: Codes of fired signals
             mitigation_weights: Weights of applied mitigations
 
         Returns:
-            (inherent_score, mitigation_sum, residual_score, threshold_gate_code)
+            (inherent_raw, inherent_normalized, mitigation_sum,
+             residual_raw, residual_normalized, threshold_gate_code)
         """
-        # Compute inherent score
-        inherent = Decimal("0")
+        # Compute RAW inherent score (additive - for explainability)
+        inherent_raw = Decimal("0")
+        signal_weights_decimal = []
         for code in signal_codes:
             weight_str = self.signal_weights.get(code, self.default_signal_weight)
-            inherent += Decimal(weight_str)
+            weight = Decimal(weight_str)
+            inherent_raw += weight
+            signal_weights_decimal.append(weight)
 
-        # Sum mitigations
+        # Compute NORMALIZED inherent score using probability union formula:
+        # P(A ∪ B) = 1 - (1-P(A))(1-P(B))
+        # This caps the score at ~1.0 regardless of how many signals fire
+        if signal_weights_decimal:
+            product = Decimal("1")
+            for w in signal_weights_decimal:
+                # Clamp individual weights to [0, 1] for probability interpretation
+                w_clamped = min(Decimal("1"), max(Decimal("0"), w))
+                product *= (Decimal("1") - w_clamped)
+            inherent_normalized = Decimal("1") - product
+        else:
+            inherent_normalized = Decimal("0")
+
+        # Sum mitigations (these are negative values)
         mitigation_sum = Decimal("0")
         for weight in mitigation_weights:
             mitigation_sum += Decimal(weight)
 
-        # Compute residual (floor at 0)
-        residual = max(Decimal("0"), inherent + mitigation_sum)
+        # Compute RAW residual (floor at 0)
+        residual_raw = max(Decimal("0"), inherent_raw + mitigation_sum)
 
-        # Determine threshold gate
+        # Compute NORMALIZED residual
+        # Scale mitigation impact proportionally to normalized score
+        # If raw inherent is 12.25 and mitigations are -1.25, that's ~10% reduction
+        # Apply same percentage to normalized
+        if inherent_raw > Decimal("0"):
+            mitigation_ratio = mitigation_sum / inherent_raw  # negative ratio
+            residual_normalized = max(
+                Decimal("0"),
+                inherent_normalized * (Decimal("1") + mitigation_ratio)
+            )
+        else:
+            residual_normalized = inherent_normalized
+
+        # Round normalized to 2 decimal places for cleaner output
+        residual_normalized = residual_normalized.quantize(Decimal("0.01"))
+        inherent_normalized = inherent_normalized.quantize(Decimal("0.01"))
+
+        # Determine threshold gate using NORMALIZED residual
         gate_code = "MANUAL_REVIEW"  # Default if no gate matches
         for gate in self.threshold_gates:
-            if gate.matches(residual):
+            if gate.matches(residual_normalized):
                 gate_code = gate.code
                 break
 
         return (
-            score_to_string(float(inherent)),
+            score_to_string(float(inherent_raw)),
+            score_to_string(float(inherent_normalized)),
             score_to_string(float(mitigation_sum)),
-            score_to_string(float(residual)),
+            score_to_string(float(residual_raw)),
+            score_to_string(float(residual_normalized)),
             gate_code
         )
 
@@ -828,13 +867,14 @@ class RulesEngine:
         # 3. Compute score
         if self.scoring_rule and fired_signal_codes:
             result.rules_evaluated += 1
-            inherent, mit_sum, residual, gate = self.scoring_rule.compute_score(
+            (inherent_raw, inherent_norm, mit_sum,
+             residual_raw, residual_norm, gate) = self.scoring_rule.compute_score(
                 fired_signal_codes, mitigation_weights
             )
 
             score_cell = self._create_score_cell(
-                self.scoring_rule, inherent, mit_sum, residual, gate,
-                context, prev_hash
+                self.scoring_rule, inherent_raw, inherent_norm, mit_sum,
+                residual_raw, residual_norm, gate, context, prev_hash
             )
             result.score = score_cell
             prev_hash = score_cell.cell_id
@@ -973,19 +1013,26 @@ class RulesEngine:
     def _create_score_cell(
         self,
         rule: ScoringRule,
-        inherent_score: str,
+        inherent_raw: str,
+        inherent_normalized: str,
         mitigation_sum: str,
-        residual_score: str,
+        residual_raw: str,
+        residual_normalized: str,
         threshold_gate: str,
         context: EvaluationContext,
         prev_hash: str
     ) -> DecisionCell:
-        """Create a SCORE cell."""
+        """Create a SCORE cell with dual scoring methodology."""
         payload = {
-            "schema_version": "1.0",
-            "inherent_score": inherent_score,
+            "schema_version": "2.0",
+            # Raw scores (additive) - for explainability
+            "inherent_score": inherent_raw,
+            "residual_score": residual_raw,
+            # Normalized scores (probability union) - for threshold matching
+            "inherent_normalized": inherent_normalized,
+            "residual_normalized": residual_normalized,
+            # Mitigations and gate
             "mitigation_sum": mitigation_sum,
-            "residual_score": residual_score,
             "threshold_gate": threshold_gate,
         }
 

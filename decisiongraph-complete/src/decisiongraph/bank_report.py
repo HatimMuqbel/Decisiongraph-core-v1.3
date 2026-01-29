@@ -121,8 +121,15 @@ class EvidenceAnchor:
 
 @dataclass
 class EvidenceAnchorGrid:
-    """Grid of evidence anchors showing the residual risk calculation."""
-    inherent_weight: Decimal
+    """Grid of evidence anchors showing the residual risk calculation.
+
+    Dual-score methodology:
+    - Raw scores (inherent_weight, residual_score): Additive sum of weights for explainability
+    - Normalized scores (inherent_normalized, residual_normalized): Probability union for thresholds
+    """
+    inherent_weight: Decimal  # Raw additive score
+    inherent_normalized: Decimal = Decimal("0")  # Probability union score [0-1]
+    residual_normalized: Decimal = Decimal("0")  # Normalized residual [0-1]
     anchors: List[EvidenceAnchor] = field(default_factory=list)
 
     @property
@@ -131,7 +138,15 @@ class EvidenceAnchorGrid:
 
     @property
     def residual_score(self) -> Decimal:
+        """Raw residual score (additive)."""
         return max(Decimal("0"), self.inherent_weight + self.mitigation_sum)
+
+    @property
+    def mitigation_percentage(self) -> int:
+        """Percentage risk reduction from mitigations."""
+        if self.inherent_weight > 0:
+            return int(abs(self.mitigation_sum / self.inherent_weight) * 100)
+        return 0
 
 
 # =============================================================================
@@ -923,11 +938,16 @@ class BankReportRenderer:
     def _build_evidence_anchor_grid(self, eval_result: Any) -> EvidenceAnchorGrid:
         """Build the evidence anchor grid from evaluation result."""
         inherent = Decimal("0")
+        inherent_norm = Decimal("0")
+        residual_norm = Decimal("0")
         anchors = []
 
         if eval_result and eval_result.score:
             score_obj = eval_result.score.fact.object
             inherent = Decimal(str(score_obj.get("inherent_score", "0")))
+            # Extract normalized scores (schema v2.0)
+            inherent_norm = Decimal(str(score_obj.get("inherent_normalized", "0")))
+            residual_norm = Decimal(str(score_obj.get("residual_normalized", "0")))
 
         if eval_result and eval_result.mitigations:
             for mit in eval_result.mitigations:
@@ -954,7 +974,12 @@ class BankReportRenderer:
                     citation_hash=citation_hash,
                 ))
 
-        return EvidenceAnchorGrid(inherent_weight=inherent, anchors=anchors)
+        return EvidenceAnchorGrid(
+            inherent_weight=inherent,
+            inherent_normalized=inherent_norm,
+            residual_normalized=residual_norm,
+            anchors=anchors
+        )
 
     def _render_gate_1(self, gate: GateResult, typology: TypologyClass, w: int) -> List[str]:
         """Render Gate 1 section."""
@@ -1022,32 +1047,34 @@ class BankReportRenderer:
         return lines
 
     def _render_gate_3(self, eval_result: Any, anchor_grid: EvidenceAnchorGrid, w: int) -> List[str]:
-        """Render Gate 3 section."""
+        """Render Gate 3 section with dual-score methodology."""
         lines = []
         lines.append("GATE 3: RESIDUAL RISK CALCULATION")
         lines.append("-" * w)
 
-        # Score calculation
-        inherent = anchor_grid.inherent_weight
+        # Raw scores (additive - for explainability)
+        inherent_raw = anchor_grid.inherent_weight
         mitigation = anchor_grid.mitigation_sum
-        residual = anchor_grid.residual_score
+        residual_raw = anchor_grid.residual_score
 
-        lines.append(f"   Inherent Score:     {inherent}")
-        lines.append(f"   Mitigation Weight:  {mitigation}")
+        # Normalized scores (for threshold matching)
+        inherent_norm = anchor_grid.inherent_normalized
+        residual_norm = anchor_grid.residual_normalized
 
-        # Calculate tenure offset if available
-        if hasattr(eval_result, 'mitigations') and eval_result.mitigations:
-            for mit in eval_result.mitigations:
-                if 'tenure' in mit.fact.object.get('code', '').lower() or 'established' in mit.fact.object.get('code', '').lower():
-                    lines.append(f"   Tenure Offset:      {mit.fact.object.get('weight', '0')}")
-                    break
-
-        lines.append(f"   Residual Score:     {residual:.2f}")
+        lines.append("   RAW SCORES (Additive - for transparency):")
+        lines.append(f"      Inherent (raw):     {inherent_raw}")
+        lines.append(f"      Mitigations:        {mitigation}")
+        lines.append(f"      Residual (raw):     {residual_raw:.2f}")
+        lines.append("")
+        lines.append("   NORMALIZED SCORES (Probability union - for thresholds):")
+        lines.append(f"      Inherent (norm):    {inherent_norm:.2f}")
+        lines.append(f"      Residual (norm):    {residual_norm:.2f}")
+        lines.append(f"      Risk Reduction:     {anchor_grid.mitigation_percentage}%")
         lines.append("")
 
-        # Threshold gates
-        lines.append("   Threshold Gate:")
-        lines.append("      <=0.25 = CLEAR_AND_CLOSE")
+        # Threshold gates - clearly labeled as applying to normalized
+        lines.append("   THRESHOLD GATES (applied to normalized score):")
+        lines.append("      <=0.25 = AUTO_CLOSE")
         lines.append("      0.26-0.50 = ANALYST_REVIEW")
         lines.append("      0.51-0.75 = SENIOR_REVIEW")
         lines.append("      0.76-1.00 = COMPLIANCE_REVIEW")
@@ -1071,20 +1098,17 @@ class BankReportRenderer:
 
         lines.append(f"   Verdict: {verdict}")
 
-        # Build rationale
-        residual = anchor_grid.residual_score
+        # Build rationale using normalized score
+        residual_norm = anchor_grid.residual_normalized
+        residual_raw = anchor_grid.residual_score
         mitigation_count = len(anchor_grid.anchors)
         mitigation_names = ", ".join([a.offset_type[:15] for a in anchor_grid.anchors[:3]])
 
-        risk_reduction = 0
-        if anchor_grid.inherent_weight > 0:
-            risk_reduction = int(abs(anchor_grid.mitigation_sum / anchor_grid.inherent_weight) * 100)
-
-        rationale = f"Residual Risk: {residual:.2f}. "
+        rationale = f"Normalized Risk: {residual_norm:.2f} (raw: {residual_raw:.2f}). "
         if mitigation_count > 0:
-            rationale += f"Mitigating factors applied: {mitigation_names}. "
-            rationale += f"Risk reduction: {risk_reduction}%. "
-        rationale += f"Verdict: {'Auto-archive permitted' if auto_archive else 'Review required'}."
+            rationale += f"Mitigating factors: {mitigation_names}. "
+            rationale += f"Risk reduction: {anchor_grid.mitigation_percentage}%. "
+        rationale += f"{'Auto-archive permitted' if auto_archive else 'Manual review required'}."
 
         lines.append(f"   Rationale: {rationale}")
         lines.append("")
