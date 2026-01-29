@@ -1,0 +1,49 @@
+{
+  "case_id": "CSV-2026-001",
+  "checks": [
+    {
+      "bytes": 2625,
+      "hash": "9e4f68f17e085115d7a2b674e358a2068c70ed4e23577642884a2c3f5e36381d",
+      "name": "report_hash",
+      "status": "PASS"
+    },
+    {
+      "errors": [],
+      "name": "chain_integrity",
+      "status": "PASS"
+    },
+    {
+      "message": "Report renders identically",
+      "name": "determinism",
+      "status": "PASS"
+    },
+    {
+      "name": "policy_coverage",
+      "signals_without_refs": [],
+      "status": "PASS"
+    },
+    {
+      "name": "gate_consistency",
+      "score_gate": "STR_CONSIDERATION",
+      "status": "PASS",
+      "verdict": "STR_CONSIDERATION"
+    },
+    {
+      "hash": "d893c0359dd352a3f154d50abf29dc98e40de2058dd598ff79edf60132d27685",
+      "name": "manifest_hash",
+      "status": "PASS"
+    }
+  ],
+  "environment": {
+    "architecture": "x86_64",
+    "container": "docker",
+    "engine_version": "1.0.0",
+    "git_commit": "7fc501b",
+    "platform": "Linux",
+    "platform_release": "6.8.0-1030-azure",
+    "python_version": "3.12.1"
+  },
+  "overall": "PASS",
+  "strict_mode": false,
+  "timestamp": "2026-01-29T16:52:07.479Z"
+}

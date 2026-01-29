@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "id": "CSV-2026-001",
+    "case_type": "aml_alert",
+    "case_phase": "analysis",
+    "jurisdiction": "CA",
+    "created_at": "2026-01-28T10:00:00Z",
+    "primary_entity_type": "individual",
+    "primary_entity_id": "CUST-001",
+    "status": "active",
+    "priority": "high",
+    "sensitivity": "confidential",
+    "access_tags": [
+      "aml",
+      "fincrime"
+    ],
+    "provenance": {
+      "adapter_name": "generic_csv_v1",
+      "adapter_version": "1.0.0",
+      "adapter_hash": "a2f8c846cee9b500582d3a4f2f1a14617eb7d6c76b756903fa54acd5623af7cf",
+      "source_system": "Generic CSV",
+      "source_file_hash": "6bc6fc5bc95f6aa9bc736ff384cf280af13ea6935036ec1cc217141ea0144686",
+      "ingested_at": "2026-01-29T16:52:00.526563+00:00"
+    }
+  },
+  "individuals": [
+    {
+      "id": "CUST-001",
+      "given_name": "Sarah",
+      "family_name": "Johnson",
+      "date_of_birth": "1985-06-15",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "none",
+      "risk_rating": "medium",
+      "sensitivity": "confidential",
+      "access_tags": [
+        "aml"
+      ]
+    }
+  ],
+  "organizations": [],
+  "accounts": [
+    {
+      "id": "ACCT-001",
+      "account_number": "****1234",
+      "account_type": "chq",
+      "currency": "CAD",
+      "status": "active",
+      "opened_date": "2020-03-15",
+      "sensitivity": "internal",
+      "access_tags": [
+        "aml"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "REL-CUST-001-ACCT-001",
+      "relationship_type": "account_holder",
+      "from_entity_type": "individual",
+      "from_entity_id": "CUST-001",
+      "to_entity_type": "individual",
+      "to_entity_id": "ACCT-001",
+      "sensitivity": "internal",
+      "access_tags": [
+        "aml"
+      ]
+    }
+  ],
+  "evidence": [],
+  "events": [
+    {
+      "event_type": "transaction",
+      "id": "TXN-001",
+      "timestamp": "2026-01-20T10:30:00Z",
+      "amount": "8500.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "counterparty_name": "ABC Corp",
+      "counterparty_country": "US",
+      "payment_method": "wire",
+      "description": "Invoice payment",
+      "sensitivity": "confidential",
+      "access_tags": [
+        "aml"
+      ]
+    },
+    {
+      "event_type": "transaction",
+      "id": "TXN-002",
+      "timestamp": "2026-01-22T14:15:00Z",
+      "amount": "9800.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "payment_method": "cash",
+      "description": "Cash deposit",
+      "sensitivity": "confidential",
+      "access_tags": [
+        "aml"
+      ]
+    },
+    {
+      "event_type": "transaction",
+      "id": "TXN-003",
+      "timestamp": "2026-01-25T09:00:00Z",
+      "amount": "15000.00",
+      "currency": "CAD",
+      "direction": "outbound",
+      "counterparty_name": "XYZ Trading",
+      "counterparty_country": "PA",
+      "payment_method": "wire",
+      "description": "International transfer",
+      "sensitivity": "confidential",
+      "access_tags": [
+        "aml"
+      ]
+    },
+    {
+      "event_type": "alert",
+      "id": "ALERT-001",
+      "timestamp": "2026-01-27T08:00:00Z",
+      "alert_type": "structuring",
+      "rule_id": "RULE-001",
+      "description": "Potential cash structuring detected",
+      "sensitivity": "confidential",
+      "access_tags": [
+        "aml"
+      ]
+    }
+  ],
+  "assertions": []
+}

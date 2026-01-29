@@ -1,0 +1,102 @@
+========================================================================
+DECISIONGRAPH CASE REPORT
+========================================================================
+
+Case ID:      CSV-2026-001
+Case Type:    AML_ALERT
+Case Phase:   analysis
+Jurisdiction: CA
+Priority:     high
+
+Pack ID:      fincrime_canada_v1
+Pack Version: 1.0.0
+Pack Hash:    390c23d3d389fb481f0c8795b8b73f671efa2e4d9646bf49f13dfe75d326dc5d
+
+Graph ID:     graph:57f61640-ed71-45ed-ae8a-4f47a5010e27
+Chain Length: 50 cells
+
+------------------------------------------------------------------------
+VERDICT: STR_CONSIDERATION
+Auto-Archive Permitted: NO
+------------------------------------------------------------------------
+
+RISK SCORE SUMMARY
+------------------------------------
+Inherent Score:          9.75
+Mitigations:              0.0
+Residual Score:          9.75
+Threshold Gate:    STR_CONSIDERATION
+
+SIGNALS FIRED
+------------------------------------
+  [MEDIUM  ] CDD_HIGH_RISK_INDUSTRY
+  [HIGH    ] CDD_UBO_UNKNOWN
+  [HIGH    ] GEO_HIGH_RISK_COUNTRY
+  [MEDIUM  ] GEO_TAX_HAVEN
+  [MEDIUM  ] PEP_DOMESTIC
+  [MEDIUM  ] PEP_FAMILY_ASSOCIATE
+  [HIGH    ] PEP_FOREIGN
+  [MEDIUM  ] PEP_HIO
+  [HIGH    ] STRUCT_CASH_MULTIPLE
+  [CRITICAL] STRUCT_SMURFING
+  [MEDIUM  ] TXN_CRYPTO
+  [HIGH    ] TXN_JUST_BELOW_THRESHOLD
+  [MEDIUM  ] TXN_LARGE_CASH
+  [MEDIUM  ] TXN_RAPID_MOVEMENT
+  [LOW     ] TXN_ROUND_AMOUNT
+  [HIGH    ] TXN_UNUSUAL_PATTERN
+
+MITIGATIONS APPLIED
+------------------------------------
+  (none)
+
+ENTITIES
+------------------------------------
+  [INDIVIDUAL] CUST-001: Sarah Johnson
+               Risk: MEDIUM
+
+EVIDENCE
+------------------------------------
+  (none)
+
+TRANSACTIONS
+------------------------------------
+  [INBOUND ] TXN-001: 8500.00 CAD
+             To: ABC Corp (US)
+  [INBOUND ] TXN-002: 9800.00 CAD
+  [OUTBOUND] TXN-003: 15000.00 CAD
+             To: XYZ Trading (PA)
+
+CHAIN INTEGRITY
+------------------------------------
+  Status: VALID
+  Cells:  50
+
+POLICY REFERENCES
+------------------------------------
+  fintrac_guideline_2
+  fintrac_guideline_3
+  fintrac_guideline_6
+  fintrac_ml_tf_typologies
+  fintrac_msb_guidelines
+  osfi_b_8
+  pcmltfr
+  pcmltfr_part_1_1
+  pcmltfr_s_11_1
+  pcmltfr_s_12
+  pcmltfr_s_64
+  pcmltfr_s_9_3
+  pcmltfr_s_9_3_1
+  pcmltfr_s_9_3_2
+  pcmltfr_s_9_3_3
+  pcmltfr_s_9_3_4
+  pcmltfr_s_9_6
+  risk_based_approach
+  risk_based_approach_pcmltfr_s_9_6
+  screening_best_practices
+  sema_pcmltfa_s_11_42
+  sema_special_economic_measures_act
+
+========================================================================
+END OF REPORT
+========================================================================

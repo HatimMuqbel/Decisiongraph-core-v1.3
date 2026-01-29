@@ -1,0 +1,49 @@
+{
+  "case_id": "ACT-2026-00789",
+  "checks": [
+    {
+      "bytes": 2835,
+      "hash": "a97c8ec2d7c00b4f491f31006fb0c61af0cf7e9cd2604741a9da8b91a876234d",
+      "name": "report_hash",
+      "status": "PASS"
+    },
+    {
+      "errors": [],
+      "name": "chain_integrity",
+      "status": "PASS"
+    },
+    {
+      "message": "Report renders identically",
+      "name": "determinism",
+      "status": "PASS"
+    },
+    {
+      "name": "policy_coverage",
+      "signals_without_refs": [],
+      "status": "PASS"
+    },
+    {
+      "name": "gate_consistency",
+      "score_gate": "STR_CONSIDERATION",
+      "status": "PASS",
+      "verdict": "STR_CONSIDERATION"
+    },
+    {
+      "hash": "ef2be88cd7d41ddd84a33845d872a655e7dd2c17cad92d50c78dd8d2f82639b1",
+      "name": "manifest_hash",
+      "status": "PASS"
+    }
+  ],
+  "environment": {
+    "architecture": "x86_64",
+    "container": "docker",
+    "engine_version": "1.0.0",
+    "git_commit": "7fc501b",
+    "platform": "Linux",
+    "platform_release": "6.8.0-1030-azure",
+    "python_version": "3.12.1"
+  },
+  "overall": "PASS",
+  "strict_mode": false,
+  "timestamp": "2026-01-29T16:54:25.655Z"
+}
