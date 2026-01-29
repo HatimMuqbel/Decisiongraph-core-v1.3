@@ -37,6 +37,9 @@ import argparse
 import base64
 import hashlib
 import json
+import os
+import platform
+import subprocess
 import sys
 import tempfile
 import zipfile
@@ -44,6 +47,9 @@ from datetime import datetime, date, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional, Any
+
+# Engine version - updated on release
+ENGINE_VERSION = "1.0.0"
 
 # Add paths for imports
 _src_path = Path(__file__).parent
@@ -127,6 +133,69 @@ def gate_to_exit_code(gate: str, auto_archive: bool) -> int:
         return ExitCode.BLOCK
     else:
         return ExitCode.REVIEW_REQUIRED
+
+
+def get_environment_info() -> dict:
+    """
+    Get environment information for audit trail.
+
+    Returns non-sensitive system info that helps with reproducibility
+    and debugging without affecting report determinism.
+    """
+    env_info = {
+        "engine_version": ENGINE_VERSION,
+        "python_version": platform.python_version(),
+        "platform": platform.system(),
+        "platform_release": platform.release(),
+        "architecture": platform.machine(),
+    }
+
+    # Try to get git commit hash
+    try:
+        git_hash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            cwd=Path(__file__).parent,
+        ).decode().strip()
+        env_info["git_commit"] = git_hash
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # Check for container environment
+    if os.path.exists("/.dockerenv"):
+        env_info["container"] = "docker"
+    elif os.environ.get("KUBERNETES_SERVICE_HOST"):
+        env_info["container"] = "kubernetes"
+
+    # Get container image digest if available
+    image_digest = os.environ.get("IMAGE_DIGEST") or os.environ.get("CONTAINER_IMAGE_DIGEST")
+    if image_digest:
+        env_info["container_image_digest"] = image_digest
+
+    return env_info
+
+
+def get_retention_class(verdict: str, legal_hold: bool = False) -> str:
+    """
+    Determine retention class based on verdict.
+
+    Retention classes:
+    - 7y: Standard retention for auto-archived cases
+    - 10y: Extended retention for reviewed cases
+    - indefinite: Cases under legal hold
+
+    Banks can override these based on their policies.
+    """
+    if legal_hold:
+        return "indefinite"
+    elif verdict in ("AUTO_CLOSE",):
+        return "7y"
+    elif verdict in ("ANALYST_REVIEW", "SENIOR_REVIEW"):
+        return "10y"
+    elif verdict in ("COMPLIANCE_REVIEW", "STR_CONSIDERATION"):
+        return "10y"  # May need longer based on jurisdiction
+    else:
+        return "10y"
 
 
 # ============================================================================
@@ -698,15 +767,20 @@ def write_bundle(
     include_cells: bool = True,
     sign_key: Optional[Path] = None,
     strict_mode: bool = False,
+    legal_hold: bool = False,
 ) -> dict:
     """Write all bank-ready deliverables to output directory."""
     case_dir = output_dir / case_id
     case_dir.mkdir(parents=True, exist_ok=True)
 
+    # Get environment info for audit trail
+    env_info = get_environment_info()
+
     verification = {
         "case_id": case_id,
         "timestamp": get_current_timestamp(),
         "strict_mode": strict_mode,
+        "environment": env_info,
         "checks": [],
         "overall": "PASS",
     }
@@ -750,6 +824,9 @@ def write_bundle(
         if eval_result.score:
             score_obj = eval_result.score.fact.object
 
+    # Determine retention class based on verdict
+    retention_class = get_retention_class(verdict_val or "", legal_hold)
+
     manifest = {
         "case_id": case_id,
         "report_hash": report_hash,
@@ -768,6 +845,13 @@ def write_bundle(
         "strict_mode": strict_mode,
         "approved": auto_archive if not strict_mode else False,
         "created_at": get_current_timestamp(),
+        # Retention and legal hold
+        "retention": {
+            "retention_class": retention_class,
+            "legal_hold": legal_hold,
+        },
+        # Environment info for audit trail
+        "environment": env_info,
     }
     manifest_path = case_dir / "manifest.json"
     manifest_bytes = json_dumps(manifest).encode('utf-8')
@@ -1255,6 +1339,9 @@ def cmd_run_case(args):
     # Step 7-9: Write bundle
     print()
     print_step(7, total_steps, "Writing output bundle...")
+    # Get legal_hold flag
+    legal_hold = getattr(args, 'legal_hold', False)
+
     verification = write_bundle(
         output_dir=output_dir,
         case_id=case_id,
@@ -1267,6 +1354,7 @@ def cmd_run_case(args):
         include_cells=include_cells,
         sign_key=sign_key,
         strict_mode=strict_mode,
+        legal_hold=legal_hold,
     )
 
     # Final summary
@@ -1858,6 +1946,8 @@ Examples:
     run_parser.add_argument("--sign", help="Sign manifest with key file")
     run_parser.add_argument("--strict", action="store_true",
                            help="Strict mode: mark non-PASS cases as NOT APPROVED")
+    run_parser.add_argument("--legal-hold", action="store_true",
+                           help="Mark case as under legal hold (indefinite retention)")
     run_parser.set_defaults(func=cmd_run_case)
 
     # verify-bundle
