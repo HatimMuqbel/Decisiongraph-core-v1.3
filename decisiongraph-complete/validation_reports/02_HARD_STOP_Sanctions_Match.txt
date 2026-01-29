@@ -1,0 +1,128 @@
+================================================================================
+TRANSACTION MONITORING ALERT REPORT (v2.1.1)
+Alert ID: HARDSTOP-VALIDATION-001
+================================================================================
+
+================================================================================
+  ESCALATE - STR FILING REQUIRED  
+================================================================================
+Alert ID:       HARDSTOP-VALIDATION-001
+Priority:       HIGH
+Source:         Transaction Monitoring
+Processed:      2026-01-29
+
+================================================================================
+CASE SUMMARY
+================================================================================
+Customer:       Unknown
+Customer ID:    Unknown
+Type:           Unknown
+Country:        Unknown
+Risk Rating:    Unknown
+Relationship:   7 years
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+Type:           SWIFT_WIRE
+Amount:         USD 0.00
+Date:           Unknown
+Beneficiary:    Unknown
+Benef Country:  Unknown
+
+================================================================================
+6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)
+================================================================================
+
+CRITICAL RULES ENFORCED:
+  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)
+  * Cash signals EXCLUDED from wire transactions
+  * FORMING typologies = OBSERVE ONLY (not escalation)
+  * Status alone is NEVER sufficient for suspicion
+
+INSTRUMENT: WIRE
+HARD STOP: YES
+OBLIGATIONS: 0 (none)
+INDICATORS: 1
+TYPOLOGY MATURITY: NONE
+MITIGATIONS: 0
+SUSPICION: NOT ACTIVATED
+TAXONOMY VERDICT: ESCALATE - STR FILING REQUIRED
+
+================================================================================
+DUAL-GATE DECISION SYSTEM
+================================================================================
+
+Constitutional Rule:
+"Escalation is prevented by default and permitted only when
+ suspicion is affirmatively proven."
+
+--------------------------------------------------------------------------------
+GATE 1: ZERO-FALSE-ESCALATION CHECKLIST
+Purpose: Are we ALLOWED to escalate?
+--------------------------------------------------------------------------------
+  Section A (FACT-LEVEL HARD STOP VERIFICATION): PASS
+  Section B (INSTRUMENT & CONTEXT VALIDATION): PASS
+  Section C (REGULATORY OBLIGATION ISOLATION): PASS
+  Section D (INDICATOR CORROBORATION TEST): FAIL
+  Section E (TYPOLOGY MATURITY GATE): FAIL
+  Section F (MITIGATION OVERRIDE TEST): FAIL
+  Section G (SUSPICION DEFINITION TEST (FINAL GATE)): FAIL
+
+  GATE 1 DECISION: PERMITTED
+  Rationale: Section A: Fact-level hard stop confirmed. Escalation permitted.
+
+--------------------------------------------------------------------------------
+GATE 2: POSITIVE STR CHECKLIST
+Purpose: Are we OBLIGATED to report?
+--------------------------------------------------------------------------------
+  Section 1 (LEGAL SUSPICION THRESHOLD): PASS
+  Section 2 (EVIDENCE QUALITY TEST): PASS
+  Section 3 (MITIGATION FAILURE CONFIRMATION): PASS
+  Section 4 (TYPOLOGY CONFIRMATION (OPTIONAL)): PASS
+  Section 5 (REGULATORY REASONABLENESS TEST (FINAL)): PASS
+
+  GATE 2 DECISION: REQUIRED
+  Rationale: All mandatory sections passed. STR filing is warranted.
+
+--------------------------------------------------------------------------------
+STR RATIONALE STATEMENT (MANDATORY OUTPUT)
+--------------------------------------------------------------------------------
+  Based on the totality of evidence, reasonable grounds exist to suspect
+  that the transaction(s) may be related to money laundering or terrorist
+  financing. This determination is based on observed behavior inconsistent
+  with the customer's known profile, insufficient mitigating explanations,
+  and evidence suggesting concealment or deceptive conduct. This report is
+  submitted in accordance with PCMLTFA s.7.
+
+================================================================================
+ABSOLUTE RULES (NO EXCEPTIONS)
+================================================================================
+  X PEP status alone can NEVER escalate
+  X Cross-border alone can NEVER escalate
+  X Risk score alone can NEVER escalate
+  X 'High confidence' can NEVER override facts
+  X 'Compliance comfort' is NOT a reason
+
+================================================================================
+FINAL DECISION
+================================================================================
+Verdict:        STR
+Action:         FILE_STR
+STR Required:   YES
+Escalation:     PERMITTED
+
+Rationale:
+  1. Gate 1 (Escalation): PERMITTED - Section A: Fact-level hard stop confirmed. Escalation permitted.
+  2. Gate 2 (STR): REQUIRED - All mandatory sections passed. STR filing is warranted.
+
+================================================================================
+REGULATORY COMPLIANCE
+================================================================================
+PCMLTFA s.7:    Reasonable grounds to suspect ML/TF
+FINTRAC:        STR filing required
+STR Filing:     REQUIRED
+
+================================================================================
+END OF ALERT REPORT
+================================================================================

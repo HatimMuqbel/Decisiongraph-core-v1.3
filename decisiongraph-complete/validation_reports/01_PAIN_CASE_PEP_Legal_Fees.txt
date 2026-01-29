@@ -1,0 +1,123 @@
+================================================================================
+TRANSACTION MONITORING ALERT REPORT (v2.1.1)
+Alert ID: PAIN-VALIDATION-001
+================================================================================
+
+================================================================================
+  PASS WITH EDD  
+================================================================================
+Alert ID:       PAIN-VALIDATION-001
+Priority:       MEDIUM
+Source:         Transaction Monitoring
+Processed:      2026-01-29
+
+================================================================================
+CASE SUMMARY
+================================================================================
+Customer:       Unknown
+Customer ID:    Unknown
+Type:           Unknown
+Country:        Unknown
+Risk Rating:    Unknown
+Relationship:   22 years
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+Type:           SWIFT_WIRE
+Amount:         USD 0.00
+Date:           Unknown
+Beneficiary:    Unknown
+Benef Country:  Unknown
+
+================================================================================
+6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)
+================================================================================
+
+CRITICAL RULES ENFORCED:
+  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)
+  * Cash signals EXCLUDED from wire transactions
+  * FORMING typologies = OBSERVE ONLY (not escalation)
+  * Status alone is NEVER sufficient for suspicion
+
+INSTRUMENT: WIRE
+HARD STOP: NO
+OBLIGATIONS: 1 (EDD required)
+INDICATORS: 2
+TYPOLOGY MATURITY: FORMING
+MITIGATIONS: 5
+SUSPICION: NOT ACTIVATED
+TAXONOMY VERDICT: PASS WITH EDD
+
+================================================================================
+DUAL-GATE DECISION SYSTEM
+================================================================================
+
+Constitutional Rule:
+"Escalation is prevented by default and permitted only when
+ suspicion is affirmatively proven."
+
+--------------------------------------------------------------------------------
+GATE 1: ZERO-FALSE-ESCALATION CHECKLIST
+Purpose: Are we ALLOWED to escalate?
+--------------------------------------------------------------------------------
+  Section A (FACT-LEVEL HARD STOP VERIFICATION): FAIL
+  Section B (INSTRUMENT & CONTEXT VALIDATION): PASS
+  Section C (REGULATORY OBLIGATION ISOLATION): PASS
+  Section D (INDICATOR CORROBORATION TEST): FAIL
+
+  GATE 1 DECISION: PROHIBITED
+  Rationale: Section D: Indicators failed corroboration test.
+
+--------------------------------------------------------------------------------
+GATE 2: POSITIVE STR CHECKLIST
+Purpose: Are we OBLIGATED to report?
+--------------------------------------------------------------------------------
+  [Gate 2 not evaluated - Gate 1 blocked escalation]
+
+  GATE 2 DECISION: PROHIBITED
+  Rationale: Escalation blocked by Gate 1.
+
+--------------------------------------------------------------------------------
+NON-ESCALATION JUSTIFICATION (MANDATORY OUTPUT)
+--------------------------------------------------------------------------------
+  All regulatory obligations were fulfilled. No sanctions or adverse media
+  were identified. Transaction activity is consistent with the customer
+  profile and supported by documentation. No evidence of deception, intent,
+  or structuring pattern was observed. Therefore, no reasonable grounds to
+  suspect ML/TF exist under PCMLTFA s.7.
+
+================================================================================
+ABSOLUTE RULES (NO EXCEPTIONS)
+================================================================================
+  X PEP status alone can NEVER escalate
+  X Cross-border alone can NEVER escalate
+  X Risk score alone can NEVER escalate
+  X 'High confidence' can NEVER override facts
+  X 'Compliance comfort' is NOT a reason
+
+================================================================================
+FINAL DECISION
+================================================================================
+Verdict:        PASS
+Action:         CLOSE_WITH_EDD_RECORDED
+STR Required:   NO
+Escalation:     PROHIBITED
+
+Rationale:
+  1. Gate 1 (Escalation): PROHIBITED - Section D: Indicators failed corroboration test.
+  2. Gate 2 (STR): PROHIBITED - Escalation blocked by Gate 1.
+  3. PEP_FOREIGN obligation(s) - SATISFIED
+  4. Mitigations applied: 5 factor(s)
+
+================================================================================
+REGULATORY COMPLIANCE
+================================================================================
+EDD Status:     COMPLETED (on file)
+PCMLTFA s.7:    No reasonable grounds to suspect ML/TF
+FINTRAC:        All obligations fulfilled
+STR Filing:     NOT REQUIRED
+
+================================================================================
+END OF ALERT REPORT
+================================================================================
