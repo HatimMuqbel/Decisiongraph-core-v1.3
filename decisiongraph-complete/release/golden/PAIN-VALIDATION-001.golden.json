@@ -1,0 +1,129 @@
+{
+  "compliance": {
+    "edd_required": true,
+    "fintrac_indicators_matched": [],
+    "jurisdiction": "CA",
+    "lctr_required": false,
+    "legislation": "PCMLTFA",
+    "str_filing_deadline_days": null
+  },
+  "decision": {
+    "action": "CLOSE_WITH_EDD_RECORDED",
+    "escalation": "PROHIBITED",
+    "path": null,
+    "priority": "MEDIUM",
+    "str_required": "NO",
+    "verdict": "PASS_WITH_EDD"
+  },
+  "gates": {
+    "gate1": {
+      "decision": "PROHIBITED",
+      "rationale": "Section D: Indicators failed corroboration test.",
+      "sections": {
+        "A_fact_hard_stop": "FAIL",
+        "B_instrument_context": "PASS",
+        "C_obligation_isolation": "PASS",
+        "D_indicator_corroboration": "FAIL"
+      }
+    },
+    "gate2": {
+      "decision": "PROHIBITED",
+      "rationale": "Section 1: No legal suspicion basis present. STR prohibited.",
+      "sections": {
+        "S1_legal_suspicion": "NOT_EVALUATED",
+        "S2_evidence_quality": "NOT_EVALUATED",
+        "S3_mitigation_failure": "NOT_EVALUATED",
+        "S4_typology_confirmation": "NOT_EVALUATED",
+        "S5_regulatory_reasonableness": "NOT_EVALUATED"
+      }
+    }
+  },
+  "layers": {
+    "layer1_facts": {
+      "facts": {
+        "adverse_media_mltf": false,
+        "customer_response": "COMPLIANT",
+        "document_status": "VALID",
+        "legal_prohibition": false,
+        "sanctions_result": "NO_MATCH"
+      },
+      "hard_stop_reason": null,
+      "hard_stop_triggered": false
+    },
+    "layer2_obligations": {
+      "count": 1,
+      "edd_required": true,
+      "edd_status": "SATISFIED",
+      "obligations": [
+        "PEP_DOMESTIC"
+      ]
+    },
+    "layer3_indicators": {
+      "corroborated_count": 0,
+      "indicators": [
+        {
+          "code": "PEP_DOMESTIC",
+          "corroborated": false
+        },
+        {
+          "code": "CROSS_BORDER",
+          "corroborated": false
+        }
+      ],
+      "total_count": 2
+    },
+    "layer4_typologies": {
+      "highest_maturity": "FORMING",
+      "typologies": [
+        {
+          "maturity": "FORMING",
+          "name": "primary"
+        }
+      ]
+    },
+    "layer5_mitigations": {
+      "count": 5,
+      "mitigations": [
+        "MF_ESTABLISHED_RELATIONSHIP",
+        "MF_DOCUMENTATION_COMPLETE",
+        "MF_SOURCE_OF_FUNDS",
+        "MF_TXN_SUPPORTING_INVOICE",
+        "MF_SCREEN_FALSE_POSITIVE"
+      ],
+      "sufficient": true
+    },
+    "layer6_suspicion": {
+      "activated": false,
+      "basis": "NONE",
+      "elements": {
+        "has_deception": false,
+        "has_intent": false,
+        "has_sustained_pattern": false
+      }
+    }
+  },
+  "meta": {
+    "case_id": "PAIN-VALIDATION-001",
+    "engine_version": "2.1.1",
+    "input_hash": "5f2acc5c3d80a177b3e6391bfa0f360d3c4ee29ecdd795b17df0ddbe482e76c5",
+    "jurisdiction": "CA",
+    "policy_version": "1.0.0",
+    "report_timestamp_utc": "NORMALIZED"
+  },
+  "rationale": {
+    "absolute_rules_validated": [
+      "PEP status alone can NEVER escalate",
+      "Cross-border alone can NEVER escalate",
+      "Risk score alone can NEVER escalate",
+      "'High confidence' can NEVER override facts",
+      "'Compliance comfort' is NOT a reason"
+    ],
+    "non_escalation_justification": "All regulatory obligations were fulfilled. No sanctions or adverse media were identified. Transaction activity is consistent with the customer profile and supported by documentation. No evidence of deception, intent, or structuring pattern was observed. Therefore, no reasonable grounds to suspect ML/TF exist under PCMLTFA s.7.",
+    "regulatory_citations": [
+      "PCMLTFA s.7",
+      "PCMLTFA EDD Requirements"
+    ],
+    "str_rationale": null,
+    "summary": "Pass with EDD. Regulatory obligations satisfied."
+  }
+}

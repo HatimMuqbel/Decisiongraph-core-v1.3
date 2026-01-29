@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://decisiongraph.io/schemas/input.case.schema.json",
+  "title": "DecisionGraph Input Case",
+  "description": "Bank-grade input schema for AML/KYC case evaluation. Version 1.0.0",
+  "type": "object",
+  "required": ["header", "alert_details", "customer_record", "transaction_history_slice", "screening_payload"],
+  "properties": {
+    "header": {
+      "type": "object",
+      "description": "System metadata for the case export",
+      "required": ["system_id", "export_timestamp", "batch_sequence"],
+      "properties": {
+        "system_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for the source system"
+        },
+        "export_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of case export"
+        },
+        "batch_sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sequential batch number for this export"
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Version of the input schema used"
+        }
+      },
+      "additionalProperties": true
+    },
+    "alert_details": {
+      "type": "object",
+      "description": "Alert/case metadata from TMS",
+      "required": ["external_id", "work_item_type", "assigned_queue", "hit_rule_ids"],
+      "properties": {
+        "external_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "External alert/case identifier"
+        },
+        "work_item_type": {
+          "type": "string",
+          "enum": ["TXN_MONITORING", "SANCTIONS_SCREENING", "PEP_REVIEW", "PERIODIC_REVIEW", "ENHANCED_MONITORING"],
+          "description": "Type of work item"
+        },
+        "assigned_queue": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Queue assignment for case routing"
+        },
+        "previous_analyst": {
+          "type": ["string", "null"],
+          "description": "Previous analyst if case was worked before"
+        },
+        "hit_rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "description": "List of rule IDs that triggered the alert"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+          "description": "Alert priority level"
+        }
+      },
+      "additionalProperties": true
+    },
+    "customer_record": {
+      "type": "object",
+      "description": "Customer KYC data",
+      "required": ["SRC_SYS_KEY", "fullName", "c_type", "residence_iso", "onboarding_epoch", "pep_flag"],
+      "properties": {
+        "SRC_SYS_KEY": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Primary customer identifier"
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full legal name"
+        },
+        "salutation": {
+          "type": ["string", "null"],
+          "description": "Honorific or title"
+        },
+        "c_type": {
+          "type": "string",
+          "enum": ["IND", "CORP"],
+          "description": "Customer type: Individual or Corporate"
+        },
+        "residence_iso": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "ISO 3166-1 alpha-2 country code"
+        },
+        "onboarding_epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix timestamp of customer onboarding"
+        },
+        "last_kyc_refresh": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "Date of last KYC refresh"
+        },
+        "pep_flag": {
+          "type": "string",
+          "enum": ["Y", "N"],
+          "description": "PEP status flag"
+        },
+        "pep_category_code": {
+          "type": ["string", "null"],
+          "enum": ["DOMESTIC", "FOREIGN", "INTL_ORG", "FAMILY", "CLOSE_ASSOCIATE", null],
+          "description": "PEP category if applicable"
+        },
+        "risk_rating": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH"],
+          "description": "Customer risk rating"
+        },
+        "industry_code": {
+          "type": ["string", "null"],
+          "description": "Industry classification code"
+        },
+        "disclosure_docs_received": {
+          "type": ["string", "boolean", "null"],
+          "description": "Whether disclosure documents are on file"
+        }
+      },
+      "additionalProperties": true
+    },
+    "transaction_history_slice": {
+      "type": "array",
+      "description": "Transactions relevant to this alert",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["tx_id", "amt_base_cad", "flow_direction", "method", "status_code"],
+        "properties": {
+          "tx_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique transaction identifier"
+          },
+          "tx_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Transaction timestamp"
+          },
+          "amt_native": {
+            "type": ["number", "null"],
+            "description": "Amount in original currency"
+          },
+          "currency_iso": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code"
+          },
+          "amt_base_cad": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Amount in CAD (base currency)"
+          },
+          "flow_direction": {
+            "type": "string",
+            "enum": ["IN", "OUT"],
+            "description": "Direction of funds flow"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["WIRE", "CASH", "CHEQUE", "CRYPTO", "ACH", "INTERNAL", "OTHER"],
+            "description": "Transaction method/instrument"
+          },
+          "target_name": {
+            "type": ["string", "null"],
+            "description": "Counterparty name"
+          },
+          "benef_country": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z]{2}$",
+            "description": "Beneficiary country"
+          },
+          "intermediary_bank": {
+            "type": ["string", "null"],
+            "description": "Intermediary bank if applicable"
+          },
+          "purpose": {
+            "type": ["string", "null"],
+            "description": "Stated purpose of transaction"
+          },
+          "status_code": {
+            "type": "string",
+            "enum": ["COMPLETED", "PENDING", "FAILED", "REVERSED"],
+            "description": "Transaction status"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "screening_payload": {
+      "type": "object",
+      "description": "Screening results from watchlist/sanctions provider",
+      "required": ["provider", "match_count"],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Screening provider name"
+        },
+        "screening_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When screening was performed"
+        },
+        "match_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of potential matches"
+        },
+        "top_match": {
+          "type": ["object", "null"],
+          "description": "Highest-scored match if any",
+          "properties": {
+            "match_score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "list_type": {
+              "type": "string",
+              "enum": ["OFAC_SDN", "UN_CONSOLIDATED", "EU_SANCTIONS", "UK_SANCTIONS", "CA_OSFI", "PEP", "ADVERSE_MEDIA"]
+            },
+            "matched_name": {
+              "type": "string"
+            },
+            "match_reason": {
+              "type": "string"
+            }
+          }
+        },
+        "adverse_media": {
+          "type": "object",
+          "properties": {
+            "found": {
+              "type": "boolean"
+            },
+            "mltf_linked": {
+              "type": "boolean",
+              "description": "Whether adverse media is linked to ML/TF"
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "case_context": {
+      "type": "object",
+      "description": "Additional context for case evaluation",
+      "properties": {
+        "documentation_on_file": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of supporting documents available"
+        },
+        "prior_strs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of prior STRs filed on customer"
+        },
+        "analyst_notes": {
+          "type": ["string", "null"],
+          "description": "Notes from previous analyst review"
+        },
+        "edd_status": {
+          "type": "string",
+          "enum": ["NOT_REQUIRED", "REQUIRED", "IN_PROGRESS", "COMPLETED"],
+          "description": "Enhanced Due Diligence status"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

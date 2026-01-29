@@ -1,0 +1,92 @@
+{
+  "header": {
+    "system_id": "TMS-PROD-001",
+    "export_timestamp": "2026-01-29T10:00:00Z",
+    "batch_sequence": 2,
+    "schema_version": "1.0.0"
+  },
+  "alert_details": {
+    "external_id": "ESCALATE-HARD-STOP-001",
+    "work_item_type": "SANCTIONS_SCREENING",
+    "assigned_queue": "L2_ESCALATION",
+    "previous_analyst": null,
+    "hit_rule_ids": ["SANCTIONS_MATCH"],
+    "priority": "CRITICAL"
+  },
+  "customer_record": {
+    "SRC_SYS_KEY": "CUST-SANC-001",
+    "fullName": "Viktor Petrov",
+    "salutation": "Mr.",
+    "c_type": "IND",
+    "residence_iso": "RU",
+    "onboarding_epoch": 1609459200,
+    "last_kyc_refresh": "2024-01-15",
+    "pep_flag": "N",
+    "pep_category_code": null,
+    "risk_rating": "HIGH",
+    "disclosure_docs_received": true
+  },
+  "transaction_history_slice": [
+    {
+      "tx_id": "TXN-2026-002",
+      "tx_timestamp": "2026-01-28T09:00:00Z",
+      "amt_native": 75000,
+      "currency_iso": "USD",
+      "amt_base_cad": 102000,
+      "flow_direction": "IN",
+      "method": "WIRE",
+      "target_name": "Petrov Holdings LLC",
+      "benef_country": "RU",
+      "purpose": "Investment return",
+      "status_code": "PENDING"
+    }
+  ],
+  "screening_payload": {
+    "provider": "WorldCheck",
+    "screening_timestamp": "2026-01-28T08:00:00Z",
+    "match_count": 1,
+    "top_match": {
+      "match_score": 98,
+      "list_type": "OFAC_SDN",
+      "matched_name": "Viktor PETROV",
+      "match_reason": "OFAC SDN List - Designated individual"
+    },
+    "adverse_media": {
+      "found": true,
+      "mltf_linked": false,
+      "categories": ["Sanctions Evasion"]
+    }
+  },
+  "facts": {
+    "sanctions_result": "MATCH",
+    "document_status": "VALID",
+    "customer_response": "COMPLIANT",
+    "adverse_media_mltf": false,
+    "legal_prohibition": false
+  },
+  "obligations": [],
+  "indicators": [
+    {"code": "SANCTIONS_MATCH", "corroborated": true}
+  ],
+  "typology_maturity": "CONFIRMED",
+  "mitigations": [],
+  "suspicion_evidence": {
+    "has_intent": false,
+    "has_deception": false,
+    "has_sustained_pattern": false
+  },
+  "instrument_type": "wire",
+  "evidence_quality": {
+    "is_fact_based": true,
+    "is_specific": true,
+    "is_reproducible": true,
+    "is_regulator_clear": true
+  },
+  "mitigation_status": {
+    "explanation_insufficient": true,
+    "docs_unsupportive": true,
+    "history_misaligned": true
+  },
+  "typology_confirmed": true,
+  "jurisdiction": "CA"
+}

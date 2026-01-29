@@ -1,0 +1,120 @@
+{
+  "compliance": {
+    "edd_required": false,
+    "fintrac_indicators_matched": [],
+    "jurisdiction": "CA",
+    "lctr_required": false,
+    "legislation": "PCMLTFA",
+    "str_filing_deadline_days": 30
+  },
+  "decision": {
+    "action": "FILE_STR",
+    "escalation": "PERMITTED",
+    "path": "PATH_1_HARD_STOP",
+    "priority": "CRITICAL",
+    "str_required": "YES",
+    "verdict": "STR"
+  },
+  "gates": {
+    "gate1": {
+      "decision": "PERMITTED",
+      "rationale": "Section A: Fact-level hard stop confirmed. Escalation permitted.",
+      "sections": {
+        "A_fact_hard_stop": "PASS",
+        "B_instrument_context": "PASS",
+        "C_obligation_isolation": "PASS",
+        "D_indicator_corroboration": "FAIL",
+        "E_typology_maturity": "PASS",
+        "F_mitigation_override": "FAIL",
+        "G_suspicion_definition": "FAIL"
+      }
+    },
+    "gate2": {
+      "decision": "REQUIRED",
+      "rationale": "All mandatory sections passed. STR filing is warranted.",
+      "sections": {
+        "S1_legal_suspicion": "PASS",
+        "S2_evidence_quality": "PASS",
+        "S3_mitigation_failure": "PASS",
+        "S4_typology_confirmation": "PASS",
+        "S5_regulatory_reasonableness": "PASS"
+      }
+    }
+  },
+  "layers": {
+    "layer1_facts": {
+      "facts": {
+        "adverse_media_mltf": false,
+        "customer_response": "COMPLIANT",
+        "document_status": "VALID",
+        "legal_prohibition": false,
+        "sanctions_result": "MATCH"
+      },
+      "hard_stop_reason": "SANCTIONS_MATCH",
+      "hard_stop_triggered": true
+    },
+    "layer2_obligations": {
+      "count": 0,
+      "edd_required": false,
+      "edd_status": "NOT_REQUIRED",
+      "obligations": []
+    },
+    "layer3_indicators": {
+      "corroborated_count": 1,
+      "indicators": [
+        {
+          "code": "SANCTIONS_MATCH",
+          "corroborated": true
+        }
+      ],
+      "total_count": 1
+    },
+    "layer4_typologies": {
+      "highest_maturity": "CONFIRMED",
+      "typologies": [
+        {
+          "maturity": "CONFIRMED",
+          "name": "primary"
+        }
+      ]
+    },
+    "layer5_mitigations": {
+      "count": 0,
+      "mitigations": [],
+      "sufficient": false
+    },
+    "layer6_suspicion": {
+      "activated": true,
+      "basis": "HARD_STOP",
+      "elements": {
+        "has_deception": false,
+        "has_intent": false,
+        "has_sustained_pattern": false
+      }
+    }
+  },
+  "meta": {
+    "case_id": "ESCALATE-HARD-STOP-001",
+    "engine_version": "2.1.1",
+    "input_hash": "b2136a1dc3fa6305f9c82309a678cb59ad9d7341f71c2991b9b42269786df9b3",
+    "jurisdiction": "CA",
+    "policy_version": "1.0.0",
+    "report_timestamp_utc": "NORMALIZED"
+  },
+  "rationale": {
+    "absolute_rules_validated": [
+      "PEP status alone can NEVER escalate",
+      "Cross-border alone can NEVER escalate",
+      "Risk score alone can NEVER escalate",
+      "'High confidence' can NEVER override facts",
+      "'Compliance comfort' is NOT a reason"
+    ],
+    "non_escalation_justification": null,
+    "regulatory_citations": [
+      "PCMLTFA s.7",
+      "FINTRAC STR Guidelines"
+    ],
+    "str_rationale": "Based on the totality of evidence, reasonable grounds exist to suspect that the transaction(s) may be related to money laundering or terrorist financing under PCMLTFA s.7.",
+    "summary": "STR filing required. Escalation via PATH_1_HARD_STOP."
+  }
+}

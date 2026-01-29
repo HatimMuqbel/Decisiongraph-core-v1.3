@@ -1,0 +1,99 @@
+{
+  "header": {
+    "system_id": "TMS-PROD-001",
+    "export_timestamp": "2026-01-29T10:00:00Z",
+    "batch_sequence": 1,
+    "schema_version": "1.0.0"
+  },
+  "alert_details": {
+    "external_id": "PAIN-VALIDATION-001",
+    "work_item_type": "TXN_MONITORING",
+    "assigned_queue": "L1_REVIEW",
+    "previous_analyst": null,
+    "hit_rule_ids": ["CROSS_BORDER_WIRE", "PEP_MATCH"],
+    "priority": "MEDIUM"
+  },
+  "customer_record": {
+    "SRC_SYS_KEY": "CUST-PEP-001",
+    "fullName": "Margaret Chen-Williams",
+    "salutation": "Ms.",
+    "c_type": "IND",
+    "residence_iso": "CA",
+    "onboarding_epoch": 1325376000,
+    "last_kyc_refresh": "2025-06-15",
+    "pep_flag": "Y",
+    "pep_category_code": "DOMESTIC",
+    "risk_rating": "HIGH",
+    "disclosure_docs_received": true
+  },
+  "transaction_history_slice": [
+    {
+      "tx_id": "TXN-2026-001",
+      "tx_timestamp": "2026-01-28T14:30:00Z",
+      "amt_native": 125000,
+      "currency_iso": "CAD",
+      "amt_base_cad": 125000,
+      "flow_direction": "OUT",
+      "method": "WIRE",
+      "target_name": "Chen Family Trust",
+      "benef_country": "US",
+      "purpose": "Legal fees - estate planning",
+      "status_code": "COMPLETED"
+    }
+  ],
+  "screening_payload": {
+    "provider": "WorldCheck",
+    "screening_timestamp": "2026-01-28T14:00:00Z",
+    "match_count": 1,
+    "top_match": {
+      "match_score": 85,
+      "list_type": "PEP",
+      "matched_name": "Margaret Chen",
+      "match_reason": "Domestic PEP - Former Deputy Mayor"
+    },
+    "adverse_media": {
+      "found": false,
+      "mltf_linked": false,
+      "categories": []
+    }
+  },
+  "facts": {
+    "sanctions_result": "NO_MATCH",
+    "document_status": "VALID",
+    "customer_response": "COMPLIANT",
+    "adverse_media_mltf": false,
+    "legal_prohibition": false
+  },
+  "obligations": ["PEP_DOMESTIC"],
+  "indicators": [
+    {"code": "PEP_DOMESTIC", "corroborated": false},
+    {"code": "CROSS_BORDER", "corroborated": false}
+  ],
+  "typology_maturity": "FORMING",
+  "mitigations": [
+    "MF_ESTABLISHED_RELATIONSHIP",
+    "MF_DOCUMENTATION_COMPLETE",
+    "MF_SOURCE_OF_FUNDS",
+    "MF_TXN_SUPPORTING_INVOICE",
+    "MF_SCREEN_FALSE_POSITIVE"
+  ],
+  "suspicion_evidence": {
+    "has_intent": false,
+    "has_deception": false,
+    "has_sustained_pattern": false
+  },
+  "instrument_type": "wire",
+  "evidence_quality": {
+    "is_fact_based": false,
+    "is_specific": false,
+    "is_reproducible": true,
+    "is_regulator_clear": true
+  },
+  "mitigation_status": {
+    "explanation_insufficient": false,
+    "docs_unsupportive": false,
+    "history_misaligned": false
+  },
+  "typology_confirmed": false,
+  "jurisdiction": "CA"
+}

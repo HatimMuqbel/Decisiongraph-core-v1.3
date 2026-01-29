@@ -1,0 +1,111 @@
+{
+  "header": {
+    "system_id": "TMS-PROD-001",
+    "export_timestamp": "2026-01-29T10:00:00Z",
+    "batch_sequence": 3,
+    "schema_version": "1.0.0"
+  },
+  "alert_details": {
+    "external_id": "ESCALATE-BEHAVIORAL-001",
+    "work_item_type": "TXN_MONITORING",
+    "assigned_queue": "L2_ESCALATION",
+    "previous_analyst": null,
+    "hit_rule_ids": ["STRUCTURING_CASH", "UBO_MISMATCH"],
+    "priority": "CRITICAL"
+  },
+  "customer_record": {
+    "SRC_SYS_KEY": "CORP-MAPLE-77",
+    "fullName": "Maple Leaf Global Trading Ltd.",
+    "salutation": null,
+    "c_type": "CORP",
+    "residence_iso": "CA",
+    "onboarding_epoch": 1698796800,
+    "last_kyc_refresh": "2025-11-01",
+    "pep_flag": "N",
+    "pep_category_code": null,
+    "risk_rating": "HIGH",
+    "industry_code": "IMPORT_EXPORT",
+    "disclosure_docs_received": true
+  },
+  "transaction_history_slice": [
+    {
+      "tx_id": "TXN-2026-003",
+      "tx_timestamp": "2026-01-28T09:00:00Z",
+      "amt_native": 9500,
+      "currency_iso": "CAD",
+      "amt_base_cad": 9500,
+      "flow_direction": "IN",
+      "method": "CASH",
+      "target_name": null,
+      "benef_country": null,
+      "purpose": "Business deposit",
+      "status_code": "COMPLETED"
+    },
+    {
+      "tx_id": "TXN-2026-004",
+      "tx_timestamp": "2026-01-28T14:30:00Z",
+      "amt_native": 9200,
+      "currency_iso": "CAD",
+      "amt_base_cad": 9200,
+      "flow_direction": "IN",
+      "method": "CASH",
+      "target_name": null,
+      "benef_country": null,
+      "purpose": "Business deposit",
+      "status_code": "COMPLETED"
+    }
+  ],
+  "screening_payload": {
+    "provider": "WorldCheck",
+    "screening_timestamp": "2026-01-28T08:00:00Z",
+    "match_count": 0,
+    "top_match": null,
+    "adverse_media": {
+      "found": false,
+      "mltf_linked": false,
+      "categories": []
+    }
+  },
+  "facts": {
+    "sanctions_result": "NO_MATCH",
+    "document_status": "VALID",
+    "customer_response": "COMPLIANT",
+    "adverse_media_mltf": false,
+    "legal_prohibition": false
+  },
+  "obligations": [],
+  "indicators": [
+    {"code": "STRUCT_CASH_MULTIPLE", "corroborated": true},
+    {"code": "UBO_DISCREPANCY", "corroborated": true},
+    {"code": "NEW_ACCOUNT", "corroborated": true}
+  ],
+  "typology_maturity": "CONFIRMED",
+  "mitigations": [
+    "MF_DOCUMENTATION_COMPLETE"
+  ],
+  "suspicion_evidence": {
+    "has_intent": true,
+    "has_deception": true,
+    "has_sustained_pattern": true
+  },
+  "instrument_type": "cash",
+  "evidence_quality": {
+    "is_fact_based": true,
+    "is_specific": true,
+    "is_reproducible": true,
+    "is_regulator_clear": true
+  },
+  "mitigation_status": {
+    "explanation_insufficient": true,
+    "docs_unsupportive": true,
+    "history_misaligned": true
+  },
+  "typology_confirmed": true,
+  "jurisdiction": "CA",
+  "fintrac_indicators": [
+    "Transactions structured to avoid Large Cash Transaction Report requirements",
+    "Multiple cash transactions in a single day just below CAD 10,000 threshold",
+    "New customer with limited or no transaction history",
+    "Beneficial ownership information contains discrepancies"
+  ]
+}

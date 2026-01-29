@@ -1,0 +1,135 @@
+{
+  "compliance": {
+    "edd_required": false,
+    "fintrac_indicators_matched": [
+      "Transactions structured to avoid Large Cash Transaction Report requirements",
+      "Multiple cash transactions in a single day just below CAD 10,000 threshold",
+      "New customer with limited or no transaction history",
+      "Beneficial ownership information contains discrepancies"
+    ],
+    "jurisdiction": "CA",
+    "lctr_required": false,
+    "legislation": "PCMLTFA",
+    "str_filing_deadline_days": 30
+  },
+  "decision": {
+    "action": "FILE_STR",
+    "escalation": "PERMITTED",
+    "path": "PATH_2_SUSPICION",
+    "priority": "CRITICAL",
+    "str_required": "YES",
+    "verdict": "STR"
+  },
+  "gates": {
+    "gate1": {
+      "decision": "PERMITTED",
+      "rationale": "All gates passed. Escalation permitted with documented basis.",
+      "sections": {
+        "A_fact_hard_stop": "FAIL",
+        "B_instrument_context": "PASS",
+        "C_obligation_isolation": "PASS",
+        "D_indicator_corroboration": "PASS",
+        "E_typology_maturity": "PASS",
+        "F_mitigation_override": "FAIL",
+        "G_suspicion_definition": "PASS"
+      }
+    },
+    "gate2": {
+      "decision": "REQUIRED",
+      "rationale": "All mandatory sections passed. STR filing is warranted.",
+      "sections": {
+        "S1_legal_suspicion": "PASS",
+        "S2_evidence_quality": "PASS",
+        "S3_mitigation_failure": "PASS",
+        "S4_typology_confirmation": "PASS",
+        "S5_regulatory_reasonableness": "PASS"
+      }
+    }
+  },
+  "layers": {
+    "layer1_facts": {
+      "facts": {
+        "adverse_media_mltf": false,
+        "customer_response": "COMPLIANT",
+        "document_status": "VALID",
+        "legal_prohibition": false,
+        "sanctions_result": "NO_MATCH"
+      },
+      "hard_stop_reason": null,
+      "hard_stop_triggered": false
+    },
+    "layer2_obligations": {
+      "count": 0,
+      "edd_required": false,
+      "edd_status": "NOT_REQUIRED",
+      "obligations": []
+    },
+    "layer3_indicators": {
+      "corroborated_count": 3,
+      "indicators": [
+        {
+          "code": "STRUCT_CASH_MULTIPLE",
+          "corroborated": true
+        },
+        {
+          "code": "UBO_DISCREPANCY",
+          "corroborated": true
+        },
+        {
+          "code": "NEW_ACCOUNT",
+          "corroborated": true
+        }
+      ],
+      "total_count": 3
+    },
+    "layer4_typologies": {
+      "highest_maturity": "CONFIRMED",
+      "typologies": [
+        {
+          "maturity": "CONFIRMED",
+          "name": "primary"
+        }
+      ]
+    },
+    "layer5_mitigations": {
+      "count": 1,
+      "mitigations": [
+        "MF_DOCUMENTATION_COMPLETE"
+      ],
+      "sufficient": false
+    },
+    "layer6_suspicion": {
+      "activated": true,
+      "basis": "BEHAVIORAL",
+      "elements": {
+        "has_deception": true,
+        "has_intent": true,
+        "has_sustained_pattern": true
+      }
+    }
+  },
+  "meta": {
+    "case_id": "ESCALATE-BEHAVIORAL-001",
+    "engine_version": "2.1.1",
+    "input_hash": "fcd367fb7d07de56480568c440e22b64fc1a5dd50c1a02e395cf31844827e7d6",
+    "jurisdiction": "CA",
+    "policy_version": "1.0.0",
+    "report_timestamp_utc": "NORMALIZED"
+  },
+  "rationale": {
+    "absolute_rules_validated": [
+      "PEP status alone can NEVER escalate",
+      "Cross-border alone can NEVER escalate",
+      "Risk score alone can NEVER escalate",
+      "'High confidence' can NEVER override facts",
+      "'Compliance comfort' is NOT a reason"
+    ],
+    "non_escalation_justification": null,
+    "regulatory_citations": [
+      "PCMLTFA s.7",
+      "FINTRAC STR Guidelines"
+    ],
+    "str_rationale": "Based on the totality of evidence, reasonable grounds exist to suspect that the transaction(s) may be related to money laundering or terrorist financing under PCMLTFA s.7.",
+    "summary": "STR filing required. Escalation via PATH_2_SUSPICION."
+  }
+}

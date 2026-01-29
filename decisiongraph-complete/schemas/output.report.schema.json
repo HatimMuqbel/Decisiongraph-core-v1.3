@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://decisiongraph.io/schemas/output.report.schema.json",
+  "title": "DecisionGraph Output Report",
+  "description": "Bank-grade output schema for AML/KYC decision pack. Version 1.0.0",
+  "type": "object",
+  "required": ["meta", "decision", "layers", "gates", "rationale"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Reproducibility metadata for audit trail",
+      "required": ["engine_version", "policy_version", "input_hash", "report_timestamp_utc"],
+      "properties": {
+        "engine_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of decision engine"
+        },
+        "policy_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of policy/rules pack"
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of canonicalized input JSON"
+        },
+        "report_timestamp_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of report generation"
+        },
+        "case_id": {
+          "type": "string",
+          "description": "Case identifier from input"
+        },
+        "jurisdiction": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "Regulatory jurisdiction"
+        }
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "object",
+      "description": "Final decision output",
+      "required": ["verdict", "action", "escalation", "str_required"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_EDD", "ESCALATE", "STR", "HARD_STOP"],
+          "description": "Final case verdict"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["CLOSE", "CLOSE_WITH_EDD_RECORDED", "ESCALATE_TO_ANALYST", "FILE_STR", "BLOCK_AND_ESCALATE"],
+          "description": "Recommended action"
+        },
+        "escalation": {
+          "type": "string",
+          "enum": ["PROHIBITED", "PERMITTED", "REQUIRED"],
+          "description": "Escalation status from Gate 1"
+        },
+        "str_required": {
+          "type": "string",
+          "enum": ["YES", "NO"],
+          "description": "Whether STR filing is required"
+        },
+        "path": {
+          "type": ["string", "null"],
+          "enum": ["PATH_1_HARD_STOP", "PATH_2_SUSPICION", null],
+          "description": "Escalation path used (null if not escalated)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+          "description": "Decision priority level"
+        }
+      },
+      "additionalProperties": false
+    },
+    "layers": {
+      "type": "object",
+      "description": "6-Layer Decision Taxonomy breakdown",
+      "required": ["layer1_facts", "layer2_obligations", "layer3_indicators", "layer4_typologies", "layer5_mitigations", "layer6_suspicion"],
+      "properties": {
+        "layer1_facts": {
+          "type": "object",
+          "description": "Layer 1: Hard facts (sanctions, docs, response)",
+          "required": ["hard_stop_triggered", "facts"],
+          "properties": {
+            "hard_stop_triggered": {
+              "type": "boolean"
+            },
+            "hard_stop_reason": {
+              "type": ["string", "null"]
+            },
+            "facts": {
+              "type": "object",
+              "properties": {
+                "sanctions_result": {
+                  "type": "string",
+                  "enum": ["MATCH", "NO_MATCH", "PENDING"]
+                },
+                "document_status": {
+                  "type": "string",
+                  "enum": ["VALID", "FALSE", "MISSING", "EXPIRED"]
+                },
+                "customer_response": {
+                  "type": "string",
+                  "enum": ["COMPLIANT", "REFUSAL", "EVASIVE", "NO_RESPONSE"]
+                },
+                "adverse_media_mltf": {
+                  "type": "boolean"
+                },
+                "legal_prohibition": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "layer2_obligations": {
+          "type": "object",
+          "description": "Layer 2: Regulatory obligations triggered",
+          "required": ["obligations", "count"],
+          "properties": {
+            "obligations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "edd_required": {
+              "type": "boolean"
+            },
+            "edd_status": {
+              "type": "string",
+              "enum": ["NOT_REQUIRED", "REQUIRED", "SATISFIED"]
+            }
+          }
+        },
+        "layer3_indicators": {
+          "type": "object",
+          "description": "Layer 3: Behavioral indicators",
+          "required": ["indicators", "corroborated_count", "total_count"],
+          "properties": {
+            "indicators": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["code", "corroborated"],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "corroborated": {
+                    "type": "boolean"
+                  },
+                  "evidence": {
+                    "type": ["string", "null"]
+                  }
+                }
+              }
+            },
+            "corroborated_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "layer4_typologies": {
+          "type": "object",
+          "description": "Layer 4: ML/TF typologies",
+          "required": ["typologies", "highest_maturity"],
+          "properties": {
+            "typologies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "maturity"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "maturity": {
+                    "type": "string",
+                    "enum": ["NONE", "FORMING", "ESTABLISHED", "CONFIRMED"]
+                  },
+                  "fintrac_indicators": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "highest_maturity": {
+              "type": "string",
+              "enum": ["NONE", "FORMING", "ESTABLISHED", "CONFIRMED"]
+            }
+          }
+        },
+        "layer5_mitigations": {
+          "type": "object",
+          "description": "Layer 5: Mitigating factors",
+          "required": ["mitigations", "count", "sufficient"],
+          "properties": {
+            "mitigations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sufficient": {
+              "type": "boolean",
+              "description": "Whether mitigations fully explain behavior"
+            }
+          }
+        },
+        "layer6_suspicion": {
+          "type": "object",
+          "description": "Layer 6: Suspicion determination",
+          "required": ["activated", "basis"],
+          "properties": {
+            "activated": {
+              "type": "boolean"
+            },
+            "basis": {
+              "type": "string",
+              "enum": ["HARD_STOP", "BEHAVIORAL", "NONE"]
+            },
+            "elements": {
+              "type": "object",
+              "properties": {
+                "has_intent": {
+                  "type": "boolean"
+                },
+                "has_deception": {
+                  "type": "boolean"
+                },
+                "has_sustained_pattern": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "gates": {
+      "type": "object",
+      "description": "Dual-gate decision system results",
+      "required": ["gate1", "gate2"],
+      "properties": {
+        "gate1": {
+          "type": "object",
+          "description": "Zero-False-Escalation Gate",
+          "required": ["decision", "sections"],
+          "properties": {
+            "decision": {
+              "type": "string",
+              "enum": ["PERMITTED", "PROHIBITED", "SYSTEM_ERROR"]
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "sections": {
+              "type": "object",
+              "properties": {
+                "A_fact_hard_stop": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                },
+                "B_instrument_context": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                },
+                "C_obligation_isolation": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                },
+                "D_indicator_corroboration": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                },
+                "E_typology_maturity": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                },
+                "F_mitigation_override": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                },
+                "G_suspicion_definition": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL"]
+                }
+              }
+            }
+          }
+        },
+        "gate2": {
+          "type": "object",
+          "description": "Positive STR Gate",
+          "required": ["decision", "sections"],
+          "properties": {
+            "decision": {
+              "type": "string",
+              "enum": ["REQUIRED", "PROHIBITED", "NOT_EVALUATED"]
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "sections": {
+              "type": "object",
+              "properties": {
+                "S1_legal_suspicion": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL", "NOT_EVALUATED"]
+                },
+                "S2_evidence_quality": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL", "NOT_EVALUATED"]
+                },
+                "S3_mitigation_failure": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL", "NOT_EVALUATED"]
+                },
+                "S4_typology_confirmation": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL", "NOT_EVALUATED"]
+                },
+                "S5_regulatory_reasonableness": {
+                  "type": "string",
+                  "enum": ["PASS", "FAIL", "NOT_EVALUATED"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "rationale": {
+      "type": "object",
+      "description": "Decision rationale for audit trail",
+      "required": ["summary"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "One-line decision summary"
+        },
+        "str_rationale": {
+          "type": ["string", "null"],
+          "description": "Full STR rationale if STR required"
+        },
+        "non_escalation_justification": {
+          "type": ["string", "null"],
+          "description": "Justification if not escalated"
+        },
+        "absolute_rules_validated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of absolute rules confirmed"
+        },
+        "regulatory_citations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Applicable regulatory citations"
+        }
+      },
+      "additionalProperties": true
+    },
+    "compliance": {
+      "type": "object",
+      "description": "Regulatory compliance details",
+      "properties": {
+        "jurisdiction": {
+          "type": "string"
+        },
+        "legislation": {
+          "type": "string"
+        },
+        "str_filing_deadline_days": {
+          "type": ["integer", "null"]
+        },
+        "lctr_required": {
+          "type": "boolean"
+        },
+        "edd_required": {
+          "type": "boolean"
+        },
+        "fintrac_indicators_matched": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

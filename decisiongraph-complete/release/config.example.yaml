@@ -1,0 +1,106 @@
+# DecisionGraph Configuration
+# Copy to config.yaml and modify as needed
+
+# Engine Configuration
+engine:
+  version: "2.1.1"
+  policy_version: "1.0.0"
+  jurisdiction: "CA"
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARN, ERROR
+  format: "json"  # json, text
+  output: "stdout"  # stdout, file
+  file_path: "/var/log/decisiongraph/engine.log"
+
+# API Server (if using service mode)
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  timeout: 30
+
+# Decision Thresholds
+thresholds:
+  # Canada LCTR threshold (CAD)
+  lctr_cad: 10000
+  # Indicator corroboration minimum
+  indicator_corroboration_min: 2
+  # Mitigation sufficiency threshold
+  mitigation_sufficiency_count: 3
+
+# Typology Maturity Rules
+typologies:
+  # Maturity levels: NONE < FORMING < ESTABLISHED < CONFIRMED
+  escalation_min_maturity: "ESTABLISHED"
+  # Auto-confirm typologies with 5+ corroborated indicators
+  auto_confirm_indicator_count: 5
+
+# Gate Configuration
+gates:
+  gate1:
+    # Sections to evaluate
+    sections: ["A", "B", "C", "D", "E", "F", "G"]
+    # Hard stop precedence
+    hard_stop_sections: ["A"]
+  gate2:
+    # Sections to evaluate
+    sections: ["1", "2", "3", "4", "5"]
+    # Optional sections (can fail without blocking)
+    optional_sections: ["4"]
+
+# FINTRAC Indicator Mapping
+fintrac:
+  enabled: true
+  indicator_file: "/etc/decisiongraph/fintrac_indicators.yaml"
+
+# Output Configuration
+output:
+  # Include text report in addition to JSON
+  include_text_report: true
+  # Report format version
+  report_schema_version: "1.0.0"
+  # Timezone for timestamps
+  timezone: "UTC"
+
+# Audit Trail
+audit:
+  enabled: true
+  # Include input hash in output
+  include_input_hash: true
+  # Storage backend
+  storage: "file"  # file, database, s3
+  storage_path: "/var/lib/decisiongraph/audit/"
+
+# Health Check
+health:
+  enabled: true
+  endpoint: "/health"
+  # Include version info in health check
+  include_version: true
+
+# Metrics (Prometheus format)
+metrics:
+  enabled: true
+  endpoint: "/metrics"
+  port: 9090
+
+# Security
+security:
+  # API key authentication
+  api_key_enabled: false
+  api_key_header: "X-API-Key"
+  # TLS
+  tls_enabled: false
+  tls_cert: "/etc/decisiongraph/tls/cert.pem"
+  tls_key: "/etc/decisiongraph/tls/key.pem"
+
+# Development/Testing
+development:
+  # Enable debug endpoints
+  debug_endpoints: false
+  # Mock external services
+  mock_screening: false
+  # Deterministic timestamps for testing
+  deterministic_timestamps: false

@@ -1,0 +1,39 @@
+# DecisionGraph Build Provenance
+# This file is auto-generated during release builds
+
+# Build Information
+BUILD_TIMESTAMP=2026-01-29T00:00:00Z
+BUILD_PIPELINE=manual
+BUILD_RUNNER=local
+BUILD_ID=manual-2026-01-29
+
+# Source Information
+GIT_COMMIT=PLACEHOLDER_COMMIT_SHA
+GIT_BRANCH=main
+GIT_TAG=v2.1.1
+GIT_REMOTE=https://github.com/decisiongraph/core.git
+
+# Artifact Information
+ENGINE_VERSION=2.1.1
+POLICY_VERSION=1.0.0
+INPUT_SCHEMA_VERSION=1.0.0
+OUTPUT_SCHEMA_VERSION=1.0.0
+
+# Checksums (SHA-256)
+DOCKER_IMAGE_DIGEST=PLACEHOLDER_DIGEST
+SBOM_CHECKSUM=PLACEHOLDER_SBOM_SHA256
+
+# Builder Identity
+BUILDER_NAME=DecisionGraph CI
+BUILDER_ID=ci@decisiongraph.io
+
+# Attestation
+# In production, this would include cryptographic signatures
+ATTESTATION_TYPE=none
+ATTESTATION_SIGNER=none
+
+# Reproducibility
+# To reproduce this build:
+# 1. git checkout GIT_COMMIT
+# 2. docker build -t decisiongraph:ENGINE_VERSION .
+# 3. python scripts/run_corpus.py (should pass 25/25)
