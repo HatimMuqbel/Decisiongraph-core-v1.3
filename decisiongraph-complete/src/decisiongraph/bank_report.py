@@ -39,6 +39,11 @@ from .actions import (
     ActionGenerator, ActionConfig, GeneratedAction, ActionPriority,
     format_actions_for_report
 )
+from .taxonomy import (
+    TaxonomyClassifier, TaxonomyResult, VerdictCategory,
+    DecisionLayer, TAXONOMY_TO_VERDICT, TAXONOMY_TO_TIER,
+    TAXONOMY_AUTO_ARCHIVE
+)
 
 
 # =============================================================================
@@ -352,6 +357,12 @@ class BankReportRenderer:
 
         lines.append("=" * w)
         lines.append("")
+
+        # 6-Layer Taxonomy Analysis
+        mitigation_codes = []
+        if eval_result and eval_result.mitigations:
+            mitigation_codes = [m.fact.object.get("code", "") for m in eval_result.mitigations]
+        lines.extend(self._render_taxonomy_analysis(eval_result, mitigation_codes, w))
 
         # Policy Citations
         if self.config.include_citations and citation_registry:
@@ -1284,6 +1295,149 @@ class BankReportRenderer:
         rationale += f"{'Auto-archive permitted' if auto_archive else 'Manual review required'}."
 
         lines.append(f"   Rationale: {rationale}")
+        lines.append("")
+
+        return lines
+
+    def _render_taxonomy_analysis(
+        self,
+        eval_result: Any,
+        mitigation_codes: List[str],
+        w: int
+    ) -> List[str]:
+        """Render 6-layer taxonomy analysis section.
+
+        This implements the constitutional decision architecture that separates:
+        - Facts from opinions
+        - Obligations from risk indicators
+        - Indicators from typologies
+        - Suspicion from everything else
+
+        Key Principle: Escalation requires Layer 6 activation.
+        Status alone (PEP, foreign, high-risk country) is NEVER sufficient for suspicion.
+        """
+        lines = []
+        lines.append("=" * w)
+        lines.append("6-LAYER DECISION TAXONOMY ANALYSIS")
+        lines.append("=" * w)
+        lines.append("")
+        lines.append("The following analysis classifies case signals through the")
+        lines.append("6-layer constitutional decision framework. Escalation to STR")
+        lines.append("consideration requires Layer 6 (Suspicion) activation.")
+        lines.append("")
+        lines.append("Status alone (PEP, foreign national, high-risk country) is")
+        lines.append("NEVER sufficient for suspicion determination.")
+        lines.append("")
+
+        # Extract signal codes
+        signal_codes = []
+        if eval_result and eval_result.signals:
+            signal_codes = [s.fact.object.get("code", "") for s in eval_result.signals]
+
+        # Check for hard stops
+        has_hard_stop = any(
+            "SANCTION" in code.upper() and "FALSE" not in code.upper()
+            for code in signal_codes
+            if code
+        )
+
+        # Run taxonomy analysis
+        classifier = TaxonomyClassifier()
+        result = classifier.analyze(
+            signal_codes=signal_codes,
+            mitigation_codes=mitigation_codes,
+            has_hard_stop=has_hard_stop
+        )
+
+        # Layer 2: Obligations
+        lines.append("LAYER 2: REGULATORY OBLIGATIONS")
+        lines.append("-" * w)
+        if result.obligations:
+            for obl in result.obligations:
+                lines.append(f"   {obl.signal_code}")
+                lines.append(f"      Type: {obl.obligation_type.value if obl.obligation_type else 'N/A'}")
+                lines.append(f"      Effect: Triggers mandatory compliance procedure")
+                lines.append(f"      Suspicion Impact: NONE (obligation != suspicion)")
+            lines.append("")
+        else:
+            lines.append("   (none)")
+            lines.append("")
+
+        # Layer 3: Indicators
+        lines.append("LAYER 3: RISK INDICATORS")
+        lines.append("-" * w)
+        if result.indicators:
+            for ind in result.indicators:
+                strength = ind.indicator_strength.value if ind.indicator_strength else "unknown"
+                lines.append(f"   {ind.signal_code} [{strength.upper()}]")
+                lines.append(f"      Requires corroboration for escalation")
+            lines.append("")
+            lines.append(f"   Total Indicators: {result.indicator_count}")
+            lines.append(f"   Strength Sum: {result.indicator_strength_sum:.2f}")
+            lines.append("")
+        else:
+            lines.append("   (none)")
+            lines.append("")
+
+        # Layer 4: Typologies
+        lines.append("LAYER 4: TYPOLOGY ASSESSMENT")
+        lines.append("-" * w)
+        if result.typologies:
+            for typ in result.typologies:
+                status = "FORMING" if typ.is_forming else "PARTIAL"
+                lines.append(f"   {typ.typology.value}: {status} ({typ.confidence:.0%} match)")
+                lines.append(f"      Matching signals: {', '.join(typ.matching_signals)}")
+            lines.append("")
+        else:
+            lines.append("   No typology patterns detected")
+            lines.append("")
+
+        # Layer 5: Mitigations
+        lines.append("LAYER 5: MITIGATIONS APPLIED")
+        lines.append("-" * w)
+        if result.mitigations:
+            for mit in result.mitigations:
+                lines.append(f"   {mit}")
+            lines.append("")
+        else:
+            lines.append("   (none)")
+            lines.append("")
+
+        # Layer 6: Suspicion Assessment (THE KEY DECISION POINT)
+        lines.append("LAYER 6: SUSPICION ASSESSMENT")
+        lines.append("-" * w)
+        if result.suspicion:
+            if result.suspicion.is_activated:
+                lines.append(f"   STATUS: ACTIVATED")
+                lines.append(f"   Basis: {result.suspicion.basis.value if result.suspicion.basis else 'N/A'}")
+                lines.append(f"   Reasoning: {result.suspicion.reasoning}")
+                if result.suspicion.supporting_evidence:
+                    lines.append(f"   Evidence: {', '.join(result.suspicion.supporting_evidence[:3])}")
+            else:
+                lines.append(f"   STATUS: NOT ACTIVATED")
+                lines.append(f"   Reasoning: {result.suspicion.reasoning}")
+                lines.append("")
+                lines.append("   NOTE: Status-based signals (PEP, foreign, geography) trigger")
+                lines.append("   obligations (L2) but do NOT activate suspicion (L6).")
+        else:
+            lines.append("   STATUS: NOT EVALUATED")
+        lines.append("")
+
+        # Taxonomy-based Verdict
+        lines.append("TAXONOMY VERDICT DETERMINATION")
+        lines.append("-" * w)
+        lines.append(f"   Verdict Category: {result.verdict_category.value}")
+        lines.append(f"   Reasoning: {result.verdict_reasoning}")
+        lines.append("")
+
+        # Map to canonical verdict
+        canonical = TAXONOMY_TO_VERDICT.get(result.verdict_category, "REVIEW")
+        tier = TAXONOMY_TO_TIER.get(result.verdict_category, 1)
+        auto_archive = TAXONOMY_AUTO_ARCHIVE.get(result.verdict_category, False)
+
+        lines.append(f"   Mapped Verdict: {canonical}")
+        lines.append(f"   Review Tier: {tier}")
+        lines.append(f"   Auto-Archive: {'PERMITTED' if auto_archive else 'NOT PERMITTED'}")
         lines.append("")
 
         return lines

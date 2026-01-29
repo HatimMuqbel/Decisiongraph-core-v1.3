@@ -400,6 +400,28 @@ from .bank_report import (
     render_bank_report,
 )
 
+# Taxonomy (v2.1 - 6-layer constitutional decision framework)
+from .taxonomy import (
+    DecisionLayer,
+    ObligationType,
+    IndicatorStrength,
+    TypologyCategory,
+    SuspicionBasis,
+    VerdictCategory,
+    LayerClassification,
+    TypologyAssessment,
+    SuspicionAssessment,
+    TaxonomyResult,
+    TaxonomyClassifier,
+    OBLIGATION_SIGNALS,
+    INDICATOR_SIGNALS,
+    TYPOLOGY_RULES,
+    TAXONOMY_TO_VERDICT,
+    TAXONOMY_TO_TIER,
+    TAXONOMY_AUTO_ARCHIVE,
+    get_taxonomy_verdict,
+)
+
 # Gates (v2.0 - 4-gate protocol evaluation engine)
 from .gates import (
     GateError,
@@ -681,6 +703,25 @@ __all__ = [
     'GateResult',
     'BankReportRenderer',
     'render_bank_report',
+    # Taxonomy (v2.1 - 6-layer constitutional decision framework)
+    'DecisionLayer',
+    'ObligationType',
+    'IndicatorStrength',
+    'TypologyCategory',
+    'SuspicionBasis',
+    'VerdictCategory',
+    'LayerClassification',
+    'TypologyAssessment',
+    'SuspicionAssessment',
+    'TaxonomyResult',
+    'TaxonomyClassifier',
+    'OBLIGATION_SIGNALS',
+    'INDICATOR_SIGNALS',
+    'TYPOLOGY_RULES',
+    'TAXONOMY_TO_VERDICT',
+    'TAXONOMY_TO_TIER',
+    'TAXONOMY_AUTO_ARCHIVE',
+    'get_taxonomy_verdict',
     # Case Schema (Financial Crime)
     'CaseType',
     'CasePhase',
