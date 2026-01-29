@@ -6,17 +6,28 @@ declarative YAML adapters. No business logic, no rules, no scoring.
 
 One question only: "How do I turn your export into our CaseBundle?"
 
+Features:
+- Deterministic adapter hash for governance
+- Provenance stamping (source system, file hash, timestamp)
+- Error collection mode for batch processing
+- Field-level required/optional handling
+
 Usage:
     from decisiongraph.case_mapper import CaseMapper, load_adapter
 
     adapter = load_adapter("adapters/fincrime/actimize/mapping.yaml")
     mapper = CaseMapper(adapter)
-    bundle = mapper.map(input_data)
+    result = mapper.map(input_data, source_file_hash="abc123...")
+
+    bundle = result.bundle
+    errors = result.errors
+    provenance = result.provenance
 """
 
+import hashlib
 import json
-import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -163,7 +174,7 @@ def _tokenize_path(path: str) -> list:
 
 
 # ============================================================================
-# ADAPTER DATA STRUCTURES
+# DATA STRUCTURES
 # ============================================================================
 
 @dataclass
@@ -177,6 +188,14 @@ class AdapterMetadata:
 
 
 @dataclass
+class FieldOptions:
+    """Options for a mapped field."""
+    required: bool = False
+    on_missing: str = "NULL"  # ERROR | DEFAULT | NULL | SKIP_RECORD
+    default_value: Any = None
+
+
+@dataclass
 class Adapter:
     """Complete adapter definition."""
     metadata: AdapterMetadata
@@ -184,6 +203,77 @@ class Adapter:
     mappings: dict[str, str]
     transforms: dict[str, dict[str, str]] = field(default_factory=dict)
     defaults: dict[str, Any] = field(default_factory=dict)
+    field_options: dict[str, FieldOptions] = field(default_factory=dict)
+    adapter_hash: str = ""
+
+
+@dataclass
+class MappingErrorRecord:
+    """A single mapping error."""
+    record_type: str
+    record_index: int
+    field: str
+    error: str
+    source_path: Optional[str] = None
+    raw_value: Optional[str] = None
+
+
+@dataclass
+class Provenance:
+    """Provenance metadata for mapped bundle."""
+    adapter_name: str
+    adapter_version: str
+    adapter_hash: str
+    source_system: str
+    source_file_hash: Optional[str] = None
+    ingested_at: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "adapter_name": self.adapter_name,
+            "adapter_version": self.adapter_version,
+            "adapter_hash": self.adapter_hash,
+            "source_system": self.source_system,
+            "source_file_hash": self.source_file_hash,
+            "ingested_at": self.ingested_at,
+        }
+
+
+@dataclass
+class MappingResult:
+    """Result of a mapping operation."""
+    bundle: dict
+    provenance: Provenance
+    errors: list[MappingErrorRecord] = field(default_factory=list)
+    records_processed: int = 0
+    records_mapped: int = 0
+    records_skipped: int = 0
+
+    def to_summary(self) -> dict:
+        return {
+            "records_processed": self.records_processed,
+            "records_mapped": self.records_mapped,
+            "records_skipped": self.records_skipped,
+            "error_count": len(self.errors),
+        }
+
+
+# ============================================================================
+# ADAPTER HASH COMPUTATION
+# ============================================================================
+
+def compute_adapter_hash(adapter_dict: dict) -> str:
+    """
+    Compute deterministic hash of adapter.
+
+    Uses canonical JSON representation (sorted keys, no whitespace).
+    """
+    # Remove any runtime-computed fields
+    clean_dict = {k: v for k, v in adapter_dict.items()}
+
+    # Canonical JSON: sorted keys, no extra whitespace
+    canonical = json.dumps(clean_dict, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
 
 # ============================================================================
@@ -198,7 +288,7 @@ def load_adapter(path: str | Path) -> Adapter:
         path: Path to adapter YAML file
 
     Returns:
-        Validated Adapter instance
+        Validated Adapter instance with computed adapter_hash
 
     Raises:
         AdapterError: If file not found
@@ -230,9 +320,9 @@ def _validate_adapter(data: dict) -> Adapter:
 
     adapter_meta = data["adapter"]
     required_meta = ["name", "vendor", "version", "input_format"]
-    for field in required_meta:
-        if field not in adapter_meta:
-            raise AdapterValidationError(f"Missing adapter.{field}")
+    for field_name in required_meta:
+        if field_name not in adapter_meta:
+            raise AdapterValidationError(f"Missing adapter.{field_name}")
 
     metadata = AdapterMetadata(
         name=adapter_meta["name"],
@@ -271,9 +361,9 @@ def _validate_adapter(data: dict) -> Adapter:
         "CaseMeta.primary_entity_id",
     ]
 
-    for field in required_case_meta:
-        if field not in mappings:
-            raise AdapterValidationError(f"Missing required mapping: {field}")
+    for field_name in required_case_meta:
+        if field_name not in mappings:
+            raise AdapterValidationError(f"Missing required mapping: {field_name}")
 
     # Validate mapping paths
     for target, source in mappings.items():
@@ -293,12 +383,27 @@ def _validate_adapter(data: dict) -> Adapter:
     # Validate defaults (optional)
     defaults = data.get("defaults", {})
 
+    # Parse field_options (optional)
+    field_options = {}
+    if "field_options" in data:
+        for field_name, opts in data["field_options"].items():
+            field_options[field_name] = FieldOptions(
+                required=opts.get("required", False),
+                on_missing=opts.get("on_missing", "NULL"),
+                default_value=opts.get("default_value"),
+            )
+
+    # Compute adapter hash
+    adapter_hash = compute_adapter_hash(data)
+
     return Adapter(
         metadata=metadata,
         roots=roots,
         mappings=mappings,
         transforms=transforms,
         defaults=defaults,
+        field_options=field_options,
+        adapter_hash=adapter_hash,
     )
 
 
@@ -313,29 +418,46 @@ class CaseMapper:
     Pure transformation - no business logic.
     """
 
-    def __init__(self, adapter: Adapter):
+    def __init__(self, adapter: Adapter, max_errors: int = 0):
         """
         Initialize mapper with an adapter.
 
         Args:
             adapter: Validated Adapter instance
+            max_errors: Maximum errors before aborting (0 = no limit)
         """
         self.adapter = adapter
+        self.max_errors = max_errors
+        self._errors: list[MappingErrorRecord] = []
+        self._records_processed = 0
+        self._records_mapped = 0
+        self._records_skipped = 0
 
-    def map(self, input_data: dict) -> dict:
+    def map(
+        self,
+        input_data: dict,
+        source_file_hash: Optional[str] = None,
+    ) -> MappingResult:
         """
         Map input data to CaseBundle format.
 
         Args:
             input_data: Vendor export data (parsed JSON/dict)
+            source_file_hash: Optional SHA256 of source file for provenance
 
         Returns:
-            CaseBundle-compatible dictionary
+            MappingResult with bundle, provenance, and any errors
 
         Raises:
-            MappingError: If mapping fails
+            MappingError: If mapping fails (when not in error collection mode)
             RequiredFieldError: If required field is missing
         """
+        # Reset counters
+        self._errors = []
+        self._records_processed = 0
+        self._records_mapped = 0
+        self._records_skipped = 0
+
         bundle = {
             "meta": {},
             "individuals": [],
@@ -391,7 +513,54 @@ class CaseMapper:
 
         bundle["events"] = events
 
-        return bundle
+        # Create provenance
+        provenance = Provenance(
+            adapter_name=self.adapter.metadata.name,
+            adapter_version=self.adapter.metadata.version,
+            adapter_hash=self.adapter.adapter_hash,
+            source_system=self.adapter.metadata.vendor,
+            source_file_hash=source_file_hash,
+            ingested_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # Add provenance to bundle meta
+        bundle["meta"]["provenance"] = provenance.to_dict()
+
+        return MappingResult(
+            bundle=bundle,
+            provenance=provenance,
+            errors=self._errors,
+            records_processed=self._records_processed,
+            records_mapped=self._records_mapped,
+            records_skipped=self._records_skipped,
+        )
+
+    def _add_error(
+        self,
+        record_type: str,
+        record_index: int,
+        field_name: str,
+        error: str,
+        source_path: Optional[str] = None,
+        raw_value: Optional[str] = None,
+    ) -> bool:
+        """
+        Add an error and check if we should abort.
+
+        Returns True if we should continue, False if max_errors exceeded.
+        """
+        self._errors.append(MappingErrorRecord(
+            record_type=record_type,
+            record_index=record_index,
+            field=field_name,
+            error=error,
+            source_path=source_path,
+            raw_value=str(raw_value)[:100] if raw_value else None,  # Truncate for safety
+        ))
+
+        if self.max_errors > 0 and len(self._errors) >= self.max_errors:
+            return False
+        return True
 
     def _extract_root(self, data: dict, root_name: str) -> Optional[list]:
         """Extract data from a root path."""
@@ -447,8 +616,10 @@ class CaseMapper:
         """Map customer data to Individual format."""
         individuals = []
 
-        for customer in customers:
+        for idx, customer in enumerate(customers):
+            self._records_processed += 1
             individual = {}
+            skip_record = False
 
             for target, source in self.adapter.mappings.items():
                 if not target.startswith("Individual."):
@@ -458,11 +629,32 @@ class CaseMapper:
                 # For array items, source path is relative
                 value = self._extract_relative_value(customer, source)
 
+                # Check field options
+                opts = self.adapter.field_options.get(target, FieldOptions())
+
+                if value is None:
+                    if opts.required or opts.on_missing == "ERROR":
+                        if not self._add_error("individual", idx, field_name,
+                                               "required field missing", source):
+                            raise RequiredFieldError(f"Too many errors")
+                        if opts.on_missing == "SKIP_RECORD":
+                            skip_record = True
+                            break
+                        continue
+                    elif opts.on_missing == "DEFAULT":
+                        value = opts.default_value
+                    elif opts.on_missing == "NULL":
+                        continue  # Skip this field
+
                 if value is not None:
                     value = self._apply_transform(field_name, value)
                     if field_name in ("pep_status", "risk_rating", "sensitivity"):
                         value = str(value).lower()
                     individual[field_name] = value
+
+            if skip_record:
+                self._records_skipped += 1
+                continue
 
             # Apply defaults
             for default_key, default_value in self.adapter.defaults.items():
@@ -473,6 +665,7 @@ class CaseMapper:
 
             if individual.get("id"):
                 individuals.append(individual)
+                self._records_mapped += 1
 
         return individuals
 
@@ -480,8 +673,10 @@ class CaseMapper:
         """Map account data to Account format."""
         result = []
 
-        for account in accounts:
+        for idx, account in enumerate(accounts):
+            self._records_processed += 1
             mapped = {}
+            skip_record = False
 
             for target, source in self.adapter.mappings.items():
                 if not target.startswith("Account."):
@@ -490,11 +685,32 @@ class CaseMapper:
                 field_name = target.replace("Account.", "")
                 value = self._extract_relative_value(account, source)
 
+                # Check field options
+                opts = self.adapter.field_options.get(target, FieldOptions())
+
+                if value is None:
+                    if opts.required or opts.on_missing == "ERROR":
+                        if not self._add_error("account", idx, field_name,
+                                               "required field missing", source):
+                            raise RequiredFieldError(f"Too many errors")
+                        if opts.on_missing == "SKIP_RECORD":
+                            skip_record = True
+                            break
+                        continue
+                    elif opts.on_missing == "DEFAULT":
+                        value = opts.default_value
+                    elif opts.on_missing == "NULL":
+                        continue
+
                 if value is not None:
                     value = self._apply_transform(field_name, value)
                     if field_name in ("account_type", "status", "sensitivity"):
                         value = str(value).lower()
                     mapped[field_name] = value
+
+            if skip_record:
+                self._records_skipped += 1
+                continue
 
             # Apply defaults
             for default_key, default_value in self.adapter.defaults.items():
@@ -505,6 +721,7 @@ class CaseMapper:
 
             if mapped.get("id"):
                 result.append(mapped)
+                self._records_mapped += 1
 
         return result
 
@@ -512,8 +729,10 @@ class CaseMapper:
         """Map transaction data to TransactionEvent format."""
         events = []
 
-        for txn in transactions:
+        for idx, txn in enumerate(transactions):
+            self._records_processed += 1
             event = {"event_type": "transaction"}
+            skip_record = False
 
             for target, source in self.adapter.mappings.items():
                 if not target.startswith("TransactionEvent."):
@@ -522,11 +741,32 @@ class CaseMapper:
                 field_name = target.replace("TransactionEvent.", "")
                 value = self._extract_relative_value(txn, source)
 
+                # Check field options
+                opts = self.adapter.field_options.get(target, FieldOptions())
+
+                if value is None:
+                    if opts.required or opts.on_missing == "ERROR":
+                        if not self._add_error("transaction", idx, field_name,
+                                               "required field missing", source):
+                            raise RequiredFieldError(f"Too many errors")
+                        if opts.on_missing == "SKIP_RECORD":
+                            skip_record = True
+                            break
+                        continue
+                    elif opts.on_missing == "DEFAULT":
+                        value = opts.default_value
+                    elif opts.on_missing == "NULL":
+                        continue
+
                 if value is not None:
                     value = self._apply_transform(field_name, value)
                     if field_name in ("direction", "payment_method", "sensitivity"):
                         value = str(value).lower()
                     event[field_name] = value
+
+            if skip_record:
+                self._records_skipped += 1
+                continue
 
             # Apply defaults
             for default_key, default_value in self.adapter.defaults.items():
@@ -537,6 +777,7 @@ class CaseMapper:
 
             if event.get("id"):
                 events.append(event)
+                self._records_mapped += 1
 
         return events
 
@@ -544,8 +785,10 @@ class CaseMapper:
         """Map alert data to AlertEvent format."""
         events = []
 
-        for alert in alerts:
+        for idx, alert in enumerate(alerts):
+            self._records_processed += 1
             event = {"event_type": "alert"}
+            skip_record = False
 
             for target, source in self.adapter.mappings.items():
                 if not target.startswith("AlertEvent."):
@@ -554,11 +797,32 @@ class CaseMapper:
                 field_name = target.replace("AlertEvent.", "")
                 value = self._extract_relative_value(alert, source)
 
+                # Check field options
+                opts = self.adapter.field_options.get(target, FieldOptions())
+
+                if value is None:
+                    if opts.required or opts.on_missing == "ERROR":
+                        if not self._add_error("alert", idx, field_name,
+                                               "required field missing", source):
+                            raise RequiredFieldError(f"Too many errors")
+                        if opts.on_missing == "SKIP_RECORD":
+                            skip_record = True
+                            break
+                        continue
+                    elif opts.on_missing == "DEFAULT":
+                        value = opts.default_value
+                    elif opts.on_missing == "NULL":
+                        continue
+
                 if value is not None:
                     value = self._apply_transform(field_name, value)
                     if field_name in ("alert_type", "sensitivity"):
                         value = str(value).lower()
                     event[field_name] = value
+
+            if skip_record:
+                self._records_skipped += 1
+                continue
 
             # Apply defaults
             for default_key, default_value in self.adapter.defaults.items():
@@ -569,6 +833,7 @@ class CaseMapper:
 
             if event.get("id"):
                 events.append(event)
+                self._records_mapped += 1
 
         return events
 
@@ -576,8 +841,10 @@ class CaseMapper:
         """Map screening data to ScreeningEvent format."""
         events = []
 
-        for screening in screenings:
+        for idx, screening in enumerate(screenings):
+            self._records_processed += 1
             event = {"event_type": "screening"}
+            skip_record = False
 
             for target, source in self.adapter.mappings.items():
                 if not target.startswith("ScreeningEvent."):
@@ -586,11 +853,32 @@ class CaseMapper:
                 field_name = target.replace("ScreeningEvent.", "")
                 value = self._extract_relative_value(screening, source)
 
+                # Check field options
+                opts = self.adapter.field_options.get(target, FieldOptions())
+
+                if value is None:
+                    if opts.required or opts.on_missing == "ERROR":
+                        if not self._add_error("screening", idx, field_name,
+                                               "required field missing", source):
+                            raise RequiredFieldError(f"Too many errors")
+                        if opts.on_missing == "SKIP_RECORD":
+                            skip_record = True
+                            break
+                        continue
+                    elif opts.on_missing == "DEFAULT":
+                        value = opts.default_value
+                    elif opts.on_missing == "NULL":
+                        continue
+
                 if value is not None:
                     value = self._apply_transform(field_name, value)
                     if field_name in ("screening_type", "disposition", "sensitivity"):
                         value = str(value).lower()
                     event[field_name] = value
+
+            if skip_record:
+                self._records_skipped += 1
+                continue
 
             # Apply defaults
             for default_key, default_value in self.adapter.defaults.items():
@@ -605,6 +893,7 @@ class CaseMapper:
 
             if event.get("id"):
                 events.append(event)
+                self._records_mapped += 1
 
         return events
 
@@ -718,7 +1007,9 @@ def map_case(
     input_path: str | Path,
     adapter_path: str | Path,
     output_path: Optional[str | Path] = None,
-) -> dict:
+    max_errors: int = 0,
+    error_file: Optional[str | Path] = None,
+) -> MappingResult:
     """
     Map a vendor export to CaseBundle format.
 
@@ -726,9 +1017,11 @@ def map_case(
         input_path: Path to vendor export file (JSON)
         adapter_path: Path to adapter YAML file
         output_path: Optional path to write output JSON
+        max_errors: Maximum errors before aborting (0 = no limit)
+        error_file: Optional path to write errors JSONL
 
     Returns:
-        CaseBundle dictionary
+        MappingResult with bundle, provenance, and errors
 
     Raises:
         AdapterError: If adapter is invalid
@@ -743,20 +1036,39 @@ def map_case(
         raise AdapterError(f"Input file not found: {input_path}")
 
     with open(input_path, "r") as f:
-        input_data = json.load(f)
+        input_bytes = f.read()
+        input_data = json.loads(input_bytes)
+
+    # Compute source file hash
+    source_file_hash = hashlib.sha256(input_bytes.encode('utf-8')).hexdigest()
 
     # Map
-    mapper = CaseMapper(adapter)
-    bundle = mapper.map(input_data)
+    mapper = CaseMapper(adapter, max_errors=max_errors)
+    result = mapper.map(input_data, source_file_hash=source_file_hash)
 
     # Write output if requested
     if output_path:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
-            json.dump(bundle, f, indent=2)
+            json.dump(result.bundle, f, indent=2)
 
-    return bundle
+    # Write errors if requested
+    if error_file and result.errors:
+        error_file = Path(error_file)
+        error_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(error_file, "w") as f:
+            for err in result.errors:
+                f.write(json.dumps({
+                    "record_type": err.record_type,
+                    "record_index": err.record_index,
+                    "field": err.field,
+                    "error": err.error,
+                    "source_path": err.source_path,
+                    "raw_value": err.raw_value,
+                }) + "\n")
+
+    return result
 
 
 def validate_adapter(path: str | Path) -> tuple[bool, list[str]]:

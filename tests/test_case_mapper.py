@@ -219,7 +219,8 @@ def test_map_case_meta(adapter_yaml_file, minimal_input):
     adapter = load_adapter(adapter_yaml_file)
     mapper = CaseMapper(adapter)
 
-    bundle = mapper.map(minimal_input)
+    result = mapper.map(minimal_input)
+    bundle = result.bundle
 
     assert bundle["meta"]["id"] == "TEST-001"
     assert bundle["meta"]["case_type"] == "aml_alert"
@@ -232,7 +233,8 @@ def test_map_individuals(adapter_yaml_file, minimal_input):
     adapter = load_adapter(adapter_yaml_file)
     mapper = CaseMapper(adapter)
 
-    bundle = mapper.map(minimal_input)
+    result = mapper.map(minimal_input)
+    bundle = result.bundle
 
     assert len(bundle["individuals"]) == 1
     ind = bundle["individuals"][0]
@@ -246,7 +248,8 @@ def test_map_literal_value(adapter_yaml_file, minimal_input):
     adapter = load_adapter(adapter_yaml_file)
     mapper = CaseMapper(adapter)
 
-    bundle = mapper.map(minimal_input)
+    result = mapper.map(minimal_input)
+    bundle = result.bundle
 
     # case_type is mapped as "!literal aml_alert"
     assert bundle["meta"]["case_type"] == "aml_alert"
@@ -295,9 +298,9 @@ def test_map_with_transforms(tmp_path):
 
     adapter = load_adapter(file_path)
     mapper = CaseMapper(adapter)
-    bundle = mapper.map(input_data)
+    result = mapper.map(input_data)
 
-    assert bundle["meta"]["case_type"] == "aml_alert"
+    assert result.bundle["meta"]["case_type"] == "aml_alert"
 
 
 def test_map_with_defaults(tmp_path):
@@ -340,10 +343,10 @@ def test_map_with_defaults(tmp_path):
 
     adapter = load_adapter(file_path)
     mapper = CaseMapper(adapter)
-    bundle = mapper.map(input_data)
+    result = mapper.map(input_data)
 
-    assert bundle["meta"]["sensitivity"] == "confidential"
-    assert bundle["meta"]["access_tags"] == ["aml"]
+    assert result.bundle["meta"]["sensitivity"] == "confidential"
+    assert result.bundle["meta"]["access_tags"] == ["aml"]
 
 
 # ============================================================================
@@ -378,7 +381,8 @@ def test_map_actimize_example():
 
     adapter = load_adapter(adapter_path)
     mapper = CaseMapper(adapter)
-    bundle = mapper.map(input_data)
+    result = mapper.map(input_data)
+    bundle = result.bundle
 
     # Verify structure
     assert bundle["meta"]["id"] == "ACT-2026-00789"
@@ -396,7 +400,8 @@ def test_map_case_high_level_api():
     if not adapter_path.exists() or not input_path.exists():
         pytest.skip("Actimize adapter or example not found")
 
-    bundle = map_case(input_path, adapter_path)
+    result = map_case(input_path, adapter_path)
+    bundle = result.bundle
 
     assert bundle["meta"]["id"] == "ACT-2026-00789"
     assert "individuals" in bundle
@@ -412,7 +417,8 @@ def test_bundle_has_required_sections(adapter_yaml_file, minimal_input):
     """Test bundle has all required sections."""
     adapter = load_adapter(adapter_yaml_file)
     mapper = CaseMapper(adapter)
-    bundle = mapper.map(minimal_input)
+    result = mapper.map(minimal_input)
+    bundle = result.bundle
 
     required_sections = [
         "meta",
@@ -433,7 +439,8 @@ def test_bundle_meta_has_required_fields(adapter_yaml_file, minimal_input):
     """Test bundle meta has required fields."""
     adapter = load_adapter(adapter_yaml_file)
     mapper = CaseMapper(adapter)
-    bundle = mapper.map(minimal_input)
+    result = mapper.map(minimal_input)
+    bundle = result.bundle
 
     meta = bundle["meta"]
     assert "id" in meta

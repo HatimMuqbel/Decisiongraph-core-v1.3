@@ -95,6 +95,7 @@ from .case_mapper import (
     AdapterError,
     AdapterValidationError,
     MappingError,
+    MappingResult,
 )
 
 
@@ -1510,6 +1511,8 @@ def cmd_map_case(args):
     input_path = Path(args.input)
     adapter_path = Path(args.adapter)
     output_path = Path(args.out) if args.out else None
+    max_errors = getattr(args, 'max_errors', 0) or 0
+    error_file = getattr(args, 'error_file', None)
 
     # Validate paths
     if not input_path.exists():
@@ -1527,58 +1530,69 @@ def cmd_map_case(args):
         print_success(f"Adapter: {adapter.metadata.name} v{adapter.metadata.version}")
         print_kv("Vendor", adapter.metadata.vendor)
         print_kv("Format", adapter.metadata.input_format)
+        print_kv("Adapter Hash", adapter.adapter_hash[:16] + "...")
 
-        # Load input
-        print_info(f"Loading input: {input_path.name}")
-        with open(input_path, "r") as f:
-            input_data = json.load(f)
-        print_success("Input loaded")
-
-        # Map
-        print_info("Mapping to CaseBundle format...")
-        from .case_mapper import CaseMapper
-        mapper = CaseMapper(adapter)
-        bundle = mapper.map(input_data)
+        # Map using the high-level API
+        print_info(f"Loading and mapping: {input_path.name}")
+        result = map_case(
+            input_path=input_path,
+            adapter_path=adapter_path,
+            output_path=output_path,
+            max_errors=max_errors,
+            error_file=error_file,
+        )
+        print_success("Mapping complete")
 
         # Validate output bundle
         print_info("Validating output bundle...")
-        from .case_schema import CaseBundle
-        parsed_bundle = parse_case_bundle_dict(bundle)
-        errors = validate_case_bundle(parsed_bundle)
+        parsed_bundle = parse_case_bundle_dict(result.bundle)
+        validation_errors = validate_case_bundle(parsed_bundle)
 
-        if errors:
-            print_warning(f"Output bundle has {len(errors)} validation warning(s):")
-            for error in errors[:5]:
+        if validation_errors:
+            print_warning(f"Output bundle has {len(validation_errors)} validation warning(s):")
+            for error in validation_errors[:5]:
                 print(f"  {Colors.YELLOW}[!]{Colors.END} {error}")
-            if len(errors) > 5:
-                print(f"  ... and {len(errors) - 5} more")
+            if len(validation_errors) > 5:
+                print(f"  ... and {len(validation_errors) - 5} more")
         else:
             print_success("Output bundle is valid")
 
-        # Summary
+        # Mapping summary
         print()
         print(f"{Colors.BOLD}Mapping Summary:{Colors.END}")
-        print_kv("Case ID", bundle["meta"].get("id", "N/A"))
-        print_kv("Case Type", bundle["meta"].get("case_type", "N/A"))
-        print_kv("Jurisdiction", bundle["meta"].get("jurisdiction", "N/A"))
+        print_kv("Case ID", result.bundle["meta"].get("id", "N/A"))
+        print_kv("Case Type", result.bundle["meta"].get("case_type", "N/A"))
+        print_kv("Jurisdiction", result.bundle["meta"].get("jurisdiction", "N/A"))
         print()
-        print_kv("Individuals", str(len(bundle.get("individuals", []))))
-        print_kv("Accounts", str(len(bundle.get("accounts", []))))
-        print_kv("Relationships", str(len(bundle.get("relationships", []))))
-        print_kv("Events", str(len(bundle.get("events", []))))
+        print_kv("Records Processed", str(result.records_processed))
+        print_kv("Records Mapped", str(result.records_mapped))
+        print_kv("Records Skipped", str(result.records_skipped))
+        if result.errors:
+            print_kv("Mapping Errors", str(len(result.errors)))
+        print()
+        print_kv("Individuals", str(len(result.bundle.get("individuals", []))))
+        print_kv("Accounts", str(len(result.bundle.get("accounts", []))))
+        print_kv("Relationships", str(len(result.bundle.get("relationships", []))))
+        print_kv("Events", str(len(result.bundle.get("events", []))))
 
-        # Write output
+        # Provenance
+        print()
+        print(f"{Colors.BOLD}Provenance:{Colors.END}")
+        print_kv("Adapter", f"{result.provenance.adapter_name} v{result.provenance.adapter_version}")
+        print_kv("Adapter Hash", result.provenance.adapter_hash[:16] + "...")
+        print_kv("Source System", result.provenance.source_system)
+        if result.provenance.source_file_hash:
+            print_kv("Source File Hash", result.provenance.source_file_hash[:16] + "...")
+        print_kv("Ingested At", result.provenance.ingested_at)
+
+        # Output location
         if output_path:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
-                json.dump(bundle, f, indent=2)
             print()
             print_success(f"Bundle written to: {output_path}")
-        else:
-            # Print to stdout
-            print()
-            print(f"{Colors.BOLD}Output:{Colors.END}")
-            print(json.dumps(bundle, indent=2))
+
+        # Error file
+        if error_file and result.errors:
+            print_success(f"Errors written to: {error_file}")
 
         return ExitCode.PASS
 
@@ -1863,6 +1877,9 @@ Examples:
     map_parser.add_argument("--input", "-i", required=True, help="Vendor export file (JSON)")
     map_parser.add_argument("--adapter", "-a", required=True, help="Adapter mapping YAML file")
     map_parser.add_argument("--out", "-o", help="Output CaseBundle JSON file (optional, prints to stdout if not specified)")
+    map_parser.add_argument("--max-errors", type=int, default=0,
+                           help="Maximum mapping errors before aborting (0 = no limit)")
+    map_parser.add_argument("--error-file", help="Write mapping errors to JSONL file")
     map_parser.set_defaults(func=cmd_map_case)
 
     # validate-adapter

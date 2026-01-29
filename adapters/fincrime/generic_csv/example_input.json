@@ -1,0 +1,76 @@
+{
+  "case": {
+    "id": "CSV-2026-001",
+    "jurisdiction": "CA",
+    "customer_id": "CUST-001",
+    "created_date": "2026-01-28T10:00:00Z",
+    "status": "OPEN",
+    "priority": "2"
+  },
+  "customers": [
+    {
+      "CUST_ID": "CUST-001",
+      "FIRST_NAME": "Sarah",
+      "LAST_NAME": "Johnson",
+      "DOB": "1985-06-15",
+      "NATIONALITY": "CA",
+      "COUNTRY": "CA",
+      "PEP": "N",
+      "RISK": "M"
+    }
+  ],
+  "accounts": [
+    {
+      "ACCT_ID": "ACCT-001",
+      "ACCT_NUM": "****1234",
+      "ACCT_TYPE": "CHQ",
+      "CURRENCY": "CAD",
+      "STATUS": "A",
+      "OPEN_DATE": "2020-03-15"
+    }
+  ],
+  "transactions": [
+    {
+      "TXN_ID": "TXN-001",
+      "TXN_DATE": "2026-01-20T10:30:00Z",
+      "AMOUNT": "8500.00",
+      "CURRENCY": "CAD",
+      "DIR": "CR",
+      "CPTY_NAME": "ABC Corp",
+      "CPTY_COUNTRY": "US",
+      "CHANNEL": "WIRE",
+      "NARRATIVE": "Invoice payment"
+    },
+    {
+      "TXN_ID": "TXN-002",
+      "TXN_DATE": "2026-01-22T14:15:00Z",
+      "AMOUNT": "9800.00",
+      "CURRENCY": "CAD",
+      "DIR": "CR",
+      "CPTY_NAME": null,
+      "CPTY_COUNTRY": null,
+      "CHANNEL": "CSH",
+      "NARRATIVE": "Cash deposit"
+    },
+    {
+      "TXN_ID": "TXN-003",
+      "TXN_DATE": "2026-01-25T09:00:00Z",
+      "AMOUNT": "15000.00",
+      "CURRENCY": "CAD",
+      "DIR": "DR",
+      "CPTY_NAME": "XYZ Trading",
+      "CPTY_COUNTRY": "PA",
+      "CHANNEL": "WT",
+      "NARRATIVE": "International transfer"
+    }
+  ],
+  "alerts": [
+    {
+      "ALERT_ID": "ALERT-001",
+      "ALERT_DATE": "2026-01-27T08:00:00Z",
+      "ALERT_TYPE": "STRUCTURING",
+      "RULE_ID": "RULE-001",
+      "DESCRIPTION": "Potential cash structuring detected"
+    }
+  ]
+}

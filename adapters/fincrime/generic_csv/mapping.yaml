@@ -1,0 +1,204 @@
+# ============================================================================
+# Generic CSV Transaction Export Adapter
+# ============================================================================
+# Maps generic CSV exports (converted to JSON) to DecisionGraph CaseBundle.
+# Designed for mid-market banks, credit unions, and in-house TM systems.
+# Version: 1.0.0
+# ============================================================================
+
+adapter:
+  name: generic_csv_v1
+  vendor: Generic CSV
+  version: 1.0.0
+  input_format: json
+  description: Maps generic CSV transaction exports (JSON-converted) to CaseBundle
+
+# ============================================================================
+# ROOT SELECTORS
+# ============================================================================
+# Assumes CSV files have been converted to JSON with this structure:
+# { "case": {...}, "customers": [...], "transactions": [...], "alerts": [...] }
+
+roots:
+  case: $.case
+  customers: $.customers[*]
+  accounts: $.accounts[*]
+  transactions: $.transactions[*]
+  alerts: $.alerts[*]
+
+# ============================================================================
+# FIELD MAPPINGS
+# ============================================================================
+# Maps common CSV column names to CaseBundle fields.
+# Adjust column names to match your specific export format.
+
+mappings:
+  # -------------------------------------------------------------------------
+  # Case Metadata (from case object)
+  # -------------------------------------------------------------------------
+  CaseMeta.case_id: $.case.id
+  CaseMeta.case_type: "!literal aml_alert"
+  CaseMeta.case_phase: "!literal analysis"
+  CaseMeta.jurisdiction: $.case.jurisdiction
+  CaseMeta.created_at: $.case.created_date
+  CaseMeta.primary_entity_type: "!literal individual"
+  CaseMeta.primary_entity_id: $.case.customer_id
+  CaseMeta.status: $.case.status
+  CaseMeta.priority: $.case.priority
+
+  # -------------------------------------------------------------------------
+  # Individual (from customers CSV)
+  # -------------------------------------------------------------------------
+  Individual.id: $.CUST_ID
+  Individual.given_name: $.FIRST_NAME
+  Individual.family_name: $.LAST_NAME
+  Individual.date_of_birth: $.DOB
+  Individual.nationality: $.NATIONALITY
+  Individual.country_of_residence: $.COUNTRY
+  Individual.pep_status: $.PEP
+  Individual.risk_rating: $.RISK
+
+  # -------------------------------------------------------------------------
+  # Account (from accounts CSV)
+  # -------------------------------------------------------------------------
+  Account.id: $.ACCT_ID
+  Account.account_number: $.ACCT_NUM
+  Account.account_type: $.ACCT_TYPE
+  Account.currency: $.CURRENCY
+  Account.status: $.STATUS
+  Account.opened_date: $.OPEN_DATE
+
+  # -------------------------------------------------------------------------
+  # Transaction Event (from transactions CSV)
+  # -------------------------------------------------------------------------
+  TransactionEvent.id: $.TXN_ID
+  TransactionEvent.timestamp: $.TXN_DATE
+  TransactionEvent.amount: $.AMOUNT
+  TransactionEvent.currency: $.CURRENCY
+  TransactionEvent.direction: $.DIR
+  TransactionEvent.counterparty_name: $.CPTY_NAME
+  TransactionEvent.counterparty_country: $.CPTY_COUNTRY
+  TransactionEvent.payment_method: $.CHANNEL
+  TransactionEvent.description: $.NARRATIVE
+
+  # -------------------------------------------------------------------------
+  # Alert Event (from alerts CSV)
+  # -------------------------------------------------------------------------
+  AlertEvent.id: $.ALERT_ID
+  AlertEvent.timestamp: $.ALERT_DATE
+  AlertEvent.alert_type: $.ALERT_TYPE
+  AlertEvent.rule_id: $.RULE_ID
+  AlertEvent.description: $.DESCRIPTION
+
+# ============================================================================
+# VALUE TRANSFORMS
+# ============================================================================
+# Normalize common bank codes to CaseBundle enum values.
+
+transforms:
+  # Transaction direction
+  direction:
+    "CR": "inbound"
+    "DR": "outbound"
+    "C": "inbound"
+    "D": "outbound"
+    "IN": "inbound"
+    "OUT": "outbound"
+    "CREDIT": "inbound"
+    "DEBIT": "outbound"
+    "I": "inbound"
+    "O": "outbound"
+
+  # PEP status
+  pep_status:
+    "Y": "foreign"
+    "N": "none"
+    "YES": "foreign"
+    "NO": "none"
+    "1": "foreign"
+    "0": "none"
+    "DOM": "domestic"
+    "FOR": "foreign"
+    "HIO": "hio"
+
+  # Risk rating
+  risk_rating:
+    "1": "low"
+    "2": "low"
+    "3": "medium"
+    "4": "high"
+    "5": "high"
+    "L": "low"
+    "M": "medium"
+    "H": "high"
+    "LOW": "low"
+    "MEDIUM": "medium"
+    "MED": "medium"
+    "HIGH": "high"
+
+  # Account status
+  account_status:
+    "A": "active"
+    "C": "closed"
+    "F": "frozen"
+    "O": "active"
+    "OPEN": "active"
+    "ACTIVE": "active"
+    "CLOSED": "closed"
+    "FROZEN": "frozen"
+
+  # Payment channel
+  payment_method:
+    "WR": "wire"
+    "WIRE": "wire"
+    "WT": "wire"
+    "ACH": "ach"
+    "EFT": "eft"
+    "CASH": "cash"
+    "CSH": "cash"
+    "CHQ": "check"
+    "CHECK": "check"
+    "ATM": "atm"
+    "ABM": "atm"
+    "POS": "pos"
+    "ONL": "online"
+    "ONLINE": "online"
+    "MOB": "mobile"
+    "MOBILE": "mobile"
+
+  # Currency normalization
+  currency:
+    "CAN": "CAD"
+    "CAD$": "CAD"
+    "USD$": "USD"
+    "US$": "USD"
+
+  # Priority
+  priority:
+    "1": "critical"
+    "2": "high"
+    "3": "medium"
+    "4": "low"
+    "5": "low"
+    "P1": "critical"
+    "P2": "high"
+    "P3": "medium"
+    "P4": "low"
+
+# ============================================================================
+# DEFAULTS
+# ============================================================================
+# Default values for fields not present in CSV export.
+
+defaults:
+  CaseMeta.jurisdiction: "CA"
+  CaseMeta.sensitivity: "confidential"
+  CaseMeta.access_tags: ["aml", "fincrime"]
+  Individual.sensitivity: "confidential"
+  Individual.access_tags: ["aml"]
+  Account.sensitivity: "internal"
+  Account.access_tags: ["aml"]
+  TransactionEvent.sensitivity: "confidential"
+  TransactionEvent.access_tags: ["aml"]
+  AlertEvent.sensitivity: "confidential"
+  AlertEvent.access_tags: ["aml"]
