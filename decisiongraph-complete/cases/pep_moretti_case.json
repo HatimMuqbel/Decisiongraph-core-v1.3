@@ -1,0 +1,50 @@
+{
+  "header": {
+    "system_id": "ACT-PROD-RE-09",
+    "export_timestamp": "2026-01-24T20:25:12.445Z",
+    "batch_sequence": 998234
+  },
+  "alert_details": {
+    "external_id": "AMLE-P88-2026",
+    "work_item_type": "PEP_RE_ALERT",
+    "assigned_queue": "FIU_TIER_1_TORONTO",
+    "previous_analyst": null,
+    "hit_rule_ids": ["RULE_772", "RULE_104", "GEO_009"]
+  },
+  "customer_record": {
+    "SRC_SYS_KEY": "99283-IT-MOR",
+    "fullName": "Elena Moretti",
+    "salutation": "Hon.",
+    "c_type": "IND",
+    "residence_iso": "IT",
+    "onboarding_epoch": 1084147200,
+    "last_kyc_refresh": "2025-05-10",
+    "pep_flag": "Y",
+    "pep_category_code": "PEP_LEVEL_1_FOREIGN",
+    "moretti_estate_nexus": "YES",
+    "disclosure_docs_received": "TRUE"
+  },
+  "transaction_history_slice": [
+    {
+      "tx_id": "440029311",
+      "amt_native": 150000.00,
+      "currency_iso": "GBP",
+      "amt_base_cad": 265000.00,
+      "flow_direction": "OUT",
+      "method": "SWIFT_WIRE",
+      "target_name": "LONDON LEGAL PARTNERS",
+      "intermediary_bank": "INTESA_SAN_PAOLO_MILAN",
+      "status_code": "COMPLETED"
+    }
+  ],
+  "screening_payload": {
+    "provider": "REF_WORLD_CHECK",
+    "match_count": 1,
+    "top_match": {
+      "uid": "wc_99182",
+      "entity_type": "PERSON",
+      "risk_level": "CRITICAL",
+      "description": "Minister of Infrastructure - Italy"
+    }
+  }
+}

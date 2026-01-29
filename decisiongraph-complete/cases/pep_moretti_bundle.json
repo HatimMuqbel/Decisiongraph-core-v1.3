@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "id": "AMLE-P88-2026",
+    "case_type": "aml_alert",
+    "case_phase": "analysis",
+    "created_at": "2026-01-24T20:25:12.445Z",
+    "jurisdiction": "CA",
+    "primary_entity_type": "individual",
+    "primary_entity_id": "IND-99283",
+    "status": "open",
+    "priority": "high",
+    "sensitivity": "confidential",
+    "access_tags": ["fincrime", "pep"]
+  },
+  "individuals": [
+    {
+      "id": "IND-99283",
+      "given_name": "Elena",
+      "family_name": "Moretti",
+      "date_of_birth": "1968-05-15",
+      "nationality": "IT",
+      "country_of_residence": "IT",
+      "pep_status": "fpep",
+      "risk_rating": "high",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime", "pep"]
+    }
+  ],
+  "organizations": [],
+  "accounts": [
+    {
+      "id": "ACC-99283-001",
+      "account_number": "****8847",
+      "account_type": "current",
+      "currency": "CAD",
+      "status": "active",
+      "opened_date": "2004-05-10",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    }
+  ],
+  "relationships": [],
+  "evidence": [
+    {
+      "id": "EV-001",
+      "evidence_type": "government_id",
+      "description": "KYC refresh completed 2025-05-10 - Identity verified",
+      "collected_date": "2025-05-10",
+      "source": "kyc_vendor",
+      "verified": true,
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    },
+    {
+      "id": "EV-002",
+      "evidence_type": "pep_result",
+      "description": "Disclosure documents received - Moretti Estate nexus confirmed",
+      "collected_date": "2025-05-10",
+      "source": "compliance",
+      "verified": true,
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime", "pep"]
+    },
+    {
+      "id": "EV-003",
+      "evidence_type": "transaction_records",
+      "description": "SWIFT wire transfer documentation",
+      "collected_date": "2026-01-24",
+      "source": "bank_system",
+      "verified": true,
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    }
+  ],
+  "events": [
+    {
+      "id": "TXN-440029311",
+      "event_type": "transaction",
+      "timestamp": "2026-01-24T14:30:00Z",
+      "description": "SWIFT wire transfer to London Legal Partners via Intesa San Paolo Milan",
+      "amount": "265000.00",
+      "currency": "CAD",
+      "direction": "outbound",
+      "counterparty_name": "LONDON LEGAL PARTNERS",
+      "counterparty_country": "GB",
+      "payment_method": "swift_wire",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    },
+    {
+      "id": "ALT-001",
+      "event_type": "alert",
+      "timestamp": "2026-01-24T20:25:12.445Z",
+      "description": "PEP re-examination alert triggered",
+      "alert_type": "pep_re_alert",
+      "rule_id": "RULE_772",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    },
+    {
+      "id": "ALT-002",
+      "event_type": "alert",
+      "timestamp": "2026-01-24T20:25:12.445Z",
+      "description": "Large outbound wire transfer",
+      "alert_type": "large_wire",
+      "rule_id": "RULE_104",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    },
+    {
+      "id": "ALT-003",
+      "event_type": "alert",
+      "timestamp": "2026-01-24T20:25:12.445Z",
+      "description": "Geographic risk indicator - Italy",
+      "alert_type": "geo_risk",
+      "rule_id": "GEO_009",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime"]
+    },
+    {
+      "id": "SCR-001",
+      "event_type": "screening",
+      "timestamp": "2026-01-24T20:25:12.445Z",
+      "description": "World-Check screening match - Minister of Infrastructure Italy",
+      "screening_type": "pep",
+      "vendor": "REF_WORLD_CHECK",
+      "disposition": "confirmed",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime", "pep"]
+    }
+  ],
+  "assertions": [
+    {
+      "id": "ASS-001",
+      "subject_type": "individual",
+      "subject_id": "IND-99283",
+      "predicate": "pep_level",
+      "value": "PEP_LEVEL_1_FOREIGN",
+      "asserted_at": "2026-01-24T20:25:12.445Z",
+      "asserted_by": "screening_system",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime", "pep"]
+    },
+    {
+      "id": "ASS-002",
+      "subject_type": "individual",
+      "subject_id": "IND-99283",
+      "predicate": "pep_position",
+      "value": "Minister of Infrastructure - Italy",
+      "asserted_at": "2026-01-24T20:25:12.445Z",
+      "asserted_by": "screening_system",
+      "sensitivity": "confidential",
+      "access_tags": ["fincrime", "pep"]
+    },
+    {
+      "id": "ASS-003",
+      "subject_type": "individual",
+      "subject_id": "IND-99283",
+      "predicate": "relationship_tenure",
+      "value": "22",
+      "asserted_at": "2026-01-24T20:25:12.445Z",
+      "asserted_by": "system",
+      "sensitivity": "internal",
+      "access_tags": ["fincrime"]
+    },
+    {
+      "id": "ASS-004",
+      "subject_type": "individual",
+      "subject_id": "IND-99283",
+      "predicate": "documentation_status",
+      "value": "complete",
+      "asserted_at": "2025-05-10T00:00:00Z",
+      "asserted_by": "kyc_system",
+      "sensitivity": "internal",
+      "access_tags": ["fincrime"]
+    }
+  ]
+}
