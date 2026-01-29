@@ -1,0 +1,215 @@
+================================================================================
+TRANSACTION MONITORING ALERT REPORT (v2.1.1)
+Alert ID: CAN-STR-2026-X9
+================================================================================
+
+================================================================================
+  ESCALATE - STR FILING REQUIRED  
+================================================================================
+Alert ID:       CAN-STR-2026-X9
+Case ID:        struct-maple-2026-002
+Priority:       CRITICAL
+Jurisdiction:   CA (PCMLTFA)
+Processed:      2026-01-29
+
+================================================================================
+CASE SUMMARY
+================================================================================
+Customer:       Maple Leaf Global Trading Ltd.
+Customer ID:    CORP-MAPLE-77
+Type:           CORPORATE
+Industry:       Import/Export (HIGH RISK)
+Country:        CA
+Risk Rating:    HIGH
+Relationship:   2 months (NEW ACCOUNT)
+
+RED FLAGS IDENTIFIED:
+  * Very new account (2 months tenure)
+  * UBO discrepancy detected
+  * High-risk industry (Import/Export)
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+STRUCTURING PATTERN DETECTED:
+
+  Transaction 1:
+    Amount:     CAD 9,500.00
+    Time:       2026-01-28 09:00:00 UTC
+    Type:       Branch Cash Deposit
+    Method:     Cash
+
+  Transaction 2:
+    Amount:     CAD 9,200.00
+    Time:       2026-01-28 14:30:00 UTC
+    Type:       Branch Cash Deposit
+    Method:     Cash
+
+  TOTAL (24h):  CAD 18,700.00
+  THRESHOLD:    CAD 10,000 Large Cash Transaction Report (LCTR) threshold
+
+  PATTERN:      Cash deposits structured to remain below the CAD 10,000 LCTR threshold
+                within same business day = CLASSIC STRUCTURING
+
+================================================================================
+SCREENING RESULTS
+================================================================================
+Sanctions:      NO MATCH
+Adverse Media:  NONE FOUND
+PEP Status:     NOT PEP
+
+================================================================================
+6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)
+================================================================================
+
+CRITICAL RULES ENFORCED:
+  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)
+  * Cash signals EXCLUDED from wire transactions
+  * FORMING typologies = OBSERVE ONLY (not escalation)
+  * Status alone is NEVER sufficient for suspicion
+
+INSTRUMENT: CASH
+HARD STOP: NO
+OBLIGATIONS: 0 (none)
+INDICATORS: 3 (all corroborated)
+TYPOLOGY MATURITY: CONFIRMED
+MITIGATIONS: 1
+SUSPICION: ACTIVATED (intent + deception + pattern)
+TAXONOMY VERDICT: ESCALATE - STR FILING REQUIRED
+
+================================================================================
+DUAL-GATE DECISION SYSTEM
+================================================================================
+
+Constitutional Rule:
+"Escalation is prevented by default and permitted only when
+ suspicion is affirmatively proven."
+
+--------------------------------------------------------------------------------
+GATE 1: ZERO-FALSE-ESCALATION CHECKLIST
+Purpose: Are we ALLOWED to escalate?
+--------------------------------------------------------------------------------
+  Section A (FACT-LEVEL HARD STOP VERIFICATION): FAIL
+  Section B (INSTRUMENT & CONTEXT VALIDATION): PASS
+  Section C (REGULATORY OBLIGATION ISOLATION): PASS
+  Section D (INDICATOR CORROBORATION TEST): PASS
+  Section E (TYPOLOGY MATURITY GATE): PASS
+  Section F (MITIGATION OVERRIDE TEST): FAIL
+  Section G (SUSPICION DEFINITION TEST (FINAL GATE)): PASS
+
+  GATE 1 DECISION: PERMITTED
+  Rationale: All gates passed. Escalation permitted with documented basis.
+
+  GATE 1 DETAIL (PATH 2 - BEHAVIORAL SUSPICION):
+  -----------------------------------------------
+  Section A: FAIL - No fact-level hard stop (sanctions=NO_MATCH)
+  Section B: PASS - CASH instrument correctly classified
+  Section C: PASS - No obligations used as suspicion
+  Section D: PASS - 3 corroborated indicators (structuring, UBO, new account)
+  Section E: PASS - Typology CONFIRMED (structuring pattern)
+  Section F: FAIL - Mitigations insufficient (1 factor, new account)
+  Section G: PASS - Intent + Deception + Pattern all present
+
+--------------------------------------------------------------------------------
+GATE 2: POSITIVE STR CHECKLIST
+Purpose: Are we OBLIGATED to report?
+--------------------------------------------------------------------------------
+  Section 1 (LEGAL SUSPICION THRESHOLD): PASS
+  Section 2 (EVIDENCE QUALITY TEST): PASS
+  Section 3 (MITIGATION FAILURE CONFIRMATION): PASS
+  Section 4 (TYPOLOGY CONFIRMATION (OPTIONAL)): PASS
+  Section 5 (REGULATORY REASONABLENESS TEST (FINAL)): PASS
+
+  GATE 2 DECISION: REQUIRED
+  Rationale: All mandatory sections passed. STR filing is warranted.
+
+  GATE 2 DETAIL:
+  ---------------
+  Section 1: PASS - Legal suspicion threshold met
+    * Intent: Intent to evade statutory and internal transaction monitoring controls
+    * Deception: Deception through materially inconsistent beneficial ownership declarations
+    * Pattern: Sustained pattern of transactions structured below reporting thresholds
+  Section 2: PASS - Evidence is fact-based, specific, reproducible
+  Section 3: PASS - Mitigations fail to explain behavior
+    * Explanation insufficient: YES
+    * Docs unsupportive: YES
+    * History misaligned: YES (new account)
+  Section 4: PASS - Typology CONFIRMED (structuring)
+  Section 5: PASS - Regulator would expect STR
+
+--------------------------------------------------------------------------------
+STR RATIONALE STATEMENT (MANDATORY OUTPUT)
+--------------------------------------------------------------------------------
+  Based on the totality of evidence, reasonable grounds exist to suspect
+  that the transaction(s) may be related to money laundering or terrorist
+  financing. This determination is based on:
+
+  1. STRUCTURING PATTERN: Cash deposits structured to remain below the CAD 10,000 LCTR threshold.
+     Two cash deposits totaling CAD 18,700 executed within 5.5 hours,
+     each deliberately structured just below CAD 10,000.
+
+  2. INTENT TO EVADE: Intent to evade statutory cash reporting requirements under PCMLTFA.
+     Transaction amounts (CAD 9,500 and CAD 9,200) demonstrate clear
+     intent to avoid Large Cash Transaction Report requirements.
+
+  3. UBO DISCREPANCY: Declared UBO differs from incorporation documents or prior KYC record.
+     This indicates potential deception regarding beneficial ownership.
+
+  4. NEW ACCOUNT: Customer relationship is only 2 months old,
+     with no established pattern of legitimate activity to establish baseline.
+
+  5. HIGH-RISK PROFILE: Import/Export business with high inherent
+     ML/TF risk and insufficient mitigating documentation.
+
+  This report is submitted in accordance with PCMLTFA s.7.
+
+================================================================================
+ABSOLUTE RULES (NO EXCEPTIONS)
+================================================================================
+  X PEP status alone can NEVER escalate
+  X Cross-border alone can NEVER escalate
+  X Risk score alone can NEVER escalate
+  X 'High confidence' can NEVER override facts
+  X 'Compliance comfort' is NOT a reason
+
+  NOTE: This escalation is based on OBSERVED BEHAVIOR (structuring),
+        not status or score. The system correctly identified:
+        - Factual transaction pattern
+        - Confirmed typology (structuring)
+        - Failed mitigations
+        - Legal suspicion threshold met
+
+================================================================================
+FINAL DECISION
+================================================================================
+Verdict:        STR
+Action:         FILE_STR
+STR Required:   YES
+Escalation:     PERMITTED
+
+Rationale:
+  1. Gate 1 (Escalation): PERMITTED via Path 2 (Behavioral Suspicion)
+  2. Gate 2 (STR): REQUIRED - All mandatory sections passed
+  3. Typology: CONFIRMED (Structuring - CAD 10K threshold evasion)
+  4. Suspicion Elements: Intent + Deception + Sustained Pattern
+  5. Mitigations: INSUFFICIENT (new account, no SOF, UBO discrepancy)
+
+================================================================================
+REGULATORY COMPLIANCE
+================================================================================
+PCMLTFA s.7:    Reasonable grounds to suspect ML/TF
+FINTRAC:        STR filing required within 30 days
+STR Filing:     REQUIRED
+LCTR Required:  NO (individual cash transactions below CAD 10,000 threshold)
+                Note: Total CAD 18,700 in 24h indicates threshold evasion
+
+FINTRAC INDICATORS MATCHED:
+  * Transactions structured to avoid Large Cash Transaction Report requirements
+  * Multiple cash transactions in a single day just below CAD 10,000 threshold
+  * New customer with limited or no transaction history
+  * Beneficial ownership information contains discrepancies
+  * Customer operates in high-risk industry sector
+
+================================================================================
+END OF ALERT REPORT
+================================================================================
