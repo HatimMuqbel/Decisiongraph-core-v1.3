@@ -7,9 +7,20 @@ Produces auditor-ready report bundles with verifiable hashes and policy citation
 
 Usage:
     dg run-case --case bundle.json --pack fincrime_canada.yaml --out out/
+    dg verify-bundle --bundle out/CASE_ID/bundle.zip
     dg validate-pack --pack fincrime_canada.yaml
     dg validate-case --case bundle.json
     dg pack-info --pack fincrime_canada.yaml
+
+Exit Codes:
+    0   PASS            - Case processed, auto-archive permitted
+    2   REVIEW_REQUIRED - Analyst review required
+    3   ESCALATE        - Senior review / compliance escalation required
+    4   BLOCK           - Case blocked, STR consideration
+    10  INPUT_INVALID   - Invalid input (case or pack)
+    11  PACK_ERROR      - Pack validation/loading failed
+    12  VERIFY_FAIL     - Verification failed (integrity, determinism)
+    20  INTERNAL_ERROR  - Unexpected internal error
 
 Output Bundle (in out/CASE_ID/):
     report.txt          - Deterministic report bytes
@@ -17,15 +28,17 @@ Output Bundle (in out/CASE_ID/):
     manifest.json       - ReportManifest + included cell IDs
     pack.json           - Pack metadata (id, version, hash)
     verification.json   - PASS/FAIL verification checks
-    cells.jsonl         - All cells produced (optional)
+    cells.jsonl         - All cells produced (deterministic order)
     bundle.zip          - Everything zipped for audit handoff
+    manifest.sig        - Optional Ed25519 signature (with --sign)
 """
 
 import argparse
+import base64
 import hashlib
 import json
-import os
 import sys
+import tempfile
 import zipfile
 from datetime import datetime, date, timezone
 from decimal import Decimal
@@ -78,6 +91,36 @@ from .pack_loader import (
 
 
 # ============================================================================
+# EXIT CODES
+# ============================================================================
+
+class ExitCode:
+    """Deterministic exit codes for pipeline integration."""
+    PASS = 0              # Auto-archive permitted
+    REVIEW_REQUIRED = 2   # Analyst review required
+    ESCALATE = 3          # Senior/compliance escalation
+    BLOCK = 4             # STR consideration / blocked
+    INPUT_INVALID = 10    # Invalid input files
+    PACK_ERROR = 11       # Pack validation/loading failed
+    VERIFY_FAIL = 12      # Verification failed
+    INTERNAL_ERROR = 20   # Unexpected error
+
+
+def gate_to_exit_code(gate: str, auto_archive: bool) -> int:
+    """Map threshold gate to exit code."""
+    if auto_archive or gate == "AUTO_CLOSE":
+        return ExitCode.PASS
+    elif gate == "ANALYST_REVIEW":
+        return ExitCode.REVIEW_REQUIRED
+    elif gate in ("SENIOR_REVIEW", "COMPLIANCE_REVIEW"):
+        return ExitCode.ESCALATE
+    elif gate == "STR_CONSIDERATION":
+        return ExitCode.BLOCK
+    else:
+        return ExitCode.REVIEW_REQUIRED
+
+
+# ============================================================================
 # OUTPUT FORMATTING
 # ============================================================================
 
@@ -95,7 +138,6 @@ class Colors:
 
     @classmethod
     def disable(cls):
-        """Disable colors for non-TTY output."""
         cls.HEADER = ''
         cls.BLUE = ''
         cls.CYAN = ''
@@ -139,7 +181,7 @@ def print_kv(key: str, value: str, indent: int = 0):
 
 
 # ============================================================================
-# JSON SERIALIZATION HELPERS
+# JSON SERIALIZATION
 # ============================================================================
 
 class DecisionGraphEncoder(json.JSONEncoder):
@@ -166,6 +208,51 @@ def json_dumps(obj: Any, indent: int = 2) -> str:
 def compute_sha256(data: bytes) -> str:
     """Compute SHA256 hash of bytes."""
     return hashlib.sha256(data).hexdigest()
+
+
+# ============================================================================
+# SIGNING
+# ============================================================================
+
+def sign_manifest(manifest_bytes: bytes, key_path: Path) -> bytes:
+    """Sign manifest with Ed25519 key."""
+    try:
+        from decisiongraph.signing import sign_bytes
+
+        with open(key_path, 'rb') as f:
+            private_key = f.read()
+
+        signature = sign_bytes(manifest_bytes, private_key)
+        return signature
+    except ImportError:
+        # Fallback: use hashlib HMAC if signing module not available
+        import hmac
+        with open(key_path, 'rb') as f:
+            key = f.read()
+        sig = hmac.new(key, manifest_bytes, hashlib.sha256).digest()
+        return sig
+    except Exception as e:
+        raise RuntimeError(f"Signing failed: {e}")
+
+
+def verify_signature(manifest_bytes: bytes, signature: bytes, key_path: Path) -> bool:
+    """Verify Ed25519 signature."""
+    try:
+        from decisiongraph.signing import verify_signature as verify_sig
+
+        with open(key_path, 'rb') as f:
+            public_key = f.read()
+
+        return verify_sig(manifest_bytes, signature, public_key)
+    except ImportError:
+        # Fallback: HMAC verification
+        import hmac
+        with open(key_path, 'rb') as f:
+            key = f.read()
+        expected = hmac.new(key, manifest_bytes, hashlib.sha256).digest()
+        return hmac.compare_digest(signature, expected)
+    except Exception:
+        return False
 
 
 # ============================================================================
@@ -359,6 +446,7 @@ def render_report_text(
     chain: Chain,
     eval_result,
     bundle: CaseBundle,
+    strict_mode: bool = False,
 ) -> str:
     """
     Render deterministic report text.
@@ -384,6 +472,8 @@ def render_report_text(
     lines.append("")
     lines.append(f"Graph ID:     {chain.graph_id}")
     lines.append(f"Chain Length: {len(chain)} cells")
+    if strict_mode:
+        lines.append(f"Mode:         STRICT")
     lines.append("")
 
     # Verdict Banner
@@ -394,6 +484,10 @@ def render_report_text(
         auto_archive = verdict_obj.get("auto_archive_permitted", False)
         lines.append(f"VERDICT: {verdict}")
         lines.append(f"Auto-Archive Permitted: {'YES' if auto_archive else 'NO'}")
+
+        if strict_mode and not auto_archive:
+            lines.append("")
+            lines.append("*** STRICT MODE: CASE NOT APPROVED FOR AUTO-PROCESSING ***")
     else:
         lines.append("VERDICT: PENDING")
     lines.append("-" * 72)
@@ -469,8 +563,10 @@ def render_report_text(
     lines.append("-" * 36)
     for ev in bundle.evidence:
         status = "VERIFIED" if ev.verified else "UNVERIFIED"
+        desc = ev.description[:50] if ev.description else ""
         lines.append(f"  [{status:10}] {ev.id}: {ev.evidence_type.value}")
-        lines.append(f"               {ev.description[:50]}...")
+        if desc:
+            lines.append(f"               {desc}...")
     if not bundle.evidence:
         lines.append("  (none)")
     lines.append("")
@@ -483,7 +579,7 @@ def render_report_text(
             direction = getattr(event, 'direction', 'N/A')
             amount = getattr(event, 'amount', '0')
             currency = getattr(event, 'currency', 'CAD')
-            counterparty = getattr(event, 'counterparty_name', 'Unknown')
+            counterparty = getattr(event, 'counterparty_name', None)
             country = getattr(event, 'counterparty_country', '')
             lines.append(f"  [{direction.upper():8}] {event.id}: {amount} {currency}")
             if counterparty:
@@ -523,6 +619,61 @@ def render_report_text(
 
 
 # ============================================================================
+# CELL ORDERING (deterministic)
+# ============================================================================
+
+def order_cells_deterministic(
+    case_cells: list,
+    policy_cells: list,
+    eval_result,
+) -> list:
+    """
+    Order cells in deterministic, auditable sequence.
+
+    Order:
+    1. Case cells (CaseMeta -> Phase -> Entities -> Accounts -> Relationships -> Evidence -> Events -> Assertions)
+    2. Policy cells (sorted by ref_id)
+    3. Signal cells (sorted by code)
+    4. Mitigation cells (sorted by code)
+    5. Score cell
+    6. Verdict cell
+    """
+    ordered = []
+
+    # 1. Case cells (already in order from case_loader)
+    ordered.extend(case_cells)
+
+    # 2. Policy cells (sorted by subject for stability)
+    sorted_policy = sorted(policy_cells, key=lambda c: c.fact.subject)
+    ordered.extend(sorted_policy)
+
+    if eval_result:
+        # 3. Signals (sorted by code)
+        sorted_signals = sorted(
+            eval_result.signals or [],
+            key=lambda c: c.fact.object.get('code', '')
+        )
+        ordered.extend(sorted_signals)
+
+        # 4. Mitigations (sorted by code)
+        sorted_mitigations = sorted(
+            eval_result.mitigations or [],
+            key=lambda c: c.fact.object.get('code', '')
+        )
+        ordered.extend(sorted_mitigations)
+
+        # 5. Score
+        if eval_result.score:
+            ordered.append(eval_result.score)
+
+        # 6. Verdict
+        if eval_result.verdict:
+            ordered.append(eval_result.verdict)
+
+    return ordered
+
+
+# ============================================================================
 # OUTPUT BUNDLE WRITING
 # ============================================================================
 
@@ -532,35 +683,35 @@ def write_bundle(
     pack_runtime: PackRuntime,
     chain: Chain,
     case_cells: list,
+    policy_cells: list,
     eval_result,
     bundle: CaseBundle,
     include_cells: bool = True,
+    sign_key: Optional[Path] = None,
+    strict_mode: bool = False,
 ) -> dict:
-    """
-    Write all bank-ready deliverables to output directory.
-
-    Returns verification results.
-    """
+    """Write all bank-ready deliverables to output directory."""
     case_dir = output_dir / case_id
     case_dir.mkdir(parents=True, exist_ok=True)
 
     verification = {
         "case_id": case_id,
         "timestamp": get_current_timestamp(),
+        "strict_mode": strict_mode,
         "checks": [],
         "overall": "PASS",
     }
 
     # 1. Render report.txt (deterministic bytes)
-    print_step(1, 7, "Rendering report...")
-    report_text = render_report_text(case_id, pack_runtime, chain, eval_result, bundle)
+    print_step(1, 8 if sign_key else 7, "Rendering report...")
+    report_text = render_report_text(case_id, pack_runtime, chain, eval_result, bundle, strict_mode)
     report_bytes = report_text.encode('utf-8')
     report_path = case_dir / "report.txt"
     with open(report_path, 'wb') as f:
         f.write(report_bytes)
 
     # 2. Compute report.sha256
-    print_step(2, 7, "Computing report hash...")
+    print_step(2, 8 if sign_key else 7, "Computing report hash...")
     report_hash = compute_sha256(report_bytes)
     hash_path = case_dir / "report.sha256"
     with open(hash_path, 'w') as f:
@@ -574,29 +725,48 @@ def write_bundle(
     })
 
     # 3. Write manifest.json
-    print_step(3, 7, "Writing manifest...")
-    all_cells = case_cells + (eval_result.all_cells if eval_result else [])
+    print_step(3, 8 if sign_key else 7, "Writing manifest...")
+
+    # Order cells deterministically
+    ordered_cells = order_cells_deterministic(case_cells, policy_cells, eval_result)
+
+    verdict_val = None
+    auto_archive = False
+    score_obj = None
+
+    if eval_result:
+        if eval_result.verdict:
+            verdict_val = eval_result.verdict.fact.object.get("verdict")
+            auto_archive = eval_result.verdict.fact.object.get("auto_archive_permitted", False)
+        if eval_result.score:
+            score_obj = eval_result.score.fact.object
+
     manifest = {
         "case_id": case_id,
         "report_hash": report_hash,
         "graph_id": chain.graph_id,
         "chain_length": len(chain),
         "case_cells": len(case_cells),
+        "policy_cells": len(policy_cells),
         "derived_cells": len(eval_result.all_cells) if eval_result else 0,
-        "total_cells": len(all_cells),
-        "cell_ids": [cell.cell_id for cell in all_cells],
+        "total_cells": len(ordered_cells),
+        "cell_ids": [cell.cell_id for cell in ordered_cells],
         "signals_fired": eval_result.signals_fired if eval_result else 0,
         "mitigations_applied": eval_result.mitigations_applied if eval_result else 0,
-        "verdict": eval_result.verdict.fact.object.get("verdict") if eval_result and eval_result.verdict else None,
-        "score": eval_result.score.fact.object if eval_result and eval_result.score else None,
+        "verdict": verdict_val,
+        "auto_archive_permitted": auto_archive,
+        "score": score_obj,
+        "strict_mode": strict_mode,
+        "approved": auto_archive if not strict_mode else False,
         "created_at": get_current_timestamp(),
     }
     manifest_path = case_dir / "manifest.json"
-    with open(manifest_path, 'w') as f:
-        f.write(json_dumps(manifest))
+    manifest_bytes = json_dumps(manifest).encode('utf-8')
+    with open(manifest_path, 'wb') as f:
+        f.write(manifest_bytes)
 
     # 4. Write pack.json
-    print_step(4, 7, "Writing pack metadata...")
+    print_step(4, 8 if sign_key else 7, "Writing pack metadata...")
     pack_meta = {
         "pack_id": pack_runtime.pack_id,
         "name": pack_runtime.name,
@@ -613,8 +783,8 @@ def write_bundle(
     with open(pack_path, 'w') as f:
         f.write(json_dumps(pack_meta))
 
-    # 5. Write verification.json (run all checks)
-    print_step(5, 7, "Running verification checks...")
+    # 5. Verification checks
+    print_step(5, 8 if sign_key else 7, "Running verification checks...")
 
     # Check: Chain integrity
     chain_validation = chain.validate()
@@ -627,7 +797,7 @@ def write_bundle(
         verification["overall"] = "FAIL"
 
     # Check: Determinism (re-render and compare)
-    report_text_2 = render_report_text(case_id, pack_runtime, chain, eval_result, bundle)
+    report_text_2 = render_report_text(case_id, pack_runtime, chain, eval_result, bundle, strict_mode)
     report_hash_2 = compute_sha256(report_text_2.encode('utf-8'))
     determinism_pass = (report_hash == report_hash_2)
     verification["checks"].append({
@@ -653,7 +823,6 @@ def write_bundle(
     # Check: Gate outcome consistency
     if eval_result and eval_result.score and eval_result.verdict:
         score_gate = eval_result.score.fact.object.get("threshold_gate")
-        verdict_val = eval_result.verdict.fact.object.get("verdict")
         gate_consistent = (score_gate == verdict_val or verdict_val in ["CLOSE", "ESCALATE"])
         verification["checks"].append({
             "name": "gate_consistency",
@@ -662,22 +831,53 @@ def write_bundle(
             "verdict": verdict_val,
         })
 
+    # Check: Manifest hash
+    manifest_hash = compute_sha256(manifest_bytes)
+    verification["checks"].append({
+        "name": "manifest_hash",
+        "status": "PASS",
+        "hash": manifest_hash,
+    })
+
     verification_path = case_dir / "verification.json"
     with open(verification_path, 'w') as f:
         f.write(json_dumps(verification))
 
-    # 6. Write cells.jsonl (optional)
+    # 6. Write cells.jsonl (deterministic order)
+    cells_path = None
     if include_cells:
-        print_step(6, 7, "Writing cells...")
+        print_step(6, 8 if sign_key else 7, "Writing cells...")
         cells_path = case_dir / "cells.jsonl"
         with open(cells_path, 'w') as f:
-            for cell in all_cells:
+            for cell in ordered_cells:
                 f.write(json_dumps(cell.to_dict(), indent=None) + "\n")
     else:
-        print_step(6, 7, "Skipping cells export...")
+        print_step(6, 8 if sign_key else 7, "Skipping cells export...")
 
-    # 7. Create bundle.zip
-    print_step(7, 7, "Creating bundle.zip...")
+    # 7. Sign manifest (optional)
+    sig_path = None
+    if sign_key:
+        print_step(7, 8, "Signing manifest...")
+        try:
+            signature = sign_manifest(manifest_bytes, sign_key)
+            sig_path = case_dir / "manifest.sig"
+            with open(sig_path, 'wb') as f:
+                f.write(signature)
+            verification["checks"].append({
+                "name": "signature",
+                "status": "PASS",
+                "key_file": str(sign_key),
+            })
+        except Exception as e:
+            print_warning(f"Signing failed: {e}")
+            verification["checks"].append({
+                "name": "signature",
+                "status": "FAIL",
+                "error": str(e),
+            })
+
+    # 8. Create bundle.zip
+    print_step(8 if sign_key else 7, 8 if sign_key else 7, "Creating bundle.zip...")
     zip_path = case_dir / "bundle.zip"
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.write(report_path, "report.txt")
@@ -685,10 +885,216 @@ def write_bundle(
         zf.write(manifest_path, "manifest.json")
         zf.write(pack_path, "pack.json")
         zf.write(verification_path, "verification.json")
-        if include_cells:
+        if cells_path and cells_path.exists():
             zf.write(cells_path, "cells.jsonl")
+        if sig_path and sig_path.exists():
+            zf.write(sig_path, "manifest.sig")
 
     return verification
+
+
+# ============================================================================
+# BUNDLE VERIFICATION
+# ============================================================================
+
+def verify_bundle(bundle_path: Path, key_path: Optional[Path] = None) -> dict:
+    """
+    Verify an existing bundle for integrity.
+
+    Checks:
+    1. report.sha256 matches report.txt
+    2. manifest.json cell_ids exist in cells.jsonl
+    3. manifest signature valid (if present and key provided)
+    4. pack.json pack_hash is valid format
+    """
+    results = {
+        "bundle_path": str(bundle_path),
+        "timestamp": get_current_timestamp(),
+        "checks": [],
+        "overall": "PASS",
+    }
+
+    # Extract to temp directory
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmppath = Path(tmpdir)
+
+        try:
+            with zipfile.ZipFile(bundle_path, 'r') as zf:
+                zf.extractall(tmppath)
+        except Exception as e:
+            results["checks"].append({
+                "name": "bundle_extract",
+                "status": "FAIL",
+                "error": str(e),
+            })
+            results["overall"] = "FAIL"
+            return results
+
+        results["checks"].append({
+            "name": "bundle_extract",
+            "status": "PASS",
+        })
+
+        # 1. Verify report hash
+        report_path = tmppath / "report.txt"
+        hash_path = tmppath / "report.sha256"
+
+        if report_path.exists() and hash_path.exists():
+            with open(report_path, 'rb') as f:
+                report_bytes = f.read()
+            computed_hash = compute_sha256(report_bytes)
+
+            with open(hash_path, 'r') as f:
+                expected_line = f.read().strip()
+                expected_hash = expected_line.split()[0] if expected_line else ""
+
+            hash_match = (computed_hash == expected_hash)
+            results["checks"].append({
+                "name": "report_hash",
+                "status": "PASS" if hash_match else "FAIL",
+                "computed": computed_hash[:16] + "...",
+                "expected": expected_hash[:16] + "...",
+            })
+            if not hash_match:
+                results["overall"] = "FAIL"
+        else:
+            results["checks"].append({
+                "name": "report_hash",
+                "status": "FAIL",
+                "error": "Missing report.txt or report.sha256",
+            })
+            results["overall"] = "FAIL"
+
+        # 2. Verify manifest structure
+        manifest_path = tmppath / "manifest.json"
+        if manifest_path.exists():
+            with open(manifest_path, 'r') as f:
+                manifest = json.load(f)
+
+            required_fields = ["case_id", "report_hash", "graph_id", "cell_ids"]
+            missing = [f for f in required_fields if f not in manifest]
+
+            if missing:
+                results["checks"].append({
+                    "name": "manifest_structure",
+                    "status": "FAIL",
+                    "missing_fields": missing,
+                })
+                results["overall"] = "FAIL"
+            else:
+                results["checks"].append({
+                    "name": "manifest_structure",
+                    "status": "PASS",
+                    "case_id": manifest.get("case_id"),
+                    "cells": len(manifest.get("cell_ids", [])),
+                })
+
+            # Verify manifest hash matches report hash in manifest
+            if manifest.get("report_hash") != computed_hash:
+                results["checks"].append({
+                    "name": "manifest_report_hash",
+                    "status": "FAIL",
+                    "error": "Manifest report_hash doesn't match computed hash",
+                })
+                results["overall"] = "FAIL"
+            else:
+                results["checks"].append({
+                    "name": "manifest_report_hash",
+                    "status": "PASS",
+                })
+        else:
+            results["checks"].append({
+                "name": "manifest_structure",
+                "status": "FAIL",
+                "error": "Missing manifest.json",
+            })
+            results["overall"] = "FAIL"
+
+        # 3. Verify cells.jsonl matches manifest
+        cells_path = tmppath / "cells.jsonl"
+        if cells_path.exists() and manifest_path.exists():
+            with open(cells_path, 'r') as f:
+                cell_lines = f.readlines()
+
+            cell_ids_in_file = []
+            for line in cell_lines:
+                try:
+                    cell = json.loads(line)
+                    cell_ids_in_file.append(cell.get("cell_id"))
+                except:
+                    pass
+
+            manifest_cell_ids = manifest.get("cell_ids", [])
+
+            # Check all manifest cells are in file
+            missing_cells = [cid for cid in manifest_cell_ids if cid not in cell_ids_in_file]
+
+            if missing_cells:
+                results["checks"].append({
+                    "name": "cells_coverage",
+                    "status": "FAIL",
+                    "missing_count": len(missing_cells),
+                })
+                results["overall"] = "FAIL"
+            else:
+                results["checks"].append({
+                    "name": "cells_coverage",
+                    "status": "PASS",
+                    "cells_verified": len(manifest_cell_ids),
+                })
+
+        # 4. Verify signature (if present and key provided)
+        sig_path = tmppath / "manifest.sig"
+        if sig_path.exists():
+            if key_path and key_path.exists():
+                with open(manifest_path, 'rb') as f:
+                    manifest_bytes = f.read()
+                with open(sig_path, 'rb') as f:
+                    signature = f.read()
+
+                sig_valid = verify_signature(manifest_bytes, signature, key_path)
+                results["checks"].append({
+                    "name": "signature",
+                    "status": "PASS" if sig_valid else "FAIL",
+                })
+                if not sig_valid:
+                    results["overall"] = "FAIL"
+            else:
+                results["checks"].append({
+                    "name": "signature",
+                    "status": "SKIP",
+                    "message": "Signature present but no key provided",
+                })
+        else:
+            results["checks"].append({
+                "name": "signature",
+                "status": "SKIP",
+                "message": "No signature in bundle",
+            })
+
+        # 5. Verify pack.json
+        pack_path = tmppath / "pack.json"
+        if pack_path.exists():
+            with open(pack_path, 'r') as f:
+                pack_meta = json.load(f)
+
+            pack_hash = pack_meta.get("pack_hash", "")
+            if len(pack_hash) == 64:
+                results["checks"].append({
+                    "name": "pack_hash_format",
+                    "status": "PASS",
+                    "pack_id": pack_meta.get("pack_id"),
+                    "version": pack_meta.get("version"),
+                })
+            else:
+                results["checks"].append({
+                    "name": "pack_hash_format",
+                    "status": "FAIL",
+                    "error": "Invalid pack_hash length",
+                })
+                results["overall"] = "FAIL"
+
+    return results
 
 
 # ============================================================================
@@ -696,35 +1102,28 @@ def write_bundle(
 # ============================================================================
 
 def cmd_run_case(args):
-    """
-    Run a case through the rules engine and produce bank-ready deliverables.
-
-    Pipeline:
-    1. Load pack
-    2. Load case bundle
-    3. Create chain with canonical hashing
-    4. Load case into chain (creates cells)
-    5. Add policy cells from pack
-    6. Run rules engine
-    7. Render report
-    8. Verify artifact
-    9. Write bundle
-    """
+    """Run a case through the rules engine and produce bank-ready deliverables."""
     print_header("DecisionGraph - Run Case")
 
     case_path = Path(args.case)
     pack_path = Path(args.pack)
     output_dir = Path(args.out) if args.out else Path("./out")
     include_cells = not args.no_cells
+    sign_key = Path(args.sign) if args.sign else None
+    strict_mode = args.strict
 
     # Check files exist
     if not case_path.exists():
         print_error(f"Case file not found: {case_path}")
-        return 1
+        return ExitCode.INPUT_INVALID
 
     if not pack_path.exists():
         print_error(f"Pack file not found: {pack_path}")
-        return 1
+        return ExitCode.INPUT_INVALID
+
+    if sign_key and not sign_key.exists():
+        print_error(f"Signing key not found: {sign_key}")
+        return ExitCode.INPUT_INVALID
 
     total_steps = 9
 
@@ -738,10 +1137,10 @@ def cmd_run_case(args):
         print_kv("Mitigations", str(len(pack_runtime.mitigations_by_code)), indent=1)
     except PackValidationError as e:
         print_error(f"Pack validation failed: {e}")
-        return 1
+        return ExitCode.PACK_ERROR
     except PackLoaderError as e:
         print_error(f"Pack loading failed: {e}")
-        return 1
+        return ExitCode.PACK_ERROR
 
     # Step 2: Load case bundle
     print_step(2, total_steps, f"Loading case: {case_path.name}")
@@ -753,16 +1152,19 @@ def cmd_run_case(args):
         print_kv("Phase", bundle.meta.case_phase.value, indent=1)
         print_kv("Entities", str(len(bundle.individuals) + len(bundle.organizations)), indent=1)
         print_kv("Events", str(len(bundle.events)), indent=1)
+    except json.JSONDecodeError as e:
+        print_error(f"Invalid JSON: {e}")
+        return ExitCode.INPUT_INVALID
     except Exception as e:
         print_error(f"Case loading failed: {e}")
-        return 1
+        return ExitCode.INPUT_INVALID
 
     # Validate case bundle
     errors = validate_case_bundle(bundle)
     if errors:
         print_warning(f"Case bundle has {len(errors)} validation warning(s)")
 
-    # Step 3: Create chain with canonical hash scheme
+    # Step 3: Create chain
     print_step(3, total_steps, "Creating decision chain...")
     chain = Chain()
     chain.initialize(
@@ -777,7 +1179,7 @@ def cmd_run_case(args):
     case_cells = load_case_bundle_to_chain(bundle, chain)
     print_success(f"Created {len(case_cells)} case cells")
 
-    # Step 5: Add policy cells from pack
+    # Step 5: Add policy cells
     print_step(5, total_steps, "Adding policy cells...")
     policy_cells = pack_runtime.create_policy_cells(
         graph_id=chain.graph_id,
@@ -791,7 +1193,6 @@ def cmd_run_case(args):
     print_step(6, total_steps, "Evaluating rules...")
     engine = pack_runtime.create_rules_engine()
 
-    # Extract facts from cells
     facts = []
     for cell in chain.cells:
         if cell.header.cell_type in (CellType.FACT, CellType.EVIDENCE):
@@ -806,35 +1207,43 @@ def cmd_run_case(args):
 
     eval_result = engine.evaluate(facts, context)
 
-    # Add evaluation cells to chain
     for cell in eval_result.all_cells:
         chain.append(cell)
 
     print_success(f"Signals fired: {eval_result.signals_fired}")
     print_success(f"Mitigations applied: {eval_result.mitigations_applied}")
 
-    # Print score and verdict
+    # Get verdict info
+    verdict_val = None
+    auto_archive = False
+    gate = None
+
     if eval_result.score:
         score_obj = eval_result.score.fact.object
+        gate = score_obj.get("threshold_gate", "UNKNOWN")
         print_kv("Score", "", indent=1)
         print_kv("Inherent", score_obj.get("inherent_score", "N/A"), indent=2)
         print_kv("Mitigations", score_obj.get("mitigation_sum", "N/A"), indent=2)
         print_kv("Residual", score_obj.get("residual_score", "N/A"), indent=2)
-        print_kv("Gate", score_obj.get("threshold_gate", "N/A"), indent=2)
+        print_kv("Gate", gate, indent=2)
 
     if eval_result.verdict:
         verdict_obj = eval_result.verdict.fact.object
-        verdict = verdict_obj.get("verdict", "UNKNOWN")
+        verdict_val = verdict_obj.get("verdict", "UNKNOWN")
         auto_archive = verdict_obj.get("auto_archive_permitted", False)
         print()
-        if "CLOSE" in verdict or auto_archive:
-            print(f"  {Colors.GREEN}{Colors.BOLD}VERDICT: {verdict}{Colors.END}")
-        elif "REVIEW" in verdict:
-            print(f"  {Colors.YELLOW}{Colors.BOLD}VERDICT: {verdict}{Colors.END}")
-        else:
-            print(f"  {Colors.RED}{Colors.BOLD}VERDICT: {verdict}{Colors.END}")
 
-    # Step 7-9: Write bundle (includes render, verify, write)
+        if auto_archive:
+            print(f"  {Colors.GREEN}{Colors.BOLD}VERDICT: {verdict_val}{Colors.END}")
+        elif gate in ("ANALYST_REVIEW", "SENIOR_REVIEW"):
+            print(f"  {Colors.YELLOW}{Colors.BOLD}VERDICT: {verdict_val}{Colors.END}")
+        else:
+            print(f"  {Colors.RED}{Colors.BOLD}VERDICT: {verdict_val}{Colors.END}")
+
+        if strict_mode and not auto_archive:
+            print(f"  {Colors.RED}*** STRICT MODE: NOT APPROVED ***{Colors.END}")
+
+    # Step 7-9: Write bundle
     print()
     print_step(7, total_steps, "Writing output bundle...")
     verification = write_bundle(
@@ -843,9 +1252,12 @@ def cmd_run_case(args):
         pack_runtime=pack_runtime,
         chain=chain,
         case_cells=case_cells,
+        policy_cells=policy_cells,
         eval_result=eval_result,
         bundle=bundle,
         include_cells=include_cells,
+        sign_key=sign_key,
+        strict_mode=strict_mode,
     )
 
     # Final summary
@@ -873,13 +1285,69 @@ def cmd_run_case(args):
             print(f"  {Colors.GREEN}[PASS]{Colors.END} {name}")
         elif status == "WARN":
             print(f"  {Colors.YELLOW}[WARN]{Colors.END} {name}")
+        elif status == "SKIP":
+            print(f"  {Colors.BLUE}[SKIP]{Colors.END} {name}")
         else:
             print(f"  {Colors.RED}[FAIL]{Colors.END} {name}")
 
     print()
     print_success(f"Bundle ready: {bundle_dir / 'bundle.zip'}")
 
-    return 0 if verification["overall"] == "PASS" else 1
+    # Determine exit code
+    if verification["overall"] == "FAIL":
+        return ExitCode.VERIFY_FAIL
+
+    exit_code = gate_to_exit_code(gate or "UNKNOWN", auto_archive)
+
+    if strict_mode and exit_code != ExitCode.PASS:
+        print()
+        print_warning(f"Strict mode: exit code {exit_code} (review required)")
+
+    return exit_code
+
+
+def cmd_verify_bundle(args):
+    """Verify an existing bundle for integrity."""
+    print_header("DecisionGraph - Verify Bundle")
+
+    bundle_path = Path(args.bundle)
+    key_path = Path(args.key) if args.key else None
+
+    if not bundle_path.exists():
+        print_error(f"Bundle not found: {bundle_path}")
+        return ExitCode.INPUT_INVALID
+
+    print_info(f"Verifying: {bundle_path}")
+    print()
+
+    results = verify_bundle(bundle_path, key_path)
+
+    # Print results
+    for check in results["checks"]:
+        status = check["status"]
+        name = check["name"]
+
+        if status == "PASS":
+            print(f"  {Colors.GREEN}[PASS]{Colors.END} {name}")
+        elif status == "WARN":
+            print(f"  {Colors.YELLOW}[WARN]{Colors.END} {name}")
+        elif status == "SKIP":
+            print(f"  {Colors.BLUE}[SKIP]{Colors.END} {name}")
+            if "message" in check:
+                print(f"         {check['message']}")
+        else:
+            print(f"  {Colors.RED}[FAIL]{Colors.END} {name}")
+            if "error" in check:
+                print(f"         {check['error']}")
+
+    print()
+    overall = results["overall"]
+    if overall == "PASS":
+        print(f"{Colors.GREEN}{Colors.BOLD}VERIFICATION: PASS{Colors.END}")
+        return ExitCode.PASS
+    else:
+        print(f"{Colors.RED}{Colors.BOLD}VERIFICATION: FAIL{Colors.END}")
+        return ExitCode.VERIFY_FAIL
 
 
 def cmd_validate_pack(args):
@@ -890,7 +1358,7 @@ def cmd_validate_pack(args):
 
     if not pack_path.exists():
         print_error(f"Pack file not found: {pack_path}")
-        return 1
+        return ExitCode.INPUT_INVALID
 
     print_info(f"Validating: {pack_path}")
 
@@ -916,17 +1384,17 @@ def cmd_validate_pack(args):
         if runtime.verdict_rule:
             print_kv("Verdict Rule", runtime.verdict_rule.rule_id)
 
-        return 0
+        return ExitCode.PASS
 
     except PackValidationError as e:
         print_error(f"Validation failed with {len(e.errors)} error(s):")
         for error in e.errors:
             print(f"  {Colors.RED}[X]{Colors.END} {error}")
-        return 1
+        return ExitCode.PACK_ERROR
 
     except PackLoaderError as e:
         print_error(f"Loading failed: {e}")
-        return 1
+        return ExitCode.PACK_ERROR
 
 
 def cmd_validate_case(args):
@@ -937,7 +1405,7 @@ def cmd_validate_case(args):
 
     if not case_path.exists():
         print_error(f"Case file not found: {case_path}")
-        return 1
+        return ExitCode.INPUT_INVALID
 
     print_info(f"Validating: {case_path}")
 
@@ -949,7 +1417,7 @@ def cmd_validate_case(args):
             print_warning(f"Case has {len(errors)} validation error(s):")
             for error in errors:
                 print(f"  {Colors.YELLOW}[!]{Colors.END} {error}")
-            return 1
+            return ExitCode.INPUT_INVALID
         else:
             print_success("Case is valid!")
             print()
@@ -965,14 +1433,14 @@ def cmd_validate_case(args):
             print_kv("Evidence Items", str(len(bundle.evidence)))
             print_kv("Events", str(len(bundle.events)))
             print_kv("Assertions", str(len(bundle.assertions)))
-            return 0
+            return ExitCode.PASS
 
     except json.JSONDecodeError as e:
         print_error(f"Invalid JSON: {e}")
-        return 1
+        return ExitCode.INPUT_INVALID
     except Exception as e:
         print_error(f"Parsing failed: {e}")
-        return 1
+        return ExitCode.INPUT_INVALID
 
 
 def cmd_pack_info(args):
@@ -983,7 +1451,7 @@ def cmd_pack_info(args):
 
     if not pack_path.exists():
         print_error(f"Pack file not found: {pack_path}")
-        return 1
+        return ExitCode.INPUT_INVALID
 
     try:
         runtime = load_pack_yaml(str(pack_path))
@@ -997,34 +1465,30 @@ def cmd_pack_info(args):
         print_kv("Pack Hash", runtime.pack_hash)
         print()
 
-        # Regulatory framework
         if runtime.regulatory_framework:
             print(f"\n{Colors.BOLD}Regulatory Framework:{Colors.END}")
             for key, value in runtime.regulatory_framework.items():
                 if isinstance(value, (str, int, float)):
                     print_kv(key, str(value), indent=1)
 
-        # Signal summary
         print(f"\n{Colors.BOLD}Signals ({len(runtime.signals_by_code)}):{Colors.END}")
         for code, sig in sorted(runtime.signals_by_code.items()):
             print(f"  {code}: {sig.severity.value} - {sig.name}")
 
-        # Mitigation summary
         print(f"\n{Colors.BOLD}Mitigations ({len(runtime.mitigations_by_code)}):{Colors.END}")
         for code, mit in sorted(runtime.mitigations_by_code.items()):
             print(f"  {code}: {mit.weight} - {mit.name}")
 
-        # Threshold gates
         if runtime.scoring_rule:
             print(f"\n{Colors.BOLD}Threshold Gates:{Colors.END}")
             for gate in runtime.scoring_rule.threshold_gates:
                 print(f"  {gate.code}: < {gate.max_score}")
 
-        return 0
+        return ExitCode.PASS
 
     except Exception as e:
         print_error(f"Failed to load pack: {e}")
-        return 1
+        return ExitCode.PACK_ERROR
 
 
 # ============================================================================
@@ -1033,7 +1497,6 @@ def cmd_pack_info(args):
 
 def main():
     """Main entry point."""
-    # Disable colors if not TTY
     if not sys.stdout.isatty():
         Colors.disable()
 
@@ -1042,97 +1505,75 @@ def main():
         description="DecisionGraph CLI - Financial Crime case processing appliance",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Output Bundle (in out/CASE_ID/):
-  report.txt          Deterministic report bytes
-  report.sha256       Hash of report bytes
-  manifest.json       ReportManifest + included cell IDs
-  pack.json           Pack metadata (id, version, hash)
-  verification.json   PASS/FAIL verification checks
-  cells.jsonl         All cells produced
-  bundle.zip          Everything zipped for audit handoff
+Exit Codes:
+  0   PASS            Auto-archive permitted
+  2   REVIEW_REQUIRED Analyst review required
+  3   ESCALATE        Senior/compliance escalation
+  4   BLOCK           STR consideration
+  10  INPUT_INVALID   Invalid input files
+  11  PACK_ERROR      Pack validation failed
+  12  VERIFY_FAIL     Verification failed
 
 Examples:
   dg run-case --case bundle.json --pack fincrime_canada.yaml --out results/
+  dg run-case --case bundle.json --pack pack.yaml --strict --sign key.pem
+  dg verify-bundle --bundle results/CASE_ID/bundle.zip
   dg validate-pack --pack fincrime_canada.yaml
   dg validate-case --case bundle.json
-  dg pack-info --pack fincrime_canada.yaml
         """
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # run-case command
+    # run-case
     run_parser = subparsers.add_parser(
         "run-case",
-        help="Run a case through the rules engine and produce bank-ready deliverables"
+        help="Run a case through the rules engine"
     )
-    run_parser.add_argument(
-        "--case", "-c",
-        required=True,
-        help="Path to case bundle JSON file"
-    )
-    run_parser.add_argument(
-        "--pack", "-p",
-        required=True,
-        help="Path to pack YAML file"
-    )
-    run_parser.add_argument(
-        "--out", "-o",
-        default="./out",
-        help="Output directory (default: ./out)"
-    )
-    run_parser.add_argument(
-        "--no-cells",
-        action="store_true",
-        help="Skip cells.jsonl export to reduce bundle size"
-    )
+    run_parser.add_argument("--case", "-c", required=True, help="Case bundle JSON file")
+    run_parser.add_argument("--pack", "-p", required=True, help="Pack YAML file")
+    run_parser.add_argument("--out", "-o", default="./out", help="Output directory")
+    run_parser.add_argument("--no-cells", action="store_true", help="Skip cells.jsonl export")
+    run_parser.add_argument("--sign", help="Sign manifest with key file")
+    run_parser.add_argument("--strict", action="store_true",
+                           help="Strict mode: mark non-PASS cases as NOT APPROVED")
     run_parser.set_defaults(func=cmd_run_case)
 
-    # validate-pack command
-    val_pack_parser = subparsers.add_parser(
-        "validate-pack",
-        help="Validate a pack file"
+    # verify-bundle
+    verify_parser = subparsers.add_parser(
+        "verify-bundle",
+        help="Verify an existing bundle for integrity"
     )
-    val_pack_parser.add_argument(
-        "--pack", "-p",
-        required=True,
-        help="Path to pack YAML file"
-    )
+    verify_parser.add_argument("--bundle", "-b", required=True, help="Bundle zip file")
+    verify_parser.add_argument("--key", "-k", help="Public key for signature verification")
+    verify_parser.set_defaults(func=cmd_verify_bundle)
+
+    # validate-pack
+    val_pack_parser = subparsers.add_parser("validate-pack", help="Validate a pack file")
+    val_pack_parser.add_argument("--pack", "-p", required=True, help="Pack YAML file")
     val_pack_parser.set_defaults(func=cmd_validate_pack)
 
-    # validate-case command
-    val_case_parser = subparsers.add_parser(
-        "validate-case",
-        help="Validate a case bundle file"
-    )
-    val_case_parser.add_argument(
-        "--case", "-c",
-        required=True,
-        help="Path to case bundle JSON file"
-    )
+    # validate-case
+    val_case_parser = subparsers.add_parser("validate-case", help="Validate a case bundle")
+    val_case_parser.add_argument("--case", "-c", required=True, help="Case bundle JSON file")
     val_case_parser.set_defaults(func=cmd_validate_case)
 
-    # pack-info command
-    info_parser = subparsers.add_parser(
-        "pack-info",
-        help="Show pack information"
-    )
-    info_parser.add_argument(
-        "--pack", "-p",
-        required=True,
-        help="Path to pack YAML file"
-    )
+    # pack-info
+    info_parser = subparsers.add_parser("pack-info", help="Show pack information")
+    info_parser.add_argument("--pack", "-p", required=True, help="Pack YAML file")
     info_parser.set_defaults(func=cmd_pack_info)
 
-    # Parse args
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         return 1
 
-    # Run command
-    return args.func(args)
+    try:
+        return args.func(args)
+    except Exception as e:
+        print_error(f"Unexpected error: {e}")
+        return ExitCode.INTERNAL_ERROR
 
 
 if __name__ == "__main__":

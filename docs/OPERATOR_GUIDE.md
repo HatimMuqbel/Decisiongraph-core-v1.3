@@ -13,21 +13,29 @@ It transforms case data into auditor-ready report bundles with verifiable hashes
 
 ---
 
+## Installation
+
+```bash
+# Clone repository
+git clone <repo-url>
+cd decisiongraph
+
+# Verify installation
+./dg --help
+```
+
+**Requirements:**
+- Python 3.10+
+- No external dependencies for core functionality
+
+---
+
 ## Quick Start
 
 ### 1. Validate Your Pack
 
 ```bash
 ./dg validate-pack --pack packs/fincrime_canada.yaml
-```
-
-Expected output:
-```
-[OK] Pack is valid!
-Pack ID: fincrime_canada_v1
-Version: 1.0.0
-Signals: 22
-Mitigations: 16
 ```
 
 ### 2. Validate Your Case Bundle
@@ -43,6 +51,108 @@ Mitigations: 16
   --case examples/sample_aml_case.json \
   --pack packs/fincrime_canada.yaml \
   --out results/
+```
+
+### 4. Verify Bundle Integrity
+
+```bash
+./dg verify-bundle --bundle results/AML-2026-00142/bundle.zip
+```
+
+---
+
+## Exit Codes
+
+Exit codes are deterministic and designed for pipeline integration:
+
+| Code | Name | Description |
+|------|------|-------------|
+| 0 | PASS | Case processed, auto-archive permitted |
+| 2 | REVIEW_REQUIRED | Analyst review required |
+| 3 | ESCALATE | Senior/compliance escalation required |
+| 4 | BLOCK | STR consideration, case blocked |
+| 10 | INPUT_INVALID | Invalid input files |
+| 11 | PACK_ERROR | Pack validation/loading failed |
+| 12 | VERIFY_FAIL | Verification failed (integrity, determinism) |
+| 20 | INTERNAL_ERROR | Unexpected internal error |
+
+**Pipeline example:**
+```bash
+./dg run-case --case case.json --pack pack.yaml --out out/
+case $? in
+    0) echo "Auto-close permitted" ;;
+    2) echo "Route to analyst queue" ;;
+    3) echo "Escalate to senior/compliance" ;;
+    4) echo "STR consideration - route to BSA officer" ;;
+    *) echo "Error - check logs" ;;
+esac
+```
+
+---
+
+## Commands
+
+### run-case
+
+Process a case through the rules engine and produce bank-ready deliverables.
+
+```bash
+./dg run-case \
+  --case <path>       # Case bundle JSON file (required)
+  --pack <path>       # Pack YAML file (required)
+  --out <dir>         # Output directory (default: ./out)
+  --strict            # Strict mode: non-PASS cases marked NOT APPROVED
+  --sign <keyfile>    # Sign manifest with key file
+  --no-cells          # Skip cells.jsonl to reduce bundle size
+```
+
+**Strict Mode:**
+When `--strict` is enabled, any case that doesn't receive PASS verdict is explicitly marked as "NOT APPROVED" in the report. Use this for automated processing environments where human review is required for non-PASS outcomes.
+
+**Signing:**
+The `--sign` option creates a `manifest.sig` file containing an HMAC or Ed25519 signature of the manifest. Provide a key file (any format) for signing.
+
+### verify-bundle
+
+Verify an existing bundle for integrity (auditor mode).
+
+```bash
+./dg verify-bundle \
+  --bundle <path>     # Bundle zip file (required)
+  --key <path>        # Public key for signature verification (optional)
+```
+
+**Verification checks:**
+- Bundle extraction
+- Report hash matches `report.sha256`
+- Manifest structure complete
+- Manifest report_hash matches computed hash
+- All manifest cell_ids exist in cells.jsonl
+- Signature valid (if present and key provided)
+- Pack hash format valid
+
+### validate-pack
+
+Validate a pack YAML file.
+
+```bash
+./dg validate-pack --pack <path>
+```
+
+### validate-case
+
+Validate a case bundle JSON file.
+
+```bash
+./dg validate-case --case <path>
+```
+
+### pack-info
+
+Display detailed pack information.
+
+```bash
+./dg pack-info --pack <path>
 ```
 
 ---
@@ -68,82 +178,17 @@ Export this structure from your KYC/AML case management system:
     "sensitivity": "confidential",
     "access_tags": ["aml", "fincrime"]
   },
-  "individuals": [
-    {
-      "id": "IND-001",
-      "given_name": "John",
-      "family_name": "Smith",
-      "date_of_birth": "1975-03-15",
-      "nationality": "CA",
-      "pep_status": "none",
-      "risk_rating": "medium"
-    }
-  ],
-  "organizations": [],
-  "accounts": [
-    {
-      "id": "ACC-001",
-      "account_number": "****4567",
-      "account_type": "checking",
-      "currency": "CAD",
-      "status": "active"
-    }
-  ],
-  "relationships": [
-    {
-      "id": "REL-001",
-      "relationship_type": "account_holder",
-      "from_entity_type": "individual",
-      "from_entity_id": "IND-001",
-      "to_entity_type": "individual",
-      "to_entity_id": "ACC-001"
-    }
-  ],
-  "evidence": [
-    {
-      "id": "EV-001",
-      "evidence_type": "transaction_records",
-      "description": "Wire transfer records for January 2026",
-      "collected_date": "2026-01-29",
-      "source": "core_banking",
-      "verified": true
-    }
-  ],
-  "events": [
-    {
-      "id": "TXN-001",
-      "event_type": "transaction",
-      "timestamp": "2026-01-15T14:30:00Z",
-      "description": "International wire transfer",
-      "amount": "25000.00",
-      "currency": "CAD",
-      "direction": "outbound",
-      "counterparty_name": "Global Trading Ltd",
-      "counterparty_country": "KY",
-      "payment_method": "wire"
-    },
-    {
-      "id": "ALERT-001",
-      "event_type": "alert",
-      "timestamp": "2026-01-28T08:00:00Z",
-      "description": "Potential structuring activity detected",
-      "alert_type": "structuring",
-      "rule_id": "STRUCT-001"
-    }
-  ],
-  "assertions": [
-    {
-      "id": "ASSERT-001",
-      "subject_type": "individual",
-      "subject_id": "IND-001",
-      "predicate": "relationship_tenure",
-      "value": "7",
-      "asserted_at": "2026-01-28T08:10:00Z",
-      "asserted_by": "system"
-    }
-  ]
+  "individuals": [...],
+  "organizations": [...],
+  "accounts": [...],
+  "relationships": [...],
+  "evidence": [...],
+  "events": [...],
+  "assertions": [...]
 }
 ```
+
+See `examples/sample_aml_case.json` for a complete example.
 
 ### Case Types
 
@@ -171,8 +216,6 @@ Export this structure from your KYC/AML case management system:
 
 ## Output Bundle Structure
 
-After running `dg run-case`, your output directory contains:
-
 ```
 out/CASE_ID/
 ├── report.txt          # Deterministic report (human-readable)
@@ -180,89 +223,51 @@ out/CASE_ID/
 ├── manifest.json       # Report manifest with all cell IDs
 ├── pack.json           # Pack metadata used for this run
 ├── verification.json   # All verification checks (PASS/FAIL)
-├── cells.jsonl         # All cells produced (JSON Lines)
+├── cells.jsonl         # All cells in deterministic order
+├── manifest.sig        # Optional signature (with --sign)
 └── bundle.zip          # Everything zipped for audit handoff
 ```
 
-### report.txt
+### Cell Ordering (Deterministic)
 
-Deterministic, human-readable case report containing:
-- Case metadata
-- Verdict and risk score
-- All signals fired with severity
-- All mitigations applied with weights
-- Entity and transaction summary
-- Chain integrity status
-- Policy references cited
+The `cells.jsonl` file contains cells in this stable order:
 
-### report.sha256
+1. **Case cells** (from case_loader)
+   - CaseMeta → Phase → Entities → Accounts → Relationships → Evidence → Events → Assertions
+2. **Policy cells** (sorted by ref_id)
+3. **Signal cells** (sorted by code)
+4. **Mitigation cells** (sorted by code)
+5. **Score cell**
+6. **Verdict cell**
 
-Standard checksum file for verification:
-```
-a1b2c3d4e5f6...  report.txt
-```
-
-Verify with:
-```bash
-cd out/CASE_ID && sha256sum -c report.sha256
-```
+This ordering enables reproducible diffs and investigations.
 
 ### manifest.json
 
-Machine-readable report manifest:
 ```json
 {
   "case_id": "AML-2026-00142",
   "report_hash": "a1b2c3d4e5f6...",
   "graph_id": "graph:uuid-here",
-  "chain_length": 43,
+  "chain_length": 65,
+  "case_cells": 15,
+  "policy_cells": 22,
+  "derived_cells": 28,
+  "total_cells": 65,
+  "cell_ids": ["cell-id-1", "cell-id-2", ...],
   "signals_fired": 20,
   "mitigations_applied": 5,
   "verdict": "STR_CONSIDERATION",
+  "auto_archive_permitted": false,
+  "strict_mode": false,
+  "approved": false,
   "score": {
     "inherent_score": "12.75",
     "mitigation_sum": "-1.6",
     "residual_score": "11.15",
     "threshold_gate": "STR_CONSIDERATION"
   },
-  "cell_ids": ["cell-id-1", "cell-id-2", ...]
-}
-```
-
-### pack.json
-
-Pack metadata for audit trail:
-```json
-{
-  "pack_id": "fincrime_canada_v1",
-  "name": "Canadian Financial Crime Pack",
-  "version": "1.0.0",
-  "pack_hash": "390c23d3d389fb48...",
-  "domain": "financial_crime",
-  "jurisdiction": "CA",
-  "signals_count": 22,
-  "mitigations_count": 16,
-  "regulatory_framework": {
-    "primary_legislation": "PCMLTFA",
-    "regulator": "FINTRAC"
-  }
-}
-```
-
-### verification.json
-
-All verification checks:
-```json
-{
-  "case_id": "AML-2026-00142",
-  "overall": "PASS",
-  "checks": [
-    {"name": "report_hash", "status": "PASS", "hash": "..."},
-    {"name": "chain_integrity", "status": "PASS"},
-    {"name": "determinism", "status": "PASS"},
-    {"name": "policy_coverage", "status": "PASS"},
-    {"name": "gate_consistency", "status": "PASS"}
-  ]
+  "created_at": "2026-01-29T16:00:00.000Z"
 }
 ```
 
@@ -279,10 +284,12 @@ cd out/AML-2026-00142
 # Verify report hash
 sha256sum -c report.sha256
 # Expected: report.txt: OK
+```
 
-# Or compute manually
-sha256sum report.txt
-# Compare with content of report.sha256
+### Using verify-bundle
+
+```bash
+./dg verify-bundle --bundle out/AML-2026-00142/bundle.zip
 ```
 
 ### Programmatic
@@ -297,8 +304,7 @@ with open('out/CASE_ID/manifest.json') as f:
 
 # Read and hash report
 with open('out/CASE_ID/report.txt', 'rb') as f:
-    report_bytes = f.read()
-    computed_hash = hashlib.sha256(report_bytes).hexdigest()
+    computed_hash = hashlib.sha256(f.read()).hexdigest()
 
 # Verify
 assert computed_hash == manifest['report_hash']
@@ -309,17 +315,15 @@ print("Report integrity verified")
 
 ## Threshold Gates and Verdicts
 
-The pack defines threshold gates that map scores to verdicts:
+| Gate | Max Score | Exit Code | Typical Action |
+|------|-----------|-----------|----------------|
+| AUTO_CLOSE | 0.50 | 0 | Automated closure permitted |
+| ANALYST_REVIEW | 2.00 | 2 | Standard analyst review |
+| SENIOR_REVIEW | 4.00 | 3 | Senior analyst required |
+| COMPLIANCE_REVIEW | 6.00 | 3 | Compliance officer review |
+| STR_CONSIDERATION | 999.00 | 4 | STR filing consideration |
 
-| Gate | Max Score | Typical Action |
-|------|-----------|----------------|
-| AUTO_CLOSE | 0.50 | Automated closure permitted |
-| ANALYST_REVIEW | 2.00 | Standard analyst review |
-| SENIOR_REVIEW | 4.00 | Senior analyst required |
-| COMPLIANCE_REVIEW | 6.00 | Compliance officer review |
-| STR_CONSIDERATION | 999.00 | STR filing consideration |
-
-**Formula:**
+**Scoring Formula:**
 ```
 residual_score = inherent_score + sum(mitigation_weights)
 ```
@@ -342,7 +346,11 @@ for case_file in cases/*.json; do
     ./dg run-case \
         --case "$case_file" \
         --pack packs/fincrime_canada.yaml \
-        --out "results/$case_id"
+        --out "results/" \
+        --strict
+
+    exit_code=$?
+    echo "$case_id: exit code $exit_code" >> batch_results.log
 done
 ```
 
@@ -350,7 +358,7 @@ done
 
 ```yaml
 # .github/workflows/run-cases.yml
-name: Run Cases
+name: Process Cases
 on: [push]
 jobs:
   run:
@@ -363,27 +371,35 @@ jobs:
             --case examples/sample_aml_case.json \
             --pack packs/fincrime_canada.yaml \
             --out results/
-      - name: Verify output
+      - name: Verify bundle
+        run: ./dg verify-bundle --bundle results/AML-2026-00142/bundle.zip
+      - name: Check exit code
         run: |
-          cd results/AML-2026-00142
-          sha256sum -c report.sha256
+          if [ $? -eq 0 ]; then
+            echo "Case PASS"
+          else
+            echo "Case requires review"
+          fi
 ```
 
-### Export to Your Case System
+### Export to Case System
 
 ```python
 import json
 
-# Read manifest
+# Read outputs
 with open('out/CASE_ID/manifest.json') as f:
     manifest = json.load(f)
+with open('out/CASE_ID/pack.json') as f:
+    pack = json.load(f)
 
 # Update your case management system
 case_update = {
     "decision_graph_verdict": manifest["verdict"],
     "decision_graph_score": manifest["score"]["residual_score"],
     "decision_graph_report_hash": manifest["report_hash"],
-    "decision_graph_pack_hash": pack_meta["pack_hash"],
+    "decision_graph_pack_hash": pack["pack_hash"],
+    "decision_graph_approved": manifest["approved"],
 }
 
 your_case_system.update(case_id, case_update)
@@ -412,12 +428,17 @@ Mitigations reference undefined signals. Check `applies_to` arrays.
 ```
 The `primary_entity_id` in meta doesn't match any entity in the bundle.
 
-### Chain Integrity Errors
+### Verification Failures
 
 ```
-[FAIL] chain_integrity
+[FAIL] report_hash
 ```
-Internal error - cells don't chain correctly. Report this issue.
+The report.txt file was modified after generation. Re-run the case.
+
+```
+[FAIL] cells_coverage
+```
+Some cells in manifest.json are missing from cells.jsonl. Bundle may be corrupted.
 
 ---
 
@@ -425,8 +446,16 @@ Internal error - cells don't chain correctly. Report this issue.
 
 1. **Pack Immutability**: Never modify a pack after deployment. Create a new version instead.
 2. **Report Hashing**: Always verify report hashes before relying on verdicts.
-3. **Audit Trail**: The `cells.jsonl` contains the complete cryptographic audit trail.
-4. **Sensitive Data**: The bundle may contain PII. Protect `bundle.zip` accordingly.
+3. **Signing**: Use `--sign` with a secure key for production deployments.
+4. **Strict Mode**: Enable `--strict` for automated processing to ensure human review.
+5. **Audit Trail**: The `cells.jsonl` contains the complete cryptographic audit trail.
+6. **Sensitive Data**: The bundle may contain PII. Protect `bundle.zip` accordingly.
+
+---
+
+## What to Tell Auditors
+
+> "Every case decision is backed by a cryptographic chain of evidence. The report hash proves the report hasn't been tampered with. The pack hash proves which rules were applied. The cells file contains every fact, signal, mitigation, and judgment that went into the decision. You can re-run the same case bundle with the same pack and get byte-identical output."
 
 ---
 
