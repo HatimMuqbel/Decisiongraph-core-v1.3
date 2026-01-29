@@ -794,3 +794,16 @@ from .escalation_gate import (
     ABSOLUTE_RULES,
     NON_ESCALATION_TEMPLATE,
 )
+
+# STR Gate (Positive STR Checklist)
+from .str_gate import (
+    STRDecision,
+    STRCheck,
+    STRSectionResult,
+    STRGateResult,
+    STRGateValidator,
+    run_str_gate,
+    dual_gate_decision,
+    STR_RATIONALE_TEMPLATE,
+    NO_STR_RATIONALE_TEMPLATE,
+)
