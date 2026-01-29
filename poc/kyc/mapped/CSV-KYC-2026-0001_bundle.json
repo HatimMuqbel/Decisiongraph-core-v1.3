@@ -1,0 +1,268 @@
+{
+  "meta": {
+    "id": "CSV-KYC-2026-0001",
+    "case_type": "kyc_onboarding",
+    "case_phase": "analysis",
+    "jurisdiction": "CA",
+    "created_at": "2026-01-28T14:00:00Z",
+    "primary_entity_type": "organization",
+    "primary_entity_id": "CORP-2026-7788",
+    "status": "open",
+    "priority": "high",
+    "sensitivity": "confidential",
+    "access_tags": ["kyc", "cdd", "onboarding", "escalated"],
+    "assigned_to": "M. Williams"
+  },
+  "individuals": [
+    {
+      "id": "UBO-101",
+      "given_name": "Viktor",
+      "family_name": "Petrov",
+      "date_of_birth": "1978-04-12",
+      "nationality": "RU",
+      "country_of_residence": "CA",
+      "pep_status": "none",
+      "risk_rating": "medium",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "UBO-102",
+      "given_name": "Dmitri",
+      "family_name": "Volkov",
+      "date_of_birth": "1980-09-28",
+      "nationality": "RU",
+      "country_of_residence": "AE",
+      "pep_status": "none",
+      "risk_rating": "high",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "organizations": [
+    {
+      "id": "CORP-2026-7788",
+      "legal_name": "Maple Horizons Imports Inc",
+      "trading_name": "Maple Horizons",
+      "registration_number": "ON9876543",
+      "jurisdiction": "CA-ON",
+      "incorporation_date": "2024-11-15",
+      "industry_code": "418410",
+      "risk_rating": "high",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "accounts": [],
+  "relationships": [
+    {
+      "id": "REL-UBO-101",
+      "relationship_type": "ubo",
+      "from_entity_type": "individual",
+      "from_entity_id": "UBO-101",
+      "to_entity_type": "organization",
+      "to_entity_id": "CORP-2026-7788",
+      "ownership_percentage": "35",
+      "verified": true,
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "REL-UBO-102",
+      "relationship_type": "ubo",
+      "from_entity_type": "individual",
+      "from_entity_id": "UBO-102",
+      "to_entity_type": "organization",
+      "to_entity_id": "CORP-2026-7788",
+      "ownership_percentage": "40",
+      "verified": false,
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "REL-UBO-103",
+      "relationship_type": "ubo",
+      "from_entity_type": "individual",
+      "from_entity_id": "UBO-103-UNKNOWN",
+      "to_entity_type": "organization",
+      "to_entity_id": "CORP-2026-7788",
+      "ownership_percentage": "25",
+      "verified": false,
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "DOC-101",
+      "evidence_type": "cert_of_inc",
+      "description": "Ontario Certificate of Incorporation",
+      "collected_date": "2026-01-26",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-102",
+      "evidence_type": "articles",
+      "description": "Articles - Maple Horizons (awaiting translation)",
+      "collected_date": "2026-01-26",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-103",
+      "evidence_type": "shareholder_register",
+      "description": "Partial shareholder register - missing UBO-103",
+      "collected_date": "2026-01-26",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-104",
+      "evidence_type": "passport",
+      "description": "Viktor Petrov - Russian Passport",
+      "collected_date": "2026-01-27",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-105",
+      "evidence_type": "passport",
+      "description": "Dmitri Volkov - Russian Passport (EXPIRED)",
+      "collected_date": "2026-01-27",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "events": [
+    {
+      "id": "SCR-S-101",
+      "event_type": "screening",
+      "timestamp": "2026-01-27T10:00:00Z",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "false_positive",
+      "match_score": "0",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "SCR-S-102",
+      "event_type": "screening",
+      "timestamp": "2026-01-27T10:00:00Z",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "pending",
+      "match_score": "72",
+      "matched_name": "Viktor A. Petrov",
+      "matched_list": "OFAC SDN",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "SCR-S-103",
+      "event_type": "screening",
+      "timestamp": "2026-01-27T10:00:00Z",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "pending",
+      "match_score": "85",
+      "matched_name": "Dmitri V. Volkov",
+      "matched_list": "EU Consolidated List",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "SCR-P-102",
+      "event_type": "screening",
+      "timestamp": "2026-01-27T10:05:00Z",
+      "screening_type": "pep",
+      "vendor": "WorldCheck",
+      "disposition": "pending",
+      "match_score": "78",
+      "matched_name": "Dmitri Volkov",
+      "matched_list": "Russia Regional PEP",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "SCR-A-101",
+      "event_type": "screening",
+      "timestamp": "2026-01-27T10:10:00Z",
+      "screening_type": "adverse_media",
+      "vendor": "LexisNexis",
+      "disposition": "confirmed",
+      "match_score": "65",
+      "matched_name": "Dmitri Volkov",
+      "matched_list": "News Articles 2024",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "IDV-101",
+      "event_type": "verification",
+      "timestamp": "2026-01-27T11:00:00Z",
+      "verification_type": "identity",
+      "vendor": "Jumio",
+      "result": "pass",
+      "confidence_score": "94",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "IDV-102",
+      "event_type": "verification",
+      "timestamp": "2026-01-27T11:15:00Z",
+      "verification_type": "identity",
+      "vendor": "Jumio",
+      "result": "fail",
+      "confidence_score": "35",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "IDV-103",
+      "event_type": "verification",
+      "timestamp": "2026-01-27T11:20:00Z",
+      "verification_type": "identity",
+      "result": "fail",
+      "confidence_score": "0",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "REG-101",
+      "event_type": "verification",
+      "timestamp": "2026-01-27T09:30:00Z",
+      "verification_type": "registry",
+      "vendor": "CorpRegistry",
+      "result": "pass",
+      "confidence_score": "100",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "REG-102",
+      "event_type": "verification",
+      "timestamp": "2026-01-27T09:35:00Z",
+      "verification_type": "director_match",
+      "vendor": "CorpRegistry",
+      "result": "fail",
+      "confidence_score": "40",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "REG-103",
+      "event_type": "verification",
+      "timestamp": "2026-01-27T09:40:00Z",
+      "verification_type": "address_match",
+      "vendor": "CorpRegistry",
+      "result": "fail",
+      "confidence_score": "20",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "assertions": []
+}

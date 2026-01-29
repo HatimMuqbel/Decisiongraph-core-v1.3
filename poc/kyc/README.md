@@ -1,262 +1,284 @@
 # KYC Onboarding POC Packet
 
-**DecisionGraph v1.0.0** - Know Your Customer / Customer Due Diligence Demo
+**DecisionGraph v1.0.0** - Corporate KYC/CDD Demo
 
 ## Overview
 
-This POC demonstrates DecisionGraph's deterministic, auditable decision engine for KYC onboarding and customer due diligence reviews. The system evaluates customer risk profiles against Canadian PCMLTFA/FINTRAC requirements and produces cryptographically-verifiable verdicts.
+This POC demonstrates DecisionGraph's decision engine for corporate KYC onboarding. Two realistic bank cases show the full CDD workflow: entity profiling → UBO identification → screening → identity verification → document collection → risk decision.
 
-## Key Differentiators
+---
 
-1. **Risk-Based Approach**: Applies mitigating factors to prevent over-escalation when documentation and controls are in place.
+## Demo Cases
 
-2. **PEP Handling**: Proper treatment of Politically Exposed Persons with EDD requirements and senior approval tracking.
+### Case 1: Clean Onboarding (ACT-KYC-2026-0001)
 
-3. **Full Audit Trail**: Every decision links back to the screening results, verifications, and evidence that triggered it.
+**Entity**: Sterling Designs Ltd (BC Corporation)
+**Expected Outcome**: APPROVE (with mitigations)
 
-4. **Deterministic**: Same customer profile + same rules = same risk decision. Always.
+```
+Corporate Profile:
+  Legal Name:     Sterling Designs Ltd
+  Jurisdiction:   BC, Canada
+  NAICS:          541410 (Interior Design Services)
+  Incorporated:   2018-03-15
+  Employees:      25
+  Annual Revenue: $4.5M CAD
+
+Beneficial Owners:
+  ┌─────────────────────────────────────────────────────────────┐
+  │ UBO-001: Marcus Sterling (60%)                              │
+  │   - Canadian citizen, resident                              │
+  │   - Source of Wealth: Business ownership                    │
+  │   - IDV: PASS (Jumio, 98% confidence)                       │
+  │   - PEP: CLEAR                                              │
+  │   - Sanctions: CLEAR                                        │
+  └─────────────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────┐
+  │ UBO-002: Elena Kowalski (40%)                               │
+  │   - Polish citizen, CA resident                             │
+  │   - Source of Wealth: Prior employment                      │
+  │   - IDV: PASS (Jumio, 96% confidence)                       │
+  │   - PEP: CLEAR                                              │
+  │   - Sanctions: CLEAR                                        │
+  └─────────────────────────────────────────────────────────────┘
+
+Documents on File: 8/8 complete
+  ✓ Certificate of Incorporation
+  ✓ Articles of Incorporation
+  ✓ Shareholder Register
+  ✓ Audited Financial Statements (Grant Thornton)
+  ✓ T2 Tax Return 2024
+  ✓ Passport (Marcus Sterling)
+  ✓ Passport (Elena Kowalski)
+  ✓ Proof of Address (BC Hydro)
+
+Screening Summary:
+  Sanctions: 0 matches
+  PEP:       0 matches
+  Adverse:   0 matches
+```
+
+**Why this case should APPROVE**: Complete documentation, all UBOs verified, clean screening, low-risk industry, Canadian domestic.
+
+---
+
+### Case 2: Problem Onboarding (CSV-KYC-2026-0001)
+
+**Entity**: Maple Horizons Imports Inc (ON Corporation)
+**Expected Outcome**: BLOCK/ESCALATE
+
+```
+Corporate Profile:
+  Legal Name:     Maple Horizons Imports Inc
+  Jurisdiction:   ON, Canada
+  NAICS:          418410 (Food Merchant Wholesalers)
+  Incorporated:   2024-11-15 (< 90 days old!)
+  Employees:      8
+  Annual Revenue: $850K CAD
+
+Beneficial Owners:
+  ┌─────────────────────────────────────────────────────────────┐
+  │ UBO-101: Viktor Petrov (35%)                                │
+  │   - Russian citizen, CA resident                            │
+  │   - Source of Wealth: Prior employment                      │
+  │   - IDV: PASS (Jumio, 94% confidence)                       │
+  │   - Sanctions: POSSIBLE MATCH (72%, OFAC SDN)  ⚠️           │
+  │   - PEP: CLEAR                                              │
+  └─────────────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────┐
+  │ UBO-102: Dmitri Volkov (40%)                                │
+  │   - Russian citizen, UAE resident  ⚠️                       │
+  │   - Source of Wealth: UNKNOWN  ⚠️                           │
+  │   - IDV: FAIL (expired doc, liveness fail)  ❌              │
+  │   - Sanctions: POSSIBLE MATCH (85%, EU List)  ⚠️            │
+  │   - PEP: POSSIBLE MATCH (78%, Russia Regional)  ⚠️          │
+  │   - Adverse: CONFIRMED (News Articles 2024)  ❌             │
+  └─────────────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────┐
+  │ UBO-103: UNKNOWN (25%)  ❌                                  │
+  │   - Identity: NOT VERIFIED                                  │
+  │   - Ownership not documented                                │
+  └─────────────────────────────────────────────────────────────┘
+
+Documents on File: 5/8 incomplete
+  ✓ Certificate of Incorporation
+  ⚠ Articles (awaiting translation)
+  ⚠ Shareholder Register (PARTIAL - missing UBO-103)
+  ✓ Passport (Viktor Petrov)
+  ❌ Passport (Dmitri Volkov - EXPIRED)
+  ✗ Proof of Address (mismatch with registry)
+  ✗ Financial Statements (not collected)
+  ✗ Tax Filing (not collected)
+
+Screening Summary:
+  Sanctions: 2 POSSIBLE MATCHES (pending resolution)
+  PEP:       1 POSSIBLE MATCH (pending resolution)
+  Adverse:   1 CONFIRMED HIT
+
+Registry Verification:
+  ✓ Entity exists
+  ❌ Directors do not match (MISMATCH)
+  ❌ Address does not match (DISCREPANCY)
+```
+
+**Why this case should BLOCK**: Multiple sanctions/PEP hits pending, identity verification failure, unknown UBO, registry discrepancies, newly incorporated entity.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Run the demo script
+# Run the demo
 ./poc/kyc/demo.sh
 
 # Or run individual cases
 ./dg run-case \
-  --case poc/kyc/low_risk_bundle.json \
+  --case poc/kyc/mapped/ACT-KYC-2026-0001_bundle.json \
   --pack packs/fincrime_canada.yaml \
   --out /tmp/kyc_output/
 ```
 
 ---
 
-## Demo Cases
-
-### Case 1: Low-Risk Individual (KYC-2026-001)
-
-**Profile**: Standard customer onboarding
-```
-Customer:     Michael Chen
-Nationality:  Canadian
-Occupation:   Software Engineer
-PEP Status:   None
-Risk Rating:  Low
-```
-
-**Verification Status**:
-- Identity: PASS (passport)
-- Address: PASS (utility bill)
-- Employment: Verified
-
-**Screening Results**:
-- Sanctions: No match
-- PEP: No match
-
-**Result**:
-```
-Inherent Score:  7.25
-Mitigations:     -0.75
-Residual Score:  6.50
-Verdict:         STR_CONSIDERATION (pending rule tuning for KYC)
-```
-
----
-
-### Case 2: Domestic PEP (KYC-2026-002)
-
-**Profile**: Politically Exposed Person onboarding
-```
-Customer:     Elizabeth Warren-Smith
-Nationality:  Canadian
-Occupation:   Member of Parliament
-PEP Status:   Domestic PEP (DPEP)
-Risk Rating:  High
-```
-
-**Enhanced Due Diligence**:
-- Source of Wealth: Documented (political career, investments)
-- Financial Statements: 3-year history provided
-- Senior Approval: Required
-
-**Screening Results**:
-- Sanctions: No match
-- PEP: Confirmed match (Canada PEP Database)
-- Adverse Media: No relevant hits
-
-**Result**:
-```
-Inherent Score:  7.25
-Mitigations:     -0.75
-Residual Score:  6.50
-Verdict:         STR_CONSIDERATION
-
-Signals:
-  - PEP_DOMESTIC (triggered by dpep status)
-
-Mitigations:
-  - MF_SCREEN_FALSE_POSITIVE (no sanctions concern)
-  - MF_TXN_SUPPORTING_INVOICE (financial docs)
-```
-
----
-
-### Case 3: High-Risk Corporate (KYC-2026-003)
-
-**Profile**: Offshore corporate with red flags
-```
-Entity:       Global Trading Holdings Ltd
-Jurisdiction: British Virgin Islands (VG)
-Industry:     Commodity Contracts Trading (523130)
-Risk Rating:  High
-```
-
-**Red Flags**:
-- Tax haven jurisdiction (BVI)
-- High-risk industry (commodities)
-- Unknown beneficial owner
-- Pending sanctions screening
-- Adverse media hit (Panama Papers)
-- Failed identity verification
-
-**Result**:
-```
-Inherent Score:  7.25
-Mitigations:     -0.75
-Residual Score:  6.50
-Verdict:         STR_CONSIDERATION
-
-Key Signals:
-  - GEO_TAX_HAVEN (BVI jurisdiction)
-  - CDD_HIGH_RISK_INDUSTRY (commodities)
-  - CDD_UBO_UNKNOWN (unverified ownership)
-  - SCREEN_ADVERSE_MEDIA (Panama Papers)
-```
-
----
-
-## KYC-Specific Signals
-
-| Signal | Severity | Description |
-|--------|----------|-------------|
-| CDD_INCOMPLETE_ID | HIGH | Identity not fully verified |
-| CDD_UBO_UNKNOWN | HIGH | Beneficial owner(s) not identified |
-| CDD_SOW_UNDOCUMENTED | MEDIUM | Source of wealth not documented |
-| CDD_SHELL_COMPANY | HIGH | Shell company indicators |
-| CDD_HIGH_RISK_INDUSTRY | MEDIUM | MSB, gaming, crypto, etc. |
-| PEP_FOREIGN | HIGH | Foreign PEP identified |
-| PEP_DOMESTIC | MEDIUM | Domestic PEP identified |
-| PEP_HIO | MEDIUM | Head of International Org |
-| PEP_FAMILY_ASSOCIATE | MEDIUM | PEP family/associate |
-
-## KYC-Specific Mitigations
-
-| Mitigation | Weight | Description |
-|------------|--------|-------------|
-| MF_DOCUMENTATION_COMPLETE | -0.25 | All CDD docs current |
-| MF_SOW_VERIFIED | -0.35 | Source of wealth verified |
-| MF_UBO_FULLY_IDENTIFIED | -0.30 | All 25%+ UBOs identified |
-| MF_PEP_SENIOR_APPROVAL | -0.20 | Senior management approval |
-| MF_PEP_EDD_CURRENT | -0.25 | EDD completed within 12 months |
-| MF_INDUSTRY_LICENSED | -0.20 | Proper industry licenses |
-| MF_INDUSTRY_CONTROLS_VERIFIED | -0.25 | Industry-specific AML controls |
-
----
-
-## Architecture
-
-```
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  KYC System      │───▶│   CaseBundle     │───▶│  Decision Chain  │
-│  (onboarding)    │    │  (standardized)  │    │   (DAG cells)    │
-└──────────────────┘    └──────────────────┘    └────────┬─────────┘
-                                                          │
-                                                          ▼
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  Output Bundle   │◀───│  Rule Pack       │◀───│  Evaluation      │
-│  (bundle.zip)    │    │  (PCMLTFA)       │    │  (signals/mits)  │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
-```
-
-## CaseBundle Structure for KYC
-
-```json
-{
-  "meta": {
-    "case_type": "kyc_onboarding",
-    "primary_entity_type": "individual",
-    "primary_entity_id": "IND-001"
-  },
-  "individuals": [{
-    "id": "IND-001",
-    "pep_status": "none",
-    "risk_rating": "low",
-    "nationality": "CA"
-  }],
-  "evidence": [{
-    "evidence_type": "passport",
-    "description": "Canadian Passport"
-  }],
-  "events": [
-    { "event_type": "screening", "screening_type": "pep" },
-    { "event_type": "verification", "verification_type": "identity" }
-  ],
-  "assertions": []
-}
-```
-
----
-
-## Regulatory Framework
-
-The KYC pack applies Canadian PCMLTFA requirements:
-
-| Requirement | Reference | Implementation |
-|-------------|-----------|----------------|
-| Customer ID Verification | PCMLTFR s. 64 | CDD_INCOMPLETE_ID signal |
-| Beneficial Ownership | PCMLTFR s. 11.1 | CDD_UBO_UNKNOWN signal |
-| PEP Determination | PCMLTFR s. 9.3 | PEP_* signals |
-| Enhanced Due Diligence | PCMLTFR s. 9.6 | MF_PEP_EDD_CURRENT mitigation |
-| Risk-Based Approach | PCMLTFR s. 9.6 | Mitigation system |
-
----
-
-## Files in This POC
+## Folder Structure
 
 ```
 poc/kyc/
-├── README.md                    # This file
-├── demo.sh                      # Demo script
-├── low_risk_bundle.json         # Standard individual
-├── pep_bundle.json              # Domestic PEP
-├── high_risk_corp_bundle.json   # High-risk corporate
+├── README.md                           # This file
+├── demo.sh                             # Demo script
+├── inputs/
+│   ├── actimize_kyc_packet.json        # Actimize-style input (Case 1)
+│   └── generic_csv/
+│       ├── customer.csv                # Customer profile
+│       ├── ubo.csv                     # Beneficial ownership
+│       ├── screening.csv               # Screening results
+│       ├── documents.csv               # Document inventory
+│       └── verification.csv            # IDV/verification results
+├── mapped/
+│   ├── ACT-KYC-2026-0001_bundle.json   # Mapped CaseBundle (clean)
+│   └── CSV-KYC-2026-0001_bundle.json   # Mapped CaseBundle (problem)
 └── output/
-    ├── KYC-2026-001/            # Low-risk output
-    ├── KYC-2026-002/            # PEP output
-    └── KYC-2026-003/            # Corporate output
+    ├── ACT-KYC-2026-0001/              # Decision output
+    └── CSV-KYC-2026-0001/              # Decision output
 ```
 
 ---
 
-## Adapter (Work in Progress)
+## KYC-Specific Signals (Roadmap)
 
-A KYC onboarding adapter is available at:
+The current pack uses general Financial Crime signals. A production KYC pack would add:
+
+| Signal | Severity | Trigger |
+|--------|----------|---------|
+| `KYC_IDV_FAILED` | HIGH | Identity verification failed |
+| `KYC_IDV_LIVENESS_FAIL` | HIGH | Liveness check failed |
+| `KYC_DOC_EXPIRED` | MEDIUM | Document expired |
+| `KYC_UBO_UNVERIFIED` | HIGH | UBO not verified |
+| `KYC_UBO_MISSING` | CRITICAL | UBO not identified (>25%) |
+| `KYC_REGISTRY_MISMATCH` | HIGH | Registry data doesn't match |
+| `KYC_DIRECTOR_MISMATCH` | HIGH | Directors don't match registry |
+| `KYC_ADDRESS_DISCREPANCY` | MEDIUM | Address doesn't match |
+| `KYC_NEWLY_INCORPORATED` | MEDIUM | Entity < 1 year old |
+| `KYC_DOCS_INCOMPLETE` | MEDIUM | Required docs missing |
+| `KYC_SANCTIONS_PENDING` | CRITICAL | Sanctions hit pending resolution |
+| `KYC_PEP_PENDING` | HIGH | PEP hit pending resolution |
+
+## KYC-Specific Mitigations (Roadmap)
+
+| Mitigation | Weight | Condition |
+|------------|--------|-----------|
+| `MIT_DOCS_COMPLETE` | -0.30 | All required docs on file |
+| `MIT_AUDITED_FINANCIALS` | -0.25 | Audit report present |
+| `MIT_TAX_COMPLIANT` | -0.20 | Tax filings verified |
+| `MIT_ALL_UBOS_VERIFIED` | -0.35 | 100% UBO verification |
+| `MIT_REGISTRY_VERIFIED` | -0.20 | Registry match confirmed |
+| `MIT_IDV_HIGH_CONFIDENCE` | -0.25 | IDV score > 95% |
+| `MIT_ESTABLISHED_ENTITY` | -0.20 | Entity > 3 years old |
+| `MIT_LOW_RISK_INDUSTRY` | -0.15 | NAICS in approved list |
+
+---
+
+## What the Report Should Show (Future Enhancement)
+
+A production KYC report would include these sections:
+
 ```
-adapters/kyc/generic_onboarding/mapping.yaml
+========================================================================
+DECISIONGRAPH KYC CASE REPORT
+========================================================================
+
+1. CUSTOMER & BUSINESS PROFILE
+   - Legal name, trading name, registration
+   - Industry (NAICS), years in business
+   - Expected activity profile
+
+2. IDENTITY VERIFICATION RESULTS
+   - Per-UBO: document type, result, confidence
+   - Liveness check results
+   - Device/session risk (if applicable)
+
+3. OWNERSHIP & CONTROL (UBO GRAPH)
+   - Visual representation of ownership chain
+   - Verification status per UBO
+   - Total verified ownership %
+
+4. SCREENING SUMMARY
+   - Sanctions: hits, dispositions, pending
+   - PEP: matches, status
+   - Adverse media: hits, severity
+
+5. DOCUMENTS ON FILE
+   - Document inventory with verification status
+   - Completeness score (e.g., 8/10 = 80%)
+   - Missing/expired documents
+
+6. RISK DRIVERS (by pillar)
+   - Identity Risk: signals + evidence
+   - Ownership Risk: signals + evidence
+   - Geographic Risk: signals + evidence
+   - Screening Risk: signals + evidence
+
+7. MITIGATIONS APPLIED
+   - Each mitigation with evidence anchor
+
+8. EDD REQUIREMENTS (if applicable)
+   - What additional info is needed
+   - Deadline for collection
+
+9. DECISION & REQUIRED ACTIONS
+   - Verdict
+   - Required signoffs
+   - Next steps
+
+10. AUDIT TRAIL
+    - Pack hash, adapter hash, report hash
+    - Timestamp, engine version
+========================================================================
 ```
 
-This adapter maps common KYC system exports to CaseBundle format. See the adapter for field mappings and transforms.
+---
+
+## Adapters
+
+### Available
+
+| Adapter | Path | Status |
+|---------|------|--------|
+| Actimize KYC | `adapters/kyc/actimize_onboarding/mapping.yaml` | Ready |
+| Generic CSV | `adapters/kyc/generic_onboarding/mapping.yaml` | Ready |
+
+### Adding New Adapters
+
+Create a YAML mapping from your onboarding system's export format to CaseBundle. See `adapters/SPEC.md` for the full specification.
 
 ---
 
 ## Next Steps
 
-1. **Tune Thresholds**: Adjust signal weights for KYC-specific risk appetite
-2. **Add KYC-Specific Pack**: Create dedicated KYC pack separate from AML
-3. **Periodic Review**: Implement kyc_refresh case type for ongoing monitoring
-4. **EDD Triggers**: Add automatic EDD escalation for high-risk customers
+1. **KYC-Specific Pack**: Create `packs/kyc_canada.yaml` with the signals/mitigations listed above
+2. **Enhanced Report Template**: Implement the 10-section KYC report format
+3. **EDD Workflow**: Add triggered EDD case type for high-risk customers
+4. **Periodic Review**: Implement `kyc_refresh` for ongoing monitoring
 
 ---
 
@@ -265,5 +287,5 @@ This adapter maps common KYC system exports to CaseBundle format. See the adapte
 DecisionGraph - Deterministic Financial Crime Decisions
 
 ```
-"Same customer + same rules = same risk decision. Always."
+"Complete CDD. Every time. Documented."
 ```

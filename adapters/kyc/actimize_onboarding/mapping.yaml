@@ -1,0 +1,187 @@
+# =============================================================================
+# Actimize KYC Onboarding Adapter v1.0
+# =============================================================================
+#
+# Maps Actimize Corporate Onboarding packets to DecisionGraph CaseBundle.
+# Handles full CDD workflow: entity → UBO → screening → verification → docs.
+#
+# =============================================================================
+
+adapter:
+  name: actimize_kyc_onboarding_v1
+  vendor: "NICE Actimize"
+  version: "1.0.0"
+  input_format: json
+  description: |
+    Adapter for Actimize KYC/CDD corporate onboarding packets.
+    Maps customer profile, beneficial owners, screening results,
+    identity verifications, and document inventory to CaseBundle.
+
+# =============================================================================
+# ROOT PATHS
+# =============================================================================
+
+roots:
+  case: "$.onboardingCase"
+  corporate: "$.corporateCustomer"
+  ubos: "$.beneficialOwners[*]"
+  screening: "$.screeningResults[*]"
+  idv: "$.identityVerification[*]"
+  documents: "$.documentsOnFile[*]"
+
+# =============================================================================
+# FIELD MAPPINGS
+# =============================================================================
+
+mappings:
+  # ---------------------------------------------------------------------------
+  # Case Metadata
+  # ---------------------------------------------------------------------------
+  CaseMeta.case_id: "$.onboardingCase.caseId"
+  CaseMeta.case_type: "$.onboardingCase.caseType"
+  CaseMeta.case_phase: "!literal analysis"
+  CaseMeta.jurisdiction: "$.onboardingCase.jurisdiction"
+  CaseMeta.created_at: "$.onboardingCase.createdTimestamp"
+  CaseMeta.primary_entity_type: "!literal organization"
+  CaseMeta.primary_entity_id: "$.corporateCustomer.entityId"
+  CaseMeta.status: "$.onboardingCase.status"
+  CaseMeta.priority: "$.onboardingCase.priority"
+  CaseMeta.assigned_to: "$.onboardingCase.relationshipManager"
+  CaseMeta.sensitivity: "!literal confidential"
+  CaseMeta.access_tags: "!literal [\"kyc\", \"cdd\", \"onboarding\"]"
+
+  # ---------------------------------------------------------------------------
+  # Corporate Customer (Organization)
+  # ---------------------------------------------------------------------------
+  Organization.id: "$.corporateCustomer.entityId"
+  Organization.legal_name: "$.corporateCustomer.legalName"
+  Organization.trading_name: "$.corporateCustomer.tradingName"
+  Organization.registration_number: "$.corporateCustomer.registrationNumber"
+  Organization.jurisdiction: "$.corporateCustomer.registrationJurisdiction"
+  Organization.incorporation_date: "$.corporateCustomer.incorporationDate"
+  Organization.industry_code: "$.corporateCustomer.naicsCode"
+  Organization.industry_description: "$.corporateCustomer.naicsDescription"
+  Organization.website: "$.corporateCustomer.website"
+  Organization.employee_count: "$.corporateCustomer.employeeCount"
+  Organization.annual_revenue: "$.corporateCustomer.annualRevenue"
+
+  # ---------------------------------------------------------------------------
+  # Beneficial Owners (Individuals)
+  # ---------------------------------------------------------------------------
+  Individual.id: "$.uboId"
+  Individual.given_name: "$.firstName"
+  Individual.family_name: "$.lastName"
+  Individual.date_of_birth: "$.dateOfBirth"
+  Individual.nationality: "$.nationality"
+  Individual.country_of_residence: "$.countryOfResidence"
+  Individual.pep_status: "$.pepStatus"
+  Individual.source_of_wealth: "$.sourceOfWealth"
+
+  # ---------------------------------------------------------------------------
+  # UBO Relationships
+  # ---------------------------------------------------------------------------
+  Relationship.id: "!concat REL-$.uboId"
+  Relationship.relationship_type: "!literal ubo"
+  Relationship.from_entity_id: "$.uboId"
+  Relationship.from_entity_type: "!literal individual"
+  Relationship.to_entity_id: "$.corporateCustomer.entityId"
+  Relationship.to_entity_type: "!literal organization"
+  Relationship.ownership_percentage: "$.ownershipPercentage"
+  Relationship.verified: "$.verificationStatus"
+
+  # ---------------------------------------------------------------------------
+  # Screening Events
+  # ---------------------------------------------------------------------------
+  ScreeningEvent.id: "$.screeningId"
+  ScreeningEvent.event_type: "!literal screening"
+  ScreeningEvent.timestamp: "$.screeningDate"
+  ScreeningEvent.screening_type: "$.screeningType"
+  ScreeningEvent.vendor: "$.vendor"
+  ScreeningEvent.screened_entity_id: "$.entityScreened"
+  ScreeningEvent.match_count: "$.matchCount"
+  ScreeningEvent.disposition: "$.disposition"
+  ScreeningEvent.match_score: "$.matchScore"
+
+  # ---------------------------------------------------------------------------
+  # Identity Verification Events
+  # ---------------------------------------------------------------------------
+  VerificationEvent.id: "$.verificationId"
+  VerificationEvent.event_type: "!literal verification"
+  VerificationEvent.timestamp: "$.verificationDate"
+  VerificationEvent.verification_type: "$.verificationType"
+  VerificationEvent.vendor: "$.vendor"
+  VerificationEvent.result: "$.overallResult"
+  VerificationEvent.confidence_score: "$.confidenceScore"
+  VerificationEvent.verified_entity_id: "$.subjectId"
+
+  # ---------------------------------------------------------------------------
+  # Documents (Evidence)
+  # ---------------------------------------------------------------------------
+  Evidence.id: "$.documentId"
+  Evidence.evidence_type: "$.documentType"
+  Evidence.description: "$.description"
+  Evidence.collected_date: "$.collectedDate"
+  Evidence.file_hash: "$.fileHash"
+  Evidence.verified: "$.verifiedStatus"
+
+# =============================================================================
+# VALUE TRANSFORMS
+# =============================================================================
+
+transforms:
+  case_type:
+    CORP_ONBOARDING: kyc_onboarding
+    INDIVIDUAL_ONBOARDING: kyc_onboarding
+    PERIODIC_REVIEW: kyc_refresh
+    TRIGGERED_REVIEW: edd_review
+
+  priority:
+    STANDARD: normal
+    HIGH: high
+    URGENT: critical
+
+  status:
+    PENDING_REVIEW: open
+    IN_PROGRESS: in_progress
+    APPROVED: closed
+    DECLINED: closed
+
+  pep_status:
+    "Y": fpep
+    "N": none
+    DOMESTIC_PEP: dpep
+    FOREIGN_PEP: fpep
+    HIO: hio
+    FAMILY: family
+    ASSOCIATE: associate
+
+  disposition:
+    CLEAR: false_positive
+    POSSIBLE_MATCH: pending
+    CONFIRMED_MATCH: confirmed
+    FALSE_POSITIVE: false_positive
+    REQUIRES_REVIEW: pending
+
+  result:
+    PASS: pass
+    FAIL: fail
+    INCONCLUSIVE: refer
+    NOT_ATTEMPTED: pending
+
+  verified_status:
+    VERIFIED: true
+    PENDING: false
+    UNVERIFIED: false
+    INCOMPLETE: false
+
+# =============================================================================
+# REQUIRED FIELDS
+# =============================================================================
+
+required_fields:
+  - field: CaseMeta.case_id
+    on_missing: ERROR
+  - field: Organization.id
+    on_missing: ERROR
+  - field: Organization.legal_name
+    on_missing: ERROR

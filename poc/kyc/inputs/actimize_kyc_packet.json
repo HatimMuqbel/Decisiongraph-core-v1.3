@@ -1,0 +1,287 @@
+{
+  "onboardingCase": {
+    "caseId": "ACT-KYC-2026-0001",
+    "caseType": "CORP_ONBOARDING",
+    "jurisdiction": "CA",
+    "createdTimestamp": "2026-01-28T09:00:00Z",
+    "requestedProduct": "COMMERCIAL_BANKING",
+    "relationshipManager": "J. Thompson",
+    "branchCode": "001-TORONTO",
+    "status": "PENDING_REVIEW",
+    "priority": "STANDARD"
+  },
+
+  "corporateCustomer": {
+    "entityId": "CORP-2026-4521",
+    "legalName": "Sterling Designs Ltd",
+    "tradingName": "Sterling Designs",
+    "registrationNumber": "BC1234567",
+    "registrationJurisdiction": "CA-BC",
+    "incorporationDate": "2018-03-15",
+    "businessType": "PRIVATE_CORPORATION",
+    "naicsCode": "541410",
+    "naicsDescription": "Interior Design Services",
+    "website": "https://sterlingdesigns.ca",
+    "employeeCount": "25",
+    "annualRevenue": "4500000",
+    "fiscalYearEnd": "12-31",
+    "registeredAddress": {
+      "line1": "1200 West Georgia Street",
+      "line2": "Suite 450",
+      "city": "Vancouver",
+      "province": "BC",
+      "postalCode": "V6E 4R2",
+      "country": "CA"
+    },
+    "mailingAddress": {
+      "sameAsRegistered": true
+    },
+    "primaryContact": {
+      "name": "Sarah Chen",
+      "title": "CFO",
+      "email": "schen@sterlingdesigns.ca",
+      "phone": "+1-604-555-0142"
+    }
+  },
+
+  "beneficialOwners": [
+    {
+      "uboId": "UBO-001",
+      "firstName": "Marcus",
+      "lastName": "Sterling",
+      "dateOfBirth": "1975-08-22",
+      "nationality": "CA",
+      "countryOfResidence": "CA",
+      "ownershipPercentage": "60",
+      "controlType": "SHAREHOLDER_DIRECTOR",
+      "isPrimaryContact": false,
+      "pepStatus": "N",
+      "sourceOfWealth": "BUSINESS_OWNERSHIP",
+      "verificationStatus": "VERIFIED",
+      "verificationMethod": "PASSPORT_LIVENESS",
+      "verificationDate": "2026-01-27"
+    },
+    {
+      "uboId": "UBO-002",
+      "firstName": "Elena",
+      "lastName": "Kowalski",
+      "dateOfBirth": "1982-11-03",
+      "nationality": "PL",
+      "countryOfResidence": "CA",
+      "ownershipPercentage": "40",
+      "controlType": "SHAREHOLDER",
+      "isPrimaryContact": false,
+      "pepStatus": "N",
+      "sourceOfWealth": "PRIOR_EMPLOYMENT",
+      "verificationStatus": "VERIFIED",
+      "verificationMethod": "PASSPORT_LIVENESS",
+      "verificationDate": "2026-01-27"
+    }
+  ],
+
+  "corporateStructure": {
+    "parentCompany": null,
+    "subsidiaries": [],
+    "complexityScore": "LOW",
+    "layerCount": 1,
+    "crossBorderIndicator": false
+  },
+
+  "screeningResults": [
+    {
+      "screeningId": "SCR-S-001",
+      "screeningType": "SANCTIONS",
+      "screeningDate": "2026-01-27T10:00:00Z",
+      "vendor": "WorldCheck",
+      "entityScreened": "Sterling Designs Ltd",
+      "matchCount": 0,
+      "disposition": "CLEAR",
+      "matchScore": null,
+      "reviewedBy": "AUTO"
+    },
+    {
+      "screeningId": "SCR-P-001",
+      "screeningType": "PEP",
+      "screeningDate": "2026-01-27T10:00:00Z",
+      "vendor": "WorldCheck",
+      "entityScreened": "Marcus Sterling",
+      "matchCount": 0,
+      "disposition": "CLEAR",
+      "matchScore": null,
+      "reviewedBy": "AUTO"
+    },
+    {
+      "screeningId": "SCR-P-002",
+      "screeningType": "PEP",
+      "screeningDate": "2026-01-27T10:00:00Z",
+      "vendor": "WorldCheck",
+      "entityScreened": "Elena Kowalski",
+      "matchCount": 0,
+      "disposition": "CLEAR",
+      "matchScore": null,
+      "reviewedBy": "AUTO"
+    },
+    {
+      "screeningId": "SCR-A-001",
+      "screeningType": "ADVERSE_MEDIA",
+      "screeningDate": "2026-01-27T10:05:00Z",
+      "vendor": "LexisNexis",
+      "entityScreened": "Sterling Designs Ltd",
+      "matchCount": 0,
+      "disposition": "CLEAR",
+      "matchScore": null,
+      "reviewedBy": "AUTO"
+    }
+  ],
+
+  "identityVerification": [
+    {
+      "verificationId": "IDV-001",
+      "subjectId": "UBO-001",
+      "subjectName": "Marcus Sterling",
+      "verificationType": "IDENTITY",
+      "verificationDate": "2026-01-27T11:00:00Z",
+      "vendor": "Jumio",
+      "documentType": "PASSPORT",
+      "documentCountry": "CA",
+      "documentExpiry": "2030-05-15",
+      "livenessCheck": "PASS",
+      "faceMatch": "PASS",
+      "documentAuthenticity": "PASS",
+      "overallResult": "PASS",
+      "confidenceScore": "98"
+    },
+    {
+      "verificationId": "IDV-002",
+      "subjectId": "UBO-002",
+      "subjectName": "Elena Kowalski",
+      "verificationType": "IDENTITY",
+      "verificationDate": "2026-01-27T11:15:00Z",
+      "vendor": "Jumio",
+      "documentType": "PASSPORT",
+      "documentCountry": "PL",
+      "documentExpiry": "2028-09-20",
+      "livenessCheck": "PASS",
+      "faceMatch": "PASS",
+      "documentAuthenticity": "PASS",
+      "overallResult": "PASS",
+      "confidenceScore": "96"
+    },
+    {
+      "verificationId": "IDV-003",
+      "subjectId": "CORP-2026-4521",
+      "subjectName": "Sterling Designs Ltd",
+      "verificationType": "REGISTRY",
+      "verificationDate": "2026-01-27T09:30:00Z",
+      "vendor": "CorpRegistry",
+      "registrySource": "BC_CORPORATE_REGISTRY",
+      "statusResult": "ACTIVE",
+      "nameMatch": "EXACT",
+      "directorsMatch": "CONFIRMED",
+      "overallResult": "PASS",
+      "confidenceScore": "100"
+    }
+  ],
+
+  "documentsOnFile": [
+    {
+      "documentId": "DOC-001",
+      "documentType": "CERTIFICATE_OF_INCORPORATION",
+      "description": "BC Certificate of Incorporation",
+      "fileHash": "sha256:a1b2c3d4e5f6...",
+      "collectedDate": "2026-01-26",
+      "expiryDate": null,
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "AUTO_REGISTRY"
+    },
+    {
+      "documentId": "DOC-002",
+      "documentType": "ARTICLES_OF_INCORPORATION",
+      "description": "Articles of Incorporation - Sterling Designs Ltd",
+      "fileHash": "sha256:b2c3d4e5f6a1...",
+      "collectedDate": "2026-01-26",
+      "expiryDate": null,
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "ANALYST"
+    },
+    {
+      "documentId": "DOC-003",
+      "documentType": "SHAREHOLDER_REGISTER",
+      "description": "Current shareholder register",
+      "fileHash": "sha256:c3d4e5f6a1b2...",
+      "collectedDate": "2026-01-26",
+      "expiryDate": null,
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "ANALYST"
+    },
+    {
+      "documentId": "DOC-004",
+      "documentType": "AUDITED_FINANCIALS",
+      "description": "2025 Audited Financial Statements - Grant Thornton",
+      "fileHash": "sha256:d4e5f6a1b2c3...",
+      "collectedDate": "2026-01-26",
+      "expiryDate": null,
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "ANALYST"
+    },
+    {
+      "documentId": "DOC-005",
+      "documentType": "TAX_FILING",
+      "description": "T2 Corporation Income Tax Return 2024",
+      "fileHash": "sha256:e5f6a1b2c3d4...",
+      "collectedDate": "2026-01-26",
+      "expiryDate": null,
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "ANALYST"
+    },
+    {
+      "documentId": "DOC-006",
+      "documentType": "PASSPORT",
+      "description": "Marcus Sterling - Canadian Passport",
+      "fileHash": "sha256:f6a1b2c3d4e5...",
+      "collectedDate": "2026-01-27",
+      "expiryDate": "2030-05-15",
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "IDV_VENDOR"
+    },
+    {
+      "documentId": "DOC-007",
+      "documentType": "PASSPORT",
+      "description": "Elena Kowalski - Polish Passport",
+      "fileHash": "sha256:a2b3c4d5e6f7...",
+      "collectedDate": "2026-01-27",
+      "expiryDate": "2028-09-20",
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "IDV_VENDOR"
+    },
+    {
+      "documentId": "DOC-008",
+      "documentType": "PROOF_OF_ADDRESS",
+      "description": "BC Hydro bill - registered office",
+      "fileHash": "sha256:b3c4d5e6f7a8...",
+      "collectedDate": "2026-01-26",
+      "expiryDate": null,
+      "verifiedStatus": "VERIFIED",
+      "verifiedBy": "ANALYST"
+    }
+  ],
+
+  "riskIndicators": {
+    "countryRisk": "LOW",
+    "industryRisk": "LOW",
+    "productRisk": "LOW",
+    "channelRisk": "LOW",
+    "customerTypeRisk": "LOW",
+    "transactionPatternRisk": null,
+    "sourceOfFundsRisk": "LOW",
+    "overallInherentRisk": "LOW"
+  },
+
+  "expectedActivity": {
+    "monthlyVolume": "150000-300000",
+    "transactionTypes": ["DOMESTIC_WIRE", "ACH", "CHECK"],
+    "internationalActivity": false,
+    "cashIntensive": false,
+    "primaryCounterparties": ["Suppliers (CA)", "Clients (CA)"]
+  }
+}

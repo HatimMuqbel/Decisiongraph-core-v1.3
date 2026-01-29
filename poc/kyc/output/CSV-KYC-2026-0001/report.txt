@@ -2,18 +2,18 @@
 DECISIONGRAPH CASE REPORT
 ========================================================================
 
-Case ID:      KYC-2026-003
+Case ID:      CSV-KYC-2026-0001
 Case Type:    KYC_ONBOARDING
 Case Phase:   analysis
 Jurisdiction: CA
-Priority:     critical
+Priority:     high
 
 Pack ID:      fincrime_canada_v1
 Pack Version: 1.0.0
 Pack Hash:    390c23d3d389fb481f0c8795b8b73f671efa2e4d9646bf49f13dfe75d326dc5d
 
-Graph ID:     graph:9b97793a-eacd-4f0a-b8be-c08d41010a3b
-Chain Length: 46 cells
+Graph ID:     graph:a0a6e6f2-bfa7-44d9-98f7-eb57c74ada33
+Chain Length: 56 cells
 
 ------------------------------------------------------------------------
 VERDICT: STR_CONSIDERATION
@@ -48,15 +48,25 @@ MITIGATIONS APPLIED
 
 ENTITIES
 ------------------------------------
-  [ORGANIZATION] ORG-001: Global Trading Holdings Ltd
+  [INDIVIDUAL] UBO-101: Viktor Petrov
+               Risk: MEDIUM
+  [INDIVIDUAL] UBO-102: Dmitri Volkov
+               Risk: HIGH
+  [ORGANIZATION] CORP-2026-7788: Maple Horizons Imports Inc
                  Risk: HIGH
 
 EVIDENCE
 ------------------------------------
-  [UNVERIFIED] DOC-008: cert_of_inc
-               BVI Certificate of Incorporation...
-  [UNVERIFIED] DOC-009: articles
-               Memorandum and Articles - redacted...
+  [UNVERIFIED] DOC-101: cert_of_inc
+               Ontario Certificate of Incorporation...
+  [UNVERIFIED] DOC-102: articles
+               Articles - Maple Horizons (awaiting translation)...
+  [UNVERIFIED] DOC-103: shareholder_register
+               Partial shareholder register - missing UBO-103...
+  [UNVERIFIED] DOC-104: passport
+               Viktor Petrov - Russian Passport...
+  [UNVERIFIED] DOC-105: passport
+               Dmitri Volkov - Russian Passport (EXPIRED)...
 
 TRANSACTIONS
 ------------------------------------
@@ -64,7 +74,7 @@ TRANSACTIONS
 CHAIN INTEGRITY
 ------------------------------------
   Status: VALID
-  Cells:  46
+  Cells:  56
 
 POLICY REFERENCES
 ------------------------------------
