@@ -128,12 +128,32 @@ class EscalationGateValidator:
         section_a = self._check_section_a(facts)
         result.sections.append(section_a)
 
-        # If Section A fails (no hard stops), escalation is forbidden
-        if not section_a.passed:
-            result.decision = EscalationDecision.PROHIBITED
-            result.rationale = "Section A: No fact-level hard stop present. Escalation forbidden."
-            result.non_escalation_justification = NON_ESCALATION_TEMPLATE
+        # CRITICAL: If Section A passes (hard stop present), escalation is PERMITTED
+        # Hard stops (sanctions match, false docs, refusal, legal prohibition) are
+        # SUFFICIENT basis for escalation - no typology or pattern needed
+        if section_a.passed:
+            # Hard stop present - escalation permitted immediately
+            # Still run other sections for documentation, but decision is made
+            section_b = self._check_section_b(instrument_type, indicators)
+            result.sections.append(section_b)
+            section_c = self._check_section_c(obligations, suspicion_evidence)
+            result.sections.append(section_c)
+            section_d = self._check_section_d(indicators, suspicion_evidence)
+            result.sections.append(section_d)
+            section_e = self._check_section_e(typology_maturity)
+            result.sections.append(section_e)
+            section_f = self._check_section_f(mitigations, indicators)
+            result.sections.append(section_f)
+            section_g = self._check_section_g(suspicion_evidence)
+            result.sections.append(section_g)
+
+            # Hard stop = escalation permitted regardless of other sections
+            result.decision = EscalationDecision.PERMITTED
+            result.rationale = "Section A: Fact-level hard stop confirmed. Escalation permitted."
             return result
+
+        # No hard stop - must pass ALL remaining sections to escalate
+        # This is the path for indicator/typology-based escalation
 
         # Section B: Instrument & Context Validation
         section_b = self._check_section_b(instrument_type, indicators)
@@ -155,7 +175,7 @@ class EscalationGateValidator:
             return result
 
         # Section D: Indicator Corroboration Test
-        section_d = self._check_section_d(indicators)
+        section_d = self._check_section_d(indicators, suspicion_evidence)
         result.sections.append(section_d)
 
         if not section_d.passed:
@@ -194,7 +214,7 @@ class EscalationGateValidator:
             result.non_escalation_justification = NON_ESCALATION_TEMPLATE
             return result
 
-        # All gates passed - escalation is permitted
+        # All gates passed - escalation is permitted via pattern-based path
         result.decision = EscalationDecision.PERMITTED
         result.rationale = "All gates passed. Escalation permitted with documented basis."
         return result
@@ -337,13 +357,21 @@ class EscalationGateValidator:
         section.evaluate()
         return section
 
-    def _check_section_d(self, indicators: List[Dict]) -> SectionResult:
-        """Section D: Indicator Corroboration Test."""
+    def _check_section_d(self, indicators: List[Dict], suspicion_evidence: Dict[str, bool] = None) -> SectionResult:
+        """
+        Section D: Indicator Corroboration Test.
+
+        Corroboration can come from:
+        1. Multiple corroborated indicators (2+)
+        2. Behavioral evidence (intent, deception) - these ARE the corroboration
+        """
         section = SectionResult(
             section_id="D",
             section_name="INDICATOR CORROBORATION TEST",
             gate_message="If indicators fail corroboration -> escalation prohibited."
         )
+
+        suspicion_evidence = suspicion_evidence or {}
 
         # For each indicator, check corroboration
         corroborated_count = 0
@@ -351,8 +379,16 @@ class EscalationGateValidator:
             if ind.get("corroborated", False):
                 corroborated_count += 1
 
-        # At least 2 corroborated indicators needed
-        has_corroboration = corroborated_count >= 2 or len(indicators) == 0
+        # Behavioral evidence (intent, deception) counts as corroboration
+        # because it represents observed patterns, not just indicator counts
+        has_behavioral_evidence = (
+            suspicion_evidence.get("has_intent", False) or
+            suspicion_evidence.get("has_deception", False) or
+            suspicion_evidence.get("has_sustained_pattern", False)
+        )
+
+        # At least 2 corroborated indicators OR behavioral evidence
+        has_corroboration = corroborated_count >= 2 or len(indicators) == 0 or has_behavioral_evidence
 
         checks = [
             GateCheck(
@@ -477,11 +513,16 @@ class EscalationGateValidator:
         return section
 
     def _check_section_g(self, suspicion_evidence: Dict[str, bool]) -> SectionResult:
-        """Section G: Suspicion Definition Test (Final Gate)."""
+        """
+        Section G: Suspicion Definition Test (Final Gate).
+
+        At least ONE of intent, deception, or sustained pattern must be present.
+        This is the legal definition of suspicion - not all three are required.
+        """
         section = SectionResult(
             section_id="G",
             section_name="SUSPICION DEFINITION TEST (FINAL GATE)",
-            gate_message="If any answer = NO -> escalation is forbidden."
+            gate_message="If NONE apply -> escalation is forbidden."
         )
 
         has_intent = suspicion_evidence.get("has_intent", False)
@@ -493,26 +534,29 @@ class EscalationGateValidator:
                 check_id="G1",
                 description="Is there intent to disguise, conceal, or evade?",
                 status=GateStatus.PASS if has_intent else GateStatus.FAIL,
-                evidence="Intent evidence present" if has_intent else "No intent evidence"
+                evidence="Intent evidence present" if has_intent else "No intent evidence",
+                required=False  # ANY must pass
             ),
             GateCheck(
                 check_id="G2",
                 description="Is there deception or misrepresentation?",
                 status=GateStatus.PASS if has_deception else GateStatus.FAIL,
-                evidence="Deception detected" if has_deception else "No deception"
+                evidence="Deception detected" if has_deception else "No deception",
+                required=False  # ANY must pass
             ),
             GateCheck(
                 check_id="G3",
                 description="Is there a sustained pattern inconsistent with profile?",
                 status=GateStatus.PASS if has_pattern else GateStatus.FAIL,
-                evidence="Sustained pattern" if has_pattern else "No sustained pattern"
+                evidence="Sustained pattern" if has_pattern else "No sustained pattern",
+                required=False  # ANY must pass
             ),
         ]
 
         section.checks = checks
 
-        # ALL must pass for suspicion to be valid
-        section.passed = all(c.status == GateStatus.PASS for c in checks)
+        # At least ONE must pass for suspicion to be valid
+        section.passed = any(c.status == GateStatus.PASS for c in checks)
         return section
 
     def render_checklist(self, result: EscalationGateResult, width: int = 80) -> List[str]:

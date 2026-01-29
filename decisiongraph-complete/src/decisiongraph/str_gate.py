@@ -94,6 +94,7 @@ class STRGateValidator:
         evidence_quality: Dict[str, bool],
         mitigation_status: Dict[str, bool],
         typology_confirmed: bool = False,
+        facts: Dict[str, Any] = None,
     ) -> STRGateResult:
         """
         Run the complete Positive STR Checklist.
@@ -103,14 +104,17 @@ class STRGateValidator:
             evidence_quality: Dict with is_fact_based, is_specific, is_reproducible, is_regulator_clear
             mitigation_status: Dict with explanation_insufficient, docs_unsupportive, history_misaligned
             typology_confirmed: Whether a confirmed ML/TF typology is present
+            facts: Dict with fact-level hard stops (sanctions_result, document_status, etc.)
 
         Returns:
             STRGateResult with decision and full audit trail
         """
         result = STRGateResult()
+        facts = facts or {}
 
         # Section 1: Legal Suspicion Threshold (at least ONE must be true)
-        section_1 = self._check_section_1(suspicion_evidence)
+        # INCLUDES hard stops - they are a legal basis independent of behavioral suspicion
+        section_1 = self._check_section_1(suspicion_evidence, facts)
         result.sections.append(section_1)
 
         if not section_1.passed:
@@ -129,8 +133,18 @@ class STRGateValidator:
             result.str_rationale_statement = NO_STR_RATIONALE_TEMPLATE
             return result
 
+        # Check if we have a hard stop (mitigations are irrelevant for hard stops)
+        has_hard_stop = (
+            facts.get("sanctions_result") == "MATCH" or
+            facts.get("document_status") == "FALSE" or
+            facts.get("customer_response") == "REFUSAL" or
+            facts.get("legal_prohibition", False) or
+            facts.get("adverse_media_mltf", False)
+        )
+
         # Section 3: Mitigation Failure Confirmation (ALL must be true)
-        section_3 = self._check_section_3(mitigation_status)
+        # BYPASS for hard stops: legal prohibitions stand regardless of mitigations
+        section_3 = self._check_section_3(mitigation_status, has_hard_stop)
         result.sections.append(section_3)
 
         if not section_3.passed:
@@ -145,7 +159,7 @@ class STRGateValidator:
         # Section 4 doesn't block - it's supporting evidence
 
         # Section 5: Regulatory Reasonableness Test (ALL must be YES)
-        section_5 = self._check_section_5(suspicion_evidence, mitigation_status)
+        section_5 = self._check_section_5(suspicion_evidence, mitigation_status, facts)
         result.sections.append(section_5)
 
         if not section_5.passed:
@@ -161,8 +175,17 @@ class STRGateValidator:
 
         return result
 
-    def _check_section_1(self, suspicion_evidence: Dict[str, Any]) -> STRSectionResult:
-        """Section 1: Legal Suspicion Threshold - at least ONE must be true."""
+    def _check_section_1(self, suspicion_evidence: Dict[str, Any], facts: Dict[str, Any] = None) -> STRSectionResult:
+        """
+        Section 1: Legal Suspicion Threshold - at least ONE must be true.
+
+        TWO VALID PATHS TO STR:
+        1. HARD STOP (legal, no typology required) - sanctions match, false docs, refusal
+        2. BEHAVIORAL SUSPICION (typology required) - intent, deception, sustained pattern
+
+        Hard stops override typology requirements because they represent
+        legal prohibitions, not behavioral assessments.
+        """
         section = STRSectionResult(
             section_id="1",
             section_name="LEGAL SUSPICION THRESHOLD",
@@ -170,11 +193,44 @@ class STRGateValidator:
             logic="any"
         )
 
+        facts = facts or {}
+
+        # Check for hard stops (legal basis independent of behavioral suspicion)
+        has_sanctions_match = facts.get("sanctions_result") == "MATCH"
+        has_false_docs = facts.get("document_status") == "FALSE"
+        has_refusal = facts.get("customer_response") == "REFUSAL"
+        has_legal_prohibition = facts.get("legal_prohibition", False)
+        has_adverse_media_mltf = facts.get("adverse_media_mltf", False)
+
+        has_hard_stop = has_sanctions_match or has_false_docs or has_refusal or has_legal_prohibition or has_adverse_media_mltf
+
+        # Build hard stop evidence string
+        hard_stop_reasons = []
+        if has_sanctions_match:
+            hard_stop_reasons.append("confirmed sanctions match")
+        if has_false_docs:
+            hard_stop_reasons.append("false/fraudulent documents")
+        if has_refusal:
+            hard_stop_reasons.append("customer refusal to provide information")
+        if has_legal_prohibition:
+            hard_stop_reasons.append("regulator instruction/legal prohibition")
+        if has_adverse_media_mltf:
+            hard_stop_reasons.append("adverse media directly linked to ML/TF")
+        hard_stop_evidence = ", ".join(hard_stop_reasons) if hard_stop_reasons else "No hard stop"
+
+        # Check for behavioral suspicion
         has_intent = suspicion_evidence.get("has_intent", False)
         has_deception = suspicion_evidence.get("has_deception", False)
         has_pattern = suspicion_evidence.get("has_sustained_pattern", False)
 
         checks = [
+            STRCheck(
+                check_id="1.0",
+                description="Fact-level hard stop present (sanctions match, false docs, refusal, legal prohibition)",
+                satisfied=has_hard_stop,
+                evidence=f"Hard stop: {hard_stop_evidence}" if has_hard_stop else "No hard stop",
+                required=False  # ANY must pass
+            ),
             STRCheck(
                 check_id="1.1",
                 description="Intent to conceal or disguise source, ownership, or movement of funds",
@@ -243,14 +299,34 @@ class STRGateValidator:
         section.passed = all(c.satisfied for c in checks)
         return section
 
-    def _check_section_3(self, mitigation_status: Dict[str, bool]) -> STRSectionResult:
-        """Section 3: Mitigation Failure Confirmation - ALL must be true."""
+    def _check_section_3(self, mitigation_status: Dict[str, bool], hard_stop_bypass: bool = False) -> STRSectionResult:
+        """
+        Section 3: Mitigation Failure Confirmation - ALL must be true.
+
+        EXCEPTION: When a hard stop is present, mitigations are IRRELEVANT.
+        Legal prohibitions (sanctions, fraud, refusal) stand regardless of explanations.
+        """
         section = STRSectionResult(
             section_id="3",
             section_name="MITIGATION FAILURE CONFIRMATION",
             gate_message="If this cannot be stated honestly -> NO STR",
             logic="all"
         )
+
+        # Hard stop bypass: legal prohibitions override mitigations
+        if hard_stop_bypass:
+            checks = [
+                STRCheck(
+                    check_id="3.0",
+                    description="Hard stop present - mitigations are irrelevant for legal prohibitions",
+                    satisfied=True,
+                    evidence="Hard stop bypasses mitigation review"
+                ),
+            ]
+            section.checks = checks
+            section.passed = True
+            section.gate_message = "Hard stop present. Mitigations do not apply to legal prohibitions."
+            return section
 
         checks = [
             STRCheck(
@@ -306,14 +382,63 @@ class STRGateValidator:
         section.passed = True  # Section 4 always "passes" - it's optional
         return section
 
-    def _check_section_5(self, suspicion_evidence: Dict[str, Any], mitigation_status: Dict[str, bool]) -> STRSectionResult:
-        """Section 5: Regulatory Reasonableness Test - ALL must be YES."""
+    def _check_section_5(self, suspicion_evidence: Dict[str, Any], mitigation_status: Dict[str, bool], facts: Dict[str, Any] = None) -> STRSectionResult:
+        """
+        Section 5: Regulatory Reasonableness Test - ALL must be YES.
+
+        EXCEPTION: Hard stops automatically satisfy regulatory reasonableness.
+        A regulator would absolutely expect an STR for sanctions matches, fraud, etc.
+        """
         section = STRSectionResult(
             section_id="5",
             section_name="REGULATORY REASONABLENESS TEST (FINAL)",
             gate_message="If any answer = NO -> NO STR",
             logic="all"
         )
+
+        facts = facts or {}
+
+        # Check for hard stops (including adverse media linked to ML/TF)
+        has_hard_stop = (
+            facts.get("sanctions_result") == "MATCH" or
+            facts.get("document_status") == "FALSE" or
+            facts.get("customer_response") == "REFUSAL" or
+            facts.get("legal_prohibition", False) or
+            facts.get("adverse_media_mltf", False)
+        )
+
+        # Hard stops automatically satisfy regulatory reasonableness
+        if has_hard_stop:
+            checks = [
+                STRCheck(
+                    check_id="5.0",
+                    description="Hard stop present - regulatory reporting is mandatory",
+                    satisfied=True,
+                    evidence="Hard stop mandates regulatory reporting"
+                ),
+                STRCheck(
+                    check_id="5.1",
+                    description="Would a regulator expect an STR if this were reviewed later?",
+                    satisfied=True,
+                    evidence="Yes - hard stop mandates STR"
+                ),
+                STRCheck(
+                    check_id="5.2",
+                    description="Would NOT filing create defensibility risk?",
+                    satisfied=True,
+                    evidence="Yes - failure to report hard stop is indefensible"
+                ),
+                STRCheck(
+                    check_id="5.3",
+                    description="Is the STR about suspicion, not compliance anxiety?",
+                    satisfied=True,
+                    evidence="Yes - legal prohibition, not anxiety"
+                ),
+            ]
+            section.checks = checks
+            section.passed = True
+            section.gate_message = "Hard stop mandates regulatory reporting."
+            return section
 
         # These are derived from the overall case assessment
         has_basis = any([
@@ -437,6 +562,7 @@ def run_str_gate(
     evidence_quality: Dict[str, bool] = None,
     mitigation_status: Dict[str, bool] = None,
     typology_confirmed: bool = False,
+    facts: Dict[str, Any] = None,
 ) -> STRGateResult:
     """
     Run the Positive STR Gate.
@@ -445,11 +571,16 @@ def run_str_gate(
     - Negative Gate (escalation_gate): "Are we ALLOWED to escalate?"
     - Positive Gate (str_gate): "Are we OBLIGATED to report?"
 
+    TWO VALID PATHS TO STR:
+    1. HARD STOP (legal, no typology required) - sanctions match, false docs, refusal
+    2. BEHAVIORAL SUSPICION (typology required) - intent, deception, sustained pattern
+
     Args:
         suspicion_evidence: Dict with has_intent, has_deception, has_sustained_pattern
         evidence_quality: Dict with is_fact_based, is_specific, is_reproducible, is_regulator_clear
         mitigation_status: Dict with explanation_insufficient, docs_unsupportive, history_misaligned
         typology_confirmed: Whether a confirmed ML/TF typology is present
+        facts: Dict with fact-level hard stops (sanctions_result, document_status, etc.)
 
     Returns:
         STRGateResult with decision and full audit trail
@@ -465,6 +596,7 @@ def run_str_gate(
         "docs_unsupportive": False,
         "history_misaligned": False,
     }
+    facts = facts or {}
 
     validator = STRGateValidator()
     return validator.validate(
@@ -472,6 +604,7 @@ def run_str_gate(
         evidence_quality=evidence_quality,
         mitigation_status=mitigation_status,
         typology_confirmed=typology_confirmed,
+        facts=facts,
     )
 
 

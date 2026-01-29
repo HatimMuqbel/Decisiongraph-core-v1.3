@@ -1,0 +1,1608 @@
+{
+  "schema_version": "1.0.0",
+  "description": "DecisionGraph Dual-Gate Test Corpus - 25 Bank-Grade Test Cases",
+  "generated": "2026-01-29",
+  "test_families": {
+    "PAIN": "Cases that must NOT escalate (false positive prevention)",
+    "ESCALATE": "Cases that MUST escalate (true positive detection)"
+  },
+  "cases": [
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:00Z",
+        "batch_sequence": 900001
+      },
+      "alert_details": {
+        "external_id": "TEST-P-01",
+        "work_item_type": "PEP_RE_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_772", "GEO_009"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "99283-IT-MOR",
+        "fullName": "Elena Moretti",
+        "salutation": "Hon.",
+        "c_type": "IND",
+        "residence_iso": "IT",
+        "onboarding_epoch": 1084147200,
+        "last_kyc_refresh": "2025-05-10",
+        "pep_flag": "Y",
+        "pep_category_code": "PEP_LEVEL_1_FOREIGN",
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-01-001",
+          "amt_native": 150000.00,
+          "currency_iso": "GBP",
+          "amt_base_cad": 265000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "LONDON LEGAL PARTNERS",
+          "intermediary_bank": "INTESA_SAN_PAOLO_MILAN",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 1,
+        "top_match": {
+          "uid": "wc_99182",
+          "entity_type": "PERSON",
+          "risk_level": "CRITICAL",
+          "description": "Minister of Infrastructure - Italy",
+          "confirmed_sanctions_match": false
+        }
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 22,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": true,
+        "source_of_funds_verified": true
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS_WITH_EDD",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Foreign PEP + legal fees (baseline)"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:01Z",
+        "batch_sequence": 900002
+      },
+      "alert_details": {
+        "external_id": "TEST-P-02",
+        "work_item_type": "PEP_RE_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_772", "RULE_104"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "88412-DE-SCH",
+        "fullName": "Heinrich Schmidt",
+        "salutation": "Dr.",
+        "c_type": "IND",
+        "residence_iso": "DE",
+        "onboarding_epoch": 1167609600,
+        "last_kyc_refresh": "2025-08-15",
+        "pep_flag": "Y",
+        "pep_category_code": "PEP_LEVEL_2_FOREIGN",
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-02-001",
+          "amt_native": 45000.00,
+          "currency_iso": "EUR",
+          "amt_base_cad": 67500.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "FRANKFURT UNIVERSITY HOSPITAL",
+          "intermediary_bank": "DEUTSCHE_BANK",
+          "status_code": "COMPLETED"
+        },
+        {
+          "tx_id": "TX-P-02-002",
+          "amt_native": 45000.00,
+          "currency_iso": "EUR",
+          "amt_base_cad": 67500.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "FRANKFURT UNIVERSITY HOSPITAL",
+          "intermediary_bank": "DEUTSCHE_BANK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 1,
+        "top_match": {
+          "uid": "wc_88412",
+          "entity_type": "PERSON",
+          "risk_level": "HIGH",
+          "description": "Former State Secretary - Germany",
+          "confirmed_sanctions_match": false
+        }
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 18,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": true,
+        "source_of_funds_verified": true,
+        "recurring_pattern_explained": "Medical treatment payments - consistent with prior years"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS_WITH_EDD",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Foreign PEP + repeated explained wires"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:02Z",
+        "batch_sequence": 900003
+      },
+      "alert_details": {
+        "external_id": "TEST-P-03",
+        "work_item_type": "THRESHOLD_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_JUST_BELOW"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "55123-CA-JOH",
+        "fullName": "Sarah Johnson",
+        "salutation": "Ms.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1388534400,
+        "last_kyc_refresh": "2025-03-20",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-03-001",
+          "amt_native": 9800.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 9800.00,
+          "flow_direction": "IN",
+          "method": "EFT",
+          "target_name": "EMPLOYER PAYROLL",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 12,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "employment_verified": "Software Engineer - confirmed employer"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Just-below-threshold single event"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:03Z",
+        "batch_sequence": 900004
+      },
+      "alert_details": {
+        "external_id": "TEST-P-04",
+        "work_item_type": "CROSS_BORDER_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_104", "GEO_HIGH_RISK"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "44289-CA-CHE",
+        "fullName": "Wei Chen",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1420070400,
+        "last_kyc_refresh": "2025-09-01",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-04-001",
+          "amt_native": 85000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 115000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "COLUMBIA UNIVERSITY BURSAR",
+          "intermediary_bank": "CITIBANK_NY",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 11,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "University tuition - enrollment letter on file"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Cross-border tuition"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:04Z",
+        "batch_sequence": 900005
+      },
+      "alert_details": {
+        "external_id": "TEST-P-05",
+        "work_item_type": "GEO_RISK_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["GEO_HIGH_RISK", "RULE_104"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "33567-CA-PAT",
+        "fullName": "Margaret Patterson",
+        "salutation": "Mrs.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 946684800,
+        "last_kyc_refresh": "2025-01-15",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-05-001",
+          "amt_native": 25000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 34000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "DOCTORS WITHOUT BORDERS - YEMEN MISSION",
+          "intermediary_bank": "HSBC_UK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 26,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Charitable donation - registered charity confirmation",
+        "charity_registered": "CRA registered charity T3010"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "High-risk country charity"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:05Z",
+        "batch_sequence": 900006
+      },
+      "alert_details": {
+        "external_id": "TEST-P-06",
+        "work_item_type": "CRYPTO_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_CRYPTO", "RULE_LARGE"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "22891-CA-KIM",
+        "fullName": "David Kim",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1483228800,
+        "last_kyc_refresh": "2025-11-20",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-06-001",
+          "amt_native": 150000.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 150000.00,
+          "flow_direction": "IN",
+          "method": "EFT",
+          "target_name": "COINBASE CANADA INC",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 9,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Crypto liquidation - FINTRAC-registered exchange",
+        "counterparty_regulated": "Coinbase Canada - MSB registered"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Regulated crypto exchange"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:06Z",
+        "batch_sequence": 900007
+      },
+      "alert_details": {
+        "external_id": "TEST-P-07",
+        "work_item_type": "BATCH_DEPOSIT_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_BATCH", "RULE_VOLUME"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-7721-TEC",
+        "fullName": "TechStart Solutions Inc.",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1514764800,
+        "last_kyc_refresh": "2025-06-30",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-07-001",
+          "amt_native": 450000.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 450000.00,
+          "flow_direction": "OUT",
+          "method": "EFT_BATCH",
+          "target_name": "PAYROLL - 45 EMPLOYEES",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 8,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "business_activity_verified": "Software company - payroll consistent with headcount"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Payroll batch deposits"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:07Z",
+        "batch_sequence": 900008
+      },
+      "alert_details": {
+        "external_id": "TEST-P-08",
+        "work_item_type": "FX_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_FX_VOLUME", "RULE_104"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-8834-IMP",
+        "fullName": "Global Imports Ltd.",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1199145600,
+        "last_kyc_refresh": "2025-04-15",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-08-001",
+          "amt_native": 890000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 1200000.00,
+          "flow_direction": "OUT",
+          "method": "FX_SETTLEMENT",
+          "target_name": "SUPPLIER PAYMENT - SHENZHEN ELECTRONICS",
+          "intermediary_bank": "BANK_OF_CHINA",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 18,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "trade_documents_verified": "Bill of lading, commercial invoice, LC on file"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "FX settlement activity"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:08Z",
+        "batch_sequence": 900009
+      },
+      "alert_details": {
+        "external_id": "TEST-P-09",
+        "work_item_type": "PEP_FAMILY_ALERT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_PEP_FAMILY"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "66782-FR-DUP",
+        "fullName": "Marie Dupont",
+        "salutation": "Mme.",
+        "c_type": "IND",
+        "residence_iso": "FR",
+        "onboarding_epoch": 1451606400,
+        "last_kyc_refresh": "2025-07-22",
+        "pep_flag": "Y",
+        "pep_category_code": "PEP_FAMILY_MEMBER",
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-09-001",
+          "amt_native": 2500.00,
+          "currency_iso": "EUR",
+          "amt_base_cad": 3750.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "PARIS ANTIQUES GALLERY",
+          "intermediary_bank": "BNP_PARIBAS",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 1,
+        "top_match": {
+          "uid": "wc_66782",
+          "entity_type": "PERSON",
+          "risk_level": "MEDIUM",
+          "description": "Sister of Deputy Minister - France",
+          "confirmed_sanctions_match": false
+        }
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 10,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": true,
+        "source_of_funds_verified": true,
+        "amount_proportionate": "Small amount consistent with personal purchase"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS_WITH_EDD",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "PEP family member small amount"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:09Z",
+        "batch_sequence": 900010
+      },
+      "alert_details": {
+        "external_id": "TEST-P-10",
+        "work_item_type": "DORMANT_REACTIVATION",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_DORMANT", "RULE_LARGE"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "11456-CA-WIL",
+        "fullName": "Robert Wilson",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 852076800,
+        "last_kyc_refresh": "2025-12-01",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-10-001",
+          "amt_native": 425000.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 425000.00,
+          "flow_direction": "IN",
+          "method": "EFT",
+          "target_name": "ESTATE OF JAMES WILSON - PROBATE",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 29,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Inheritance - probate documents and death certificate on file"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Dormant account + inheritance"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:10Z",
+        "batch_sequence": 900011
+      },
+      "alert_details": {
+        "external_id": "TEST-P-11",
+        "work_item_type": "PROFESSIONAL_SERVICES",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_PROFESSIONAL", "GEO_TAX_HAVEN"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-9912-ACC",
+        "fullName": "Smith & Associates CPA",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1104537600,
+        "last_kyc_refresh": "2025-02-28",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-11-001",
+          "amt_native": 75000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 101000.00,
+          "flow_direction": "IN",
+          "method": "SWIFT_WIRE",
+          "target_name": "CAYMAN ISLANDS TRUST CO",
+          "intermediary_bank": "BUTTERFIELD_BANK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 21,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Accounting retainer - engagement letter on file",
+        "client_trust_verified": "Legitimate trust administration services"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Accounting retainer"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:11Z",
+        "batch_sequence": 900012
+      },
+      "alert_details": {
+        "external_id": "TEST-P-12",
+        "work_item_type": "MEDICAL_EXPENSE",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_104", "GEO_009"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "77234-CA-THO",
+        "fullName": "Jennifer Thompson",
+        "salutation": "Ms.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1262304000,
+        "last_kyc_refresh": "2025-10-10",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-12-001",
+          "amt_native": 180000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 243000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "MAYO CLINIC - PATIENT ACCOUNTS",
+          "intermediary_bank": "US_BANK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 16,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Cancer treatment - hospital admission letter on file"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Medical expense abroad"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:12Z",
+        "batch_sequence": 900013
+      },
+      "alert_details": {
+        "external_id": "TEST-P-13",
+        "work_item_type": "REAL_ESTATE",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_REAL_ESTATE", "RULE_LARGE"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "88901-CA-GAR",
+        "fullName": "Michael Garcia",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1325376000,
+        "last_kyc_refresh": "2025-08-05",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-13-001",
+          "amt_native": 850000.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 850000.00,
+          "flow_direction": "OUT",
+          "method": "EFT",
+          "target_name": "BLAKE CASSELS & GRAYDON LLP - TRUST",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 14,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Property closing - APS and mortgage approval on file"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Property closing escrow"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:13Z",
+        "batch_sequence": 900014
+      },
+      "alert_details": {
+        "external_id": "TEST-P-14",
+        "work_item_type": "TAX_PAYMENT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_LARGE", "RULE_GOVERNMENT"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-5567-HOL",
+        "fullName": "Maple Holdings Corp.",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1041379200,
+        "last_kyc_refresh": "2025-05-20",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-14-001",
+          "amt_native": 2300000.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 2300000.00,
+          "flow_direction": "OUT",
+          "method": "EFT",
+          "target_name": "CANADA REVENUE AGENCY",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 23,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Annual corporate tax installment - CRA notice on file"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Tax settlement payment"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:30:14Z",
+        "batch_sequence": 900015
+      },
+      "alert_details": {
+        "external_id": "TEST-P-15",
+        "work_item_type": "DIPLOMATIC_ACCOUNT",
+        "assigned_queue": "FIU_TIER_1_TORONTO",
+        "previous_analyst": null,
+        "hit_rule_ids": ["RULE_PEP", "GEO_009"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "DIPL-1123-EMB",
+        "fullName": "Embassy of Japan - Ottawa",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "CA",
+        "onboarding_epoch": 631152000,
+        "last_kyc_refresh": "2025-03-01",
+        "pep_flag": "Y",
+        "pep_category_code": "DIPLOMATIC_MISSION",
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-P-15-001",
+          "amt_native": 125000.00,
+          "currency_iso": "JPY",
+          "amt_base_cad": 1150.00,
+          "flow_direction": "IN",
+          "method": "SWIFT_WIRE",
+          "target_name": "MINISTRY OF FOREIGN AFFAIRS - TOKYO",
+          "intermediary_bank": "MUFG_TOKYO",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 35,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "purpose_verified": "Diplomatic operating expenses - consistent with mission budget"
+      },
+      "expected_outcome": {
+        "expected_verdict": "PASS_WITH_EDD",
+        "expected_str": "NO",
+        "gate_1_expected": "PROHIBITED",
+        "gate_2_expected": "PROHIBITED",
+        "test_family": "PAIN",
+        "test_description": "Embassy / diplomatic expense"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:00Z",
+        "batch_sequence": 900016
+      },
+      "alert_details": {
+        "external_id": "TEST-E-01",
+        "work_item_type": "SANCTIONS_ALERT",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["SAN_001"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "77119-RU-IVN",
+        "fullName": "Ivan Petrov",
+        "salutation": null,
+        "c_type": "IND",
+        "residence_iso": "RU",
+        "onboarding_epoch": 1546300800,
+        "last_kyc_refresh": "2025-11-02",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "FALSE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-01-001",
+          "amt_native": 98000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 132000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "BLACK SEA HOLDINGS LLC",
+          "intermediary_bank": "GAZPROMBANK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 1,
+        "top_match": {
+          "uid": "ofac_77421",
+          "entity_type": "PERSON",
+          "risk_level": "SANCTIONED",
+          "description": "Designated under OFAC EO 14024",
+          "confirmed_sanctions_match": true
+        }
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 7,
+        "documentation_complete": false,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Sanctions exact match"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:01Z",
+        "batch_sequence": 900017
+      },
+      "alert_details": {
+        "external_id": "TEST-E-02",
+        "work_item_type": "SANCTIONS_ALERT",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["SAN_002", "UBO_001"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-8821-BLU",
+        "fullName": "Blue Ocean Trading GmbH",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "DE",
+        "onboarding_epoch": 1577836800,
+        "last_kyc_refresh": "2025-09-15",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-02-001",
+          "amt_native": 450000.00,
+          "currency_iso": "EUR",
+          "amt_base_cad": 675000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "SIBERIAN ENERGY RESOURCES",
+          "intermediary_bank": "SBERBANK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 1,
+        "top_match": {
+          "uid": "eu_san_8821",
+          "entity_type": "ORGANIZATION",
+          "risk_level": "SANCTIONED",
+          "description": "50% owned by EU-sanctioned individual",
+          "confirmed_sanctions_match": true,
+          "ownership_link": "Alexei Volkov - 50% UBO - EU Sanctions List"
+        }
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 6,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Sanctions 50% ownership"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:02Z",
+        "batch_sequence": 900018
+      },
+      "alert_details": {
+        "external_id": "TEST-E-03",
+        "work_item_type": "DOCUMENT_FRAUD",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["DOC_FRAUD_001"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-9934-TRA",
+        "fullName": "TransGlobal Commodities Inc.",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "PA",
+        "onboarding_epoch": 1609459200,
+        "last_kyc_refresh": "2025-06-20",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-03-001",
+          "amt_native": 2100000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 2835000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "HONG KONG METALS TRADING",
+          "intermediary_bank": "HSBC_HK",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 5,
+        "documentation_complete": false,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "document_fraud_detected": "Invoice verification failed - supplier does not exist"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "False invoice"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:03Z",
+        "batch_sequence": 900019
+      },
+      "alert_details": {
+        "external_id": "TEST-E-04",
+        "work_item_type": "NON_COOPERATION",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": "A_JONES",
+        "hit_rule_ids": ["RULE_SOF_REQUEST", "RULE_REFUSAL"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "55678-AE-ALM",
+        "fullName": "Ahmad Al-Mansouri",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "AE",
+        "onboarding_epoch": 1577836800,
+        "last_kyc_refresh": "2025-04-10",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "FALSE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-04-001",
+          "amt_native": 890000.00,
+          "currency_iso": "AED",
+          "amt_base_cad": 325000.00,
+          "flow_direction": "IN",
+          "method": "SWIFT_WIRE",
+          "target_name": "UNKNOWN - REFUSED TO DISCLOSE",
+          "intermediary_bank": "EMIRATES_NBD",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 6,
+        "documentation_complete": false,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "customer_refusal": "Refused to explain source of funds after 3 requests"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Refusal to explain source"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:04Z",
+        "batch_sequence": 900020
+      },
+      "alert_details": {
+        "external_id": "TEST-E-05",
+        "work_item_type": "STRUCTURING_ALERT",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["STRUCT_001", "STRUCT_002", "STRUCT_003"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "44123-CA-MAR",
+        "fullName": "Carlos Martinez",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1514764800,
+        "last_kyc_refresh": "2025-07-15",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-05-001",
+          "amt_native": 9500.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 9500.00,
+          "flow_direction": "IN",
+          "method": "CASH",
+          "target_name": "CASH DEPOSIT",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        },
+        {
+          "tx_id": "TX-E-05-002",
+          "amt_native": 9400.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 9400.00,
+          "flow_direction": "IN",
+          "method": "CASH",
+          "target_name": "CASH DEPOSIT",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        },
+        {
+          "tx_id": "TX-E-05-003",
+          "amt_native": 9600.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 9600.00,
+          "flow_direction": "IN",
+          "method": "CASH",
+          "target_name": "CASH DEPOSIT",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        },
+        {
+          "tx_id": "TX-E-05-004",
+          "amt_native": 9300.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 9300.00,
+          "flow_direction": "IN",
+          "method": "CASH",
+          "target_name": "CASH DEPOSIT",
+          "intermediary_bank": null,
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 8,
+        "documentation_complete": false,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "structuring_pattern_detected": "4 cash deposits in 5 days, all just below $10K threshold"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Structuring pattern"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:05Z",
+        "batch_sequence": 900021
+      },
+      "alert_details": {
+        "external_id": "TEST-E-06",
+        "work_item_type": "LAYERING_ALERT",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["LAYER_001", "RAPID_MOVE"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-6678-SHE",
+        "fullName": "Sunrise Holdings BVI",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "VG",
+        "onboarding_epoch": 1609459200,
+        "last_kyc_refresh": "2025-05-10",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "FALSE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-06-001",
+          "amt_native": 500000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 675000.00,
+          "flow_direction": "IN",
+          "method": "SWIFT_WIRE",
+          "target_name": "SUNSET INVESTMENTS CYPRUS",
+          "intermediary_bank": "BANK_OF_CYPRUS",
+          "status_code": "COMPLETED"
+        },
+        {
+          "tx_id": "TX-E-06-002",
+          "amt_native": 495000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 668250.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "MOONLIGHT TRADING MALTA",
+          "intermediary_bank": "BOV_MALTA",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 5,
+        "documentation_complete": false,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "layering_detected": "Circular flow: BVI -> Cyprus -> Malta -> BVI (same beneficial owner)"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Circular layering"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:06Z",
+        "batch_sequence": 900022
+      },
+      "alert_details": {
+        "external_id": "TEST-E-07",
+        "work_item_type": "PROFESSIONAL_ABUSE",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["PROF_001", "SHELL_001"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "CORP-7789-LAW",
+        "fullName": "Sterling & Partners LLP",
+        "salutation": null,
+        "c_type": "CORP",
+        "residence_iso": "CA",
+        "onboarding_epoch": 1483228800,
+        "last_kyc_refresh": "2025-08-01",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-07-001",
+          "amt_native": 3200000.00,
+          "currency_iso": "CAD",
+          "amt_base_cad": 3200000.00,
+          "flow_direction": "IN",
+          "method": "SWIFT_WIRE",
+          "target_name": "PHOENIX VENTURES SEYCHELLES",
+          "intermediary_bank": "BARCLAYS_SEYCHELLES",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 9,
+        "documentation_complete": false,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "professional_abuse_indicators": "Law firm trust account + shell company + no engagement letter + no underlying transaction docs"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Law firm + shell + no contract"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:07Z",
+        "batch_sequence": 900023
+      },
+      "alert_details": {
+        "external_id": "TEST-E-08",
+        "work_item_type": "CONFLICTING_INFO",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": "B_SMITH",
+        "hit_rule_ids": ["CONFLICT_001"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "33891-NG-ADE",
+        "fullName": "Chukwuemeka Adebayo",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "NG",
+        "onboarding_epoch": 1546300800,
+        "last_kyc_refresh": "2025-10-20",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-08-001",
+          "amt_native": 175000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 236000.00,
+          "flow_direction": "IN",
+          "method": "SWIFT_WIRE",
+          "target_name": "LAGOS IMPORT EXPORT CO",
+          "intermediary_bank": "FIRST_BANK_NIGERIA",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 7,
+        "documentation_complete": false,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "conflicting_explanations": "First stated: 'business income'. Second stated: 'inheritance'. Third stated: 'lottery winnings'."
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Conflicting explanations"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:08Z",
+        "batch_sequence": 900024
+      },
+      "alert_details": {
+        "external_id": "TEST-E-09",
+        "work_item_type": "ADVERSE_MEDIA",
+        "assigned_queue": "FIU_TIER_2_ESCALATION",
+        "previous_analyst": null,
+        "hit_rule_ids": ["MEDIA_001", "TIMING_001"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "88234-MX-ROM",
+        "fullName": "Ricardo Romero",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "MX",
+        "onboarding_epoch": 1420070400,
+        "last_kyc_refresh": "2025-06-15",
+        "pep_flag": "Y",
+        "pep_category_code": "PEP_LEVEL_2_FOREIGN",
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-09-001",
+          "amt_native": 780000.00,
+          "currency_iso": "USD",
+          "amt_base_cad": 1053000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "CARIBBEAN REAL ESTATE HOLDINGS",
+          "intermediary_bank": "SCOTIABANK_CAYMAN",
+          "status_code": "COMPLETED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 1,
+        "top_match": {
+          "uid": "media_88234",
+          "entity_type": "PERSON",
+          "risk_level": "CRITICAL",
+          "description": "Under investigation for corruption - Mexican Federal Police",
+          "confirmed_sanctions_match": false,
+          "adverse_media": {
+            "source": "Reuters",
+            "date": "2026-01-20",
+            "headline": "Former Governor under investigation for $50M embezzlement"
+          }
+        }
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 11,
+        "documentation_complete": true,
+        "supporting_invoice": false,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": false,
+        "timing_concern": "Large outbound transfer 4 days after adverse media publication"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Adverse media + timing link"
+      }
+    },
+    {
+      "header": {
+        "system_id": "ACT-PROD-RE-09",
+        "export_timestamp": "2026-01-29T21:32:09Z",
+        "batch_sequence": 900025
+      },
+      "alert_details": {
+        "external_id": "TEST-E-10",
+        "work_item_type": "REGULATOR_INSTRUCTION",
+        "assigned_queue": "FIU_TIER_3_COMPLIANCE",
+        "previous_analyst": "CCO_DIRECT",
+        "hit_rule_ids": ["REG_INSTRUCTION"]
+      },
+      "customer_record": {
+        "SRC_SYS_KEY": "99001-BY-KOV",
+        "fullName": "Dmitri Kovalenko",
+        "salutation": "Mr.",
+        "c_type": "IND",
+        "residence_iso": "BY",
+        "onboarding_epoch": 1483228800,
+        "last_kyc_refresh": "2025-02-01",
+        "pep_flag": "N",
+        "pep_category_code": null,
+        "disclosure_docs_received": "TRUE"
+      },
+      "transaction_history_slice": [
+        {
+          "tx_id": "TX-E-10-001",
+          "amt_native": 50000.00,
+          "currency_iso": "EUR",
+          "amt_base_cad": 75000.00,
+          "flow_direction": "OUT",
+          "method": "SWIFT_WIRE",
+          "target_name": "MINSK TRADING COMPANY",
+          "intermediary_bank": "BELARUSBANK",
+          "status_code": "BLOCKED"
+        }
+      ],
+      "screening_payload": {
+        "provider": "REF_WORLD_CHECK",
+        "match_count": 0,
+        "top_match": null
+      },
+      "mitigating_factors": {
+        "relationship_tenure_years": 9,
+        "documentation_complete": true,
+        "supporting_invoice": true,
+        "screening_false_positive_confirmed": false,
+        "source_of_funds_verified": true,
+        "regulator_instruction": "FINTRAC directive 2026-01-15: Monitor all Belarus-related transactions"
+      },
+      "expected_outcome": {
+        "expected_verdict": "ESCALATE",
+        "expected_str": "YES",
+        "gate_1_expected": "PERMITTED",
+        "gate_2_expected": "REQUIRED",
+        "test_family": "ESCALATE",
+        "test_description": "Regulator instruction"
+      }
+    }
+  ]
+}
