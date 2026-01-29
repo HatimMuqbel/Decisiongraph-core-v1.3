@@ -1,0 +1,254 @@
+================================================================================
+TRANSACTION MONITORING ALERT REPORT (v2.1.1)
+Alert ID: LAYER-CRYPTO-001
+================================================================================
+
+================================================================================
+  ESCALATE - STR FILING REQUIRED  
+================================================================================
+Alert ID:       LAYER-CRYPTO-001
+Case ID:        layer-crypto-cash-wire-2026-01
+Priority:       CRITICAL
+Jurisdiction:   CA (PCMLTFA)
+Processed:      2026-01-29
+
+================================================================================
+CASE SUMMARY
+================================================================================
+Customer:       Northern Apex Consulting Inc.
+Customer ID:    CORP-NAC-55102
+Type:           CORPORATE
+Industry:       Business Consulting
+Country:        CA
+Risk Rating:    MEDIUM (elevated by activity)
+Relationship:   8 months
+
+RED FLAGS IDENTIFIED:
+  * Crypto exposure inconsistent with business profile
+  * Cash activity following crypto liquidation
+  * Rapid conversion and movement across instruments
+  * No clear business rationale for transaction chain
+
+================================================================================
+TRANSACTION SEQUENCE (LAYERING PATTERN)
+================================================================================
+
+STEP 1 - CRYPTO ASSET LIQUIDATION
+----------------------------------------
+Date:           2026-01-27
+Asset:          BTC
+Amount:         2.45 BTC
+CAD Equivalent: CAD 162,000.00
+Exchange:       Registered Canadian VASP
+Wallet Owner:   Northern Apex Consulting Inc.
+Status:         COMPLETED
+
+STEP 2 - CASH WITHDRAWALS (STRUCTURING)
+----------------------------------------
+Transaction 1:
+  Date:         2026-01-28
+  Amount:       CAD 9,800.00
+  Method:       Branch Cash Withdrawal
+
+Transaction 2:
+  Date:         2026-01-28
+  Amount:       CAD 9,700.00
+  Method:       Branch Cash Withdrawal
+
+Transaction 3:
+  Date:         2026-01-29
+  Amount:       CAD 9,600.00
+  Method:       Branch Cash Withdrawal
+
+TOTAL CASH (48h): CAD 29,100.00
+PATTERN:          Structured withdrawals below CAD 10,000 LCTR threshold
+
+STEP 3 - WIRE TRANSFER (INTEGRATION)
+----------------------------------------
+Date:           2026-01-30
+Amount:         CAD 148,500.00
+Type:           SWIFT Wire Transfer
+Beneficiary:    Baltic Trade Solutions OU
+Benef Country:  EE (Estonia)
+Purpose:        'Consulting Services'
+Status:         COMPLETED
+
+--------------------------------------------------------------------------------
+LAYERING PATTERN ANALYSIS
+--------------------------------------------------------------------------------
+  PLACEMENT:    Crypto liquidation (origin of funds obscured)
+  LAYERING:     Structured cash withdrawals (threshold evasion)
+  INTEGRATION:  Wire to offshore entity (funds moved out)
+
+  TOTAL VALUE:  CAD 162,000 (crypto) -> CAD 29,100 (cash) + CAD 148,500 (wire)
+  TIME SPAN:    4 days (2026-01-27 to 2026-01-30)
+  INSTRUMENTS:  3 (Crypto, Cash, Wire)
+
+================================================================================
+SCREENING RESULTS
+================================================================================
+Sanctions:      NO MATCH
+Adverse Media:  NONE FOUND
+PEP Status:     NOT PEP
+
+Crypto Risk Notes:
+  * Exchange is registered Canadian VASP
+  * Source of crypto acquisition UNEXPLAINED
+  * No prior crypto activity on account
+  * Business profile (consulting) inconsistent with crypto holdings
+
+================================================================================
+6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)
+================================================================================
+
+CRITICAL RULES ENFORCED:
+  * Instrument transitions evaluated holistically
+  * Crypto exposure alone does NOT imply suspicion
+  * Cash structuring + rapid movement establishes typology
+  * Suspicion requires intent, deception, or sustained pattern
+
+INSTRUMENT: MIXED (Crypto -> Cash -> Wire)
+HARD STOP: NO
+OBLIGATIONS: 0 (none)
+INDICATORS: 5 (all corroborated)
+TYPOLOGY MATURITY: CONFIRMED (Layering)
+MITIGATIONS: 1 (insufficient)
+SUSPICION: ACTIVATED (intent + sustained pattern)
+TAXONOMY VERDICT: ESCALATE - STR FILING REQUIRED
+
+================================================================================
+DUAL-GATE DECISION SYSTEM
+================================================================================
+
+Constitutional Rule:
+"Escalation is prevented by default and permitted only when
+ suspicion is affirmatively proven."
+
+--------------------------------------------------------------------------------
+GATE 1: ZERO-FALSE-ESCALATION CHECKLIST
+Purpose: Are we ALLOWED to escalate?
+--------------------------------------------------------------------------------
+  Section A (FACT-LEVEL HARD STOP VERIFICATION): FAIL
+  Section B (INSTRUMENT & CONTEXT VALIDATION): PASS
+  Section C (REGULATORY OBLIGATION ISOLATION): PASS
+  Section D (INDICATOR CORROBORATION TEST): PASS
+  Section E (TYPOLOGY MATURITY GATE): PASS
+  Section F (MITIGATION OVERRIDE TEST): FAIL
+  Section G (SUSPICION DEFINITION TEST (FINAL GATE)): PASS
+
+  GATE 1 DECISION: PERMITTED
+  Rationale: All gates passed. Escalation permitted with documented basis.
+
+  GATE 1 DETAIL (PATH 2 - BEHAVIORAL SUSPICION):
+  -----------------------------------------------
+  Section A: FAIL - No fact-level hard stop (no sanctions)
+  Section B: PASS - Multi-instrument pattern correctly identified
+  Section C: PASS - No obligations (not PEP)
+  Section D: PASS - 5 corroborated indicators across transaction chain
+  Section E: PASS - Typology CONFIRMED (Layering)
+  Section F: FAIL - Mitigations insufficient (no business rationale)
+  Section G: PASS - Intent + Sustained Pattern present
+
+--------------------------------------------------------------------------------
+GATE 2: POSITIVE STR CHECKLIST
+Purpose: Are we OBLIGATED to report?
+--------------------------------------------------------------------------------
+  Section 1 (LEGAL SUSPICION THRESHOLD): PASS
+  Section 2 (EVIDENCE QUALITY TEST): PASS
+  Section 3 (MITIGATION FAILURE CONFIRMATION): PASS
+  Section 4 (TYPOLOGY CONFIRMATION (OPTIONAL)): PASS
+  Section 5 (REGULATORY REASONABLENESS TEST (FINAL)): PASS
+
+  GATE 2 DECISION: REQUIRED
+  Rationale: All mandatory sections passed. STR filing is warranted.
+
+  GATE 2 DETAIL:
+  ---------------
+  Section 1: PASS - Legal suspicion threshold met
+    * Intent: Intent to obscure the origin, ownership, or destination of funds
+    * Pattern: Sustained pattern of circular fund flows with no apparent business purpose
+  Section 2: PASS - Evidence is fact-based (transaction chain)
+  Section 3: PASS - Mitigations fail to explain behavior
+    * No business rationale for crypto holdings
+    * No contract with Baltic Trade Solutions
+    * Cash structuring unexplained
+  Section 4: PASS - Typology CONFIRMED (Layering)
+  Section 5: PASS - Regulator would expect STR
+
+--------------------------------------------------------------------------------
+STR RATIONALE STATEMENT (MANDATORY OUTPUT)
+--------------------------------------------------------------------------------
+  Based on the totality of evidence, reasonable grounds exist to suspect
+  that the transaction(s) may be related to money laundering or terrorist
+  financing. This determination is based on:
+
+  1. LAYERING PATTERN: Classic three-stage ML typology observed:
+     - Placement: Crypto asset liquidation (CAD 162,000)
+     - Layering: Structured cash withdrawals (CAD 29,100 in 48h)
+     - Integration: Wire transfer to offshore entity (CAD 148,500)
+
+  2. STRUCTURING: Three cash withdrawals (CAD 9,800, 9,700, 9,600)
+     structured just below the CAD 10,000 LCTR threshold within 48 hours.
+
+  3. INTENT TO OBSCURE: Multi-instrument conversion chain
+     (Crypto -> Cash -> Wire) indicates intent to obscure the origin,
+     ownership, and destination of funds.
+
+  4. BUSINESS MISMATCH: Customer is a consulting firm with no prior
+     crypto activity. Source of BTC acquisition unexplained.
+
+  5. OFFSHORE TRANSFER: Wire to Estonian entity ('Baltic Trade Solutions')
+     with vague purpose ('Consulting Services') and no supporting contract.
+
+  This report is submitted in accordance with PCMLTFA s.7.
+
+================================================================================
+ABSOLUTE RULES (NO EXCEPTIONS)
+================================================================================
+  X PEP status alone can NEVER escalate
+  X Cross-border alone can NEVER escalate
+  X Risk score alone can NEVER escalate
+  X 'High confidence' can NEVER override facts
+  X 'Compliance comfort' is NOT a reason
+
+  NOTE: This escalation is based on OBSERVED BEHAVIOR (layering),
+        not status or score. The system correctly identified:
+        - Multi-instrument transaction chain
+        - Confirmed typology (Layering: Placement -> Layering -> Integration)
+        - Failed mitigations
+        - Legal suspicion threshold met
+
+================================================================================
+FINAL DECISION
+================================================================================
+Verdict:        STR
+Action:         FILE_STR
+STR Required:   YES
+Escalation:     PERMITTED
+
+Rationale:
+  1. Gate 1 (Escalation): PERMITTED via Path 2 (Behavioral Suspicion)
+  2. Gate 2 (STR): REQUIRED - All mandatory sections passed
+  3. Typology: CONFIRMED (Layering - Crypto/Cash/Wire chain)
+  4. Suspicion Elements: Intent + Sustained Pattern
+  5. Mitigations: INSUFFICIENT (no business rationale)
+
+================================================================================
+REGULATORY COMPLIANCE
+================================================================================
+PCMLTFA s.7:    Reasonable grounds to suspect ML/TF
+FINTRAC:        STR filing required within 30 days
+STR Filing:     REQUIRED
+LCTR Required:  NO (individual transactions below CAD 10,000)
+                Note: Total CAD 29,100 in cash over 48h = threshold evasion
+
+FINTRAC INDICATORS MATCHED:
+  * Conversion of virtual currency to cash followed by rapid movement
+  * Cash withdrawals structured below CAD 10,000 threshold
+  * Funds transferred to foreign jurisdiction without clear purpose
+  * Activity inconsistent with customer's stated business
+  * Multi-instrument layering pattern
+
+================================================================================
+END OF ALERT REPORT
+================================================================================

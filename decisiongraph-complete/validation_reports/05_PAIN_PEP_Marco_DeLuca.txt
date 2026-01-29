@@ -1,0 +1,199 @@
+================================================================================
+TRANSACTION MONITORING ALERT REPORT (v2.1.1)
+Alert ID: PAIN-VALIDATION-002
+================================================================================
+
+================================================================================
+  PASS WITH EDD  
+================================================================================
+Alert ID:       PAIN-VALIDATION-002
+Priority:       MEDIUM
+Jurisdiction:   CA (PCMLTFA)
+Processed:      2026-01-29
+
+================================================================================
+CASE SUMMARY
+================================================================================
+Customer:       Hon. Marco DeLuca
+Customer ID:    IND-DEL-44321
+Type:           INDIVIDUAL
+Occupation:     Former Deputy Minister of Transport (Italy)
+Country:        IT
+Risk Rating:    HIGH (PEP)
+Relationship:   14 years (ESTABLISHED)
+
+PEP STATUS:
+  * Foreign PEP - Former government official
+  * Position held: Deputy Minister of Transport
+  * Country: Italy
+  * Status: Former (left office 2020)
+  * EDD Requirement: SATISFIED (on file)
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+  Transaction:
+    Amount:     EUR 185,000.00
+    Time:       2026-01-28 10:30:00 UTC
+    Type:       SWIFT Wire Transfer
+    Method:     International Wire
+
+  Beneficiary:  Adriatic Property Holdings S.r.l.
+  Purpose:      Real estate acquisition (vacation property)
+  Country:      IT (Italy)
+
+  Supporting Documentation:
+    * Purchase agreement on file
+    * Source of funds: Pension + investment portfolio
+    * Property valuation provided
+    * Legal counsel confirmation
+
+================================================================================
+SCREENING RESULTS
+================================================================================
+Sanctions:      NO MATCH
+Adverse Media:  NONE FOUND (verified)
+PEP Status:     FOREIGN PEP (former)
+PEP Screening:  Name match confirmed, no derogatory information
+
+================================================================================
+6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)
+================================================================================
+
+CRITICAL RULES ENFORCED:
+  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)
+  * PEP status triggers OBLIGATION, not SUSPICION
+  * FORMING typologies = OBSERVE ONLY (not escalation)
+  * Status alone is NEVER sufficient for suspicion
+
+INSTRUMENT: WIRE
+HARD STOP: NO
+OBLIGATIONS: 1 (EDD required - PEP)
+INDICATORS: 2 (not corroborated)
+TYPOLOGY MATURITY: FORMING (observe only)
+MITIGATIONS: 5 (fully explains behavior)
+SUSPICION: NOT ACTIVATED
+TAXONOMY VERDICT: PASS WITH EDD
+
+--------------------------------------------------------------------------------
+CRITICAL PRINCIPLE: PEP STATUS != SUSPICION
+--------------------------------------------------------------------------------
+  PEP status is a REGULATORY OBLIGATION (Layer 2), not evidence of
+  wrongdoing. Enhanced Due Diligence is required, but the presence
+  of a PEP flag alone can NEVER justify escalation or STR filing.
+
+  This case demonstrates correct handling:
+  * PEP status -> EDD obligation SATISFIED
+  * No sanctions match, no adverse media
+  * 14-year established relationship
+  * Transaction purpose fully documented
+  * Source of funds verified
+
+================================================================================
+DUAL-GATE DECISION SYSTEM
+================================================================================
+
+Constitutional Rule:
+"Escalation is prevented by default and permitted only when
+ suspicion is affirmatively proven."
+
+--------------------------------------------------------------------------------
+GATE 1: ZERO-FALSE-ESCALATION CHECKLIST
+Purpose: Are we ALLOWED to escalate?
+--------------------------------------------------------------------------------
+  Section A (FACT-LEVEL HARD STOP VERIFICATION): FAIL
+  Section B (INSTRUMENT & CONTEXT VALIDATION): PASS
+  Section C (REGULATORY OBLIGATION ISOLATION): PASS
+  Section D (INDICATOR CORROBORATION TEST): FAIL
+
+  GATE 1 DECISION: PROHIBITED
+  Rationale: Section D: Indicators failed corroboration test.
+
+  GATE 1 DETAIL:
+  ---------------
+  Section A: FAIL - No fact-level hard stop (no sanctions, no fraud)
+  Section B: PASS - Wire instrument correctly classified
+  Section C: PASS - PEP status treated as obligation only
+  Section D: FAIL - Indicators not corroborated (status only)
+
+  ESCALATION BLOCKED AT SECTION D
+  Reason: PEP status and cross-border activity are not
+          corroborated behavioral indicators.
+
+--------------------------------------------------------------------------------
+GATE 2: POSITIVE STR CHECKLIST
+Purpose: Are we OBLIGATED to report?
+--------------------------------------------------------------------------------
+  [Gate 2 not evaluated - Gate 1 blocked escalation]
+
+  GATE 2 DECISION: PROHIBITED
+  Rationale: Escalation blocked by Gate 1. STR not warranted.
+
+--------------------------------------------------------------------------------
+NON-ESCALATION JUSTIFICATION (MANDATORY OUTPUT)
+--------------------------------------------------------------------------------
+  All regulatory obligations were fulfilled. The customer's PEP status
+  has been identified and Enhanced Due Diligence requirements have been
+  satisfied. No sanctions match or adverse media were identified.
+
+  Transaction activity is consistent with the customer's 14-year profile
+  and fully supported by documentation. The wire transfer for property
+  acquisition is consistent with the customer's known investment pattern.
+
+  No evidence of deception, intent to conceal, or structuring pattern
+  was observed. Therefore, no reasonable grounds to suspect ML/TF exist
+  under PCMLTFA s.7.
+
+  PEP status alone is NOT a basis for suspicion.
+
+================================================================================
+ABSOLUTE RULES (NO EXCEPTIONS)
+================================================================================
+  X PEP status alone can NEVER escalate
+  X Cross-border alone can NEVER escalate
+  X Risk score alone can NEVER escalate
+  X 'High confidence' can NEVER override facts
+  X 'Compliance comfort' is NOT a reason
+
+  THIS CASE VALIDATES:
+  * Foreign PEP with HIGH risk rating -> NO ESCALATION
+  * Large cross-border wire (EUR 185,000) -> NO ESCALATION
+  * EDD obligation triggered and SATISFIED
+  * System correctly distinguished obligation from suspicion
+
+================================================================================
+FINAL DECISION
+================================================================================
+Verdict:        PASS_WITH_EDD
+Action:         CLOSE_WITH_EDD_RECORDED
+STR Required:   NO
+Escalation:     PROHIBITED
+
+Rationale:
+  1. Gate 1 (Escalation): PROHIBITED - No fact-level hard stop,
+     indicators not corroborated (PEP is status, not behavior)
+  2. Gate 2 (STR): NOT EVALUATED - Gate 1 blocked escalation
+  3. PEP Obligation: EDD SATISFIED (on file)
+  4. Mitigations: 5 factors fully explain transaction
+  5. Suspicion Elements: NONE (no intent, no deception, no pattern)
+
+================================================================================
+REGULATORY COMPLIANCE
+================================================================================
+EDD Status:     COMPLETED (on file)
+PEP Monitoring: ACTIVE
+PCMLTFA s.7:    No reasonable grounds to suspect ML/TF
+FINTRAC:        All obligations fulfilled
+STR Filing:     NOT REQUIRED
+
+EDD DOCUMENTATION ON FILE:
+  * Source of wealth verification
+  * Source of funds for transaction
+  * Enhanced transaction monitoring (active)
+  * Senior management approval for relationship
+  * Annual PEP status review (current)
+
+================================================================================
+END OF ALERT REPORT
+================================================================================

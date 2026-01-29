@@ -284,11 +284,14 @@ class EscalationGateValidator:
         indicator_codes = {i.get("code", "") for i in indicators}
         has_cash_on_wire = instrument_type == "wire" and bool(cash_indicators & indicator_codes)
 
+        # Valid instrument types: standard + "mixed" for multi-instrument layering cases
+        valid_instruments = ("wire", "cash", "crypto", "cheque", "unknown", "mixed")
+
         checks = [
             GateCheck(
                 check_id="B1",
                 description="Transaction instrument correctly classified",
-                status=GateStatus.PASS if instrument_type in ("wire", "cash", "crypto", "cheque", "unknown") else GateStatus.FAIL,
+                status=GateStatus.PASS if instrument_type in valid_instruments else GateStatus.FAIL,
                 evidence=f"instrument_type={instrument_type}"
             ),
             GateCheck(
