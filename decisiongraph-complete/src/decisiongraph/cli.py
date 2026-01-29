@@ -88,6 +88,14 @@ from .pack_loader import (
     PackValidationError,
     PackLoaderError,
 )
+from .case_mapper import (
+    map_case,
+    load_adapter,
+    validate_adapter,
+    AdapterError,
+    AdapterValidationError,
+    MappingError,
+)
 
 
 # ============================================================================
@@ -1492,6 +1500,303 @@ def cmd_pack_info(args):
 
 
 # ============================================================================
+# MAP-CASE COMMAND
+# ============================================================================
+
+def cmd_map_case(args):
+    """Map a vendor export to CaseBundle format using an adapter."""
+    print_header("DecisionGraph - Map Case")
+
+    input_path = Path(args.input)
+    adapter_path = Path(args.adapter)
+    output_path = Path(args.out) if args.out else None
+
+    # Validate paths
+    if not input_path.exists():
+        print_error(f"Input file not found: {input_path}")
+        return ExitCode.INPUT_INVALID
+
+    if not adapter_path.exists():
+        print_error(f"Adapter file not found: {adapter_path}")
+        return ExitCode.INPUT_INVALID
+
+    try:
+        # Load and validate adapter
+        print_info(f"Loading adapter: {adapter_path.name}")
+        adapter = load_adapter(adapter_path)
+        print_success(f"Adapter: {adapter.metadata.name} v{adapter.metadata.version}")
+        print_kv("Vendor", adapter.metadata.vendor)
+        print_kv("Format", adapter.metadata.input_format)
+
+        # Load input
+        print_info(f"Loading input: {input_path.name}")
+        with open(input_path, "r") as f:
+            input_data = json.load(f)
+        print_success("Input loaded")
+
+        # Map
+        print_info("Mapping to CaseBundle format...")
+        from .case_mapper import CaseMapper
+        mapper = CaseMapper(adapter)
+        bundle = mapper.map(input_data)
+
+        # Validate output bundle
+        print_info("Validating output bundle...")
+        from .case_schema import CaseBundle
+        parsed_bundle = parse_case_bundle_dict(bundle)
+        errors = validate_case_bundle(parsed_bundle)
+
+        if errors:
+            print_warning(f"Output bundle has {len(errors)} validation warning(s):")
+            for error in errors[:5]:
+                print(f"  {Colors.YELLOW}[!]{Colors.END} {error}")
+            if len(errors) > 5:
+                print(f"  ... and {len(errors) - 5} more")
+        else:
+            print_success("Output bundle is valid")
+
+        # Summary
+        print()
+        print(f"{Colors.BOLD}Mapping Summary:{Colors.END}")
+        print_kv("Case ID", bundle["meta"].get("id", "N/A"))
+        print_kv("Case Type", bundle["meta"].get("case_type", "N/A"))
+        print_kv("Jurisdiction", bundle["meta"].get("jurisdiction", "N/A"))
+        print()
+        print_kv("Individuals", str(len(bundle.get("individuals", []))))
+        print_kv("Accounts", str(len(bundle.get("accounts", []))))
+        print_kv("Relationships", str(len(bundle.get("relationships", []))))
+        print_kv("Events", str(len(bundle.get("events", []))))
+
+        # Write output
+        if output_path:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w") as f:
+                json.dump(bundle, f, indent=2)
+            print()
+            print_success(f"Bundle written to: {output_path}")
+        else:
+            # Print to stdout
+            print()
+            print(f"{Colors.BOLD}Output:{Colors.END}")
+            print(json.dumps(bundle, indent=2))
+
+        return ExitCode.PASS
+
+    except AdapterValidationError as e:
+        print_error(f"Adapter validation failed: {e}")
+        return ExitCode.INPUT_INVALID
+    except AdapterError as e:
+        print_error(f"Adapter error: {e}")
+        return ExitCode.INPUT_INVALID
+    except MappingError as e:
+        print_error(f"Mapping failed: {e}")
+        return ExitCode.INPUT_INVALID
+    except json.JSONDecodeError as e:
+        print_error(f"Invalid JSON in input: {e}")
+        return ExitCode.INPUT_INVALID
+    except Exception as e:
+        print_error(f"Unexpected error: {e}")
+        return ExitCode.INTERNAL_ERROR
+
+
+def cmd_validate_adapter(args):
+    """Validate an adapter YAML file."""
+    print_header("DecisionGraph - Validate Adapter")
+
+    adapter_path = Path(args.adapter)
+
+    if not adapter_path.exists():
+        print_error(f"Adapter file not found: {adapter_path}")
+        return ExitCode.INPUT_INVALID
+
+    print_info(f"Validating: {adapter_path}")
+
+    is_valid, errors = validate_adapter(adapter_path)
+
+    if not is_valid:
+        print_error("Adapter validation failed:")
+        for error in errors:
+            print(f"  {Colors.RED}[X]{Colors.END} {error}")
+        return ExitCode.INPUT_INVALID
+
+    # Load and display adapter info
+    try:
+        adapter = load_adapter(adapter_path)
+
+        print_success("Adapter is valid!")
+        print()
+        print_kv("Name", adapter.metadata.name)
+        print_kv("Vendor", adapter.metadata.vendor)
+        print_kv("Version", adapter.metadata.version)
+        print_kv("Input Format", adapter.metadata.input_format)
+
+        if adapter.metadata.description:
+            print_kv("Description", adapter.metadata.description)
+
+        print()
+        print(f"{Colors.BOLD}Roots:{Colors.END}")
+        for name, path in adapter.roots.items():
+            print(f"  {name}: {path}")
+
+        print()
+        print(f"{Colors.BOLD}Mappings ({len(adapter.mappings)}):{Colors.END}")
+        # Group by entity type
+        by_entity = {}
+        for target in adapter.mappings.keys():
+            entity = target.split(".")[0]
+            by_entity.setdefault(entity, []).append(target)
+
+        for entity, fields in sorted(by_entity.items()):
+            print(f"  {entity}: {len(fields)} fields")
+
+        if adapter.transforms:
+            print()
+            print(f"{Colors.BOLD}Transforms ({len(adapter.transforms)}):{Colors.END}")
+            for name, mapping in adapter.transforms.items():
+                print(f"  {name}: {len(mapping)} mappings")
+
+        if adapter.defaults:
+            print()
+            print(f"{Colors.BOLD}Defaults ({len(adapter.defaults)}):{Colors.END}")
+            for key, value in list(adapter.defaults.items())[:5]:
+                print(f"  {key}: {value}")
+            if len(adapter.defaults) > 5:
+                print(f"  ... and {len(adapter.defaults) - 5} more")
+
+        return ExitCode.PASS
+
+    except Exception as e:
+        print_error(f"Failed to load adapter: {e}")
+        return ExitCode.INPUT_INVALID
+
+
+def parse_case_bundle_dict(data: dict) -> 'CaseBundle':
+    """Parse a dictionary into a CaseBundle."""
+    # This mirrors parse_case_bundle_json but takes a dict
+    from .case_schema import (
+        CaseBundle, CaseMeta, CaseType, CasePhase, EntityType,
+        Individual, Organization, Account, Relationship, RelationshipType,
+        EvidenceItem, EvidenceType, TransactionEvent, AlertEvent,
+        ScreeningEvent, Assertion, Sensitivity, RiskRating, PEPCategory,
+    )
+
+    meta_data = data.get("meta", {})
+    meta = CaseMeta(
+        id=meta_data.get("id", ""),
+        case_type=CaseType(meta_data.get("case_type", "aml_alert")),
+        case_phase=CasePhase(meta_data.get("case_phase", "analysis")),
+        created_at=meta_data.get("created_at", ""),
+        jurisdiction=meta_data.get("jurisdiction", ""),
+        primary_entity_type=EntityType(meta_data.get("primary_entity_type", "individual")),
+        primary_entity_id=meta_data.get("primary_entity_id", ""),
+        status=meta_data.get("status", "open"),
+        priority=meta_data.get("priority", "medium"),
+        sensitivity=Sensitivity(meta_data.get("sensitivity", "internal")),
+        access_tags=meta_data.get("access_tags", []),
+    )
+
+    individuals = []
+    for ind_data in data.get("individuals", []):
+        pep_val = ind_data.get("pep_status", "none")
+        pep = PEPCategory(pep_val) if pep_val else PEPCategory.NONE
+        risk_val = ind_data.get("risk_rating", "medium")
+        risk = RiskRating(risk_val) if risk_val else RiskRating.MEDIUM
+
+        individuals.append(Individual(
+            id=ind_data.get("id", ""),
+            given_name=ind_data.get("given_name", ""),
+            family_name=ind_data.get("family_name", ""),
+            date_of_birth=ind_data.get("date_of_birth"),
+            nationality=ind_data.get("nationality"),
+            country_of_residence=ind_data.get("country_of_residence"),
+            pep_status=pep,
+            risk_rating=risk,
+            sensitivity=Sensitivity(ind_data.get("sensitivity", "internal")),
+            access_tags=ind_data.get("access_tags", []),
+        ))
+
+    accounts = []
+    for acc_data in data.get("accounts", []):
+        accounts.append(Account(
+            id=acc_data.get("id", ""),
+            account_number=acc_data.get("account_number", ""),
+            account_type=acc_data.get("account_type", ""),
+            currency=acc_data.get("currency", ""),
+            status=acc_data.get("status", "active"),
+            opened_date=acc_data.get("opened_date"),
+            sensitivity=Sensitivity(acc_data.get("sensitivity", "internal")),
+            access_tags=acc_data.get("access_tags", []),
+        ))
+
+    relationships = []
+    for rel_data in data.get("relationships", []):
+        relationships.append(Relationship(
+            id=rel_data.get("id", ""),
+            relationship_type=RelationshipType(rel_data.get("relationship_type", "account_holder")),
+            from_entity_type=EntityType(rel_data.get("from_entity_type", "individual")),
+            from_entity_id=rel_data.get("from_entity_id", ""),
+            to_entity_type=EntityType(rel_data.get("to_entity_type", "individual")),
+            to_entity_id=rel_data.get("to_entity_id", ""),
+            sensitivity=Sensitivity(rel_data.get("sensitivity", "internal")),
+            access_tags=rel_data.get("access_tags", []),
+        ))
+
+    # Parse events
+    events = []
+    for evt_data in data.get("events", []):
+        event_type = evt_data.get("event_type", "transaction")
+        if event_type == "transaction":
+            events.append(TransactionEvent(
+                id=evt_data.get("id", ""),
+                event_type="transaction",
+                timestamp=evt_data.get("timestamp", ""),
+                description=evt_data.get("description", ""),
+                amount=evt_data.get("amount", "0"),
+                currency=evt_data.get("currency", ""),
+                direction=evt_data.get("direction", ""),
+                counterparty_name=evt_data.get("counterparty_name"),
+                counterparty_country=evt_data.get("counterparty_country"),
+                payment_method=evt_data.get("payment_method"),
+                sensitivity=Sensitivity(evt_data.get("sensitivity", "internal")),
+                access_tags=evt_data.get("access_tags", []),
+            ))
+        elif event_type == "alert":
+            events.append(AlertEvent(
+                id=evt_data.get("id", ""),
+                event_type="alert",
+                timestamp=evt_data.get("timestamp", ""),
+                description=evt_data.get("description", ""),
+                alert_type=evt_data.get("alert_type", ""),
+                rule_id=evt_data.get("rule_id"),
+                sensitivity=Sensitivity(evt_data.get("sensitivity", "internal")),
+                access_tags=evt_data.get("access_tags", []),
+            ))
+        elif event_type == "screening":
+            events.append(ScreeningEvent(
+                id=evt_data.get("id", ""),
+                event_type="screening",
+                timestamp=evt_data.get("timestamp", ""),
+                description=evt_data.get("description", ""),
+                screening_type=evt_data.get("screening_type", ""),
+                vendor=evt_data.get("vendor"),
+                disposition=evt_data.get("disposition"),
+                sensitivity=Sensitivity(evt_data.get("sensitivity", "internal")),
+                access_tags=evt_data.get("access_tags", []),
+            ))
+
+    return CaseBundle(
+        meta=meta,
+        individuals=individuals,
+        organizations=[],
+        accounts=accounts,
+        relationships=relationships,
+        evidence=[],
+        events=events,
+        assertions=[],
+    )
+
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
@@ -1518,6 +1823,8 @@ Examples:
   dg run-case --case bundle.json --pack fincrime_canada.yaml --out results/
   dg run-case --case bundle.json --pack pack.yaml --strict --sign key.pem
   dg verify-bundle --bundle results/CASE_ID/bundle.zip
+  dg map-case --input export.json --adapter adapters/actimize/mapping.yaml --out bundle.json
+  dg validate-adapter --adapter adapters/actimize/mapping.yaml
   dg validate-pack --pack fincrime_canada.yaml
   dg validate-case --case bundle.json
         """
@@ -1547,6 +1854,24 @@ Examples:
     verify_parser.add_argument("--bundle", "-b", required=True, help="Bundle zip file")
     verify_parser.add_argument("--key", "-k", help="Public key for signature verification")
     verify_parser.set_defaults(func=cmd_verify_bundle)
+
+    # map-case
+    map_parser = subparsers.add_parser(
+        "map-case",
+        help="Map a vendor export to CaseBundle format"
+    )
+    map_parser.add_argument("--input", "-i", required=True, help="Vendor export file (JSON)")
+    map_parser.add_argument("--adapter", "-a", required=True, help="Adapter mapping YAML file")
+    map_parser.add_argument("--out", "-o", help="Output CaseBundle JSON file (optional, prints to stdout if not specified)")
+    map_parser.set_defaults(func=cmd_map_case)
+
+    # validate-adapter
+    val_adapter_parser = subparsers.add_parser(
+        "validate-adapter",
+        help="Validate an adapter mapping file"
+    )
+    val_adapter_parser.add_argument("--adapter", "-a", required=True, help="Adapter YAML file")
+    val_adapter_parser.set_defaults(func=cmd_validate_adapter)
 
     # validate-pack
     val_pack_parser = subparsers.add_parser("validate-pack", help="Validate a pack file")

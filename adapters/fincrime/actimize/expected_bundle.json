@@ -1,0 +1,165 @@
+{
+  "meta": {
+    "id": "ACT-2026-00789",
+    "case_type": "aml_alert",
+    "case_phase": "analysis",
+    "created_at": "2026-01-28T14:30:00Z",
+    "jurisdiction": "CA",
+    "primary_entity_type": "individual",
+    "primary_entity_id": "CUST-12345",
+    "status": "open",
+    "priority": "high",
+    "sensitivity": "confidential",
+    "access_tags": ["aml", "fincrime"]
+  },
+  "individuals": [
+    {
+      "id": "CUST-12345",
+      "given_name": "Maria",
+      "family_name": "Rodriguez",
+      "date_of_birth": "1982-07-22",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "none",
+      "risk_rating": "medium",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    }
+  ],
+  "organizations": [],
+  "accounts": [
+    {
+      "id": "ACCT-98765",
+      "account_number": "****7890",
+      "account_type": "checking",
+      "currency": "CAD",
+      "status": "active",
+      "opened_date": "2019-03-15",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "ACCT-98766",
+      "account_number": "****4321",
+      "account_type": "savings",
+      "currency": "CAD",
+      "status": "active",
+      "opened_date": "2020-06-01",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "REL-CUST-12345-ACCT-98765",
+      "relationship_type": "account_holder",
+      "from_entity_type": "individual",
+      "from_entity_id": "CUST-12345",
+      "to_entity_type": "individual",
+      "to_entity_id": "ACCT-98765",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "REL-CUST-12345-ACCT-98766",
+      "relationship_type": "account_holder",
+      "from_entity_type": "individual",
+      "from_entity_id": "CUST-12345",
+      "to_entity_type": "individual",
+      "to_entity_id": "ACCT-98766",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "evidence": [],
+  "events": [
+    {
+      "id": "TXN-001-2026",
+      "event_type": "transaction",
+      "timestamp": "2026-01-20T10:15:00Z",
+      "description": "Trade settlement payment",
+      "amount": "14500.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "counterparty_name": "ABC Import Export Ltd",
+      "counterparty_country": "HK",
+      "payment_method": "wire",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "TXN-002-2026",
+      "event_type": "transaction",
+      "timestamp": "2026-01-22T09:30:00Z",
+      "description": "Cash deposit",
+      "amount": "9900.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "counterparty_name": null,
+      "counterparty_country": null,
+      "payment_method": "cash",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "TXN-003-2026",
+      "event_type": "transaction",
+      "timestamp": "2026-01-24T14:00:00Z",
+      "description": "Cash deposit",
+      "amount": "9800.00",
+      "currency": "CAD",
+      "direction": "inbound",
+      "counterparty_name": null,
+      "counterparty_country": null,
+      "payment_method": "cash",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "TXN-004-2026",
+      "event_type": "transaction",
+      "timestamp": "2026-01-26T11:45:00Z",
+      "description": "Investment transfer",
+      "amount": "32000.00",
+      "currency": "CAD",
+      "direction": "outbound",
+      "counterparty_name": "XYZ Holdings Inc",
+      "counterparty_country": "PA",
+      "payment_method": "wire",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "ALERT-TM-2026-001",
+      "event_type": "alert",
+      "timestamp": "2026-01-27T08:00:00Z",
+      "description": "Multiple cash deposits just below reporting threshold",
+      "alert_type": "structuring",
+      "rule_id": "SCN-STRUCT-001",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "ALERT-TM-2026-002",
+      "event_type": "alert",
+      "timestamp": "2026-01-27T08:05:00Z",
+      "description": "Wire transfer to high-risk jurisdiction (Panama)",
+      "alert_type": "high_risk_jurisdiction",
+      "rule_id": "SCN-GEO-002",
+      "sensitivity": "confidential",
+      "access_tags": ["aml"]
+    },
+    {
+      "id": "SCR-2026-001",
+      "event_type": "screening",
+      "timestamp": "2026-01-27T08:10:00Z",
+      "description": "Sanctions screening",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "false_positive",
+      "sensitivity": "internal",
+      "access_tags": ["aml"]
+    }
+  ],
+  "assertions": []
+}

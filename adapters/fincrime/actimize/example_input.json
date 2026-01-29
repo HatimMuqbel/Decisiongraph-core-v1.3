@@ -1,0 +1,115 @@
+{
+  "alertCase": {
+    "caseId": "ACT-2026-00789",
+    "caseType": "TM_ALERT",
+    "jurisdiction": "CA",
+    "createdTimestamp": "2026-01-28T14:30:00Z",
+    "primaryPartyId": "CUST-12345",
+    "status": "OPEN",
+    "priority": "2",
+    "involvedParties": [
+      {
+        "partyId": "CUST-12345",
+        "firstName": "Maria",
+        "lastName": "Rodriguez",
+        "dateOfBirth": "1982-07-22",
+        "citizenship": "CA",
+        "residenceCountry": "CA",
+        "pepIndicator": "N",
+        "riskScore": "3"
+      }
+    ],
+    "accounts": [
+      {
+        "accountId": "ACCT-98765",
+        "maskedAccountNumber": "****7890",
+        "accountType": "CHECKING",
+        "currency": "CAD",
+        "accountStatus": "A",
+        "openDate": "2019-03-15"
+      },
+      {
+        "accountId": "ACCT-98766",
+        "maskedAccountNumber": "****4321",
+        "accountType": "SAVINGS",
+        "currency": "CAD",
+        "accountStatus": "A",
+        "openDate": "2020-06-01"
+      }
+    ],
+    "transactions": [
+      {
+        "transactionId": "TXN-001-2026",
+        "transactionDateTime": "2026-01-20T10:15:00Z",
+        "amount": "14500.00",
+        "currency": "CAD",
+        "debitCreditIndicator": "CR",
+        "counterpartyName": "ABC Import Export Ltd",
+        "counterpartyCountry": "HK",
+        "paymentChannel": "WIRE",
+        "narrative": "Trade settlement payment"
+      },
+      {
+        "transactionId": "TXN-002-2026",
+        "transactionDateTime": "2026-01-22T09:30:00Z",
+        "amount": "9900.00",
+        "currency": "CAD",
+        "debitCreditIndicator": "CR",
+        "counterpartyName": null,
+        "counterpartyCountry": null,
+        "paymentChannel": "CASH",
+        "narrative": "Cash deposit"
+      },
+      {
+        "transactionId": "TXN-003-2026",
+        "transactionDateTime": "2026-01-24T14:00:00Z",
+        "amount": "9800.00",
+        "currency": "CAD",
+        "debitCreditIndicator": "CR",
+        "counterpartyName": null,
+        "counterpartyCountry": null,
+        "paymentChannel": "CASH",
+        "narrative": "Cash deposit"
+      },
+      {
+        "transactionId": "TXN-004-2026",
+        "transactionDateTime": "2026-01-26T11:45:00Z",
+        "amount": "32000.00",
+        "currency": "CAD",
+        "debitCreditIndicator": "DR",
+        "counterpartyName": "XYZ Holdings Inc",
+        "counterpartyCountry": "PA",
+        "paymentChannel": "WIRE",
+        "narrative": "Investment transfer"
+      }
+    ],
+    "alerts": [
+      {
+        "alertId": "ALERT-TM-2026-001",
+        "alertDateTime": "2026-01-27T08:00:00Z",
+        "scenarioName": "STRUCTURING",
+        "scenarioId": "SCN-STRUCT-001",
+        "alertDescription": "Multiple cash deposits just below reporting threshold",
+        "alertScore": "HIGH"
+      },
+      {
+        "alertId": "ALERT-TM-2026-002",
+        "alertDateTime": "2026-01-27T08:05:00Z",
+        "scenarioName": "HIGH_RISK_JURISDICTION",
+        "scenarioId": "SCN-GEO-002",
+        "alertDescription": "Wire transfer to high-risk jurisdiction (Panama)",
+        "alertScore": "MEDIUM"
+      }
+    ],
+    "screeningResults": [
+      {
+        "screeningId": "SCR-2026-001",
+        "screenedDateTime": "2026-01-27T08:10:00Z",
+        "listType": "SANCTIONS",
+        "screeningSource": "WorldCheck",
+        "disposition": "FP",
+        "matchScore": "65"
+      }
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+# ============================================================================
+# NICE Actimize Transaction Monitoring Export Adapter
+# ============================================================================
+# Maps Actimize TM case exports to DecisionGraph CaseBundle format.
+# Version: 1.0.0
+# ============================================================================
+
+adapter:
+  name: actimize_tm_v1
+  vendor: NICE Actimize
+  version: 1.0.0
+  input_format: json
+  description: Maps NICE Actimize Transaction Monitoring alert exports to CaseBundle
+
+# ============================================================================
+# ROOT SELECTORS
+# ============================================================================
+# JSONPath expressions to locate data arrays in Actimize export structure.
+
+roots:
+  case: $.alertCase
+  customers: $.alertCase.involvedParties[*]
+  accounts: $.alertCase.accounts[*]
+  transactions: $.alertCase.transactions[*]
+  alerts: $.alertCase.alerts[*]
+  screenings: $.alertCase.screeningResults[*]
+
+# ============================================================================
+# FIELD MAPPINGS
+# ============================================================================
+# Maps CaseBundle fields to Actimize export paths.
+
+mappings:
+  # -------------------------------------------------------------------------
+  # Case Metadata
+  # -------------------------------------------------------------------------
+  CaseMeta.case_id: $.alertCase.caseId
+  CaseMeta.case_type: $.alertCase.caseType
+  CaseMeta.case_phase: "!literal analysis"
+  CaseMeta.jurisdiction: $.alertCase.jurisdiction
+  CaseMeta.created_at: $.alertCase.createdTimestamp
+  CaseMeta.primary_entity_type: "!literal individual"
+  CaseMeta.primary_entity_id: $.alertCase.primaryPartyId
+  CaseMeta.status: $.alertCase.status
+  CaseMeta.priority: $.alertCase.priority
+
+  # -------------------------------------------------------------------------
+  # Individual (Customer)
+  # -------------------------------------------------------------------------
+  Individual.id: $.partyId
+  Individual.given_name: $.firstName
+  Individual.family_name: $.lastName
+  Individual.date_of_birth: $.dateOfBirth
+  Individual.nationality: $.citizenship
+  Individual.country_of_residence: $.residenceCountry
+  Individual.pep_status: $.pepIndicator
+  Individual.risk_rating: $.riskScore
+
+  # -------------------------------------------------------------------------
+  # Account
+  # -------------------------------------------------------------------------
+  Account.id: $.accountId
+  Account.account_number: $.maskedAccountNumber
+  Account.account_type: $.accountType
+  Account.currency: $.currency
+  Account.status: $.accountStatus
+  Account.opened_date: $.openDate
+
+  # -------------------------------------------------------------------------
+  # Transaction Event
+  # -------------------------------------------------------------------------
+  TransactionEvent.id: $.transactionId
+  TransactionEvent.timestamp: $.transactionDateTime
+  TransactionEvent.amount: $.amount
+  TransactionEvent.currency: $.currency
+  TransactionEvent.direction: $.debitCreditIndicator
+  TransactionEvent.counterparty_name: $.counterpartyName
+  TransactionEvent.counterparty_country: $.counterpartyCountry
+  TransactionEvent.payment_method: $.paymentChannel
+  TransactionEvent.description: $.narrative
+
+  # -------------------------------------------------------------------------
+  # Alert Event
+  # -------------------------------------------------------------------------
+  AlertEvent.id: $.alertId
+  AlertEvent.timestamp: $.alertDateTime
+  AlertEvent.alert_type: $.scenarioName
+  AlertEvent.rule_id: $.scenarioId
+  AlertEvent.description: $.alertDescription
+  AlertEvent.severity: $.alertScore
+
+  # -------------------------------------------------------------------------
+  # Screening Event
+  # -------------------------------------------------------------------------
+  ScreeningEvent.id: $.screeningId
+  ScreeningEvent.timestamp: $.screenedDateTime
+  ScreeningEvent.screening_type: $.listType
+  ScreeningEvent.vendor: $.screeningSource
+  ScreeningEvent.disposition: $.disposition
+  ScreeningEvent.match_score: $.matchScore
+
+# ============================================================================
+# VALUE TRANSFORMS
+# ============================================================================
+# Map Actimize enum values to CaseBundle enum values.
+
+transforms:
+  # Case type mapping
+  case_type:
+    "TM_ALERT": "aml_alert"
+    "SAR_CASE": "aml_alert"
+    "KYC_REVIEW": "kyc_refresh"
+    "SANCTIONS_HIT": "sanctions_match"
+    "EDD_CASE": "edd_review"
+
+  # Transaction direction
+  direction:
+    "CR": "inbound"
+    "DR": "outbound"
+    "C": "inbound"
+    "D": "outbound"
+    "CREDIT": "inbound"
+    "DEBIT": "outbound"
+
+  # PEP status
+  pep_status:
+    "Y": "foreign"
+    "N": "none"
+    "DOMESTIC": "domestic"
+    "FOREIGN": "foreign"
+    "HIO": "hio"
+    "NONE": "none"
+
+  # Risk rating
+  risk_rating:
+    "1": "low"
+    "2": "low"
+    "3": "medium"
+    "4": "high"
+    "5": "high"
+    "LOW": "low"
+    "MEDIUM": "medium"
+    "HIGH": "high"
+
+  # Account status
+  account_status:
+    "A": "active"
+    "C": "closed"
+    "F": "frozen"
+    "ACTIVE": "active"
+    "CLOSED": "closed"
+    "FROZEN": "frozen"
+
+  # Screening disposition
+  screening_disposition:
+    "FP": "false_positive"
+    "TP": "true_positive"
+    "PENDING": "pending"
+    "ESCALATE": "escalate"
+
+  # Priority
+  priority:
+    "1": "critical"
+    "2": "high"
+    "3": "medium"
+    "4": "low"
+    "5": "low"
+
+# ============================================================================
+# DEFAULTS
+# ============================================================================
+# Default values for fields not present in Actimize export.
+
+defaults:
+  CaseMeta.sensitivity: "confidential"
+  CaseMeta.access_tags: ["aml", "fincrime"]
+  Individual.sensitivity: "confidential"
+  Individual.access_tags: ["aml"]
+  Account.sensitivity: "internal"
+  Account.access_tags: ["aml"]
+  TransactionEvent.sensitivity: "confidential"
+  TransactionEvent.access_tags: ["aml"]
+  AlertEvent.sensitivity: "confidential"
+  AlertEvent.access_tags: ["aml"]
+  ScreeningEvent.sensitivity: "internal"
+  ScreeningEvent.access_tags: ["aml"]
