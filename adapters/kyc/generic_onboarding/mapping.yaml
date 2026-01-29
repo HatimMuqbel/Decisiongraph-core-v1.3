@@ -1,0 +1,254 @@
+# =============================================================================
+# Generic KYC Onboarding Adapter v1.0
+# =============================================================================
+#
+# Maps customer onboarding data to DecisionGraph CaseBundle format.
+# Designed for KYC/CDD reviews during customer onboarding or periodic refresh.
+#
+# Input: JSON export from onboarding system
+# Output: CaseBundle with entity profiles, relationships, and assertions
+#
+# =============================================================================
+
+adapter:
+  name: generic_kyc_onboarding_v1
+  vendor: "Generic KYC"
+  version: "1.0.0"
+  input_format: json
+  description: |
+    Adapter for KYC onboarding and periodic refresh reviews.
+    Maps customer profile, beneficial owners, screening results,
+    and verification status to CaseBundle format.
+
+# =============================================================================
+# ROOT PATHS
+# =============================================================================
+
+roots:
+  case: "$.case"
+  customers: "$.customers[*]"
+  organizations: "$.organizations[*]"
+  beneficial_owners: "$.beneficial_owners[*]"
+  screening_results: "$.screening_results[*]"
+  verifications: "$.verifications[*]"
+  documents: "$.documents[*]"
+
+# =============================================================================
+# FIELD MAPPINGS
+# =============================================================================
+
+mappings:
+  # ---------------------------------------------------------------------------
+  # Case Metadata
+  # ---------------------------------------------------------------------------
+  CaseMeta.case_id: "$.case.id"
+  CaseMeta.case_type: "$.case.type"
+  CaseMeta.case_phase: "!literal analysis"
+  CaseMeta.jurisdiction: "$.case.jurisdiction"
+  CaseMeta.created_at: "$.case.created_date"
+  CaseMeta.primary_entity_type: "$.case.entity_type"
+  CaseMeta.primary_entity_id: "$.case.entity_id"
+  CaseMeta.status: "$.case.status"
+  CaseMeta.priority: "$.case.priority"
+  CaseMeta.sensitivity: "!literal confidential"
+  CaseMeta.access_tags: "!literal [\"kyc\", \"cdd\"]"
+
+  # ---------------------------------------------------------------------------
+  # Individual Mappings (from customers array)
+  # ---------------------------------------------------------------------------
+  Individual.id: "$.customer_id"
+  Individual.given_name: "$.first_name"
+  Individual.family_name: "$.last_name"
+  Individual.date_of_birth: "$.date_of_birth"
+  Individual.nationality: "$.nationality"
+  Individual.country_of_residence: "$.country_of_residence"
+  Individual.pep_status: "$.pep_status"
+  Individual.risk_rating: "$.risk_rating"
+  Individual.occupation: "$.occupation"
+  Individual.employer: "$.employer"
+  Individual.source_of_wealth: "$.source_of_wealth"
+  Individual.source_of_funds: "$.source_of_funds"
+  Individual.annual_income: "$.annual_income"
+  Individual.sensitivity: "!literal confidential"
+  Individual.access_tags: "!literal [\"kyc\"]"
+
+  # ---------------------------------------------------------------------------
+  # Organization Mappings
+  # ---------------------------------------------------------------------------
+  Organization.id: "$.org_id"
+  Organization.legal_name: "$.legal_name"
+  Organization.trading_name: "$.trading_name"
+  Organization.registration_number: "$.registration_number"
+  Organization.jurisdiction: "$.jurisdiction"
+  Organization.incorporation_date: "$.incorporation_date"
+  Organization.industry_code: "$.industry_code"
+  Organization.industry_description: "$.industry_description"
+  Organization.risk_rating: "$.risk_rating"
+  Organization.website: "$.website"
+  Organization.sensitivity: "!literal confidential"
+  Organization.access_tags: "!literal [\"kyc\"]"
+
+  # ---------------------------------------------------------------------------
+  # Beneficial Owner Mappings (creates relationships)
+  # ---------------------------------------------------------------------------
+  BeneficialOwner.id: "$.ubo_id"
+  BeneficialOwner.given_name: "$.first_name"
+  BeneficialOwner.family_name: "$.last_name"
+  BeneficialOwner.ownership_percentage: "$.ownership_pct"
+  BeneficialOwner.control_type: "$.control_type"
+  BeneficialOwner.verified: "$.verified"
+  BeneficialOwner.pep_status: "$.pep_status"
+  BeneficialOwner.nationality: "$.nationality"
+
+  # ---------------------------------------------------------------------------
+  # Screening Results (become events)
+  # ---------------------------------------------------------------------------
+  ScreeningEvent.id: "$.screening_id"
+  ScreeningEvent.event_type: "!literal screening"
+  ScreeningEvent.timestamp: "$.screening_date"
+  ScreeningEvent.screening_type: "$.list_type"
+  ScreeningEvent.screening_source: "$.source"
+  ScreeningEvent.disposition: "$.disposition"
+  ScreeningEvent.match_score: "$.match_score"
+  ScreeningEvent.matched_name: "$.matched_name"
+  ScreeningEvent.matched_list: "$.matched_list"
+  ScreeningEvent.sensitivity: "!literal confidential"
+  ScreeningEvent.access_tags: "!literal [\"kyc\", \"screening\"]"
+
+  # ---------------------------------------------------------------------------
+  # Verification Events
+  # ---------------------------------------------------------------------------
+  VerificationEvent.id: "$.verification_id"
+  VerificationEvent.event_type: "!literal verification"
+  VerificationEvent.timestamp: "$.verification_date"
+  VerificationEvent.verification_type: "$.type"
+  VerificationEvent.result: "$.result"
+  VerificationEvent.method: "$.method"
+  VerificationEvent.document_type: "$.document_type"
+  VerificationEvent.expiry_date: "$.expiry_date"
+  VerificationEvent.sensitivity: "!literal internal"
+  VerificationEvent.access_tags: "!literal [\"kyc\"]"
+
+  # ---------------------------------------------------------------------------
+  # Document Evidence
+  # ---------------------------------------------------------------------------
+  DocumentEvidence.id: "$.document_id"
+  DocumentEvidence.evidence_type: "$.document_type"
+  DocumentEvidence.description: "$.description"
+  DocumentEvidence.collected_date: "$.collected_date"
+  DocumentEvidence.expiry_date: "$.expiry_date"
+  DocumentEvidence.verified: "$.verified"
+  DocumentEvidence.sensitivity: "!literal confidential"
+  DocumentEvidence.access_tags: "!literal [\"kyc\"]"
+
+# =============================================================================
+# VALUE TRANSFORMS
+# =============================================================================
+
+transforms:
+  # Case type normalization
+  case_type:
+    NEW_CUSTOMER: kyc_onboarding
+    ONBOARDING: kyc_onboarding
+    PERIODIC_REVIEW: kyc_refresh
+    REFRESH: kyc_refresh
+    TRIGGERED_REVIEW: edd_review
+    EDD: edd_review
+
+  # Priority normalization
+  priority:
+    "1": critical
+    "2": high
+    "3": medium
+    "4": low
+    HIGH: high
+    MEDIUM: medium
+    LOW: low
+
+  # Status normalization
+  status:
+    NEW: open
+    OPEN: open
+    IN_PROGRESS: in_progress
+    PENDING: pending
+    COMPLETE: closed
+    CLOSED: closed
+
+  # PEP status normalization
+  pep_status:
+    "Y": fpep
+    "N": none
+    FOREIGN_PEP: fpep
+    DOMESTIC_PEP: dpep
+    HIO: hio
+    FAMILY: family
+    ASSOCIATE: associate
+    NONE: none
+    "": none
+
+  # Risk rating normalization
+  risk_rating:
+    "1": low
+    "2": medium
+    "3": high
+    "4": critical
+    L: low
+    M: medium
+    H: high
+    LOW: low
+    MEDIUM: medium
+    HIGH: high
+    CRITICAL: critical
+
+  # Screening disposition normalization
+  disposition:
+    TRUE_POSITIVE: confirmed
+    TP: confirmed
+    FALSE_POSITIVE: false_positive
+    FP: false_positive
+    PENDING: pending
+    UNRESOLVED: pending
+
+  # Verification result normalization
+  result:
+    PASS: pass
+    PASSED: pass
+    FAIL: fail
+    FAILED: fail
+    PENDING: pending
+    EXPIRED: expired
+
+  # Control type normalization
+  control_type:
+    SHAREHOLDER: ownership
+    DIRECTOR: control
+    SIGNATORY: control
+    VOTING: voting_rights
+
+# =============================================================================
+# DEFAULT VALUES
+# =============================================================================
+
+defaults:
+  CaseMeta.sensitivity: "confidential"
+  CaseMeta.access_tags: ["kyc", "cdd"]
+  Individual.sensitivity: "confidential"
+  Organization.sensitivity: "confidential"
+
+# =============================================================================
+# REQUIRED FIELDS
+# =============================================================================
+
+required_fields:
+  - field: CaseMeta.case_id
+    on_missing: ERROR
+  - field: CaseMeta.case_type
+    on_missing: ERROR
+  - field: CaseMeta.jurisdiction
+    on_missing: ERROR
+  - field: CaseMeta.primary_entity_id
+    on_missing: ERROR
+  - field: Individual.id
+    on_missing: SKIP_RECORD
+  - field: Organization.id
+    on_missing: SKIP_RECORD

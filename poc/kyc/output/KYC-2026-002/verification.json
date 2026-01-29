@@ -1,0 +1,49 @@
+{
+  "case_id": "KYC-2026-002",
+  "checks": [
+    {
+      "bytes": 2664,
+      "hash": "4d3ea08889b53a1d566194076c01395a31c32e715a131e6a82ddaf327c8a2780",
+      "name": "report_hash",
+      "status": "PASS"
+    },
+    {
+      "errors": [],
+      "name": "chain_integrity",
+      "status": "PASS"
+    },
+    {
+      "message": "Report renders identically",
+      "name": "determinism",
+      "status": "PASS"
+    },
+    {
+      "name": "policy_coverage",
+      "signals_without_refs": [],
+      "status": "PASS"
+    },
+    {
+      "name": "gate_consistency",
+      "score_gate": "STR_CONSIDERATION",
+      "status": "PASS",
+      "verdict": "STR_CONSIDERATION"
+    },
+    {
+      "hash": "2233a1bfc418b86c6db8ec2069a23c0368c7cb36fffac0ff559e09d80ed64dc1",
+      "name": "manifest_hash",
+      "status": "PASS"
+    }
+  ],
+  "environment": {
+    "architecture": "x86_64",
+    "container": "docker",
+    "engine_version": "1.0.0",
+    "git_commit": "b012551",
+    "platform": "Linux",
+    "platform_release": "6.8.0-1030-azure",
+    "python_version": "3.12.1"
+  },
+  "overall": "PASS",
+  "strict_mode": false,
+  "timestamp": "2026-01-29T17:00:02.401Z"
+}

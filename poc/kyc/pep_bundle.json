@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "id": "KYC-2026-002",
+    "case_type": "kyc_onboarding",
+    "case_phase": "analysis",
+    "jurisdiction": "CA",
+    "created_at": "2026-01-28T10:00:00Z",
+    "primary_entity_type": "individual",
+    "primary_entity_id": "IND-002",
+    "status": "open",
+    "priority": "high",
+    "sensitivity": "confidential",
+    "access_tags": ["kyc", "cdd", "pep"]
+  },
+  "individuals": [
+    {
+      "id": "IND-002",
+      "given_name": "Elizabeth",
+      "family_name": "Warren-Smith",
+      "date_of_birth": "1965-11-22",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "dpep",
+      "risk_rating": "high",
+      "occupation": "Member of Parliament",
+      "employer": "Government of Canada",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "pep"]
+    }
+  ],
+  "organizations": [],
+  "accounts": [],
+  "relationships": [],
+  "evidence": [
+    {
+      "id": "DOC-004",
+      "evidence_type": "passport",
+      "description": "Canadian Passport",
+      "collected_date": "2026-01-28",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-005",
+      "evidence_type": "financial_statements",
+      "description": "Personal financial statement - 3 years",
+      "collected_date": "2026-01-28",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "pep"]
+    },
+    {
+      "id": "DOC-006",
+      "evidence_type": "other",
+      "description": "Declaration of assets and income sources",
+      "collected_date": "2026-01-28",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "pep"]
+    }
+  ],
+  "events": [
+    {
+      "id": "SCR-003",
+      "event_type": "screening",
+      "timestamp": "2026-01-28T10:15:00Z",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "false_positive",
+      "match_score": "0",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "SCR-004",
+      "event_type": "screening",
+      "timestamp": "2026-01-28T10:15:00Z",
+      "screening_type": "pep",
+      "vendor": "WorldCheck",
+      "disposition": "confirmed",
+      "match_score": "98",
+      "matched_name": "Elizabeth Warren-Smith",
+      "matched_list": "Canada PEP Database",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening", "pep"]
+    },
+    {
+      "id": "SCR-005",
+      "event_type": "screening",
+      "timestamp": "2026-01-28T10:20:00Z",
+      "screening_type": "adverse_media",
+      "vendor": "LexisNexis",
+      "disposition": "false_positive",
+      "match_score": "45",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "VER-003",
+      "event_type": "verification",
+      "timestamp": "2026-01-28T10:30:00Z",
+      "verification_type": "identity",
+      "result": "pass",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "VER-004",
+      "event_type": "verification",
+      "timestamp": "2026-01-28T10:35:00Z",
+      "verification_type": "address",
+      "result": "pass",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "assertions": []
+}

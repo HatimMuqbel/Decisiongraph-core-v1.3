@@ -1,0 +1,98 @@
+========================================================================
+DECISIONGRAPH CASE REPORT
+========================================================================
+
+Case ID:      KYC-2026-001
+Case Type:    KYC_ONBOARDING
+Case Phase:   analysis
+Jurisdiction: CA
+Priority:     low
+
+Pack ID:      fincrime_canada_v1
+Pack Version: 1.0.0
+Pack Hash:    390c23d3d389fb481f0c8795b8b73f671efa2e4d9646bf49f13dfe75d326dc5d
+
+Graph ID:     graph:5da1016f-58ca-4fe5-85df-be2367e6025b
+Chain Length: 46 cells
+
+------------------------------------------------------------------------
+VERDICT: STR_CONSIDERATION
+Auto-Archive Permitted: NO
+------------------------------------------------------------------------
+
+RISK SCORE SUMMARY
+------------------------------------
+Inherent Score:          7.25
+Mitigations:            -0.75
+Residual Score:           6.5
+Threshold Gate:    STR_CONSIDERATION
+
+SIGNALS FIRED
+------------------------------------
+  [MEDIUM  ] CDD_HIGH_RISK_INDUSTRY
+  [HIGH    ] CDD_UBO_UNKNOWN
+  [HIGH    ] GEO_HIGH_RISK_COUNTRY
+  [CRITICAL] GEO_SANCTIONED_COUNTRY
+  [MEDIUM  ] GEO_TAX_HAVEN
+  [MEDIUM  ] PEP_DOMESTIC
+  [MEDIUM  ] PEP_FAMILY_ASSOCIATE
+  [HIGH    ] PEP_FOREIGN
+  [MEDIUM  ] PEP_HIO
+  [MEDIUM  ] SCREEN_ADVERSE_MEDIA
+  [CRITICAL] SCREEN_SANCTIONS_HIT
+
+MITIGATIONS APPLIED
+------------------------------------
+  [ -0.50] MF_SCREEN_FALSE_POSITIVE
+  [ -0.25] MF_TXN_SUPPORTING_INVOICE
+
+ENTITIES
+------------------------------------
+  [INDIVIDUAL] IND-001: Michael Chen
+               Risk: LOW
+
+EVIDENCE
+------------------------------------
+  [UNVERIFIED] DOC-001: passport
+               Canadian Passport...
+  [UNVERIFIED] DOC-002: utility_bill
+               Hydro Quebec bill - address verification...
+  [UNVERIFIED] DOC-003: employment_letter
+               Employment verification from Tech Corp Inc...
+
+TRANSACTIONS
+------------------------------------
+
+CHAIN INTEGRITY
+------------------------------------
+  Status: VALID
+  Cells:  46
+
+POLICY REFERENCES
+------------------------------------
+  fintrac_guideline_2
+  fintrac_guideline_3
+  fintrac_guideline_6
+  fintrac_ml_tf_typologies
+  fintrac_msb_guidelines
+  osfi_b_8
+  pcmltfr
+  pcmltfr_part_1_1
+  pcmltfr_s_11_1
+  pcmltfr_s_12
+  pcmltfr_s_64
+  pcmltfr_s_9_3
+  pcmltfr_s_9_3_1
+  pcmltfr_s_9_3_2
+  pcmltfr_s_9_3_3
+  pcmltfr_s_9_3_4
+  pcmltfr_s_9_6
+  risk_based_approach
+  risk_based_approach_pcmltfr_s_9_6
+  screening_best_practices
+  sema_pcmltfa_s_11_42
+  sema_special_economic_measures_act
+
+========================================================================
+END OF REPORT
+========================================================================

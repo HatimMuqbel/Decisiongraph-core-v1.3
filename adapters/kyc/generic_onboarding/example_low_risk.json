@@ -1,0 +1,113 @@
+{
+  "case": {
+    "id": "KYC-2026-001",
+    "type": "NEW_CUSTOMER",
+    "jurisdiction": "CA",
+    "entity_type": "individual",
+    "entity_id": "IND-001",
+    "created_date": "2026-01-28T09:00:00Z",
+    "status": "OPEN",
+    "priority": "4"
+  },
+  "customers": [
+    {
+      "customer_id": "IND-001",
+      "first_name": "Michael",
+      "last_name": "Chen",
+      "date_of_birth": "1988-03-15",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "N",
+      "risk_rating": "L",
+      "occupation": "Software Engineer",
+      "employer": "Tech Corp Inc",
+      "source_of_wealth": "Employment",
+      "source_of_funds": "Salary",
+      "annual_income": "125000"
+    }
+  ],
+  "organizations": [],
+  "beneficial_owners": [],
+  "screening_results": [
+    {
+      "screening_id": "SCR-001",
+      "screening_date": "2026-01-28T09:15:00Z",
+      "list_type": "SANCTIONS",
+      "source": "WorldCheck",
+      "disposition": "FP",
+      "match_score": "25",
+      "matched_name": null,
+      "matched_list": null
+    },
+    {
+      "screening_id": "SCR-002",
+      "screening_date": "2026-01-28T09:15:00Z",
+      "list_type": "PEP",
+      "source": "WorldCheck",
+      "disposition": "FP",
+      "match_score": "0",
+      "matched_name": null,
+      "matched_list": null
+    }
+  ],
+  "verifications": [
+    {
+      "verification_id": "VER-001",
+      "verification_date": "2026-01-28T09:30:00Z",
+      "type": "identity",
+      "result": "PASS",
+      "method": "document",
+      "document_type": "passport",
+      "expiry_date": "2031-05-20"
+    },
+    {
+      "verification_id": "VER-002",
+      "verification_date": "2026-01-28T09:35:00Z",
+      "type": "address",
+      "result": "PASS",
+      "method": "utility_bill",
+      "document_type": "utility_bill",
+      "expiry_date": null
+    }
+  ],
+  "documents": [
+    {
+      "document_id": "DOC-001",
+      "document_type": "passport",
+      "description": "Canadian Passport",
+      "collected_date": "2026-01-28",
+      "expiry_date": "2031-05-20",
+      "verified": true
+    },
+    {
+      "document_id": "DOC-002",
+      "document_type": "utility_bill",
+      "description": "Hydro Quebec bill",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": true
+    },
+    {
+      "document_id": "DOC-003",
+      "document_type": "employment_letter",
+      "description": "Employment verification from Tech Corp Inc",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": true
+    }
+  ],
+  "assertions": [
+    {
+      "type": "documentation_status",
+      "value": "complete"
+    },
+    {
+      "type": "source_of_wealth",
+      "value": "verified"
+    },
+    {
+      "type": "relationship_tenure",
+      "value": "0"
+    }
+  ]
+}

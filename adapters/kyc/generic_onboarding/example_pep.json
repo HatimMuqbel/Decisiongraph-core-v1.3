@@ -1,0 +1,148 @@
+{
+  "case": {
+    "id": "KYC-2026-002",
+    "type": "NEW_CUSTOMER",
+    "jurisdiction": "CA",
+    "entity_type": "individual",
+    "entity_id": "IND-002",
+    "created_date": "2026-01-28T10:00:00Z",
+    "status": "OPEN",
+    "priority": "2"
+  },
+  "customers": [
+    {
+      "customer_id": "IND-002",
+      "first_name": "Elizabeth",
+      "last_name": "Warren-Smith",
+      "date_of_birth": "1965-11-22",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "DOMESTIC_PEP",
+      "risk_rating": "H",
+      "occupation": "Member of Parliament",
+      "employer": "Government of Canada",
+      "source_of_wealth": "Political career, investments, family inheritance",
+      "source_of_funds": "Parliamentary salary, investment income",
+      "annual_income": "250000"
+    }
+  ],
+  "organizations": [],
+  "beneficial_owners": [],
+  "screening_results": [
+    {
+      "screening_id": "SCR-003",
+      "screening_date": "2026-01-28T10:15:00Z",
+      "list_type": "SANCTIONS",
+      "source": "WorldCheck",
+      "disposition": "FP",
+      "match_score": "0",
+      "matched_name": null,
+      "matched_list": null
+    },
+    {
+      "screening_id": "SCR-004",
+      "screening_date": "2026-01-28T10:15:00Z",
+      "list_type": "PEP",
+      "source": "WorldCheck",
+      "disposition": "TP",
+      "match_score": "98",
+      "matched_name": "Elizabeth Warren-Smith",
+      "matched_list": "Canada PEP Database"
+    },
+    {
+      "screening_id": "SCR-005",
+      "screening_date": "2026-01-28T10:20:00Z",
+      "list_type": "ADVERSE_MEDIA",
+      "source": "LexisNexis",
+      "disposition": "FP",
+      "match_score": "45",
+      "matched_name": null,
+      "matched_list": null
+    }
+  ],
+  "verifications": [
+    {
+      "verification_id": "VER-003",
+      "verification_date": "2026-01-28T10:30:00Z",
+      "type": "identity",
+      "result": "PASS",
+      "method": "document",
+      "document_type": "passport",
+      "expiry_date": "2029-08-15"
+    },
+    {
+      "verification_id": "VER-004",
+      "verification_date": "2026-01-28T10:35:00Z",
+      "type": "address",
+      "result": "PASS",
+      "method": "government_registry",
+      "document_type": "voter_registration",
+      "expiry_date": null
+    },
+    {
+      "verification_id": "VER-005",
+      "verification_date": "2026-01-28T11:00:00Z",
+      "type": "source_of_wealth",
+      "result": "PASS",
+      "method": "documentation_review",
+      "document_type": "financial_statements",
+      "expiry_date": null
+    }
+  ],
+  "documents": [
+    {
+      "document_id": "DOC-004",
+      "document_type": "passport",
+      "description": "Canadian Passport",
+      "collected_date": "2026-01-28",
+      "expiry_date": "2029-08-15",
+      "verified": true
+    },
+    {
+      "document_id": "DOC-005",
+      "document_type": "financial_statements",
+      "description": "Personal financial statement - 3 years",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": true
+    },
+    {
+      "document_id": "DOC-006",
+      "document_type": "source_of_wealth",
+      "description": "Declaration of assets and income sources",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": true
+    },
+    {
+      "document_id": "DOC-007",
+      "document_type": "pep_declaration",
+      "description": "PEP self-declaration form",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": true
+    }
+  ],
+  "assertions": [
+    {
+      "type": "documentation_status",
+      "value": "complete"
+    },
+    {
+      "type": "source_of_wealth",
+      "value": "verified"
+    },
+    {
+      "type": "senior_approval",
+      "value": "approved"
+    },
+    {
+      "type": "edd_status",
+      "value": "current"
+    },
+    {
+      "type": "relationship_tenure",
+      "value": "0"
+    }
+  ]
+}

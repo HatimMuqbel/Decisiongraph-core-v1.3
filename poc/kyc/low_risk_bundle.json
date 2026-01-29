@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "id": "KYC-2026-001",
+    "case_type": "kyc_onboarding",
+    "case_phase": "analysis",
+    "jurisdiction": "CA",
+    "created_at": "2026-01-28T09:00:00Z",
+    "primary_entity_type": "individual",
+    "primary_entity_id": "IND-001",
+    "status": "open",
+    "priority": "low",
+    "sensitivity": "confidential",
+    "access_tags": ["kyc", "cdd"]
+  },
+  "individuals": [
+    {
+      "id": "IND-001",
+      "given_name": "Michael",
+      "family_name": "Chen",
+      "date_of_birth": "1988-03-15",
+      "nationality": "CA",
+      "country_of_residence": "CA",
+      "pep_status": "none",
+      "risk_rating": "low",
+      "occupation": "Software Engineer",
+      "employer": "Tech Corp Inc",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "organizations": [],
+  "accounts": [],
+  "relationships": [],
+  "evidence": [
+    {
+      "id": "DOC-001",
+      "evidence_type": "passport",
+      "description": "Canadian Passport",
+      "collected_date": "2026-01-28",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-002",
+      "evidence_type": "utility_bill",
+      "description": "Hydro Quebec bill - address verification",
+      "collected_date": "2026-01-28",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "DOC-003",
+      "evidence_type": "employment_letter",
+      "description": "Employment verification from Tech Corp Inc",
+      "collected_date": "2026-01-28",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "events": [
+    {
+      "id": "SCR-001",
+      "event_type": "screening",
+      "timestamp": "2026-01-28T09:15:00Z",
+      "screening_type": "sanctions",
+      "vendor": "WorldCheck",
+      "disposition": "false_positive",
+      "match_score": "25",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "SCR-002",
+      "event_type": "screening",
+      "timestamp": "2026-01-28T09:15:00Z",
+      "screening_type": "pep",
+      "vendor": "WorldCheck",
+      "disposition": "false_positive",
+      "match_score": "0",
+      "sensitivity": "confidential",
+      "access_tags": ["kyc", "screening"]
+    },
+    {
+      "id": "VER-001",
+      "event_type": "verification",
+      "timestamp": "2026-01-28T09:30:00Z",
+      "verification_type": "identity",
+      "result": "pass",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    },
+    {
+      "id": "VER-002",
+      "event_type": "verification",
+      "timestamp": "2026-01-28T09:35:00Z",
+      "verification_type": "address",
+      "result": "pass",
+      "sensitivity": "internal",
+      "access_tags": ["kyc"]
+    }
+  ],
+  "assertions": []
+}

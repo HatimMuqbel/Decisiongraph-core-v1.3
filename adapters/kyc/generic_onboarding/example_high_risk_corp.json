@@ -1,0 +1,121 @@
+{
+  "case": {
+    "id": "KYC-2026-003",
+    "type": "NEW_CUSTOMER",
+    "jurisdiction": "CA",
+    "entity_type": "organization",
+    "entity_id": "ORG-001",
+    "created_date": "2026-01-28T14:00:00Z",
+    "status": "OPEN",
+    "priority": "1"
+  },
+  "customers": [],
+  "organizations": [
+    {
+      "org_id": "ORG-001",
+      "legal_name": "Global Trading Holdings Ltd",
+      "trading_name": "GTH Trading",
+      "registration_number": "BVI-2019-45678",
+      "jurisdiction": "VG",
+      "incorporation_date": "2019-06-15",
+      "industry_code": "523130",
+      "industry_description": "Commodity Contracts Trading",
+      "risk_rating": "H",
+      "website": null
+    }
+  ],
+  "beneficial_owners": [
+    {
+      "ubo_id": "UBO-001",
+      "first_name": "Unknown",
+      "last_name": "Unknown",
+      "ownership_pct": "100",
+      "control_type": "SHAREHOLDER",
+      "verified": false,
+      "pep_status": "",
+      "nationality": ""
+    }
+  ],
+  "screening_results": [
+    {
+      "screening_id": "SCR-006",
+      "screening_date": "2026-01-28T14:15:00Z",
+      "list_type": "SANCTIONS",
+      "source": "WorldCheck",
+      "disposition": "PENDING",
+      "match_score": "72",
+      "matched_name": "Global Trading Holdings",
+      "matched_list": "OFAC SDN"
+    },
+    {
+      "screening_id": "SCR-007",
+      "screening_date": "2026-01-28T14:20:00Z",
+      "list_type": "ADVERSE_MEDIA",
+      "source": "LexisNexis",
+      "disposition": "TP",
+      "match_score": "85",
+      "matched_name": "Global Trading Holdings",
+      "matched_list": "Panama Papers entities"
+    }
+  ],
+  "verifications": [
+    {
+      "verification_id": "VER-006",
+      "verification_date": "2026-01-28T14:30:00Z",
+      "type": "identity",
+      "result": "FAIL",
+      "method": "registry_search",
+      "document_type": "certificate_of_incorporation",
+      "expiry_date": null
+    },
+    {
+      "verification_id": "VER-007",
+      "verification_date": "2026-01-28T14:35:00Z",
+      "type": "ubo_verification",
+      "result": "FAIL",
+      "method": "documentation_review",
+      "document_type": "share_register",
+      "expiry_date": null
+    }
+  ],
+  "documents": [
+    {
+      "document_id": "DOC-008",
+      "document_type": "certificate_of_incorporation",
+      "description": "BVI Certificate of Incorporation",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": false
+    },
+    {
+      "document_id": "DOC-009",
+      "document_type": "memorandum_of_association",
+      "description": "Memorandum and Articles - redacted",
+      "collected_date": "2026-01-28",
+      "expiry_date": null,
+      "verified": false
+    }
+  ],
+  "assertions": [
+    {
+      "type": "documentation_status",
+      "value": "incomplete"
+    },
+    {
+      "type": "source_of_wealth",
+      "value": "undocumented"
+    },
+    {
+      "type": "ubo_verified",
+      "value": "false"
+    },
+    {
+      "type": "entity_characteristic",
+      "value": "shell_company_indicator"
+    },
+    {
+      "type": "relationship_tenure",
+      "value": "0"
+    }
+  ]
+}
