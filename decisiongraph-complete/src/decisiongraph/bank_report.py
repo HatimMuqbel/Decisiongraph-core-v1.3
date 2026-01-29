@@ -358,11 +358,11 @@ class BankReportRenderer:
         lines.append("=" * w)
         lines.append("")
 
-        # 6-Layer Taxonomy Analysis
+        # 6-Layer Taxonomy Analysis (v2.1 - with fixes)
         mitigation_codes = []
         if eval_result and eval_result.mitigations:
             mitigation_codes = [m.fact.object.get("code", "") for m in eval_result.mitigations]
-        lines.extend(self._render_taxonomy_analysis(eval_result, mitigation_codes, w))
+        lines.extend(self._render_taxonomy_analysis(eval_result, mitigation_codes, case_bundle, w))
 
         # Policy Citations
         if self.config.include_citations and citation_registry:
@@ -1303,9 +1303,10 @@ class BankReportRenderer:
         self,
         eval_result: Any,
         mitigation_codes: List[str],
+        case_bundle: Any,
         w: int
     ) -> List[str]:
-        """Render 6-layer taxonomy analysis section.
+        """Render 6-layer taxonomy analysis section (v2.1 - Fixed).
 
         This implements the constitutional decision architecture that separates:
         - Facts from opinions
@@ -1315,18 +1316,26 @@ class BankReportRenderer:
 
         Key Principle: Escalation requires Layer 6 activation.
         Status alone (PEP, foreign, high-risk country) is NEVER sufficient for suspicion.
+
+        v2.1 FIXES:
+        1. Hard stops ONLY from Layer 1 facts (not signals)
+        2. Cash signals excluded from wire transactions
+        3. FORMING typologies do NOT trigger suspicion
         """
         lines = []
         lines.append("=" * w)
-        lines.append("6-LAYER DECISION TAXONOMY ANALYSIS")
+        lines.append("6-LAYER DECISION TAXONOMY ANALYSIS (v2.1)")
         lines.append("=" * w)
         lines.append("")
         lines.append("The following analysis classifies case signals through the")
         lines.append("6-layer constitutional decision framework. Escalation to STR")
         lines.append("consideration requires Layer 6 (Suspicion) activation.")
         lines.append("")
-        lines.append("Status alone (PEP, foreign national, high-risk country) is")
-        lines.append("NEVER sufficient for suspicion determination.")
+        lines.append("CRITICAL RULES:")
+        lines.append("  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)")
+        lines.append("  * Cash signals EXCLUDED from wire transactions")
+        lines.append("  * FORMING typologies = OBSERVE ONLY (not escalation)")
+        lines.append("  * Status alone is NEVER sufficient for suspicion")
         lines.append("")
 
         # Extract signal codes
@@ -1334,20 +1343,76 @@ class BankReportRenderer:
         if eval_result and eval_result.signals:
             signal_codes = [s.fact.object.get("code", "") for s in eval_result.signals]
 
-        # Check for hard stops
-        has_hard_stop = any(
-            "SANCTION" in code.upper() and "FALSE" not in code.upper()
-            for code in signal_codes
-            if code
-        )
+        # FIX #2: Detect instrument type from case data
+        instrument_hint = None
+        if hasattr(case_bundle, 'events'):
+            for event in case_bundle.events:
+                if getattr(event, 'event_type', '') == 'transaction':
+                    desc = getattr(event, 'description', '').lower()
+                    payment = getattr(event, 'payment_method', '').lower()
+                    if 'wire' in desc or 'swift' in desc or 'wire' in payment or 'swift' in payment:
+                        instrument_hint = 'wire'
+                        break
+                    if 'cash' in desc or 'cash' in payment:
+                        instrument_hint = 'cash'
+                        break
 
-        # Run taxonomy analysis
+        # FIX #1: Build facts dict from case data (NOT from signals!)
+        # Hard stops require CONFIRMED facts, not just signal presence
+        facts = {
+            "sanctions_result": "NO_MATCH",  # Default: no confirmed match
+            "document_status": "VALID",      # Default: documents are valid
+            "customer_response": "COMPLIANT" # Default: customer cooperating
+        }
+
+        # Check screening events for actual disposition
+        if hasattr(case_bundle, 'events'):
+            for event in case_bundle.events:
+                if getattr(event, 'event_type', '') == 'screening':
+                    screening_type = getattr(event, 'screening_type', '').lower()
+                    disposition = getattr(event, 'disposition', '').upper()
+
+                    if 'sanction' in screening_type:
+                        # ONLY a confirmed TRUE_POSITIVE/MATCH is a hard stop
+                        if disposition in ('MATCH', 'TRUE_POSITIVE', 'CONFIRMED_MATCH'):
+                            facts["sanctions_result"] = "MATCH"
+                        # FALSE_POSITIVE, CLEARED, etc. are NOT hard stops
+
+        # Run taxonomy analysis with fixes
         classifier = TaxonomyClassifier()
         result = classifier.analyze(
             signal_codes=signal_codes,
             mitigation_codes=mitigation_codes,
-            has_hard_stop=has_hard_stop
+            facts=facts,
+            instrument_hint=instrument_hint
         )
+
+        # Show instrument detection
+        lines.append(f"INSTRUMENT DETECTED: {result.instrument_type.value.upper()}")
+        lines.append("-" * w)
+
+        # FIX #2: Show excluded signals (cash on wire)
+        if result.excluded_signals:
+            lines.append("SIGNALS EXCLUDED (instrument exclusivity):")
+            for excl in result.excluded_signals:
+                lines.append(f"   {excl.signal_code}: {excl.excluded_reason}")
+            lines.append("")
+
+        # FIX #1: Show hard stop assessment
+        lines.append("HARD STOP ASSESSMENT (Layer 1 Facts)")
+        lines.append("-" * w)
+        if result.hard_stop:
+            if result.hard_stop.has_hard_stop:
+                lines.append(f"   STATUS: HARD STOP DETECTED")
+                lines.append(f"   Type: {result.hard_stop.hard_stop_type.value if result.hard_stop.hard_stop_type else 'N/A'}")
+                lines.append(f"   Reasoning: {result.hard_stop.reasoning}")
+            else:
+                lines.append(f"   STATUS: NO HARD STOP")
+                lines.append(f"   Reasoning: {result.hard_stop.reasoning}")
+                lines.append("")
+                lines.append("   NOTE: SCREEN_SANCTIONS_HIT signal means 'screening occurred',")
+                lines.append("   NOT 'confirmed match'. Hard stops require fact-level confirmation.")
+        lines.append("")
 
         # Layer 2: Obligations
         lines.append("LAYER 2: REGULATORY OBLIGATIONS")
@@ -1379,14 +1444,29 @@ class BankReportRenderer:
             lines.append("   (none)")
             lines.append("")
 
-        # Layer 4: Typologies
+        # FIX #3: Layer 4 Typologies with maturity states
         lines.append("LAYER 4: TYPOLOGY ASSESSMENT")
         lines.append("-" * w)
         if result.typologies:
             for typ in result.typologies:
-                status = "FORMING" if typ.is_forming else "PARTIAL"
-                lines.append(f"   {typ.typology.value}: {status} ({typ.confidence:.0%} match)")
+                maturity = typ.maturity.value.upper()
+                suspicion_note = ""
+                if typ.maturity.value == "forming":
+                    suspicion_note = " (OBSERVE ONLY - does NOT trigger suspicion)"
+                elif typ.maturity.value == "established":
+                    suspicion_note = " (eligible for suspicion if unmitigated)"
+                elif typ.maturity.value == "confirmed":
+                    suspicion_note = " (escalation warranted)"
+
+                lines.append(f"   {typ.typology.value}: {maturity} ({typ.confidence:.0%} match){suspicion_note}")
                 lines.append(f"      Matching signals: {', '.join(typ.matching_signals)}")
+            lines.append("")
+
+            # Summary of typology state
+            if result.typology_established:
+                lines.append("   TYPOLOGY STATUS: ESTABLISHED pattern(s) detected")
+            elif result.typology_forming:
+                lines.append("   TYPOLOGY STATUS: FORMING pattern(s) - OBSERVE ONLY")
             lines.append("")
         else:
             lines.append("   No typology patterns detected")
@@ -1417,8 +1497,13 @@ class BankReportRenderer:
                 lines.append(f"   STATUS: NOT ACTIVATED")
                 lines.append(f"   Reasoning: {result.suspicion.reasoning}")
                 lines.append("")
-                lines.append("   NOTE: Status-based signals (PEP, foreign, geography) trigger")
-                lines.append("   obligations (L2) but do NOT activate suspicion (L6).")
+                lines.append("   SUSPICION REQUIRES:")
+                lines.append("     * Confirmed hard stop (Layer 1 facts), OR")
+                lines.append("     * Evidence of deception/intent, OR")
+                lines.append("     * ESTABLISHED (not forming) typology without mitigation")
+                lines.append("")
+                lines.append("   Status-based signals (PEP, foreign, geography) trigger")
+                lines.append("   obligations (L2) but NEVER activate suspicion (L6).")
         else:
             lines.append("   STATUS: NOT EVALUATED")
         lines.append("")

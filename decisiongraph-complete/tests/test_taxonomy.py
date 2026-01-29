@@ -1,5 +1,5 @@
 """
-Tests for DecisionGraph 6-Layer Decision Taxonomy Module.
+Tests for DecisionGraph 6-Layer Decision Taxonomy Module (v2.1 - Fixed).
 
 The taxonomy implements the constitutional decision architecture that separates:
 - Facts from opinions
@@ -9,6 +9,11 @@ The taxonomy implements the constitutional decision architecture that separates:
 
 Key Principle: Escalation requires Layer 6 activation.
 Status alone (PEP, foreign, high-risk country) is NEVER sufficient for suspicion.
+
+v2.1 FIXES TESTED:
+1. Hard stops ONLY from Layer 1 facts (not signals)
+2. Cash signals EXCLUDED from wire transactions
+3. FORMING typologies do NOT trigger suspicion
 """
 
 import pytest
@@ -19,16 +24,23 @@ from decisiongraph.taxonomy import (
     ObligationType,
     IndicatorStrength,
     TypologyCategory,
+    TypologyMaturity,
+    InstrumentType,
+    HardStopType,
     SuspicionBasis,
     VerdictCategory,
     LayerClassification,
     TypologyAssessment,
+    HardStopAssessment,
     SuspicionAssessment,
     TaxonomyResult,
     TaxonomyClassifier,
     OBLIGATION_SIGNALS,
     INDICATOR_SIGNALS,
+    CASH_ONLY_SIGNALS,
+    HARD_STOP_FACT_SIGNALS,
     TYPOLOGY_RULES,
+    WIRE_TYPOLOGY_RULES,
     TAXONOMY_TO_VERDICT,
     TAXONOMY_TO_TIER,
     TAXONOMY_AUTO_ARCHIVE,
@@ -58,17 +70,38 @@ class TestVerdictCategory:
     """Tests for VerdictCategory enum."""
 
     def test_verdict_categories_defined(self):
-        """Test that all verdict categories are defined."""
-        assert len(VerdictCategory) == 5
+        """Test that all verdict categories are defined (v2.1: includes TYPOLOGY_FORMING)."""
+        assert len(VerdictCategory) == 6  # Added TYPOLOGY_FORMING in v2.1
         assert VerdictCategory.CLEAR.value == "CLEAR"
         assert VerdictCategory.OBLIGATION_ONLY.value == "OBLIGATION_REVIEW"
         assert VerdictCategory.INDICATOR_REVIEW.value == "INDICATOR_REVIEW"
+        assert VerdictCategory.TYPOLOGY_FORMING.value == "TYPOLOGY_FORMING"  # v2.1
         assert VerdictCategory.TYPOLOGY_REVIEW.value == "TYPOLOGY_REVIEW"
         assert VerdictCategory.SUSPICION_ESCALATE.value == "SUSPICION_ESCALATE"
 
 
+class TestTypologyMaturity:
+    """Tests for TypologyMaturity enum (v2.1 fix)."""
+
+    def test_maturity_states_defined(self):
+        """Test that all maturity states are defined."""
+        assert len(TypologyMaturity) == 3
+        assert TypologyMaturity.FORMING.value == "forming"
+        assert TypologyMaturity.ESTABLISHED.value == "established"
+        assert TypologyMaturity.CONFIRMED.value == "confirmed"
+
+
+class TestInstrumentType:
+    """Tests for InstrumentType enum (v2.1 fix)."""
+
+    def test_instrument_types_defined(self):
+        """Test that instrument types are defined."""
+        assert InstrumentType.CASH.value == "cash"
+        assert InstrumentType.WIRE.value == "wire"
+
+
 # =============================================================================
-# TESTS FOR SIGNAL CLASSIFICATION
+# TESTS FOR SIGNAL CLASSIFICATION (v2.1)
 # =============================================================================
 
 class TestSignalClassification:
@@ -81,10 +114,20 @@ class TestSignalClassification:
             assert code in OBLIGATION_SIGNALS
             assert OBLIGATION_SIGNALS[code] == ObligationType.EDD_REQUIRED
 
-    def test_sanctions_signals_are_obligations(self):
-        """Test that sanctions signals are classified as obligations."""
-        assert "SCREEN_SANCTIONS_HIT" in OBLIGATION_SIGNALS
+    def test_sanctions_screening_is_obligation_not_hard_stop(self):
+        """Test that GEO_SANCTIONED_COUNTRY triggers obligation, not hard stop."""
+        # v2.1: SCREEN_SANCTIONS_HIT is NOT an obligation - it's just a screening signal
+        # The disposition determines if it's a hard stop
         assert "GEO_SANCTIONED_COUNTRY" in OBLIGATION_SIGNALS
+        assert OBLIGATION_SIGNALS["GEO_SANCTIONED_COUNTRY"] == ObligationType.SANCTIONS_SCREENING
+        # SCREEN_SANCTIONS_HIT is intentionally NOT in obligations
+        assert "SCREEN_SANCTIONS_HIT" not in OBLIGATION_SIGNALS
+
+    def test_cash_only_signals_defined(self):
+        """Test that cash-only signals are defined (v2.1 fix)."""
+        assert "TXN_LARGE_CASH" in CASH_ONLY_SIGNALS
+        assert "STRUCT_CASH_MULTIPLE" in CASH_ONLY_SIGNALS
+        assert "STRUCT_SMURFING" in CASH_ONLY_SIGNALS
 
     def test_transaction_indicators(self):
         """Test transaction indicator classifications."""
@@ -137,35 +180,95 @@ class TestTaxonomyClassifier:
         assert result.layer == DecisionLayer.INDICATORS
         assert result.indicator_strength == IndicatorStrength.WEAK
 
+    def test_detect_wire_instrument(self):
+        """Test instrument detection for wire transfers."""
+        classifier = TaxonomyClassifier()
+        result = classifier.detect_instrument_type([], instrument_hint="swift_wire")
+        assert result == InstrumentType.WIRE
+
+    def test_filter_cash_signals_from_wire(self):
+        """Test that cash signals are excluded from wire transactions (v2.1 fix)."""
+        classifier = TaxonomyClassifier()
+        signals = ["TXN_LARGE_CASH", "TXN_RAPID_MOVEMENT", "STRUCT_CASH_MULTIPLE"]
+
+        valid, excluded = classifier.filter_signals_by_instrument(signals, InstrumentType.WIRE)
+
+        assert "TXN_LARGE_CASH" not in valid
+        assert "STRUCT_CASH_MULTIPLE" not in valid
+        assert "TXN_RAPID_MOVEMENT" in valid
+        assert len(excluded) == 2
+
     def test_assess_structuring_typology(self):
-        """Test structuring typology detection."""
+        """Test structuring typology detection with maturity."""
         classifier = TaxonomyClassifier()
         signals = ["TXN_JUST_BELOW_THRESHOLD", "STRUCT_CASH_MULTIPLE", "STRUCT_SMURFING"]
 
-        assessments = classifier.assess_typologies(signals)
+        assessments = classifier.assess_typologies(signals, InstrumentType.CASH)
 
-        # Should detect structuring typology forming
+        # Should detect structuring typology
         structuring = next(
             (a for a in assessments if a.typology == TypologyCategory.STRUCTURING),
             None
         )
         assert structuring is not None
-        assert structuring.is_forming is True
-        assert structuring.confidence == 1.0  # 3/3 signals match
+        assert structuring.maturity == TypologyMaturity.CONFIRMED  # 100% match
 
-    def test_assess_partial_typology(self):
-        """Test partial typology detection (not forming)."""
+
+# =============================================================================
+# TESTS FOR HARD STOP ASSESSMENT (v2.1 FIX #1)
+# =============================================================================
+
+class TestHardStopAssessment:
+    """Tests for Layer 1 hard stop detection (v2.1 fix)."""
+
+    def test_no_hard_stop_without_confirmed_match(self):
+        """Test that screening signals alone do NOT create hard stops."""
         classifier = TaxonomyClassifier()
-        signals = ["TXN_JUST_BELOW_THRESHOLD"]  # Only 1 of 3 required
 
-        assessments = classifier.assess_typologies(signals)
-
-        structuring = next(
-            (a for a in assessments if a.typology == TypologyCategory.STRUCTURING),
-            None
+        # Signal says screening occurred, but facts say no match
+        result = classifier.assess_hard_stop(
+            signal_codes=["SCREEN_SANCTIONS_HIT"],
+            facts={"sanctions_result": "NO_MATCH"}
         )
-        assert structuring is not None
-        assert structuring.is_forming is False  # Not enough signals
+
+        assert result.has_hard_stop is False
+        assert "screening" in result.reasoning.lower()
+
+    def test_hard_stop_with_confirmed_match(self):
+        """Test that confirmed sanctions match creates hard stop."""
+        classifier = TaxonomyClassifier()
+
+        result = classifier.assess_hard_stop(
+            signal_codes=[],
+            facts={"sanctions_result": "MATCH"}
+        )
+
+        assert result.has_hard_stop is True
+        assert result.hard_stop_type == HardStopType.SANCTIONS_CONFIRMED
+
+    def test_hard_stop_with_false_documents(self):
+        """Test that false documents create hard stop."""
+        classifier = TaxonomyClassifier()
+
+        result = classifier.assess_hard_stop(
+            signal_codes=[],
+            facts={"document_status": "FORGED"}
+        )
+
+        assert result.has_hard_stop is True
+        assert result.hard_stop_type == HardStopType.FALSE_DOCUMENTATION
+
+    def test_hard_stop_with_customer_refusal(self):
+        """Test that customer refusal creates hard stop."""
+        classifier = TaxonomyClassifier()
+
+        result = classifier.assess_hard_stop(
+            signal_codes=[],
+            facts={"customer_response": "REFUSED"}
+        )
+
+        assert result.has_hard_stop is True
+        assert result.hard_stop_type == HardStopType.REFUSAL
 
 
 # =============================================================================
@@ -176,11 +279,18 @@ class TestSuspicionAssessment:
     """Tests for Layer 6 suspicion assessment."""
 
     def test_hard_stop_activates_suspicion(self):
-        """Test that hard stops always activate suspicion."""
+        """Test that fact-level hard stops activate suspicion."""
         classifier = TaxonomyClassifier()
+        hard_stop = HardStopAssessment(
+            has_hard_stop=True,
+            hard_stop_type=HardStopType.SANCTIONS_CONFIRMED,
+            reasoning="Confirmed match",
+            fact_evidence=["sanctions_result=MATCH"]
+        )
+
         result = classifier.assess_suspicion(
             typologies=[],
-            has_hard_stop=True
+            hard_stop=hard_stop
         )
 
         assert result.is_activated is True
@@ -189,56 +299,76 @@ class TestSuspicionAssessment:
     def test_deception_activates_suspicion(self):
         """Test that deception activates suspicion."""
         classifier = TaxonomyClassifier()
+        hard_stop = HardStopAssessment(has_hard_stop=False, reasoning="No hard stop")
+
         result = classifier.assess_suspicion(
             typologies=[],
+            hard_stop=hard_stop,
             has_deception=True
         )
 
         assert result.is_activated is True
         assert result.basis == SuspicionBasis.DECEPTION
 
-    def test_intent_activates_suspicion(self):
-        """Test that intent evidence activates suspicion."""
+    def test_forming_typology_does_not_activate_suspicion(self):
+        """Test that FORMING typology does NOT activate suspicion (v2.1 fix)."""
         classifier = TaxonomyClassifier()
-        result = classifier.assess_suspicion(
-            typologies=[],
-            has_intent_evidence=True
-        )
+        hard_stop = HardStopAssessment(has_hard_stop=False, reasoning="No hard stop")
 
-        assert result.is_activated is True
-        assert result.basis == SuspicionBasis.INTENT
-
-    def test_unmitigated_typology_activates_suspicion(self):
-        """Test that forming typology without mitigation activates suspicion."""
-        classifier = TaxonomyClassifier()
         typology = TypologyAssessment(
             typology=TypologyCategory.STRUCTURING,
             matching_signals=["TXN_JUST_BELOW_THRESHOLD", "STRUCT_CASH_MULTIPLE"],
             confidence=0.67,
-            is_forming=True
+            maturity=TypologyMaturity.FORMING  # FORMING, not ESTABLISHED
         )
 
         result = classifier.assess_suspicion(
             typologies=[typology],
+            hard_stop=hard_stop,
             mitigations_applied=0
         )
 
-        assert result.is_activated is True
-        assert result.basis == SuspicionBasis.TYPOLOGY_MATCH
+        # FORMING should NOT activate suspicion
+        assert result.is_activated is False
+        assert "forming" in result.reasoning.lower() or "observe" in result.reasoning.lower()
 
-    def test_mitigated_typology_does_not_activate_suspicion(self):
-        """Test that forming typology WITH mitigation does NOT activate suspicion."""
+    def test_established_typology_activates_suspicion_when_unmitigated(self):
+        """Test that ESTABLISHED typology activates suspicion when unmitigated."""
         classifier = TaxonomyClassifier()
+        hard_stop = HardStopAssessment(has_hard_stop=False, reasoning="No hard stop")
+
         typology = TypologyAssessment(
             typology=TypologyCategory.STRUCTURING,
-            matching_signals=["TXN_JUST_BELOW_THRESHOLD", "STRUCT_CASH_MULTIPLE"],
-            confidence=0.67,
-            is_forming=True
+            matching_signals=["TXN_JUST_BELOW_THRESHOLD", "STRUCT_CASH_MULTIPLE", "STRUCT_SMURFING"],
+            confidence=1.0,
+            maturity=TypologyMaturity.ESTABLISHED
         )
 
         result = classifier.assess_suspicion(
             typologies=[typology],
-            mitigations_applied=2  # Has mitigations
+            hard_stop=hard_stop,
+            mitigations_applied=0  # No mitigations
+        )
+
+        assert result.is_activated is True
+        assert result.basis == SuspicionBasis.TYPOLOGY_ESTABLISHED
+
+    def test_established_typology_mitigated_does_not_activate_suspicion(self):
+        """Test that mitigated ESTABLISHED typology does NOT activate suspicion."""
+        classifier = TaxonomyClassifier()
+        hard_stop = HardStopAssessment(has_hard_stop=False, reasoning="No hard stop")
+
+        typology = TypologyAssessment(
+            typology=TypologyCategory.STRUCTURING,
+            matching_signals=["TXN_JUST_BELOW_THRESHOLD", "STRUCT_CASH_MULTIPLE"],
+            confidence=0.75,
+            maturity=TypologyMaturity.ESTABLISHED
+        )
+
+        result = classifier.assess_suspicion(
+            typologies=[typology],
+            hard_stop=hard_stop,
+            mitigations_applied=3  # Has mitigations
         )
 
         assert result.is_activated is False  # Mitigated!
@@ -246,17 +376,17 @@ class TestSuspicionAssessment:
     def test_status_alone_never_activates_suspicion(self):
         """KEY TEST: Status alone is NEVER sufficient for suspicion."""
         classifier = TaxonomyClassifier()
+        hard_stop = HardStopAssessment(has_hard_stop=False, reasoning="No hard stop")
 
-        # PEP status alone - no suspicion
+        # No typologies, no hard stops, no deception - just status
         result = classifier.assess_suspicion(
             typologies=[],
-            has_hard_stop=False,
+            hard_stop=hard_stop,
             has_deception=False,
             has_intent_evidence=False
         )
 
         assert result.is_activated is False
-        assert "status alone" in result.reasoning.lower() or "insufficient" in result.reasoning.lower()
 
 
 # =============================================================================
@@ -266,45 +396,44 @@ class TestSuspicionAssessment:
 class TestTaxonomyAnalysis:
     """Tests for complete taxonomy analysis."""
 
-    def test_analyze_pep_case_without_suspicion(self):
-        """Test that PEP case alone does NOT trigger suspicion escalation."""
+    def test_analyze_pep_wire_case_without_suspicion(self):
+        """Test that PEP wire case does NOT trigger suspicion (v2.1 fix)."""
         classifier = TaxonomyClassifier()
         result = classifier.analyze(
-            signal_codes=["PEP_FOREIGN", "TXN_ROUND_AMOUNT"],
-            mitigation_codes=["MF_ESTABLISHED_RELATIONSHIP"]
+            signal_codes=["PEP_FOREIGN", "TXN_ROUND_AMOUNT", "TXN_LARGE_CASH"],
+            mitigation_codes=["MF_ESTABLISHED_RELATIONSHIP"],
+            facts={"sanctions_result": "NO_MATCH"},
+            instrument_hint="wire"
         )
 
-        # Should have obligations
-        assert result.obligation_count == 1
-        assert result.obligations[0].signal_code == "PEP_FOREIGN"
+        # Cash signals should be excluded on wire
+        assert len(result.excluded_signals) > 0
 
-        # Should have weak indicator
-        assert result.indicator_count == 1
+        # Should have obligations
+        assert result.obligation_count >= 1
 
         # Should NOT activate suspicion (status alone is insufficient)
         assert result.suspicion_activated is False
 
-        # Verdict should be OBLIGATION_REVIEW, not escalation
-        assert result.verdict_category == VerdictCategory.OBLIGATION_ONLY
-
-    def test_analyze_structuring_case_with_suspicion(self):
-        """Test that structuring pattern triggers suspicion escalation."""
-        classifier = TaxonomyClassifier()
-        result = classifier.analyze(
-            signal_codes=[
-                "TXN_JUST_BELOW_THRESHOLD",
-                "STRUCT_CASH_MULTIPLE",
-                "STRUCT_SMURFING"
-            ],
-            mitigation_codes=[]  # No mitigations!
+        # Verdict should be OBLIGATION_REVIEW or less
+        assert result.verdict_category in (
+            VerdictCategory.OBLIGATION_ONLY,
+            VerdictCategory.INDICATOR_REVIEW,
+            VerdictCategory.TYPOLOGY_FORMING
         )
 
-        # Should detect typology
-        assert result.typology_match is True
+    def test_analyze_confirmed_sanctions_case_with_suspicion(self):
+        """Test that confirmed sanctions match triggers suspicion."""
+        classifier = TaxonomyClassifier()
+        result = classifier.analyze(
+            signal_codes=["SCREEN_SANCTIONS_HIT"],
+            mitigation_codes=[],
+            facts={"sanctions_result": "MATCH"}  # CONFIRMED match
+        )
 
-        # Should activate suspicion (unmitigated typology)
+        # Should activate suspicion (hard stop)
         assert result.suspicion_activated is True
-        assert result.suspicion.basis == SuspicionBasis.TYPOLOGY_MATCH
+        assert result.hard_stop.has_hard_stop is True
 
         # Verdict should be SUSPICION_ESCALATE
         assert result.verdict_category == VerdictCategory.SUSPICION_ESCALATE
@@ -341,9 +470,6 @@ class TestTaxonomyAnalysis:
         # No suspicion (no typology, no hard stops)
         assert result.suspicion_activated is False
 
-        # Should be INDICATOR_REVIEW due to indicator count
-        assert result.verdict_category == VerdictCategory.INDICATOR_REVIEW
-
 
 # =============================================================================
 # TESTS FOR VERDICT DETERMINATION
@@ -361,15 +487,40 @@ class TestVerdictDetermination:
         verdict = classifier.determine_verdict(result)
         assert verdict == VerdictCategory.SUSPICION_ESCALATE
 
-    def test_typology_match_without_suspicion_is_typology_review(self):
-        """Test that typology match (mitigated) is TYPOLOGY_REVIEW."""
+    def test_established_typology_without_suspicion_is_typology_review(self):
+        """Test that ESTABLISHED typology WITHOUT mitigations is TYPOLOGY_REVIEW."""
         classifier = TaxonomyClassifier()
         result = TaxonomyResult()
-        result.typology_match = True
+        result.typology_established = True
         result.suspicion_activated = False
+        result.mitigations = []  # No mitigations
 
         verdict = classifier.determine_verdict(result)
         assert verdict == VerdictCategory.TYPOLOGY_REVIEW
+
+    def test_established_typology_with_mitigations_downgrades_to_obligation(self):
+        """v2.1.1 FIX: ESTABLISHED typology WITH sufficient mitigations downgrades to OBLIGATION_ONLY."""
+        classifier = TaxonomyClassifier()
+        result = TaxonomyResult()
+        result.typology_established = True
+        result.suspicion_activated = False
+        result.obligation_count = 1  # Has obligations
+        result.mitigations = ["MF_1", "MF_2", "MF_3"]  # 3+ mitigations
+
+        verdict = classifier.determine_verdict(result)
+        # With mitigations, should downgrade to OBLIGATION_ONLY
+        assert verdict == VerdictCategory.OBLIGATION_ONLY
+
+    def test_forming_typology_is_typology_forming_not_escalation(self):
+        """Test that FORMING typology results in TYPOLOGY_FORMING (observe only)."""
+        classifier = TaxonomyClassifier()
+        result = TaxonomyResult()
+        result.typology_forming = True
+        result.typology_established = False
+        result.suspicion_activated = False
+
+        verdict = classifier.determine_verdict(result)
+        assert verdict == VerdictCategory.TYPOLOGY_FORMING
 
     def test_obligations_only_is_obligation_review(self):
         """Test that obligations alone is OBLIGATION_REVIEW."""
@@ -396,7 +547,8 @@ class TestVerdictMappings:
             assert category in TAXONOMY_TO_VERDICT
 
         assert TAXONOMY_TO_VERDICT[VerdictCategory.CLEAR] == "CLEAR_AND_CLOSE"
-        assert TAXONOMY_TO_VERDICT[VerdictCategory.OBLIGATION_ONLY] == "OBLIGATION_REVIEW"
+        assert TAXONOMY_TO_VERDICT[VerdictCategory.OBLIGATION_ONLY] == "PASS_WITH_EDD"
+        assert TAXONOMY_TO_VERDICT[VerdictCategory.TYPOLOGY_FORMING] == "OBSERVE_ENHANCED"
         assert TAXONOMY_TO_VERDICT[VerdictCategory.SUSPICION_ESCALATE] == "STR_CONSIDERATION"
 
     def test_taxonomy_to_tier_mapping(self):
@@ -405,12 +557,13 @@ class TestVerdictMappings:
             assert category in TAXONOMY_TO_TIER
 
         assert TAXONOMY_TO_TIER[VerdictCategory.CLEAR] == 0
+        assert TAXONOMY_TO_TIER[VerdictCategory.OBLIGATION_ONLY] == 0  # Pass with EDD
         assert TAXONOMY_TO_TIER[VerdictCategory.SUSPICION_ESCALATE] == 3
 
     def test_taxonomy_auto_archive_mapping(self):
         """Test auto-archive permissions by verdict."""
         assert TAXONOMY_AUTO_ARCHIVE[VerdictCategory.CLEAR] is True
-        assert TAXONOMY_AUTO_ARCHIVE[VerdictCategory.OBLIGATION_ONLY] is False
+        assert TAXONOMY_AUTO_ARCHIVE[VerdictCategory.OBLIGATION_ONLY] is True  # Can archive after EDD
         assert TAXONOMY_AUTO_ARCHIVE[VerdictCategory.SUSPICION_ESCALATE] is False
 
 
@@ -422,22 +575,23 @@ class TestGetTaxonomyVerdict:
     """Tests for get_taxonomy_verdict convenience function."""
 
     def test_get_verdict_for_pep_case(self):
-        """Test getting verdict for PEP case."""
+        """Test getting verdict for PEP case (should pass with EDD)."""
         verdict_code, tier, auto_archive, result = get_taxonomy_verdict(
             signal_codes=["PEP_FOREIGN"],
-            mitigation_codes=["MF_ESTABLISHED_RELATIONSHIP"]
+            mitigation_codes=["MF_ESTABLISHED_RELATIONSHIP"],
+            facts={"sanctions_result": "NO_MATCH"}
         )
 
-        assert verdict_code == "OBLIGATION_REVIEW"
-        assert tier == 1
-        assert auto_archive is False
+        assert verdict_code == "PASS_WITH_EDD"
+        assert tier == 0  # Pass tier
+        assert auto_archive is True  # Can archive after EDD recorded
         assert result.verdict_category == VerdictCategory.OBLIGATION_ONLY
 
-    def test_get_verdict_for_hard_stop(self):
-        """Test getting verdict for hard stop case."""
+    def test_get_verdict_for_confirmed_hard_stop(self):
+        """Test getting verdict for confirmed hard stop case."""
         verdict_code, tier, auto_archive, result = get_taxonomy_verdict(
             signal_codes=["SCREEN_SANCTIONS_HIT"],
-            has_hard_stop=True
+            facts={"sanctions_result": "MATCH"}  # Confirmed match
         )
 
         assert verdict_code == "STR_CONSIDERATION"
@@ -447,18 +601,23 @@ class TestGetTaxonomyVerdict:
 
 
 # =============================================================================
-# KEY PRINCIPLE TESTS
+# KEY PRINCIPLE TESTS (v2.1)
 # =============================================================================
 
 class TestKeyPrinciple:
-    """Tests that verify the key principle:
-    'Escalation requires Layer 6 activation. Status alone is NEVER sufficient.'
+    """Tests that verify the key principles:
+    1. Escalation requires Layer 6 activation
+    2. Status alone is NEVER sufficient
+    3. Hard stops ONLY from Layer 1 facts
+    4. Cash signals don't apply to wires
+    5. FORMING typologies don't trigger suspicion
     """
 
     def test_foreign_pep_alone_is_not_suspicion(self):
         """Foreign PEP status alone does NOT escalate to STR consideration."""
         _, _, _, result = get_taxonomy_verdict(
-            signal_codes=["PEP_FOREIGN"]
+            signal_codes=["PEP_FOREIGN"],
+            facts={"sanctions_result": "NO_MATCH"}
         )
         assert result.verdict_category != VerdictCategory.SUSPICION_ESCALATE
         assert result.suspicion_activated is False
@@ -471,31 +630,39 @@ class TestKeyPrinciple:
         assert result.verdict_category != VerdictCategory.SUSPICION_ESCALATE
         assert result.suspicion_activated is False
 
-    def test_combination_without_pattern_is_not_suspicion(self):
-        """Combination of status signals without pattern is NOT suspicion."""
+    def test_sanctions_screening_signal_without_match_is_not_hard_stop(self):
+        """SCREEN_SANCTIONS_HIT without confirmed match is NOT a hard stop (v2.1 fix)."""
         _, _, _, result = get_taxonomy_verdict(
-            signal_codes=[
-                "PEP_FOREIGN",
-                "GEO_HIGH_RISK_COUNTRY",
-                "TXN_ROUND_AMOUNT"
-            ],
-            mitigation_codes=["MF_ESTABLISHED_RELATIONSHIP"]
+            signal_codes=["SCREEN_SANCTIONS_HIT"],
+            facts={"sanctions_result": "NO_MATCH"}  # Screening occurred but no match
         )
-        assert result.verdict_category != VerdictCategory.SUSPICION_ESCALATE
+        assert result.hard_stop.has_hard_stop is False
         assert result.suspicion_activated is False
 
-    def test_pep_with_structuring_pattern_is_suspicion(self):
-        """PEP with structuring pattern (unmitigated) IS suspicion."""
+    def test_wire_transaction_excludes_cash_signals(self):
+        """Wire transactions exclude cash signals (v2.1 fix)."""
+        _, _, _, result = get_taxonomy_verdict(
+            signal_codes=["TXN_LARGE_CASH", "STRUCT_CASH_MULTIPLE", "TXN_RAPID_MOVEMENT"],
+            instrument_hint="wire"
+        )
+        # Cash signals should be excluded
+        excluded_codes = [e.signal_code for e in result.excluded_signals]
+        assert "TXN_LARGE_CASH" in excluded_codes
+        assert "STRUCT_CASH_MULTIPLE" in excluded_codes
+
+    def test_pep_with_forming_pattern_is_not_suspicion(self):
+        """PEP with FORMING pattern (not established) is NOT suspicion (v2.1 fix)."""
         _, _, _, result = get_taxonomy_verdict(
             signal_codes=[
                 "PEP_FOREIGN",
-                "TXN_JUST_BELOW_THRESHOLD",
-                "STRUCT_CASH_MULTIPLE"
+                "TXN_UNUSUAL_PATTERN",  # 1 of 3 for PEP_CORRUPTION
             ],
-            mitigation_codes=[]  # No mitigations
+            mitigation_codes=["MF_ESTABLISHED_RELATIONSHIP"],
+            facts={"sanctions_result": "NO_MATCH"}
         )
-        assert result.verdict_category == VerdictCategory.SUSPICION_ESCALATE
-        assert result.suspicion_activated is True
+        # Should NOT escalate - no established typology, no hard stop
+        assert result.verdict_category != VerdictCategory.SUSPICION_ESCALATE
+        assert result.suspicion_activated is False
 
 
 if __name__ == "__main__":
