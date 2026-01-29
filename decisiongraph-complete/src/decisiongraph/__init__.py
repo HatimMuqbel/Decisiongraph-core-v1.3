@@ -30,8 +30,12 @@ from .cell import (
     NULL_HASH,
     NAMESPACE_PATTERN,
     ROOT_NAMESPACE_PATTERN,
+    HASH_SCHEME_LEGACY,
+    HASH_SCHEME_CANONICAL,
+    HASH_SCHEME_DEFAULT,
     compute_rule_logic_hash,
     compute_content_id,
+    compute_policy_hash,
     get_current_timestamp,
     validate_namespace,
     validate_root_namespace,
@@ -70,6 +74,7 @@ from .chain import (
     GenesisViolation,
     TemporalViolation,
     GraphIdMismatch,
+    HashSchemeMismatch,
     ValidationResult,
     create_chain
 )
@@ -108,13 +113,272 @@ from .scholar import (
     is_bridge_effective
 )
 
+# Exceptions (v1.4)
+from .exceptions import (
+    DecisionGraphError,
+    SchemaInvalidError,
+    InputInvalidError,
+    UnauthorizedError,
+    IntegrityFailError,
+    SignatureInvalidError,
+    InternalError,
+    EXCEPTION_MAP,
+    wrap_internal_exception
+)
+
+# Signing utilities (v1.4)
+from .signing import (
+    sign_bytes,
+    verify_signature,
+    generate_ed25519_keypair
+)
+
+# Engine (v1.4)
+from .engine import (
+    Engine,
+    process_rfa,
+    verify_proof_packet
+)
+
+# PolicyHead (v1.5)
+from .policyhead import (
+    create_policy_head,
+    get_current_policy_head,
+    get_policy_head_chain,
+    get_policy_head_at_time,
+    parse_policy_data,
+    verify_policy_hash,
+    validate_policy_head_chain,
+    validate_threshold,
+    is_bootstrap_threshold,
+    is_production_threshold,
+    POLICY_PROMOTION_RULE_HASH,
+    POLICYHEAD_SCHEMA_VERSION
+)
+
+# WitnessSet (v1.5)
+from .witnessset import WitnessSet
+
+# WitnessRegistry (v1.5)
+from .registry import WitnessRegistry
+
+# Promotion (v1.5)
+from .promotion import PromotionRequest, PromotionStatus
+
+# Shadow Cells (v1.6)
+from .shadow import (
+    create_shadow_cell,
+    create_shadow_fact,
+    create_shadow_rule,
+    create_shadow_policy_head,
+    create_shadow_bridge,
+    OverlayContext,
+    fork_shadow_chain
+)
+
+# Simulation (v1.6)
+from .simulation import (
+    SimulationContext,
+    SimulationResult,
+    DeltaReport,
+    ContaminationAttestation,
+    compute_delta_report,
+    tag_proof_bundle_origin,
+    create_contamination_attestation,
+    simulation_result_to_audit_text,
+    simulation_result_to_dot
+)
+
+# Anchors (v1.6)
+from .anchors import (
+    ExecutionBudget,
+    AnchorResult,
+    compute_anchor_hash,
+    detect_counterfactual_anchors
+)
+
+# Backtest (v1.6)
+from .backtest import (
+    BatchBacktestResult
+)
+
+# Write-Ahead Log (v2.0 foundation)
+from .wal import (
+    WAL_MAGIC,
+    WAL_VERSION,
+    HEADER_SIZE as WAL_HEADER_SIZE,
+    MIN_RECORD_SIZE as WAL_MIN_RECORD_SIZE,
+    MAX_RECORD_SIZE as WAL_MAX_RECORD_SIZE,
+    NULL_HASH_BYTES,
+    RecordFlags,
+    WALError,
+    WALCorruptionError,
+    WALHeaderError,
+    WALChainError,
+    WALSequenceError,
+    WALHeader,
+    WALRecord,
+    WALWriter,
+    WALReader,
+    recover_wal,
+)
+
+# Segmented WAL (v2.0 - unbounded storage)
+from .segmented_wal import (
+    DEFAULT_MAX_SEGMENT_BYTES,
+    MANIFEST_VERSION,
+    SEGMENT_NAME_FORMAT,
+    SegmentedWALError,
+    SegmentCorruptionError,
+    ManifestError,
+    SegmentMetadata,
+    Manifest,
+    SegmentedWALWriter,
+    SegmentedWALReader,
+    segment_path,
+    list_segment_files,
+    rebuild_manifest_from_segments,
+    write_manifest_atomic,
+    read_manifest,
+)
+
+# Canonical JSON - RFC 8785 (v2.0 foundation)
+from .canon import (
+    canonical_json_bytes,
+    canonical_json_string,
+    validate_canonical_safe,
+    canonical_hash,
+    float_to_canonical_string,
+    confidence_to_string,
+    score_to_string,
+    evidence_sort_key,
+    cell_to_canonical_dict,
+    rfa_to_canonical_dict,
+    simulation_spec_to_canonical_dict,
+    compute_cell_id_canonical,
+    CanonicalEncodingError,
+    FloatNotAllowedError,
+)
+
+# Pack (v2.0 - domain configuration)
+from .pack import (
+    Pack,
+    PackError,
+    PackLoadError,
+    PackValidationError,
+    SchemaValidationError,
+    PredicateError,
+    SchemaType,
+    FieldSchema,
+    PayloadSchema,
+    PredicateDefinition,
+    load_pack,
+    validate_payload,
+    validate_predicate,
+    create_signal_schema,
+    create_mitigation_schema,
+    create_score_schema,
+    create_verdict_schema,
+    create_justification_schema,
+    create_report_run_schema,
+    create_judgment_schema,
+    create_universal_pack,
+)
+
+# Rules (v2.0 - deterministic evaluation)
+from .rules import (
+    RuleError,
+    RuleDefinitionError,
+    RuleEvaluationError,
+    ConditionError,
+    Severity,
+    FactPattern,
+    Condition,
+    SignalRule,
+    MitigationRule,
+    ScoringRule,
+    VerdictRule,
+    ThresholdGate,
+    EvaluationContext,
+    EvaluationResult,
+    RulesEngine,
+    create_aml_example_engine,
+)
+
+# Justification (v2.0 - shadow node audit trails)
+from .justification import (
+    JustificationError,
+    IncompleteJustificationError,
+    GatingError,
+    UniversalQuestionSet,
+    UNIVERSAL_QUESTIONS_V1,
+    get_question_set,
+    JustificationAnswers,
+    JustificationBuilder,
+    ReviewGateResult,
+    GateEvaluation,
+    ReviewGate,
+    create_signal_justification,
+    create_verdict_justification,
+    create_auto_justification,
+    JustificationSummary,
+    analyze_justifications,
+)
+
+# Report (v2.0 - frozen reproducible reports)
+from .report import (
+    ReportError,
+    IncompleteReportError,
+    JudgmentError,
+    ReportVerificationError,
+    JudgmentAction,
+    ReportStatus,
+    ReportManifest,
+    JudgmentData,
+    ReportSummary,
+    ReportBuilder,
+    JudgmentBuilder,
+    verify_report_artifact,
+    verify_report_cells_included,
+    get_report_status,
+    analyze_report,
+    compute_artifact_hash,
+    create_approval_judgment,
+    create_rejection_judgment,
+    create_escalation_judgment,
+)
+
+# Template (v2.0 - declarative report templates)
+from .template import (
+    TemplateError,
+    TemplateValidationError,
+    RenderError,
+    SectionLayout,
+    Alignment,
+    ColumnDefinition,
+    SectionDefinition,
+    CitationFormat,
+    ScoreGridFormat,
+    ReportTemplate,
+    filter_cells_for_section,
+    sort_cells_deterministic,
+    render_report,
+    render_report_text,
+    render_section,
+    render_integrity_section,
+    create_aml_alert_template,
+    template_to_dict,
+    template_from_dict,
+)
+
 __all__ = [
     '__version__',
     # Cell
     'DecisionCell', 'Header', 'Fact', 'LogicAnchor', 'Evidence', 'Proof',
     'CellType', 'SourceQuality', 'SensitivityLevel', 'NULL_HASH',
     'NAMESPACE_PATTERN', 'ROOT_NAMESPACE_PATTERN',
-    'compute_rule_logic_hash', 'compute_content_id', 'get_current_timestamp',
+    'HASH_SCHEME_LEGACY', 'HASH_SCHEME_CANONICAL', 'HASH_SCHEME_DEFAULT',
+    'compute_rule_logic_hash', 'compute_content_id', 'compute_policy_hash', 'get_current_timestamp',
     'validate_namespace', 'validate_root_namespace', 'validate_timestamp',
     'get_parent_namespace', 'is_namespace_prefix',
     'generate_graph_id', 'canonicalize_rule_content',
@@ -127,7 +391,7 @@ __all__ = [
     'GRAPH_ID_PATTERN',
     # Chain
     'Chain', 'ChainError', 'IntegrityViolation', 'ChainBreak',
-    'GenesisViolation', 'TemporalViolation', 'GraphIdMismatch',
+    'GenesisViolation', 'TemporalViolation', 'GraphIdMismatch', 'HashSchemeMismatch',
     'ValidationResult', 'create_chain',
     # Namespace
     'Permission', 'BridgeStatus', 'NamespaceMetadata', 'Signature', 'NamespaceRegistry',
@@ -138,5 +402,186 @@ __all__ = [
     'Scholar', 'create_scholar', 'QueryResult', 'VisibilityResult',
     'AuthorizationBasis', 'BridgeEffectiveness', 'BridgeEffectivenessReason',
     'ResolutionEvent', 'ResolutionReason',
-    'ScholarIndex', 'build_index_from_chain', 'is_bridge_effective'
+    'ScholarIndex', 'build_index_from_chain', 'is_bridge_effective',
+    # Exceptions (v1.4)
+    'DecisionGraphError', 'SchemaInvalidError', 'InputInvalidError',
+    'UnauthorizedError', 'IntegrityFailError', 'SignatureInvalidError',
+    'InternalError',
+    # Exception mapping utilities (v1.4)
+    'EXCEPTION_MAP', 'wrap_internal_exception',
+    # Signing utilities (v1.4)
+    'sign_bytes', 'verify_signature', 'generate_ed25519_keypair',
+    # Engine (v1.4)
+    'Engine', 'process_rfa', 'verify_proof_packet',
+    # PolicyHead (v1.5)
+    'create_policy_head', 'get_current_policy_head', 'get_policy_head_chain',
+    'get_policy_head_at_time', 'parse_policy_data', 'verify_policy_hash',
+    'validate_policy_head_chain', 'validate_threshold',
+    'is_bootstrap_threshold', 'is_production_threshold',
+    'POLICY_PROMOTION_RULE_HASH', 'POLICYHEAD_SCHEMA_VERSION',
+    # WitnessSet (v1.5)
+    'WitnessSet',
+    # WitnessRegistry (v1.5)
+    'WitnessRegistry',
+    # Promotion (v1.5)
+    'PromotionRequest', 'PromotionStatus',
+    # Shadow Cells (v1.6)
+    'create_shadow_cell', 'create_shadow_fact', 'create_shadow_rule',
+    'create_shadow_policy_head', 'create_shadow_bridge',
+    # OverlayContext and contamination prevention (v1.6)
+    'OverlayContext', 'fork_shadow_chain',
+    # Simulation (v1.6)
+    'SimulationContext', 'SimulationResult',
+    'DeltaReport', 'ContaminationAttestation',
+    'compute_delta_report', 'tag_proof_bundle_origin', 'create_contamination_attestation',
+    'simulation_result_to_audit_text', 'simulation_result_to_dot',
+    # Anchors (v1.6)
+    'ExecutionBudget', 'AnchorResult', 'compute_anchor_hash', 'detect_counterfactual_anchors',
+    # Backtest (v1.6)
+    'BatchBacktestResult',
+    # Write-Ahead Log (v2.0 foundation)
+    'WAL_MAGIC',
+    'WAL_VERSION',
+    'WAL_HEADER_SIZE',
+    'WAL_MIN_RECORD_SIZE',
+    'WAL_MAX_RECORD_SIZE',
+    'NULL_HASH_BYTES',
+    'RecordFlags',
+    'WALError',
+    'WALCorruptionError',
+    'WALHeaderError',
+    'WALChainError',
+    'WALSequenceError',
+    'WALHeader',
+    'WALRecord',
+    'WALWriter',
+    'WALReader',
+    'recover_wal',
+    # Segmented WAL (v2.0 - unbounded storage)
+    'DEFAULT_MAX_SEGMENT_BYTES',
+    'MANIFEST_VERSION',
+    'SEGMENT_NAME_FORMAT',
+    'SegmentedWALError',
+    'SegmentCorruptionError',
+    'ManifestError',
+    'SegmentMetadata',
+    'Manifest',
+    'SegmentedWALWriter',
+    'SegmentedWALReader',
+    'segment_path',
+    'list_segment_files',
+    'rebuild_manifest_from_segments',
+    'write_manifest_atomic',
+    'read_manifest',
+    # Canonical JSON - RFC 8785 (v2.0 foundation)
+    'canonical_json_bytes',
+    'canonical_json_string',
+    'validate_canonical_safe',
+    'canonical_hash',
+    'float_to_canonical_string',
+    'confidence_to_string',
+    'score_to_string',
+    'evidence_sort_key',
+    'cell_to_canonical_dict',
+    'rfa_to_canonical_dict',
+    'simulation_spec_to_canonical_dict',
+    'compute_cell_id_canonical',
+    'CanonicalEncodingError',
+    'FloatNotAllowedError',
+    # Pack (v2.0 - domain configuration)
+    'Pack',
+    'PackError',
+    'PackLoadError',
+    'PackValidationError',
+    'SchemaValidationError',
+    'PredicateError',
+    'SchemaType',
+    'FieldSchema',
+    'PayloadSchema',
+    'PredicateDefinition',
+    'load_pack',
+    'validate_payload',
+    'validate_predicate',
+    'create_signal_schema',
+    'create_mitigation_schema',
+    'create_score_schema',
+    'create_verdict_schema',
+    'create_justification_schema',
+    'create_report_run_schema',
+    'create_judgment_schema',
+    'create_universal_pack',
+    # Rules (v2.0 - deterministic evaluation)
+    'RuleError',
+    'RuleDefinitionError',
+    'RuleEvaluationError',
+    'ConditionError',
+    'Severity',
+    'FactPattern',
+    'Condition',
+    'SignalRule',
+    'MitigationRule',
+    'ScoringRule',
+    'VerdictRule',
+    'ThresholdGate',
+    'EvaluationContext',
+    'EvaluationResult',
+    'RulesEngine',
+    'create_aml_example_engine',
+    # Justification (v2.0 - shadow node audit trails)
+    'JustificationError',
+    'IncompleteJustificationError',
+    'GatingError',
+    'UniversalQuestionSet',
+    'UNIVERSAL_QUESTIONS_V1',
+    'get_question_set',
+    'JustificationAnswers',
+    'JustificationBuilder',
+    'ReviewGateResult',
+    'GateEvaluation',
+    'ReviewGate',
+    'create_signal_justification',
+    'create_verdict_justification',
+    'create_auto_justification',
+    'JustificationSummary',
+    'analyze_justifications',
+    # Report (v2.0 - frozen reproducible reports)
+    'ReportError',
+    'IncompleteReportError',
+    'JudgmentError',
+    'ReportVerificationError',
+    'JudgmentAction',
+    'ReportStatus',
+    'ReportManifest',
+    'JudgmentData',
+    'ReportSummary',
+    'ReportBuilder',
+    'JudgmentBuilder',
+    'verify_report_artifact',
+    'verify_report_cells_included',
+    'get_report_status',
+    'analyze_report',
+    'compute_artifact_hash',
+    'create_approval_judgment',
+    'create_rejection_judgment',
+    'create_escalation_judgment',
+    # Template (v2.0 - declarative report templates)
+    'TemplateError',
+    'TemplateValidationError',
+    'RenderError',
+    'SectionLayout',
+    'Alignment',
+    'ColumnDefinition',
+    'SectionDefinition',
+    'CitationFormat',
+    'ScoreGridFormat',
+    'ReportTemplate',
+    'filter_cells_for_section',
+    'sort_cells_deterministic',
+    'render_report',
+    'render_report_text',
+    'render_section',
+    'render_integrity_section',
+    'create_aml_alert_template',
+    'template_to_dict',
+    'template_from_dict',
 ]

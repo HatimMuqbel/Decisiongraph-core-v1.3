@@ -1,5 +1,5 @@
 """
-DecisionGraph Core: Cell Module (v1.3 - Universal Base)
+DecisionGraph Core: Cell Module (v1.3 → v2.0 Universal Base)
 
 This module implements the Decision-Cell, the atomic DNA of DecisionGraph.
 Every cell is a cryptographically sealed packet with:
@@ -16,6 +16,12 @@ CHANGES IN v1.3:
 - Canonicalized rule hashing (whitespace-insensitive)
 - valid_to can be None (means "forever")
 
+CHANGES IN v2.0:
+- Fact.object can be structured (dict/list) with canonical scheme enforcement
+- Added CellTypes: SIGNAL, MITIGATION, SCORE, VERDICT, JUSTIFICATION,
+  POLICY_REF, POLICY_CITATION, REPORT_RUN, JUDGMENT
+- Legacy hash_scheme only supports string objects
+
 Core Principle: Namespace Isolation via Cryptographic Bridges
 """
 
@@ -26,20 +32,35 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 
 class CellType(str, Enum):
     """Valid cell types in DecisionGraph"""
+    # Core types (v1.0)
     GENESIS = "genesis"
     FACT = "fact"
     RULE = "rule"
     DECISION = "decision"
     EVIDENCE = "evidence"
     OVERRIDE = "override"
+    # Namespace types (v1.3)
     ACCESS_RULE = "access_rule"
     BRIDGE_RULE = "bridge_rule"
     NAMESPACE_DEF = "namespace_def"
+    # Policy types (v1.5)
+    POLICY_HEAD = "policy_head"
+    # Reasoning output types (v2.0)
+    SIGNAL = "signal"
+    MITIGATION = "mitigation"
+    SCORE = "score"
+    VERDICT = "verdict"
+    # Audit/justification types (v2.0)
+    JUSTIFICATION = "justification"
+    POLICY_REF = "policy_ref"
+    POLICY_CITATION = "policy_citation"
+    REPORT_RUN = "report_run"
+    JUDGMENT = "judgment"
 
 
 class SourceQuality(str, Enum):
@@ -191,11 +212,29 @@ def compute_rule_logic_hash(rule_content: str) -> str:
 def compute_content_id(content: bytes) -> str:
     """
     Compute a Content ID (CID) for evidence.
-    
+
     Similar to IPFS CID - the content IS the address.
     If content changes, CID changes.
     """
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
+
+
+def compute_policy_hash(promoted_rule_ids: List[str]) -> str:
+    """
+    Compute deterministic policy_hash from promoted_rule_ids.
+
+    Follows v1.3 canonicalization pattern:
+    1. Sort rule IDs (deterministic ordering)
+    2. JSON serialize with consistent separators
+    3. SHA-256 hash
+
+    Returns:
+        64-character hex string (SHA-256 hash)
+    """
+    sorted_ids = sorted(promoted_rule_ids)
+    # Use separators=(',', ':') for compact, deterministic JSON
+    canonical_json = json.dumps(sorted_ids, separators=(',', ':'))
+    return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
 
 
 def get_current_timestamp() -> str:
@@ -203,21 +242,41 @@ def get_current_timestamp() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
 
 
+# ============================================================================
+# HASH SCHEME CONSTANTS
+# ============================================================================
+
+# Legacy hash scheme: string concatenation (v1.3 original)
+HASH_SCHEME_LEGACY = "legacy:concat:v1"
+
+# Canonical hash scheme: RFC 8785 JSON canonicalization (v2.0+)
+HASH_SCHEME_CANONICAL = "canon:rfc8785:v1"
+
+# Default scheme for existing cells without explicit hash_scheme
+HASH_SCHEME_DEFAULT = HASH_SCHEME_LEGACY
+
+
 @dataclass
 class Header:
     """
     Cell header containing metadata and chain link.
-    
+
     v1.3 CHANGES:
     - Added graph_id: binds cell to specific graph instance
     - Renamed timestamp → system_time: when the engine recorded this cell
+
+    v2.0 CHANGES:
+    - Added hash_scheme: identity algorithm for cell_id computation
+      - None or "legacy:concat:v1": original string-concat method
+      - "canon:rfc8785:v1": RFC 8785 canonical JSON method
     """
     version: str
-    graph_id: str                    # NEW: Binds cell to specific graph
+    graph_id: str                    # Binds cell to specific graph
     cell_type: CellType
-    system_time: str                 # RENAMED: When engine recorded (not when fact is valid)
+    system_time: str                 # When engine recorded (not when fact is valid)
     prev_cell_hash: str
-    
+    hash_scheme: Optional[str] = None  # Identity algorithm (None = legacy)
+
     def __post_init__(self):
         # Validate system_time format
         if not validate_timestamp(self.system_time):
@@ -225,39 +284,60 @@ class Header:
                 f"Invalid system_time format: '{self.system_time}'. "
                 f"Must be ISO 8601 with timezone (e.g., '2026-01-26T15:00:00Z')"
             )
-    
+        # Validate hash_scheme if provided
+        if self.hash_scheme is not None:
+            valid_schemes = (HASH_SCHEME_LEGACY, HASH_SCHEME_CANONICAL)
+            if self.hash_scheme not in valid_schemes:
+                raise ValueError(
+                    f"Invalid hash_scheme: '{self.hash_scheme}'. "
+                    f"Must be one of: {valid_schemes}"
+                )
+
+    def get_effective_hash_scheme(self) -> str:
+        """Return effective hash scheme, defaulting to legacy if None."""
+        return self.hash_scheme or HASH_SCHEME_DEFAULT
+
     def to_dict(self) -> dict:
-        return {
+        result = {
             "version": self.version,
             "graph_id": self.graph_id,
             "cell_type": self.cell_type.value,
             "system_time": self.system_time,
             "prev_cell_hash": self.prev_cell_hash
         }
+        # Only include hash_scheme if explicitly set (backward compat)
+        if self.hash_scheme is not None:
+            result["hash_scheme"] = self.hash_scheme
+        return result
 
 
 @dataclass
 class Fact:
     """
     The fact being recorded - Namespace + Subject-Predicate-Object triple.
-    
+
     Bitemporal semantics:
     - system_time (in Header): When the engine recorded this fact
     - valid_from/valid_to: When this fact is/was true in the real world
-    
+
     v1.3 CHANGES:
     - valid_to can be None (means "forever" / open-ended)
     - Stricter namespace validation
+
+    v2.0 CHANGES:
+    - object can be structured (dict/list) for rich payloads (signals, scores, etc.)
+    - Structured objects REQUIRE hash_scheme="canon:rfc8785:v1" (enforced at cell level)
+    - All numeric values in structured payloads must be strings (no floats)
     """
     namespace: str
     subject: str
     predicate: str
-    object: str
+    object: Union[str, Dict[str, Any], List[Any]]  # v2.0: structured payloads allowed
     confidence: float  # 0.0 to 1.0
     source_quality: SourceQuality
     valid_from: Optional[str] = None
     valid_to: Optional[str] = None      # None means "forever" (open-ended)
-    
+
     def __post_init__(self):
         # Validate namespace format
         if not validate_namespace(self.namespace):
@@ -266,19 +346,23 @@ class Fact:
                 f"Must be lowercase alphanumeric/underscore segments separated by dots. "
                 f"Example: 'corp.hr.compensation'"
             )
-        
+
         # Validate confidence
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"Confidence must be between 0.0 and 1.0, got {self.confidence}")
         if self.confidence == 1.0 and self.source_quality != SourceQuality.VERIFIED:
             raise ValueError("Confidence 1.0 requires source_quality='verified'")
-        
+
         # Validate timestamps if provided
         if self.valid_from and not validate_timestamp(self.valid_from):
             raise ValueError(f"Invalid valid_from format: '{self.valid_from}'")
         if self.valid_to and not validate_timestamp(self.valid_to):
             raise ValueError(f"Invalid valid_to format: '{self.valid_to}'")
-    
+
+    def has_structured_object(self) -> bool:
+        """Check if object is structured (dict or list) vs simple string."""
+        return isinstance(self.object, (dict, list))
+
     def to_dict(self) -> dict:
         return {
             "namespace": self.namespace,
@@ -354,18 +438,22 @@ class Proof:
 @dataclass
 class DecisionCell:
     """
-    The atomic unit of DecisionGraph (v1.3).
-    
+    The atomic unit of DecisionGraph (v1.3 → v2.0).
+
     A cryptographically sealed packet where:
     - cell_id is DERIVED from content (not assigned)
     - Changing ANY field invalidates the cell_id
     - The Logic Anchor binds fact to law
     - graph_id binds cell to specific graph instance
-    
+
     v1.3 CHANGES:
     - graph_id included in cell_id computation
     - system_time instead of timestamp
     - Canonicalized rule hashing
+
+    v2.0 CHANGES:
+    - Structured fact.object (dict/list) requires hash_scheme="canon:rfc8785:v1"
+    - Legacy hash_scheme only supports string objects
     """
     header: Header
     fact: Fact
@@ -373,53 +461,125 @@ class DecisionCell:
     evidence: List[Evidence] = field(default_factory=list)
     proof: Proof = field(default_factory=Proof)
     cell_id: str = field(default="", init=False)
-    
+
     def __post_init__(self):
-        """Compute cell_id after initialization"""
+        """Validate constraints and compute cell_id after initialization."""
+        # v2.0: Structured objects require canonical hash scheme
+        if self.fact.has_structured_object():
+            scheme = self.header.get_effective_hash_scheme()
+            if scheme != HASH_SCHEME_CANONICAL:
+                raise ValueError(
+                    f"Structured fact.object (dict/list) requires "
+                    f"hash_scheme='{HASH_SCHEME_CANONICAL}', but got '{scheme}'. "
+                    f"Legacy hash_scheme only supports string objects."
+                )
+            # Validate structured payload is canonical-safe (no floats)
+            self._validate_structured_object(self.fact.object, "fact.object")
+
         self.cell_id = self.compute_cell_id()
+
+    def _validate_structured_object(self, obj: Any, path: str) -> None:
+        """
+        Validate structured object is canonical-safe.
+
+        Rules:
+        - No float values (use string-encoded decimals)
+        - All dict keys must be strings
+        - Nested structures are recursively validated
+        """
+        if obj is None or isinstance(obj, (bool, int, str)):
+            return
+
+        if isinstance(obj, float):
+            raise ValueError(
+                f"Float value {obj} at '{path}' not allowed in structured payload. "
+                f"Use string-encoded decimal (e.g., '{obj}' as string)."
+            )
+
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if not isinstance(key, str):
+                    raise ValueError(
+                        f"Dict key must be string at '{path}', got {type(key).__name__}"
+                    )
+                self._validate_structured_object(value, f"{path}.{key}")
+            return
+
+        if isinstance(obj, list):
+            for i, item in enumerate(obj):
+                self._validate_structured_object(item, f"{path}[{i}]")
+            return
+
+        raise ValueError(
+            f"Unsupported type {type(obj).__name__} at '{path}' in structured payload"
+        )
     
     def compute_cell_id(self) -> str:
         """
-        THE LOGIC SEAL (v1.3)
-        
-        Compute cell_id using SHA-256 of concatenated fields.
-        This is the core integrity mechanism of DecisionGraph.
-        
-        Formula:
+        THE LOGIC SEAL (v1.3 / v2.0)
+
+        Compute cell_id using SHA-256. Method depends on hash_scheme:
+
+        - legacy:concat:v1 (default): String concatenation of fields
+        - canon:rfc8785:v1: RFC 8785 canonical JSON of full cell dict
+
+        The hash_scheme is determined by header.hash_scheme field.
+        If not set, defaults to legacy for backward compatibility.
+
+        Formula (legacy):
         cell_id = SHA256(
             header.version +
-            header.graph_id +             # NEW in v1.3: Graph binding
+            header.graph_id +
             header.cell_type +
-            header.system_time +          # RENAMED in v1.3
+            header.system_time +
             header.prev_cell_hash +
             fact.namespace +
             fact.subject +
             fact.predicate +
-            fact.object +
+            fact.object +  # Must be string for legacy scheme
             logic_anchor.rule_id +
             logic_anchor.rule_logic_hash
         )
-        
-        If graph_id changes, cell_id breaks → cell cannot move between graphs.
-        If namespace changes, cell_id breaks → cell cannot move between namespaces.
+
+        Formula (canonical):
+        cell_id = SHA256(canonical_json_bytes(cell_to_canonical_dict(self)))
+
+        If graph_id changes, cell_id breaks -> cell cannot move between graphs.
+        If namespace changes, cell_id breaks -> cell cannot move between namespaces.
+
+        v2.0: Legacy scheme rejects structured objects (dict/list) because
+        str(dict) is non-deterministic across Python versions.
         """
-        # Concatenate all fields that form the Logic Seal
-        seal_string = (
-            self.header.version +
-            self.header.graph_id +              # NEW: Graph binding
-            self.header.cell_type.value +
-            self.header.system_time +           # RENAMED
-            self.header.prev_cell_hash +
-            self.fact.namespace +
-            self.fact.subject +
-            self.fact.predicate +
-            str(self.fact.object) +
-            self.logic_anchor.rule_id +
-            self.logic_anchor.rule_logic_hash
-        )
-        
-        # Compute SHA-256 hash
-        return hashlib.sha256(seal_string.encode('utf-8')).hexdigest()
+        scheme = self.header.get_effective_hash_scheme()
+
+        if scheme == HASH_SCHEME_CANONICAL:
+            # RFC 8785 canonical JSON method
+            from .canon import cell_to_canonical_dict, canonical_json_bytes
+            canonical_dict = cell_to_canonical_dict(self)
+            return hashlib.sha256(canonical_json_bytes(canonical_dict)).hexdigest()
+        else:
+            # Legacy string concatenation method (default)
+            # Guard: reject structured objects (dict/list) - they're non-deterministic
+            if self.fact.has_structured_object():
+                raise TypeError(
+                    f"Legacy hash_scheme cannot compute cell_id for structured "
+                    f"fact.object ({type(self.fact.object).__name__}). "
+                    f"Use hash_scheme='{HASH_SCHEME_CANONICAL}' for dict/list payloads."
+                )
+            seal_string = (
+                self.header.version +
+                self.header.graph_id +
+                self.header.cell_type.value +
+                self.header.system_time +
+                self.header.prev_cell_hash +
+                self.fact.namespace +
+                self.fact.subject +
+                self.fact.predicate +
+                self.fact.object +  # Guaranteed to be string here
+                self.logic_anchor.rule_id +
+                self.logic_anchor.rule_logic_hash
+            )
+            return hashlib.sha256(seal_string.encode('utf-8')).hexdigest()
     
     def verify_integrity(self) -> bool:
         """
@@ -459,7 +619,8 @@ class DecisionCell:
             graph_id=data["header"]["graph_id"],
             cell_type=CellType(data["header"]["cell_type"]),
             system_time=data["header"]["system_time"],
-            prev_cell_hash=data["header"]["prev_cell_hash"]
+            prev_cell_hash=data["header"]["prev_cell_hash"],
+            hash_scheme=data["header"].get("hash_scheme")  # None if not present (legacy)
         )
         
         fact = Fact(
@@ -521,12 +682,15 @@ __all__ = [
     'CellType',
     'SourceQuality',
     'SensitivityLevel',
-    
+
     # Constants
     'NULL_HASH',
     'NAMESPACE_PATTERN',
     'ROOT_NAMESPACE_PATTERN',
-    
+    'HASH_SCHEME_LEGACY',
+    'HASH_SCHEME_CANONICAL',
+    'HASH_SCHEME_DEFAULT',
+
     # Data classes
     'Header',
     'Fact',
@@ -534,24 +698,25 @@ __all__ = [
     'Evidence',
     'Proof',
     'DecisionCell',
-    
+
     # Validation functions
     'validate_namespace',
     'validate_root_namespace',
     'validate_timestamp',
-    
+
     # Namespace utilities
     'get_parent_namespace',
     'is_namespace_prefix',
-    
+
     # ID generation
     'generate_graph_id',
-    
+
     # Hashing utilities
     'canonicalize_rule_content',
     'compute_rule_logic_hash',
     'compute_content_id',
-    
+    'compute_policy_hash',
+
     # Timestamp
     'get_current_timestamp'
 ]

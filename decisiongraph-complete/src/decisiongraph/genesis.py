@@ -12,7 +12,7 @@ Key properties:
 - Creates the graph_id that ALL subsequent cells must reference
 - Cannot be created after other cells exist
 
-IMPORTANT: Uniqueness and "first cell" constraints are enforced by the 
+IMPORTANT: Uniqueness and "first cell" constraints are enforced by the
 Commit Gate (Chain.append), NOT by verify_genesis(). This module can only
 validate a cell's structure, not its position in the chain.
 
@@ -23,10 +23,16 @@ v1.3 CHANGES:
 - Canonicalized boot rule hashing (compute_rule_logic_hash canonicalizes internally)
 - Bootstrap mode for initial deployment (signature optional)
 - graph_id format validation
+
+v1.5 ADDITIONS:
+- Genesis WitnessSet embedding (solves bootstrap paradox BOT-01)
+- WitnessSet stored in fact.object as JSON (backward compatible)
+- Enables both bootstrap (1-of-1) and production (2-of-N) modes
 """
 
+import json
 import re
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 
 from .cell import (
     DecisionCell,
@@ -37,6 +43,8 @@ from .cell import (
     CellType,
     SourceQuality,
     NULL_HASH,
+    HASH_SCHEME_LEGACY,
+    HASH_SCHEME_CANONICAL,
     get_current_timestamp,
     compute_rule_logic_hash,
     generate_graph_id,
@@ -44,6 +52,9 @@ from .cell import (
     validate_timestamp,
     canonicalize_rule_content
 )
+
+# Import threshold validation from policyhead (v1.5)
+from .policyhead import validate_threshold
 
 
 # ============================================================================
@@ -138,17 +149,19 @@ def create_genesis_cell(
     creator: Optional[str] = None,
     creator_key_id: Optional[str] = None,
     system_time: Optional[str] = None,
-    bootstrap_mode: bool = True
+    bootstrap_mode: bool = True,
+    hash_scheme: Optional[str] = None
 ) -> DecisionCell:
     """
     Create the Genesis cell for a new DecisionGraph instance.
-    
+
     This is the "Big Bang" - the root of all cells.
     It establishes:
     - The graph_id that ALL subsequent cells must reference
     - The root namespace for the entire graph
     - The time model (bitemporal: system_time + valid_time)
-    
+    - The hash_scheme for cell_id computation (v2.0)
+
     Args:
         graph_name: Human-readable name for this graph instance
         root_namespace: The root namespace (no dots, e.g., "corp", "acme")
@@ -157,25 +170,40 @@ def create_genesis_cell(
         creator_key_id: Optional reference to signing key
         system_time: Optional timestamp (defaults to now, must be ISO 8601 UTC)
         bootstrap_mode: If True, signature is not required (initial deployment)
-    
+        hash_scheme: Hash scheme for cell_id computation (v2.0):
+            - None: legacy string-concat (default, backward compatible)
+            - "legacy:concat:v1": explicit legacy scheme
+            - "canon:rfc8785:v1": RFC 8785 canonical JSON scheme
+            The Commit Gate enforces all cells in a graph use the same scheme.
+
     Returns:
         The Genesis DecisionCell
-    
+
     Raises:
         GenesisError: If root_namespace or graph_id is invalid
-    
+
     Note:
         Uniqueness (only one Genesis per graph) is enforced by the Commit Gate
         (Chain.append), not by this function.
-    
+
     Example:
+        >>> # Legacy graph (default)
         >>> genesis = create_genesis_cell(
         ...     graph_name="AcmeCorp_v1",
         ...     root_namespace="acme",
         ...     creator="system:initializer"
         ... )
-        >>> print(genesis.header.graph_id)
-        'graph:a1b2c3d4-...'
+        >>> print(genesis.header.hash_scheme)
+        None
+
+        >>> # New graph with canonical hashing
+        >>> genesis = create_genesis_cell(
+        ...     graph_name="AcmeCorp_v2",
+        ...     root_namespace="acme",
+        ...     hash_scheme="canon:rfc8785:v1"
+        ... )
+        >>> print(genesis.header.hash_scheme)
+        'canon:rfc8785:v1'
     """
     # Validate root namespace
     if not validate_root_namespace(root_namespace):
@@ -200,16 +228,18 @@ def create_genesis_cell(
             f"Invalid system_time format: '{ts}'. "
             f"Must be ISO 8601 with UTC timezone (e.g., '2026-01-26T15:00:00Z')"
         )
-    
+
     # Create the Genesis header
+    # hash_scheme establishes the identity algorithm for this graph
     header = Header(
         version=SCHEMA_VERSION,
         graph_id=gid,
         cell_type=CellType.GENESIS,
         system_time=ts,
-        prev_cell_hash=NULL_HASH  # The signature of Genesis - all zeros
+        prev_cell_hash=NULL_HASH,  # The signature of Genesis - all zeros
+        hash_scheme=hash_scheme    # Graph's identity algorithm (None = legacy)
     )
-    
+
     # Create the Genesis fact with root namespace
     # Bitemporal: system_time is when recorded, valid_from is when true
     # For Genesis, these are the same. valid_to=None means "forever"
@@ -550,6 +580,263 @@ def get_canonicalized_genesis_rule() -> str:
 
 
 # ============================================================================
+# GENESIS WITH WITNESSSET (v1.5 - Bootstrap Paradox Solution)
+# ============================================================================
+
+def create_genesis_cell_with_witness_set(
+    graph_name: str,
+    root_namespace: str,
+    witnesses: List[str],
+    threshold: int,
+    graph_id: Optional[str] = None,
+    creator: Optional[str] = None,
+    creator_key_id: Optional[str] = None,
+    system_time: Optional[str] = None,
+    bootstrap_mode: bool = True
+) -> DecisionCell:
+    """
+    Create a Genesis cell with an embedded WitnessSet.
+
+    This solves the Bootstrap Paradox (BOT-01): "Who promotes the first WitnessSet?"
+    By embedding the initial WitnessSet in Genesis, we establish the trust
+    anchor without circular dependency.
+
+    The WitnessSet is embedded in fact.object as JSON:
+    {
+        "graph_name": "...",
+        "witness_set": {
+            "witnesses": ["alice", "bob"],
+            "threshold": 2
+        }
+    }
+
+    Args:
+        graph_name: Human-readable name for this graph instance
+        root_namespace: The root namespace (no dots, e.g., "corp", "acme")
+        witnesses: List of witness identifiers for the initial WitnessSet
+        threshold: Number of witnesses required for approval
+        graph_id: Optional specific graph_id (auto-generated if not provided)
+        creator: Optional identifier of who/what created this graph
+        creator_key_id: Optional reference to signing key
+        system_time: Optional timestamp (defaults to now, must be ISO 8601 UTC)
+        bootstrap_mode: If True, signature is not required (initial deployment)
+
+    Returns:
+        The Genesis DecisionCell with embedded WitnessSet
+
+    Raises:
+        GenesisError: If root_namespace, graph_id, or threshold is invalid
+
+    Examples:
+        >>> # Bootstrap mode (development)
+        >>> genesis = create_genesis_cell_with_witness_set(
+        ...     graph_name="DevGraph",
+        ...     root_namespace="corp",
+        ...     witnesses=["alice"],
+        ...     threshold=1
+        ... )
+
+        >>> # Production mode (multi-witness)
+        >>> genesis = create_genesis_cell_with_witness_set(
+        ...     graph_name="ProdGraph",
+        ...     root_namespace="acme",
+        ...     witnesses=["alice", "bob", "charlie"],
+        ...     threshold=2
+        ... )
+    """
+    # Validate threshold
+    is_valid, error_msg = validate_threshold(threshold, witnesses)
+    if not is_valid:
+        raise GenesisError(f"Invalid WitnessSet configuration: {error_msg}")
+
+    # Validate root namespace
+    if not validate_root_namespace(root_namespace):
+        raise GenesisError(
+            f"Invalid root namespace: '{root_namespace}'. "
+            f"Must be lowercase letter followed by alphanumeric/underscore, "
+            f"2-64 chars, no dots, no trailing underscores."
+        )
+
+    # Generate or validate graph_id
+    gid = graph_id or generate_graph_id()
+    if not validate_graph_id(gid):
+        raise GenesisError(
+            f"Invalid graph_id format: '{gid}'. "
+            f"Must be 'graph:<uuid-v4>' format."
+        )
+
+    # Use provided system_time or current time
+    ts = system_time or get_current_timestamp()
+    if not validate_timestamp(ts):
+        raise GenesisError(
+            f"Invalid system_time format: '{ts}'. "
+            f"Must be ISO 8601 with UTC timezone (e.g., '2026-01-26T15:00:00Z')"
+        )
+
+    # Create Genesis object with embedded WitnessSet
+    # Sort witnesses for deterministic serialization
+    genesis_object = {
+        "graph_name": graph_name,
+        "witness_set": {
+            "witnesses": sorted(witnesses),
+            "threshold": threshold
+        }
+    }
+
+    # Create the Genesis header
+    header = Header(
+        version=SCHEMA_VERSION,
+        graph_id=gid,
+        cell_type=CellType.GENESIS,
+        system_time=ts,
+        prev_cell_hash=NULL_HASH  # The signature of Genesis - all zeros
+    )
+
+    # Create the Genesis fact with root namespace and embedded WitnessSet
+    # The object field contains JSON with both graph_name and witness_set
+    fact = Fact(
+        namespace=root_namespace,
+        subject="graph:root",
+        predicate="instance_of",
+        object=json.dumps(genesis_object, sort_keys=True),
+        confidence=1.0,
+        source_quality=SourceQuality.VERIFIED,
+        valid_from=ts,
+        valid_to=None  # Open-ended (forever)
+    )
+
+    # Create the Logic Anchor pointing to the boot rule
+    logic_anchor = LogicAnchor(
+        rule_id="system:genesis_boot_v1.3",
+        rule_logic_hash=GENESIS_RULE_HASH,
+        interpreter="system:v1.3"
+    )
+
+    # Create the proof
+    proof = Proof(
+        signer_id=creator or "system:genesis",
+        signer_key_id=creator_key_id,
+        signature=None,
+        merkle_root=None,
+        signature_required=not bootstrap_mode
+    )
+
+    # Create and return the Genesis cell
+    return DecisionCell(
+        header=header,
+        fact=fact,
+        logic_anchor=logic_anchor,
+        evidence=[],
+        proof=proof
+    )
+
+
+def parse_genesis_witness_set(genesis: DecisionCell) -> Optional[Dict[str, Any]]:
+    """
+    Extract WitnessSet from a Genesis cell if present.
+
+    This function is backward compatible: it returns None for legacy Genesis
+    cells that don't have an embedded WitnessSet.
+
+    Args:
+        genesis: A Genesis DecisionCell
+
+    Returns:
+        Dict with keys 'witnesses' and 'threshold' if WitnessSet is present,
+        None if Genesis is legacy format (no WitnessSet)
+
+    Raises:
+        ValueError: If cell is not a Genesis cell
+        ValueError: If Genesis has malformed WitnessSet data
+
+    Examples:
+        >>> ws = parse_genesis_witness_set(genesis)
+        >>> if ws:
+        ...     print(f"Threshold: {ws['threshold']}, Witnesses: {ws['witnesses']}")
+        ... else:
+        ...     print("Legacy Genesis - no embedded WitnessSet")
+    """
+    # Verify this is a Genesis cell
+    if genesis.header.cell_type != CellType.GENESIS:
+        raise ValueError(
+            f"Expected GENESIS cell, got {genesis.header.cell_type.value}"
+        )
+
+    # Try to parse fact.object as JSON
+    obj = genesis.fact.object
+    if not obj:
+        return None
+
+    try:
+        parsed = json.loads(obj)
+    except json.JSONDecodeError:
+        # Not JSON - legacy Genesis with plain string graph_name
+        return None
+
+    # Check if it's the new format with witness_set
+    if not isinstance(parsed, dict):
+        return None
+
+    if "witness_set" not in parsed:
+        return None
+
+    witness_set = parsed["witness_set"]
+
+    # Validate WitnessSet structure
+    if not isinstance(witness_set, dict):
+        raise ValueError("witness_set must be a dict")
+
+    if "witnesses" not in witness_set or "threshold" not in witness_set:
+        raise ValueError("witness_set must have 'witnesses' and 'threshold' keys")
+
+    if not isinstance(witness_set["witnesses"], list):
+        raise ValueError("witness_set.witnesses must be a list")
+
+    if not isinstance(witness_set["threshold"], int):
+        raise ValueError("witness_set.threshold must be an integer")
+
+    # Validate threshold value
+    is_valid, error_msg = validate_threshold(
+        witness_set["threshold"],
+        witness_set["witnesses"]
+    )
+    if not is_valid:
+        raise ValueError(f"Invalid embedded WitnessSet: {error_msg}")
+
+    return {
+        "witnesses": witness_set["witnesses"],
+        "threshold": witness_set["threshold"]
+    }
+
+
+def has_witness_set(genesis: DecisionCell) -> bool:
+    """
+    Check if a Genesis cell has an embedded WitnessSet.
+
+    This is a quick check for determining whether a Genesis is using the
+    new WitnessSet format or is a legacy Genesis.
+
+    Args:
+        genesis: A Genesis DecisionCell
+
+    Returns:
+        True if Genesis has embedded WitnessSet, False otherwise
+
+    Note:
+        Returns False for non-Genesis cells (does not raise).
+        Use parse_genesis_witness_set() for detailed extraction.
+    """
+    if genesis.header.cell_type != CellType.GENESIS:
+        return False
+
+    try:
+        ws = parse_genesis_witness_set(genesis)
+        return ws is not None
+    except (ValueError, json.JSONDecodeError):
+        return False
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
@@ -559,19 +846,24 @@ __all__ = [
     'verify_genesis',
     'verify_genesis_strict',
     'is_genesis',
-    
+
     # Validation
     'validate_graph_id',
-    
+
     # Rule access
     'get_genesis_rule',
     'get_genesis_rule_hash',
     'get_canonicalized_genesis_rule',
-    
+
+    # Genesis WitnessSet embedding (v1.5)
+    'create_genesis_cell_with_witness_set',
+    'parse_genesis_witness_set',
+    'has_witness_set',
+
     # Exceptions
     'GenesisError',
     'GenesisValidationError',
-    
+
     # Constants
     'GENESIS_RULE',
     'GENESIS_RULE_HASH',

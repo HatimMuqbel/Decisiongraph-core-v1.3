@@ -31,6 +31,7 @@ from .namespace import (
     build_registry_from_chain,
     Permission
 )
+from .policyhead import get_policy_head_at_time, parse_policy_data
 
 
 # ============================================================================
@@ -121,6 +122,9 @@ class QueryResult:
         allowed=False, reason="not_checked", bridges_used=[]
     ))
 
+    # Policy tracking (v1.5 - SCH-03)
+    policy_head_id: Optional[str] = None  # Cell ID of PolicyHead used for filtering
+
     @property
     def count(self) -> int:
         return len(self.facts)
@@ -171,7 +175,7 @@ class QueryResult:
         ]
 
         # Build proof bundle with alphabetically ordered keys
-        return {
+        bundle = {
             "authorization_basis": {
                 "allowed": self.authorization.allowed,
                 "bridge_effectiveness": bridge_effectiveness,
@@ -198,6 +202,217 @@ class QueryResult:
                 "at_valid_time": self.valid_time
             }
         }
+
+        # Include policy information if present (v1.5)
+        if self.policy_head_id is not None:
+            bundle["policy"] = {
+                "mode": "promoted_only",
+                "policy_head_id": self.policy_head_id
+            }
+
+        return bundle
+
+    def to_audit_text(self) -> str:
+        """
+        Generate human-readable audit report.
+
+        Returns deterministic plain text report containing:
+        - Query parameters (namespace, requester, timestamps)
+        - Authorization basis (allowed/denied, reason, bridges)
+        - Results summary (fact count, cell IDs)
+        - Proof details (candidates, resolution events)
+        - Scholar version
+
+        Same QueryResult always produces identical output (deterministic).
+
+        Returns:
+            Multi-line string with audit report
+
+        Example:
+            result = scholar.query_facts(...)
+            report = result.to_audit_text()
+            print(report)
+            # Or save to file:
+            with open('audit.txt', 'w') as f:
+                f.write(report)
+        """
+        lines = []
+
+        # Header
+        lines.append("DECISIONGRAPH AUDIT REPORT")
+        lines.append("=" * 50)
+        lines.append("")
+
+        # Query Information
+        lines.append("Query Information:")
+        lines.append(f"  Namespace: {self.namespace_scope}")
+        lines.append(f"  Requester: {self.requester_id}")
+        lines.append(f"  Valid Time: {self.valid_time}")
+        lines.append(f"  System Time: {self.system_time}")
+        lines.append("")
+
+        # Authorization
+        lines.append("Authorization:")
+        status = "ALLOWED" if self.authorization.allowed else "DENIED"
+        lines.append(f"  Status: {status}")
+        lines.append(f"  Reason: {self.authorization.reason}")
+
+        if self.authorization.bridges_used:
+            lines.append("  Bridges Used:")
+            for bridge_id in self.authorization.bridges_used:
+                lines.append(f"    - {bridge_id[:16]}...")
+
+        if self.authorization.bridge_effectiveness:
+            lines.append("  Bridge Effectiveness:")
+            for be in self.authorization.bridge_effectiveness:
+                be_status = "EFFECTIVE" if be.effective else "NOT EFFECTIVE"
+                lines.append(f"    - {be.bridge_cell_id[:16]}... : {be_status} ({be.reason.value})")
+
+        lines.append("")
+
+        # Policy (v1.5)
+        if self.policy_head_id is not None:
+            lines.append("Policy:")
+            lines.append(f"  Mode: promoted_only")
+            lines.append(f"  PolicyHead: {self.policy_head_id[:16]}...")
+            lines.append("")
+
+        # Results
+        lines.append("Results:")
+        lines.append(f"  Facts Returned: {len(self.facts)}")
+        if self.facts:
+            lines.append("  Fact Cells:")
+            for fact in self.facts:
+                # Truncate object to 20 chars
+                obj_display = fact.fact.object if len(fact.fact.object) <= 20 else fact.fact.object[:20] + "..."
+                lines.append(f"    - {fact.cell_id[:16]}... ({fact.fact.subject} {fact.fact.predicate} {obj_display})")
+        lines.append("")
+
+        # Proof Details
+        lines.append("Proof Details:")
+        lines.append(f"  Candidates Considered: {len(self.candidates)}")
+        lines.append(f"  Bridges Used: {len(self.bridges_used)}")
+        # Count conflicts (non-single candidate resolutions)
+        conflicts_resolved = len([e for e in self.resolution_events if e.reason != ResolutionReason.SINGLE_CANDIDATE])
+        lines.append(f"  Conflicts Resolved: {conflicts_resolved}")
+        lines.append("")
+
+        # Resolution Events
+        if self.resolution_events:
+            lines.append("Resolution Events:")
+            for i, event in enumerate(self.resolution_events, 1):
+                lines.append(f"  [{i}] Key: {event.conflict_key}")
+                lines.append(f"      Winner: {event.winner_cell_id[:16]}...")
+                lines.append(f"      Reason: {event.reason.value}")
+                if event.loser_cell_ids:
+                    loser_ids = ", ".join([lid[:16] + "..." for lid in event.loser_cell_ids])
+                    lines.append(f"      Losers: {loser_ids}")
+            lines.append("")
+
+        # Footer
+        lines.append("Scholar Version: 1.3")
+        lines.append(f"Generated: {self.system_time}")
+
+        return "\n".join(lines)
+
+    def to_dot(self) -> str:
+        """
+        Generate Graphviz DOT format for lineage visualization.
+
+        Returns valid DOT syntax showing:
+        - Fact cells (blue boxes)
+        - Bridge cells (green boxes)
+        - Candidate cells (gray boxes)
+        - Authorization edges (fact -> bridge)
+        - Resolution edges (winner -> loser)
+
+        Output can be rendered with Graphviz:
+            $ dot -Tpng lineage.dot -o lineage.png
+            $ dot -Tsvg lineage.dot -o lineage.svg
+
+        Or online tools: viz-js.com, Graphviz Online
+
+        Same QueryResult always produces identical output (deterministic).
+
+        Returns:
+            String containing valid DOT syntax
+
+        Example:
+            result = scholar.query_facts(...)
+            dot_text = result.to_dot()
+            with open('lineage.dot', 'w') as f:
+                f.write(dot_text)
+            # Then: dot -Tpng lineage.dot -o lineage.png
+        """
+        lines = []
+
+        # Helper to escape DOT strings
+        def _escape_dot_string(s: str) -> str:
+            """Escape quotes, backslashes, and newlines for DOT format"""
+            return s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+
+        # Helper to truncate cell ID
+        def _short_id(cell_id: str) -> str:
+            """Truncate cell ID to first 12 chars + ellipsis"""
+            return cell_id[:12] + "..."
+
+        # Graph header
+        lines.append("digraph decision_lineage {")
+        lines.append("  // DecisionGraph Lineage Visualization")
+        lines.append("  rankdir=TB;")
+        lines.append("  node [shape=box, style=filled];")
+        lines.append("")
+
+        # Fact cells (winners)
+        lines.append("  // Winning Facts")
+        for fact in self.facts:
+            label = f"Fact\\n{_escape_dot_string(fact.fact.subject)}\\n{_escape_dot_string(fact.fact.predicate)}"
+            lines.append(f'  "{_short_id(fact.cell_id)}" [label="{label}", fillcolor=lightblue];')
+        lines.append("")
+
+        # Bridge cells
+        lines.append("  // Bridges")
+        if self.authorization.bridges_used:
+            for bridge_id in self.authorization.bridges_used:
+                label = f"Bridge\\n{_short_id(bridge_id)}"
+                lines.append(f'  "{_short_id(bridge_id)}" [label="{label}", fillcolor=lightgreen];')
+        lines.append("")
+
+        # PolicyHead node (v1.5)
+        if self.policy_head_id is not None:
+            lines.append("  // PolicyHead")
+            lines.append(f'  "policy_{_short_id(self.policy_head_id)}" [label="PolicyHead\\n{_short_id(self.policy_head_id)}", fillcolor=lightyellow, shape=ellipse];')
+            lines.append("")
+
+        # Candidate cells (non-winners)
+        lines.append("  // Candidates (non-winners)")
+        winner_ids = {f.cell_id for f in self.facts}
+        for candidate in self.candidates:
+            if candidate.cell_id not in winner_ids:
+                label = f"Candidate\\n{_escape_dot_string(candidate.fact.subject)}\\n{_escape_dot_string(candidate.fact.predicate)}"
+                lines.append(f'  "{_short_id(candidate.cell_id)}" [label="{label}", fillcolor=lightgray];')
+        lines.append("")
+
+        # Authorization edges (fact -> bridge)
+        if self.authorization.allowed and self.authorization.bridges_used:
+            lines.append("  // Authorization edges")
+            for fact in self.facts:
+                for bridge_id in self.authorization.bridges_used:
+                    lines.append(f'  "{_short_id(fact.cell_id)}" -> "{_short_id(bridge_id)}" [label="authorized_by", color=green];')
+            lines.append("")
+
+        # Resolution edges (winner -> losers)
+        lines.append("  // Resolution edges")
+        for event in self.resolution_events:
+            if event.loser_cell_ids:  # Only if there were conflicts
+                for loser_id in event.loser_cell_ids:
+                    lines.append(f'  "{_short_id(event.winner_cell_id)}" -> "{_short_id(loser_id)}" [label="{event.reason.value}", color=red, style=dashed];')
+        lines.append("")
+
+        # Graph footer
+        lines.append("}")
+
+        return "\n".join(lines)
 
 
 @dataclass
@@ -709,11 +924,12 @@ class Scholar:
         object_value: Optional[str] = None,
         at_valid_time: Optional[str] = None,
         as_of_system_time: Optional[str] = None,
-        requester_id: str = "anonymous"
+        requester_id: str = "anonymous",
+        policy_mode: str = "all"  # NEW: "all" (default) or "promoted_only"
     ) -> QueryResult:
         """
         Query facts from the vault.
-        
+
         Args:
             requester_namespace: Namespace of the requester (for bridge checking)
             namespace: Target namespace to query
@@ -723,14 +939,48 @@ class Scholar:
             at_valid_time: Point in valid time (default: now)
             as_of_system_time: Point in system time (default: now)
             requester_id: Identifier for audit trail
-        
+            policy_mode: Query mode for policy filtering:
+                - "all": Return all facts (default, backward compatible)
+                - "promoted_only": Only return facts from promoted rules
+
         Returns:
-            QueryResult with facts, candidates, bridges_used, and resolution_events
+            QueryResult with facts, candidates, bridges_used, and resolution_events.
+            When policy_mode="promoted_only", includes policy_head_id field.
         """
         # Default times to now
         now = get_current_timestamp()
         valid_time = at_valid_time or now
         system_time = as_of_system_time or now
+
+        # Policy-aware filtering (v1.5)
+        policy_head_id = None
+        promoted_rule_ids = None
+
+        if policy_mode == "promoted_only":
+            policy_head = get_policy_head_at_time(self.chain, namespace, system_time)
+
+            if policy_head is None:
+                # No policy for namespace at this time - return empty result (fail-closed)
+                return QueryResult(
+                    facts=[],
+                    candidates=[],
+                    bridges_used=[],
+                    resolution_events=[],
+                    valid_time=valid_time,
+                    system_time=system_time,
+                    namespace_scope=namespace,
+                    requester_id=requester_id,
+                    authorization=AuthorizationBasis(
+                        allowed=True,
+                        reason="no_policy_head",
+                        bridges_used=[]
+                    ),
+                    policy_head_id=None
+                )
+
+            policy_data = parse_policy_data(policy_head)
+            promoted_rule_ids = set(policy_data["promoted_rule_ids"])
+            policy_head_id = policy_head.cell_id
 
         # Check visibility with bitemporal coordinates
         visibility = self.check_visibility(
@@ -780,10 +1030,17 @@ class Scholar:
         
         # Apply bitemporal filter
         candidates = [
-            c for c in candidates 
+            c for c in candidates
             if self._is_valid_at_time(c, valid_time, system_time)
         ]
-        
+
+        # Filter by promoted rules if policy_mode="promoted_only" (SCH-04)
+        if promoted_rule_ids is not None:
+            candidates = [
+                c for c in candidates
+                if c.logic_anchor.rule_id in promoted_rule_ids
+            ]
+
         # Resolve conflicts
         winners, resolution_events = self._resolve_conflicts(candidates)
 
@@ -818,7 +1075,8 @@ class Scholar:
             system_time=system_time,
             namespace_scope=namespace,
             requester_id=requester_id,
-            authorization=authorization
+            authorization=authorization,
+            policy_head_id=policy_head_id  # NEW: include when policy_mode="promoted_only"
         )
     
     # ========================================================================

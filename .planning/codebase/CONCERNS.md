@@ -169,6 +169,6 @@
 - Risk: Data loss during export/import. JSON format drift breaks compatibility.
 - Priority: Medium - add round-trip tests for all cell types.
 
----
+--- 
 
 *Concerns audit: 2026-01-27*

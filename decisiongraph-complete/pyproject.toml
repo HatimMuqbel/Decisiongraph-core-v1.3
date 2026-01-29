@@ -12,6 +12,9 @@ requires-python = ">=3.10"
 authors = [
     {name = "DecisionGraph"}
 ]
+dependencies = [
+    "cryptography>=46.0",
+]
 keywords = [
     "decision-engine",
     "audit-trail",
