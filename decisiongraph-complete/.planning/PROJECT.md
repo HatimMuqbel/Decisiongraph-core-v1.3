@@ -1,267 +1,334 @@
-# DecisionGraph v1.6 — Oracle Layer (Counterfactual Decision Space)
+# DecisionGraph v2.1.1 — Bank-Grade AML/KYC Decision Engine
 
 ## What This Is
 
-DecisionGraph is a zero-trust decision engine with cryptographic namespace isolation. The v1.5 engine provides bitemporal semantics, deterministic conflict resolution (Scholar), bridge-based cross-namespace authorization, PolicyHead promotion gates with multi-witness approval, and a hardened RFA ingress layer with Ed25519 signatures.
+DecisionGraph is a **bank-grade AML/KYC decision engine** implementing a dual-gate architecture that makes false escalation structurally impossible. It provides deterministic, auditable decisions for transaction monitoring and suspicious activity reporting under Canadian PCMLTFA regulations.
 
-**This milestone (v1.6)** adds the Oracle layer for counterfactual simulation:
-- Shadow cell infrastructure for hypothetical fact/policy injection
-- SimulationContext with OverlayScholar pattern for isolated what-if queries
-- Zero-contamination guarantee (simulation never mutates real chain)
-- Delta reports comparing base vs shadow outcomes
-- Counterfactual anchor detection (minimal changes causing outcome delta)
-- Batch backtest over historical RFAs
-- Simulation audit trail with BASE vs SHADOW lineage graphs
+**Current Release: v2.1.1**
+- Engine Version: 2.1.1
+- Policy Version: 1.0.0
+- Schema Version: 1.0.0
 
 ## Core Value
 
-**Safe simulation of policy/rule changes against historical data without contaminating the real vault — deterministic, bitemporal, governed, provable, non-mutating.**
+**Zero-false-escalation by design.** Every decision is:
+- **Reproducible** — Same input + same policy = identical output
+- **Auditable** — Full 6-layer taxonomy breakdown with rationale
+- **Regulator-ready** — PCMLTFA s.7 compliant with FINTRAC indicator mapping
+- **Hash-locked** — Input hash, decision ID, and policy hash in every output
 
-Users can ask "what if we had promoted different rules?" or "what if this fact had been different?" and receive provable comparisons without affecting production data. This enables regulatory compliance analysis, policy testing before promotion, and decision analysis with audit trails.
+## Architecture
 
-## Guiding Principles
-
-1. **Zero contamination** — Simulations observe, never mutate the real chain
-2. **Deterministic outputs** — Same simulation inputs = identical results always
-3. **Bounded execution** — All operations have execution limits (prevent DoS)
-4. **Provable watermarking** — Simulation results clearly marked as hypothetical
-5. **Bitemporal native** — Simulations respect frozen (valid_time, system_time) coordinates
-
-## Existing Foundation (v1.5)
-
-- **Cell/Chain/Genesis** — Append-only cryptographic ledger
-- **Namespace/Bridge** — Department isolation with dual-signature bridges
-- **Scholar** — Bitemporal query resolver with deterministic conflict resolution
-- **RFA Layer** — Single entry point with schema/input validation
-- **Error Codes** — 6 deterministic DG_* error codes
-- **Signatures** — Ed25519 signing and verification
-- **PolicyHead** — Active policy tracking with promotion gates
-- **WitnessSet** — Threshold witness configuration per namespace
-- **Promotion Workflow** — Submit → collect signatures → finalize
-- **Adversarial Tests** — 155 attack vectors proven to fail correctly
-- **Lineage Visualizer** — to_audit_text() and to_dot() methods
-- **753 passing tests** — Core through Adversarial
-
-## What We're Building (v1.6)
-
-### 1. Shadow Cell Infrastructure
-
-Shadow cells are counterfactual variants of real cells created via `dataclasses.replace()`:
-
-```python
-# Create shadow variant of fact
-base_fact = chain.get_cell(fact_id)
-shadow_fact = dataclasses.replace(
-    base_fact,
-    object="hypothetical_value",
-    cell_id=compute_shadow_cell_id(base_fact, "hypothetical_value")
-)
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      API SERVICE (FastAPI)                          │
+│  /decide • /health • /ready • /version • /policy • /schemas         │
+├─────────────────────────────────────────────────────────────────────┤
+│                      DUAL-GATE DECISION SYSTEM                      │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐          │
+│  │ GATE 1: Zero-False-Esc  │  │ GATE 2: Positive STR    │          │
+│  │ "Are we ALLOWED?"       │→ │ "Are we OBLIGATED?"     │          │
+│  │ Sections A-G            │  │ Sections 1-5            │          │
+│  └─────────────────────────┘  └─────────────────────────┘          │
+├─────────────────────────────────────────────────────────────────────┤
+│                      6-LAYER DECISION TAXONOMY                      │
+│  L1:FACTS → L2:OBLIGATIONS → L3:INDICATORS → L4:TYPOLOGIES →       │
+│  L5:MITIGATIONS → L6:SUSPICION                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                      CORE ENGINE (Python)                           │
+│  escalation_gate.py • str_gate.py • decision_pack.py                │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why shadow cells?**
-- Immutable by default (frozen dataclasses)
-- Distinct cell_id based on modified content
-- Never appended to real chain (structural isolation)
-- Reuse existing cell validation logic
+## Dual-Gate Decision System
 
-### 2. Simulation Core
+### Gate 1: Zero-False-Escalation Checklist
+**Purpose:** "Are we ALLOWED to escalate?"
 
-Oracle layer creates isolated shadow reality for what-if analysis:
+| Section | Name | Rule |
+|---------|------|------|
+| A | Fact-Level Hard Stop | Sanctions MATCH, false docs, refusal, adverse media ML/TF |
+| B | Instrument & Context | Instrument correctly classified, no mismatched typologies |
+| C | Obligation Isolation | Obligations (PEP, EDD) NOT used as suspicion |
+| D | Indicator Corroboration | 2+ corroborated indicators OR behavioral evidence |
+| E | Typology Maturity | ESTABLISHED or CONFIRMED (not FORMING) |
+| F | Mitigation Override | If 3+ mitigations explain behavior → BLOCK |
+| G | Suspicion Definition | Intent OR deception OR sustained pattern |
 
-```python
-# Run simulation
-result = engine.simulate_rfa(
-    rfa=request,
-    simulation_spec={
-        "overlay_facts": [shadow_fact],
-        "overlay_policy": shadow_policy_head
-    },
-    at_valid_time=datetime(2026, 1, 15),
-    as_of_system_time=datetime(2026, 1, 20)
-)
+**Two Escalation Paths:**
+- **Path 1 - HARD STOP:** Section A passes → Immediate escalation (sanctions, false docs)
+- **Path 2 - BEHAVIORAL:** Sections B-G all pass → Behavioral suspicion confirmed
 
-# result.base_result: outcome with real chain
-# result.shadow_result: outcome with shadow overlay
-# result.delta_report: comparison of outcomes
+### Gate 2: Positive STR Checklist
+**Purpose:** "Are we OBLIGATED to report?"
+
+| Section | Name | Requirement |
+|---------|------|-------------|
+| 1 | Legal Suspicion Threshold | Intent + deception OR pattern present |
+| 2 | Evidence Quality | Fact-based, specific, reproducible |
+| 3 | Mitigation Failure | Mitigations fail to explain behavior |
+| 4 | Typology Confirmation | (Optional) Typology CONFIRMED |
+| 5 | Regulatory Reasonableness | Regulator would expect STR |
+
+### Absolute Rules (NO EXCEPTIONS)
+```
+✗ PEP status alone can NEVER escalate
+✗ Cross-border alone can NEVER escalate
+✗ Risk score alone can NEVER escalate
+✗ "High confidence" can NEVER override facts
+✗ "Compliance comfort" is NOT a reason
 ```
 
-**Context manager pattern ensures cleanup:**
-```python
-with oracle.simulate(rfa, simulation_spec) as sim:
-    shadow_result = sim.run()
-# Shadow chain automatically released
-```
+## Decision Outcomes
 
-### 3. Delta Reports
+| Verdict | Action | STR Required | Description |
+|---------|--------|--------------|-------------|
+| PASS | CLOSE | NO | No escalation needed |
+| PASS_WITH_EDD | CLOSE_WITH_EDD_RECORDED | NO | EDD obligation satisfied |
+| ESCALATE | ESCALATE_TO_ANALYST | NO | Requires analyst review |
+| STR | FILE_STR | YES | Suspicious Transaction Report required |
+| HARD_STOP | BLOCK_AND_ESCALATE | YES | Immediate block + STR |
 
-Compare base vs shadow outcomes with deterministic diff computation:
+## API Endpoints
 
-```python
-delta_report = {
-    "verdict_changed": True,
-    "status_before": "APPROVED",
-    "status_after": "REJECTED",
-    "score_delta": -15,
-    "facts_diff": {
-        "added": [shadow_fact_id],
-        "removed": [],
-        "modified": [fact_id_1, fact_id_2]
-    },
-    "rules_diff": {
-        "added": [],
-        "removed": [rule_id_3],
-        "modified": []
-    }
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Liveness probe (process alive) |
+| `/ready` | GET | Readiness probe (schemas + policy loaded) |
+| `/version` | GET | Version info with commit + policy hash |
+| `/policy` | GET | Policy info with absolute rules |
+| `/schemas` | GET | Schema versions (optionally with content) |
+| `/decide` | POST | Run decision engine, returns Decision Pack |
+| `/validate` | POST | Validate input against schema |
+
+## Decision Pack Output
+
+Every `/decide` response includes:
+
+```json
+{
+  "meta": {
+    "engine_version": "2.1.1",
+    "policy_version": "1.0.0",
+    "engine_commit": "e37d49e",
+    "policy_hash": "a4091b2ffb119dd1",
+    "input_hash": "5f2acc5c3d80a177...",
+    "decision_id": "cef4491f1cca08f7",
+    "case_id": "PAIN-VALIDATION-001",
+    "jurisdiction": "CA"
+  },
+  "decision": {
+    "verdict": "PASS_WITH_EDD",
+    "action": "CLOSE_WITH_EDD_RECORDED",
+    "escalation": "PROHIBITED",
+    "str_required": "NO",
+    "path": null,
+    "priority": "MEDIUM"
+  },
+  "layers": {
+    "layer1_facts": { ... },
+    "layer2_obligations": { ... },
+    "layer3_indicators": { ... },
+    "layer4_typologies": { ... },
+    "layer5_mitigations": { ... },
+    "layer6_suspicion": { ... }
+  },
+  "gates": {
+    "gate1": { "decision": "PROHIBITED", "sections": {...} },
+    "gate2": { "decision": "PROHIBITED", "sections": {...} }
+  },
+  "rationale": {
+    "summary": "Pass with EDD. Regulatory obligations satisfied.",
+    "str_rationale": null,
+    "non_escalation_justification": "...",
+    "absolute_rules_validated": [...],
+    "regulatory_citations": ["PCMLTFA s.7"]
+  },
+  "compliance": {
+    "jurisdiction": "CA",
+    "legislation": "PCMLTFA",
+    "str_filing_deadline_days": null,
+    "fintrac_indicators_matched": []
+  }
 }
 ```
 
-### 4. Counterfactual Anchors
+## Release Infrastructure
 
-Identify minimal set of changes causing outcome delta:
-
-```python
-# Anchor detection (bounded execution)
-anchors = oracle.find_anchors(
-    base_result=result.base_result,
-    shadow_result=result.shadow_result,
-    max_anchor_attempts=100,
-    max_runtime_ms=5000
-)
-
-# anchors.components: minimal set of shadow facts/rules causing delta
-# anchors.incomplete: True if budget exceeded
+```
+release/
+├── CHANGELOG.md           # Version history + rollback procedures
+├── runbook.md             # Operational documentation
+├── config.example.yaml    # Configuration template
+├── SBOM.spdx.json         # Software bill of materials
+├── provenance.txt         # Build attestation
+├── input_schema.json      # Locked input contract
+├── output_schema.json     # Locked output contract
+├── golden/                # Expected outputs for regression
+└── test_corpus/           # Pinned test cases
 ```
 
-### 5. Batch Backtest
+## Golden Test Harness
 
-Run simulations over multiple historical RFAs:
+```bash
+# Run golden tests (must pass for release)
+python scripts/run_corpus.py
 
-```python
-backtest_results = oracle.run_backtest(
-    rfas=[rfa1, rfa2, rfa3],
-    simulation_spec={"overlay_policy": new_policy},
-    max_cases=1000,
-    max_runtime_ms=30000
-)
-# Returns deterministically ordered list of SimulationResults
+# Update goldens after intentional changes
+python scripts/run_corpus.py --update-goldens
+
+# Validate schemas
+python -m cli.validate --corpus test_corpus/cases/
 ```
 
-### 6. Simulation Audit Trail
+**Current Status:** 3/3 golden tests passing
+- PAIN-VALIDATION-001: PASS_WITH_EDD
+- ESCALATE-HARD-STOP-001: STR (Path 1)
+- ESCALATE-BEHAVIORAL-001: STR (Path 2)
 
-Human-readable reports and visualizations:
+## Deployment
 
-```python
-# Audit text
-audit = oracle.to_audit_text()
-# Shows base vs shadow comparison with delta summary
+### Docker
 
-# DOT graph with color tags
-dot = oracle.to_dot()
-# BASE nodes in blue, SHADOW nodes in red
+```bash
+# Build
+docker build -t decisiongraph:2.1.1 -f docker/Dockerfile .
+
+# Run
+docker run -d -p 8000:8000 decisiongraph:2.1.1
+
+# Health check
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
 ```
 
-## Key Decisions
+### Environment Variables
 
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| dataclasses.replace() for shadow cells | Standard library, zero new dependencies | Selected |
-| OverlayScholar pattern | Scholar unchanged, shadow queries via separate instance | Selected |
-| Context manager for cleanup | Prevents shadow chain memory leaks | Selected |
-| Bounded anchor detection | Prevent DoS via exponential traversal | Selected |
-| Simulation watermarking | Prevent confusion with real results | Selected |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DG_ENGINE_VERSION` | 2.1.1 | Engine version |
+| `DG_POLICY_VERSION` | 1.0.0 | Policy pack version |
+| `DG_JURISDICTION` | CA | Default jurisdiction |
+| `DG_LOG_LEVEL` | INFO | Logging verbosity |
+| `DG_DOCS_ENABLED` | true | Enable /docs endpoint |
+| `DG_MAX_REQUEST_SIZE` | 1048576 | Max request size (bytes) |
 
-## Constraints
+## Observability
 
-- **Keep existing 753 tests passing** — No regressions
-- **Python 3.10+ only** — Standard library + cryptography
-- **Deterministic outputs** — Same input = same output always
-- **No external services** — In-memory, self-contained
-- **Zero new dependencies** — dataclasses.replace() sufficient
+### Structured JSON Logging
 
-## Out of Scope
+Every decision logged with:
+```json
+{
+  "timestamp": "2026-01-30T00:46:18Z",
+  "level": "INFO",
+  "message": "Decision complete",
+  "request_id": "263f8702",
+  "external_id": "PAIN-VALIDATION-001",
+  "input_hash": "5f2acc5c3d80a177",
+  "decision_id": "cef4491f1cca08f7",
+  "verdict": "PASS_WITH_EDD",
+  "duration_ms": 7
+}
+```
 
-- Nested simulations — deferred to v2
-- Simulation persistence — one-shot simulations only
-- Cross-namespace simulation — single namespace per simulation
-- Simulation caching — adds invalidation complexity
+### Response Headers
+- `X-Request-ID` — Unique request identifier for tracing
 
-## Requirements
+## Test Corpus
 
-### Active (v1.6)
+| Case Type | Count | Description |
+|-----------|-------|-------------|
+| PAIN | 15 | False positive prevention (must NOT escalate) |
+| ESCALATE | 10 | True positive detection (must escalate) |
+| **Total** | **25** | Full dual-gate validation |
 
-See `.planning/REQUIREMENTS.md` for full list. Summary:
+All 25 cases pass in `test_corpus/run_test_corpus.py`.
 
-**Shadow Infrastructure (6 requirements):**
-- SHD-01 through SHD-06: Shadow cells, overlay context, zero contamination
+## Validation Reports
 
-**Core Simulation (6 requirements):**
-- SIM-01 through SIM-06: simulate_rfa() API, frozen coordinates, deterministic outputs
+Human-readable E2E reports in `validation_reports/`:
+1. `01_PAIN_CASE_PEP_Legal_Fees.txt` — PEP + cross-border, no suspicion
+2. `02_HARD_STOP_Sanctions_Match.txt` — Path 1 escalation
+3. `03_BEHAVIORAL_STR_Conflicting_Explanations.txt` — Path 2 escalation
+4. `04_STRUCTURING_Maple_Leaf_Corp.txt` — Cash structuring
+5. `05_PAIN_PEP_Marco_DeLuca.txt` — Foreign PEP, EDD satisfied
+6. `06_LAYERING_Crypto_Cash_Wire.txt` — Multi-instrument layering
 
-**Counterfactual Analysis (4 requirements):**
-- CTF-01 through CTF-04: Delta reports, bounded anchor detection
+## Project Structure
 
-**Batch Operations (3 requirements):**
-- BAT-01 through BAT-03: Backtest API with execution limits
-
-**Audit Trail (3 requirements):**
-- AUD-01 through AUD-03: to_audit_text(), to_dot(), proof bundles
-
-**Total: 22 v1.6 requirements**
-
-### Validated (v1.5)
-
-- [x] PolicyHead cell type — active policy tracking
-- [x] WitnessSet registry — threshold witness configuration
-- [x] Promotion workflow — submit → collect → finalize
-- [x] Scholar policy integration — policy-aware queries
-- [x] Policy integrity validation — tamper detection
-- [x] Policy audit trail — to_audit_text(), to_dot()
-
-### Out of Scope
-
-- Auto-apply simulation results — simulations observe, never mutate
-- Unbounded anchor detection — DoS vector
-- Cross-namespace simulation — v2 scope
-- Real-time simulation streaming — batch sufficient for v1.6
-- Simulation caching — one-shot simulations
-
----
+```
+decisiongraph-complete/
+├── src/decisiongraph/
+│   ├── escalation_gate.py    # Gate 1: Zero-False-Escalation
+│   ├── str_gate.py           # Gate 2: Positive STR
+│   ├── decision_pack.py      # JSON output generator
+│   └── report_standards.py   # FINTRAC indicators, wording
+├── service/
+│   └── main.py               # FastAPI service
+├── cli/
+│   ├── replay.py             # Case replay tool
+│   └── validate.py           # Schema validation
+├── schemas/
+│   ├── input.case.schema.json
+│   └── output.report.schema.json
+├── test_corpus/
+│   ├── cases/                # Input cases
+│   ├── golden/               # Expected outputs
+│   └── run_test_corpus.py    # 25-case validator
+├── release/                  # Release bundle
+├── docker/
+│   ├── Dockerfile
+│   └── compose.yaml
+└── validation_reports/       # Human-readable reports
+```
 
 ## Completed Milestones
 
-### v1.5: Promotion Gate + Policy Snapshots (Complete)
+### v2.1.1: Bank-Grade Release Infrastructure (Current)
+- ✅ JSON Schema contracts (input + output)
+- ✅ Decision Pack with reproducibility metadata
+- ✅ Golden test harness (3 cases)
+- ✅ CLI tools (replay, validate)
+- ✅ FastAPI service with /health, /ready, /version, /policy, /schemas
+- ✅ Structured JSON logging
+- ✅ Docker deployment
+- ✅ Release bundle (SBOM, runbook, changelog)
 
-**Core Value:** Rules are hypotheses until promoted. Promoted rules become the active policy, tracked as PolicyHead cells — enabling bitemporal "what policy was active when?" queries and multi-witness approval workflows.
+### v2.1.0: Dual-Gate Decision System
+- ✅ Gate 1: Zero-False-Escalation (Sections A-G)
+- ✅ Gate 2: Positive STR Checklist (Sections 1-5)
+- ✅ Two escalation paths (Hard Stop vs Behavioral)
+- ✅ 6-Layer Decision Taxonomy
+- ✅ 25-case test corpus (15 PAIN, 10 ESCALATE)
 
-**Delivered:**
-- PolicyHead cell type for active policy management per namespace
-- Promotion workflow: submit → collect witness signatures → finalize
-- Witness set model with threshold rules (e.g., 2-of-3)
-- Bitemporal policy queries (what policy was active as-of date X)
-- Policy snapshot hashing for integrity verification
+### v2.0.0: Core Engine
+- ✅ Dual-gate architecture
+- ✅ PCMLTFA s.7 compliance
+- ✅ FINTRAC indicator mapping
+- ✅ Instrument-specific logic (LCTR for cash only)
 
-**Metrics:**
-- 27/27 requirements complete
-- 753 tests passing (517 existing + 236 new)
-- 6 phases executed
+## What's Next
 
-### v1.4: RFA Layer + Security Hardening (Complete)
-
-**Core Value:** External developers can integrate with DecisionGraph through a single, validated, signed entry point — and every failure returns a deterministic, actionable error code.
-
-**Delivered:**
-- RFA processing layer with `engine.process_rfa()`
-- 6 standardized error codes (DG_SCHEMA_INVALID through DG_INTERNAL_ERROR)
-- Input validation (subject, predicate, object, namespace)
-- Ed25519 signature signing and verification
-- Adversarial test suite (155 tests for 5 attack vectors)
-- Lineage visualizer (to_audit_text, to_dot)
-
-**Metrics:**
-- 20/20 requirements complete
-- 517 tests passing
-- 6 phases executed
+- [ ] Helm chart for Kubernetes deployment
+- [ ] Prometheus metrics endpoint
+- [ ] Decision replay persistence (optional)
+- [ ] Multi-jurisdiction support (UK, EU, US)
+- [ ] Policy versioning with hot-reload
 
 ---
 
-*Last updated: 2026-01-28 — v1.6 milestone initialized*
+## Foundation Layer (v1.6)
+
+The AML/KYC engine is built on DecisionGraph's cryptographic foundation:
+
+- **Cell/Chain/Genesis** — Append-only tamper-evident ledger
+- **Namespace/Bridge** — Department isolation with dual-signature bridges
+- **Scholar** — Bitemporal query resolver
+- **PolicyHead** — Active policy tracking with promotion gates
+- **Oracle Layer** — Counterfactual simulation (v1.6)
+- **1432 tests passing** across 26 modules
+
+---
+
+*Last updated: 2026-01-30 — v2.1.1 bank-grade release*
