@@ -43,7 +43,9 @@
         "S3_mitigation_failure": "PASS",
         "S4_typology_confirmation": "PASS",
         "S5_regulatory_reasonableness": "PASS"
-      }
+      },
+      "skip_reason": null,
+      "status": "EVALUATED"
     }
   },
   "layers": {
@@ -110,9 +112,13 @@
   },
   "meta": {
     "case_id": "ESCALATE-BEHAVIORAL-001",
+    "decision_id": "1673463c32387062862f441778173a4b54986797a40d42acd98f75d3e4f82129",
     "engine_version": "2.1.1",
     "input_hash": "fcd367fb7d07de56480568c440e22b64fc1a5dd50c1a02e395cf31844827e7d6",
+    "input_schema_version": "1.0.0",
     "jurisdiction": "CA",
+    "output_schema_version": "1.0.0",
+    "policy_hash": "7dbc3567f93ab289f74b45b386f045aadce3328d08be59268642a56b98b0fcfe",
     "policy_version": "1.0.0",
     "report_timestamp_utc": "NORMALIZED"
   },

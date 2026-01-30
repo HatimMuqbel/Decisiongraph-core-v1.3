@@ -35,7 +35,9 @@
         "S3_mitigation_failure": "NOT_EVALUATED",
         "S4_typology_confirmation": "NOT_EVALUATED",
         "S5_regulatory_reasonableness": "NOT_EVALUATED"
-      }
+      },
+      "skip_reason": "Gate 1 blocked escalation",
+      "status": "SKIPPED"
     }
   },
   "layers": {
@@ -104,9 +106,13 @@
   },
   "meta": {
     "case_id": "PAIN-VALIDATION-001",
+    "decision_id": "c4283aa960a12466372216b97d8fbe20e47e058537eb85aa1cda3c85d688fb2c",
     "engine_version": "2.1.1",
     "input_hash": "5f2acc5c3d80a177b3e6391bfa0f360d3c4ee29ecdd795b17df0ddbe482e76c5",
+    "input_schema_version": "1.0.0",
     "jurisdiction": "CA",
+    "output_schema_version": "1.0.0",
+    "policy_hash": "7dbc3567f93ab289f74b45b386f045aadce3328d08be59268642a56b98b0fcfe",
     "policy_version": "1.0.0",
     "report_timestamp_utc": "NORMALIZED"
   },

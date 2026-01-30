@@ -26,6 +26,21 @@ from .str_gate import STRGateResult, STRDecision
 # Version constants - update these on each release
 ENGINE_VERSION = "2.1.1"
 POLICY_VERSION = "1.0.0"
+INPUT_SCHEMA_VERSION = "1.0.0"
+OUTPUT_SCHEMA_VERSION = "1.0.0"
+
+
+def compute_policy_hash(engine_version: str, policy_version: str) -> str:
+    """
+    Compute full SHA-256 policy hash.
+
+    decision_id = sha256(engine_version + ":" + policy_version + ":" + input_hash)
+
+    This ensures the same input under different policy/engine versions
+    yields different decision IDs.
+    """
+    combined = f"{engine_version}:{policy_version}"
+    return hashlib.sha256(combined.encode('utf-8')).hexdigest()
 
 
 @dataclass
@@ -278,8 +293,13 @@ def build_decision_pack(
 
     # Build Gate 2 sections
     gate2_sections = {}
+    gate2_skipped = False
+    gate2_skip_reason = None
+
     if str_result.decision == STRDecision.PROHIBITED and not escalation_permitted:
-        # Gate 2 not evaluated
+        # Gate 2 not evaluated - Gate 1 blocked escalation
+        gate2_skipped = True
+        gate2_skip_reason = "Gate 1 blocked escalation"
         for s in ["S1_legal_suspicion", "S2_evidence_quality", "S3_mitigation_failure",
                   "S4_typology_confirmation", "S5_regulatory_reasonableness"]:
             gate2_sections[s] = "NOT_EVALUATED"
@@ -334,12 +354,24 @@ def build_decision_pack(
     if edd_required:
         citations.append("PCMLTFA EDD Requirements")
 
+    # Compute full policy hash (64 hex chars)
+    policy_hash = compute_policy_hash(ENGINE_VERSION, POLICY_VERSION)
+
+    # Compute decision_id = sha256(engine_version + policy_hash + input_hash)
+    # This ensures same input under different policy versions yields different IDs
+    decision_id_input = f"{ENGINE_VERSION}:{policy_hash}:{input_hash}"
+    decision_id = hashlib.sha256(decision_id_input.encode('utf-8')).hexdigest()
+
     # Build the complete pack
     decision_pack = {
         "meta": {
             "engine_version": ENGINE_VERSION,
             "policy_version": POLICY_VERSION,
+            "policy_hash": policy_hash,
+            "input_schema_version": INPUT_SCHEMA_VERSION,
+            "output_schema_version": OUTPUT_SCHEMA_VERSION,
             "input_hash": input_hash,
+            "decision_id": decision_id,
             "report_timestamp_utc": timestamp,
             "case_id": case_id,
             "jurisdiction": jurisdiction,
@@ -396,6 +428,8 @@ def build_decision_pack(
             },
             "gate2": {
                 "decision": str_result.decision.value.upper(),
+                "status": "SKIPPED" if gate2_skipped else "EVALUATED",
+                "skip_reason": gate2_skip_reason,
                 "rationale": str_result.rationale,
                 "sections": gate2_sections,
             },

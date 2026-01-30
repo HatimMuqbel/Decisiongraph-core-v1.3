@@ -108,6 +108,10 @@ class JSONFormatter(logging.Formatter):
             log_entry["decision_id"] = record.decision_id
         if hasattr(record, "verdict"):
             log_entry["verdict"] = record.verdict
+        if hasattr(record, "policy_version"):
+            log_entry["policy_version"] = record.policy_version
+        if hasattr(record, "policy_hash"):
+            log_entry["policy_hash"] = record.policy_hash
         if hasattr(record, "duration_ms"):
             log_entry["duration_ms"] = record.duration_ms
         return json.dumps(log_entry)
@@ -524,6 +528,8 @@ async def decide(request: Request):
                 "input_hash": input_hash[:16],
                 "decision_id": decision_id,
                 "verdict": decision_pack["decision"]["verdict"],
+                "policy_version": DG_POLICY_VERSION,
+                "policy_hash": POLICY_HASH,
                 "duration_ms": duration_ms,
             }
         )

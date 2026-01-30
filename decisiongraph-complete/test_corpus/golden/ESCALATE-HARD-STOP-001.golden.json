@@ -38,7 +38,9 @@
         "S3_mitigation_failure": "PASS",
         "S4_typology_confirmation": "PASS",
         "S5_regulatory_reasonableness": "PASS"
-      }
+      },
+      "skip_reason": null,
+      "status": "EVALUATED"
     }
   },
   "layers": {
@@ -95,9 +97,13 @@
   },
   "meta": {
     "case_id": "ESCALATE-HARD-STOP-001",
+    "decision_id": "6a8552276eb509ab38e3cfc7712010f65b4b146f58d0119e73e19dd550890f87",
     "engine_version": "2.1.1",
     "input_hash": "b2136a1dc3fa6305f9c82309a678cb59ad9d7341f71c2991b9b42269786df9b3",
+    "input_schema_version": "1.0.0",
     "jurisdiction": "CA",
+    "output_schema_version": "1.0.0",
+    "policy_hash": "7dbc3567f93ab289f74b45b386f045aadce3328d08be59268642a56b98b0fcfe",
     "policy_version": "1.0.0",
     "report_timestamp_utc": "NORMALIZED"
   },
