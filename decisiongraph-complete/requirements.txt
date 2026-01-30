@@ -1,8 +1,9 @@
 # DecisionGraph Dependencies
 # Install with: pip install -r requirements.txt
 
-# Core (no external deps for decision engine)
-# The core engine is dependency-free for maximum portability
+# Core
+cryptography>=41.0.0
+pyyaml>=6.0
 
 # API Service (optional)
 fastapi>=0.100.0
