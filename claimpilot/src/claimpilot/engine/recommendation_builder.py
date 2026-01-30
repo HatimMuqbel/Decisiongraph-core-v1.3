@@ -17,8 +17,9 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from ..canon import content_hash, text_hash
+from ..canon import content_hash, text_hash, compute_policy_pack_hash
 from ..models import (
+    AuthorityCitation,
     AuthorityRef,
     AuthorityRule,
     AuthorityType,
@@ -205,6 +206,17 @@ class RecommendationBuilder:
                 disposition_reasons.append(step.result_reason)
         disposition_reason = "; ".join(disposition_reasons) if disposition_reasons else f"Recommend {disposition.value}"
 
+        # === POLICY PROVENANCE ===
+        # Compute policy pack hash for verification
+        policy_pack_hash = compute_policy_pack_hash(policy)
+
+        # Build hash-verified authority citations
+        authority_hashes: list[AuthorityCitation] = []
+        for authority in cited_authorities:
+            if authority.quote_excerpt:
+                citation = AuthorityCitation.from_authority_ref(authority)
+                authority_hashes.append(citation)
+
         recommendation = RecommendationRecord(
             id=str(uuid4()),
             claim_id=context.claim_id,
@@ -222,6 +234,11 @@ class RecommendationBuilder:
             generated_at=now,
             requires_authority=authority_result.requires_escalation,
             required_role=authority_result.minimum_role if authority_result.requires_escalation else None,
+            # Policy Provenance
+            policy_pack_id=policy.id,
+            policy_pack_version=policy.version,
+            policy_pack_hash=policy_pack_hash,
+            authority_hashes=authority_hashes,
         )
 
         return recommendation

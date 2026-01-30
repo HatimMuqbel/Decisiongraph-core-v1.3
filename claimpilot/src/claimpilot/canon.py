@@ -165,3 +165,124 @@ def text_hash_short(text: str, length: int = 12) -> str:
         Truncated hex-encoded SHA-256 hash
     """
     return text_hash(text)[:length]
+
+
+def normalize_excerpt(text: str) -> str:
+    """
+    Normalize policy wording excerpt for consistent hashing.
+
+    Normalization:
+    - Collapse all whitespace (spaces, tabs, newlines) to single spaces
+    - Strip leading/trailing whitespace
+    - Lowercase for comparison
+
+    This ensures the same policy wording produces the same hash
+    regardless of formatting differences.
+
+    Args:
+        text: Raw policy wording excerpt
+
+    Returns:
+        Normalized text ready for hashing
+
+    Example:
+        >>> normalize_excerpt("  The insurer\\n  shall not pay...  ")
+        'the insurer shall not pay...'
+    """
+    # Collapse whitespace and strip
+    normalized = " ".join(text.split()).strip()
+    # Lowercase for comparison
+    return normalized.lower()
+
+
+def excerpt_hash(text: str) -> str:
+    """
+    Compute SHA-256 hash of normalized excerpt.
+
+    This is the standard way to hash policy wording for provenance.
+
+    Args:
+        text: Raw policy wording excerpt
+
+    Returns:
+        Hex-encoded SHA-256 hash of normalized text
+    """
+    return text_hash(normalize_excerpt(text))
+
+
+def compute_policy_pack_hash(policy: Any) -> str:
+    """
+    Compute SHA-256 hash of policy pack in canonical JSON form.
+
+    This provides a deterministic hash for the entire policy pack,
+    enabling verification that policy rules haven't changed since
+    a recommendation was made.
+
+    The hash includes:
+    - Policy metadata (id, jurisdiction, version, dates)
+    - All coverage sections
+    - All exclusions
+    - Line of business
+
+    Args:
+        policy: A Policy dataclass instance
+
+    Returns:
+        Hex-encoded SHA-256 hash string (64 characters)
+
+    Example:
+        >>> from claimpilot.models import Policy
+        >>> policy = Policy(...)
+        >>> hash = compute_policy_pack_hash(policy)
+        >>> print(hash[:12])  # 'a1b2c3d4e5f6'
+    """
+    # Build a deterministic representation of the policy
+    # We serialize only the rule-bearing fields, not runtime metadata
+    policy_dict = {
+        "id": policy.id,
+        "jurisdiction": policy.jurisdiction,
+        "line_of_business": policy.line_of_business.value if hasattr(policy.line_of_business, 'value') else str(policy.line_of_business),
+        "product_code": policy.product_code,
+        "version": policy.version,
+        "effective_date": policy.effective_date.isoformat() if policy.effective_date else None,
+    }
+
+    # Add coverage sections
+    if hasattr(policy, 'coverage_sections') and policy.coverage_sections:
+        policy_dict["coverage_sections"] = [
+            _serialize_coverage(c) for c in sorted(policy.coverage_sections, key=lambda x: x.id)
+        ]
+
+    # Add exclusions
+    if hasattr(policy, 'exclusions') and policy.exclusions:
+        policy_dict["exclusions"] = [
+            _serialize_exclusion(e) for e in sorted(policy.exclusions, key=lambda x: x.id)
+        ]
+
+    return content_hash(policy_dict)
+
+
+def _serialize_coverage(coverage: Any) -> dict:
+    """Serialize a CoverageSection for hashing."""
+    return {
+        "id": coverage.id,
+        "code": coverage.code,
+        "name": coverage.name,
+        "description": getattr(coverage, 'description', ''),
+        "triggers": [
+            {"loss_type": t.loss_type, "claimant_types": [ct.value for ct in t.claimant_types]}
+            for t in getattr(coverage, 'triggers', [])
+        ],
+    }
+
+
+def _serialize_exclusion(exclusion: Any) -> dict:
+    """Serialize an Exclusion for hashing."""
+    return {
+        "id": exclusion.id,
+        "code": exclusion.code,
+        "name": exclusion.name,
+        "policy_wording": exclusion.policy_wording,
+        "policy_section_ref": exclusion.policy_section_ref,
+        "applies_to_coverages": sorted(exclusion.applies_to_coverages),
+    }

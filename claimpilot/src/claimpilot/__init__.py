@@ -120,6 +120,7 @@ from .models import (
     precedent_sort_key,
     sort_precedents,
     # Recommendation
+    AuthorityCitation,
     ReasoningStep,
     RecommendationRecord,
     RecommendationMemo,
@@ -139,6 +140,9 @@ from .canon import (
     content_hash_short,
     text_hash,
     text_hash_short,
+    normalize_excerpt,
+    excerpt_hash,
+    compute_policy_pack_hash,
 )
 
 # =============================================================================
@@ -252,6 +256,7 @@ __all__ = [
     "precedent_sort_key",
     "sort_precedents",
     # Recommendation
+    "AuthorityCitation",
     "ReasoningStep",
     "RecommendationRecord",
     "RecommendationMemo",
@@ -266,6 +271,9 @@ __all__ = [
     "content_hash_short",
     "text_hash",
     "text_hash_short",
+    "normalize_excerpt",
+    "excerpt_hash",
+    "compute_policy_pack_hash",
     # Exceptions
     "ClaimPilotError",
     "PolicyLoadError",

@@ -273,6 +273,44 @@ Precedent matching is **deterministic** (not ML/LLM):
 2. `effective_date` (newest first)
 3. `case_id` (lexicographic)
 
+## Policy Provenance
+
+Policy packs remain **human-editable YAML** — no sealing required. But each recommendation includes **provenance hashes** proving which exact rules were applied.
+
+**RecommendationRecord fields:**
+- `policy_pack_id` — which policy was used (e.g., "CA-ON-OAP1-2024")
+- `policy_pack_version` — human-readable version string (e.g., "2024.1")
+- `policy_pack_hash` — SHA-256 of canonical JSON rendering
+- `authority_hashes` — per-citation hashes for each policy clause cited
+
+**AuthorityCitation:**
+```python
+@dataclass
+class AuthorityCitation:
+    authority_ref_id: str
+    authority_type: AuthorityType
+    section_ref: str
+    excerpt: str
+    excerpt_hash: str           # SHA-256 of normalized excerpt
+    effective_as_of: date
+    cited_at: datetime
+```
+
+**Hash computation:**
+```python
+from claimpilot import compute_policy_pack_hash, excerpt_hash, normalize_excerpt
+
+# Hash entire policy pack
+policy_hash = compute_policy_pack_hash(policy)
+
+# Hash individual excerpt (normalized for consistency)
+normalized = normalize_excerpt("  The insurer\n  shall not pay...  ")
+# -> "the insurer shall not pay..."
+hash = excerpt_hash("The insurer shall not pay...")
+```
+
+This ensures recommendations remain verifiable even if policy packs evolve, without turning policy editing into a cryptographic ceremony.
+
 ## Exception Hierarchy
 
 ```
@@ -343,7 +381,7 @@ hash_value = content_hash(data)  # SHA-256 hex string
 - `RecommendationBuilder` — Full recommendation with reasoning chain
 
 ### Phase 5: Testing ✅
-- 98 tests passing
+- 105 tests passing
 - Model unit tests (TriBool, Condition, Authority, Policy, Claim, Timeline, Precedent, Recommendation, Disposition)
 - Condition evaluator tests (field paths, operators, TriBool evaluation, missing facts)
 - Engine integration tests (ContextResolver, TimelineCalculator, EvidenceGate, RecommendationBuilder)

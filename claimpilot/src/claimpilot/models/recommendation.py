@@ -13,11 +13,12 @@ Core Principle: "The adjuster decides. ClaimPilot recommends and documents."
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
 from .enums import (
+    AuthorityType,
     DispositionType,
     ReasoningStepResult,
     ReasoningStepType,
@@ -25,6 +26,94 @@ from .enums import (
 )
 from .authority import AuthorityRef
 from .precedent import PrecedentHit
+
+
+# =============================================================================
+# Authority Citation (Hash-Verified)
+# =============================================================================
+
+@dataclass
+class AuthorityCitation:
+    """
+    A hash-verified citation to a specific policy clause or regulation.
+
+    Enables provenance verification: "This exact text was cited in this recommendation."
+
+    Attributes:
+        authority_ref_id: Reference to the AuthorityRef that was cited
+        authority_type: Type of authority (policy_wording, regulation, etc.)
+        section_ref: Section reference (e.g., "Section 4.2.1")
+        excerpt: The actual text that was cited
+        excerpt_hash: SHA-256 of normalized excerpt
+        source_document_hash: Hash of full source document if available
+        effective_as_of: When this authority text was effective
+        cited_at: When we cited it (for bitemporal queries)
+    """
+    authority_ref_id: str
+    authority_type: AuthorityType
+    section_ref: str
+    excerpt: str
+    excerpt_hash: str  # SHA-256 of normalized excerpt
+
+    # Optional provenance
+    source_document_hash: Optional[str] = None
+
+    # Temporal markers
+    effective_as_of: Optional[date] = None
+    cited_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @classmethod
+    def from_authority_ref(cls, authority: AuthorityRef) -> "AuthorityCitation":
+        """
+        Create an AuthorityCitation from an AuthorityRef.
+
+        Computes the excerpt hash automatically.
+        """
+        from ..canon import normalize_excerpt, text_hash
+
+        excerpt = authority.quote_excerpt or ""
+        normalized = normalize_excerpt(excerpt)
+
+        return cls(
+            authority_ref_id=authority.id,
+            authority_type=authority.authority_type,
+            section_ref=authority.section,
+            excerpt=excerpt,
+            excerpt_hash=text_hash(normalized),
+            source_document_hash=authority.content_hash,
+            effective_as_of=authority.effective_date,
+        )
+
+    def verify_excerpt(self, text: str) -> bool:
+        """
+        Verify that provided text matches the stored excerpt hash.
+
+        Args:
+            text: Text to verify
+
+        Returns:
+            True if hash matches, False otherwise
+        """
+        from ..canon import normalize_excerpt, text_hash
+
+        normalized = normalize_excerpt(text)
+        return text_hash(normalized) == self.excerpt_hash
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        result = {
+            "authority_ref_id": self.authority_ref_id,
+            "authority_type": self.authority_type.value,
+            "section_ref": self.section_ref,
+            "excerpt": self.excerpt,
+            "excerpt_hash": self.excerpt_hash,
+            "cited_at": self.cited_at.isoformat(),
+        }
+        if self.source_document_hash:
+            result["source_document_hash"] = self.source_document_hash
+        if self.effective_as_of:
+            result["effective_as_of"] = self.effective_as_of.isoformat()
+        return result
 
 
 # =============================================================================
@@ -207,6 +296,13 @@ class RecommendationRecord:
 
     # Alternatives considered
     alternative_dispositions: list[str] = field(default_factory=list)
+
+    # === POLICY PROVENANCE ===
+    # Enables verification that policy rules haven't changed since recommendation
+    policy_pack_id: str = ""                 # e.g., "CA-ON-OAP1-2024"
+    policy_pack_version: str = ""            # e.g., "2024.1"
+    policy_pack_hash: str = ""               # SHA-256 of canonical JSON rendering
+    authority_hashes: list[AuthorityCitation] = field(default_factory=list)
 
     @classmethod
     def create(

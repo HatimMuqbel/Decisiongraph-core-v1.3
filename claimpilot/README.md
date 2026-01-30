@@ -164,7 +164,7 @@ deadline = add_business_days(date.today(), 3)  # Uses Ontario calendar by defaul
 ## Running Tests
 
 ```bash
-pytest tests/ -v  # 98 tests
+pytest tests/ -v  # 105 tests
 ```
 
 ## Verification

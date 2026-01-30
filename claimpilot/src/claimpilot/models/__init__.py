@@ -149,6 +149,7 @@ from .precedent import (
 # Recommendation
 # =============================================================================
 from .recommendation import (
+    AuthorityCitation,
     ReasoningStep,
     RecommendationRecord,
     RecommendationMemo,
@@ -240,6 +241,7 @@ __all__ = [
     "precedent_sort_key",
     "sort_precedents",
     # Recommendation
+    "AuthorityCitation",
     "ReasoningStep",
     "RecommendationRecord",
     "RecommendationMemo",

@@ -678,3 +678,161 @@ class TestCanonicalJson:
         hash2 = text_hash(text)
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA-256 hex
+
+
+# =============================================================================
+# Policy Provenance Tests
+# =============================================================================
+
+class TestPolicyProvenance:
+    """Test policy provenance features."""
+
+    def test_normalize_excerpt(self) -> None:
+        """Test excerpt normalization for consistent hashing."""
+        from claimpilot.canon import normalize_excerpt
+
+        # Collapse whitespace
+        text1 = "  The insurer\n  shall not pay...  "
+        text2 = "The insurer shall not pay..."
+        assert normalize_excerpt(text1) == normalize_excerpt(text2)
+
+        # Lowercase
+        assert normalize_excerpt("HELLO") == "hello"
+
+    def test_excerpt_hash_consistency(self) -> None:
+        """Test that excerpt hash is consistent regardless of formatting."""
+        from claimpilot.canon import excerpt_hash
+
+        # Same text with different formatting
+        text1 = "The insurer shall not pay for loss or damage."
+        text2 = "  The insurer  shall not pay for loss or damage.  "
+        text3 = "THE INSURER SHALL NOT PAY FOR LOSS OR DAMAGE."
+
+        # All should produce same hash
+        assert excerpt_hash(text1) == excerpt_hash(text2)
+        assert excerpt_hash(text1) == excerpt_hash(text3)
+
+    def test_authority_citation_from_ref(self) -> None:
+        """Test creating AuthorityCitation from AuthorityRef."""
+        from claimpilot.models import AuthorityCitation, AuthorityRef, AuthorityType
+
+        ref = AuthorityRef(
+            id="auth-001",
+            authority_type=AuthorityType.POLICY_WORDING,
+            title="Ontario Automobile Policy",
+            section="Section 4.2.1",
+            source_name="OAP 1",
+            quote_excerpt="The insurer shall not pay for loss or damage",
+            effective_date=date(2024, 1, 1),
+        )
+
+        citation = AuthorityCitation.from_authority_ref(ref)
+
+        assert citation.authority_ref_id == "auth-001"
+        assert citation.authority_type == AuthorityType.POLICY_WORDING
+        assert citation.section_ref == "Section 4.2.1"
+        assert citation.excerpt == "The insurer shall not pay for loss or damage"
+        assert len(citation.excerpt_hash) == 64  # SHA-256 hex
+
+    def test_authority_citation_verify_excerpt(self) -> None:
+        """Test verifying excerpt against hash."""
+        from claimpilot.models import AuthorityCitation, AuthorityRef, AuthorityType
+
+        ref = AuthorityRef(
+            id="auth-001",
+            authority_type=AuthorityType.POLICY_WORDING,
+            title="Test Policy",
+            section="1.1",
+            source_name="Test",
+            quote_excerpt="Original text",
+        )
+
+        citation = AuthorityCitation.from_authority_ref(ref)
+
+        # Should verify same text (with different formatting)
+        assert citation.verify_excerpt("Original text")
+        assert citation.verify_excerpt("  ORIGINAL TEXT  ")
+
+        # Should fail for different text
+        assert not citation.verify_excerpt("Modified text")
+
+    def test_compute_policy_pack_hash(self) -> None:
+        """Test computing policy pack hash."""
+        from claimpilot.canon import compute_policy_pack_hash
+        from claimpilot.models import Policy, LineOfBusiness
+
+        policy = Policy(
+            id="CA-ON-OAP1-2024",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="OAP1",
+            name="Ontario Automobile Policy",
+            version="2024.1",
+            effective_date=date(2024, 1, 1),
+        )
+
+        hash1 = compute_policy_pack_hash(policy)
+        hash2 = compute_policy_pack_hash(policy)
+
+        # Should be deterministic
+        assert hash1 == hash2
+        assert len(hash1) == 64  # SHA-256 hex
+
+    def test_policy_pack_hash_changes_with_content(self) -> None:
+        """Test that policy pack hash changes when content changes."""
+        from claimpilot.canon import compute_policy_pack_hash
+        from claimpilot.models import Policy, LineOfBusiness
+
+        policy1 = Policy(
+            id="CA-ON-OAP1-2024",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="OAP1",
+            name="Ontario Automobile Policy",
+            version="2024.1",
+            effective_date=date(2024, 1, 1),
+        )
+
+        policy2 = Policy(
+            id="CA-ON-OAP1-2024",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="OAP1",
+            name="Ontario Automobile Policy",
+            version="2024.2",  # Changed version
+            effective_date=date(2024, 1, 1),
+        )
+
+        hash1 = compute_policy_pack_hash(policy1)
+        hash2 = compute_policy_pack_hash(policy2)
+
+        # Hashes should be different
+        assert hash1 != hash2
+
+    def test_recommendation_record_has_provenance_fields(self) -> None:
+        """Test that RecommendationRecord has policy provenance fields."""
+        from claimpilot.models import (
+            RecommendationRecord,
+            DispositionType,
+            RecommendationCertainty,
+        )
+
+        rec = RecommendationRecord.create(
+            claim_id="CLM-001",
+            context_id="CTX-001",
+            recommended_disposition=DispositionType.PAY,
+            disposition_reason="Coverage confirmed",
+            certainty=RecommendationCertainty.HIGH,
+        )
+
+        # Should have provenance fields
+        assert hasattr(rec, 'policy_pack_id')
+        assert hasattr(rec, 'policy_pack_version')
+        assert hasattr(rec, 'policy_pack_hash')
+        assert hasattr(rec, 'authority_hashes')
+
+        # Default values
+        assert rec.policy_pack_id == ""
+        assert rec.policy_pack_version == ""
+        assert rec.policy_pack_hash == ""
+        assert rec.authority_hashes == []
