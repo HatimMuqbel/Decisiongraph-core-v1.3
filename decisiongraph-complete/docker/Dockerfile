@@ -1,16 +1,20 @@
 # DecisionGraph Engine
 # Bank-grade AML/KYC decision engine
 #
-# Build: docker build -t decisiongraph:2.1.1 -f docker/Dockerfile .
+# Build: docker build -t decisiongraph:2.1.1 --build-arg GIT_SHA=$(git rev-parse --short HEAD) -f docker/Dockerfile .
 # Run:   docker run -p 8000:8000 decisiongraph:2.1.1
 
 FROM python:3.11-slim AS base
+
+# Build arguments
+ARG GIT_SHA=unknown
 
 # Labels
 LABEL org.opencontainers.image.title="DecisionGraph"
 LABEL org.opencontainers.image.description="Bank-grade AML/KYC Decision Engine"
 LABEL org.opencontainers.image.version="2.1.1"
 LABEL org.opencontainers.image.vendor="DecisionGraph"
+LABEL org.opencontainers.image.revision="${GIT_SHA}"
 
 # Environment
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -18,6 +22,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 ENV DG_ENGINE_VERSION=2.1.1
 ENV DG_POLICY_VERSION=1.0.0
+ENV DG_ENGINE_COMMIT=${GIT_SHA}
 
 WORKDIR /app
 

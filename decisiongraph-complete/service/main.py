@@ -67,16 +67,18 @@ DG_LOG_LEVEL = os.getenv("DG_LOG_LEVEL", "INFO")
 DG_DOCS_ENABLED = os.getenv("DG_DOCS_ENABLED", "true").lower() == "true"
 DG_MAX_REQUEST_SIZE = int(os.getenv("DG_MAX_REQUEST_SIZE", "1048576"))  # 1MB default
 
-# Get git commit if available
-try:
-    import subprocess
-    DG_ENGINE_COMMIT = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"],
-        cwd=Path(__file__).parent.parent,
-        stderr=subprocess.DEVNULL
-    ).decode().strip()[:12]
-except:
-    DG_ENGINE_COMMIT = "unknown"
+# Get git commit: prefer env var (set at build time), fallback to git command
+DG_ENGINE_COMMIT = os.getenv("DG_ENGINE_COMMIT")
+if not DG_ENGINE_COMMIT or DG_ENGINE_COMMIT == "unknown":
+    try:
+        import subprocess
+        DG_ENGINE_COMMIT = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).parent.parent,
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except:
+        DG_ENGINE_COMMIT = "unknown"
 
 # Compute policy hash (full 64-char SHA-256 for reference, short for display)
 POLICY_HASH_FULL = hashlib.sha256(
