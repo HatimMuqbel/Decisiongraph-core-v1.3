@@ -199,6 +199,9 @@ class ReadyResponse(BaseModel):
     checks: Dict[str, bool]
     engine_version: str
     policy_version: str
+    policy_hash: str
+    input_schema_version: str
+    output_schema_version: str
     engine_commit: str
 
 class VersionResponse(BaseModel):
@@ -318,6 +321,9 @@ async def readiness_check():
         checks=checks,
         engine_version=DG_ENGINE_VERSION,
         policy_version=DG_POLICY_VERSION,
+        policy_hash=POLICY_HASH_SHORT,
+        input_schema_version="1.0.0",
+        output_schema_version="1.0.0",
         engine_commit=DG_ENGINE_COMMIT,
     )
 
