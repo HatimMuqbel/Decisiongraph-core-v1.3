@@ -195,19 +195,34 @@ Every `/decide` response includes:
 | STR | FILE_STR | YES | Suspicious Transaction Report required |
 | HARD_STOP | BLOCK_AND_ESCALATE | YES | Immediate block + STR |
 
-## Test Corpus
+## Testing
+
+### Golden Outputs (3 canonical cases)
+
+Deterministic JSON outputs for regression testing:
+
+| Case | Verdict | Path |
+|------|---------|------|
+| PAIN-VALIDATION-001 | PASS_WITH_EDD | — |
+| ESCALATE-HARD-STOP-001 | STR | Path 1 (Hard Stop) |
+| ESCALATE-BEHAVIORAL-001 | STR | Path 2 (Behavioral) |
+
+Run: `python scripts/run_corpus.py` → **3/3 passing**
+
+### Corpus Regression (25 cases)
+
+Full dual-gate validation suite:
 
 | Case Type | Count | Description |
 |-----------|-------|-------------|
 | PAIN | 15 | False positive prevention (must NOT escalate) |
 | ESCALATE | 10 | True positive detection (must escalate) |
-| **Total** | **25** | Full dual-gate validation |
 
-All 25 cases pass. Run with: `python test_corpus/run_test_corpus.py`
+Run: `python test_corpus/run_test_corpus.py` → **25/25 passing**
 
 ## Structured Logging
 
-Every decision is logged with full audit context:
+Every decision is logged with audit context. Logs use `*_short` identifiers (16 hex) for readability; full SHA-256 hashes (64 hex) are in the decision pack.
 
 ```json
 {
@@ -216,11 +231,11 @@ Every decision is logged with full audit context:
   "message": "Decision complete",
   "request_id": "7c5f3fb3",
   "external_id": "PAIN-VALIDATION-001",
-  "input_hash": "5f2acc5c3d80a177",
-  "decision_id": "cef4491f1cca08f7",
+  "input_hash_short": "5f2acc5c3d80a177",
+  "decision_id_short": "cef4491f1cca08f7",
   "verdict": "PASS_WITH_EDD",
   "policy_version": "1.0.0",
-  "policy_hash": "a4091b2ffb119dd1",
+  "policy_hash_short": "a4091b2ffb119dd1",
   "duration_ms": 6
 }
 ```

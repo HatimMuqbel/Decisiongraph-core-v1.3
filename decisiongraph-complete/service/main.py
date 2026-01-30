@@ -78,10 +78,11 @@ try:
 except:
     DG_ENGINE_COMMIT = "unknown"
 
-# Compute policy hash
-POLICY_HASH = hashlib.sha256(
+# Compute policy hash (full 64-char SHA-256 for reference, short for display)
+POLICY_HASH_FULL = hashlib.sha256(
     f"{DG_POLICY_VERSION}:{DG_ENGINE_VERSION}".encode()
-).hexdigest()[:16]
+).hexdigest()
+POLICY_HASH_SHORT = POLICY_HASH_FULL[:16]
 
 # =============================================================================
 # Logging Setup (Structured JSON)
@@ -102,16 +103,16 @@ class JSONFormatter(logging.Formatter):
             log_entry["request_id"] = record.request_id
         if hasattr(record, "external_id"):
             log_entry["external_id"] = record.external_id
-        if hasattr(record, "input_hash"):
-            log_entry["input_hash"] = record.input_hash
-        if hasattr(record, "decision_id"):
-            log_entry["decision_id"] = record.decision_id
+        if hasattr(record, "input_hash_short"):
+            log_entry["input_hash_short"] = record.input_hash_short
+        if hasattr(record, "decision_id_short"):
+            log_entry["decision_id_short"] = record.decision_id_short
         if hasattr(record, "verdict"):
             log_entry["verdict"] = record.verdict
         if hasattr(record, "policy_version"):
             log_entry["policy_version"] = record.policy_version
-        if hasattr(record, "policy_hash"):
-            log_entry["policy_hash"] = record.policy_hash
+        if hasattr(record, "policy_hash_short"):
+            log_entry["policy_hash_short"] = record.policy_hash_short
         if hasattr(record, "duration_ms"):
             log_entry["duration_ms"] = record.duration_ms
         return json.dumps(log_entry)
@@ -337,7 +338,7 @@ async def version_info():
         engine_version=DG_ENGINE_VERSION,
         policy_version=DG_POLICY_VERSION,
         engine_commit=DG_ENGINE_COMMIT,
-        policy_hash=POLICY_HASH,
+        policy_hash=POLICY_HASH_SHORT,
         input_schema_version="1.0.0",
         output_schema_version="1.0.0",
         jurisdiction=DG_JURISDICTION,
@@ -348,7 +349,7 @@ async def policy_info():
     """Return policy pack information (not content)."""
     return PolicyResponse(
         policy_version=DG_POLICY_VERSION,
-        policy_hash=POLICY_HASH,
+        policy_hash=POLICY_HASH_SHORT,
         engine_version=DG_ENGINE_VERSION,
         engine_commit=DG_ENGINE_COMMIT,
         jurisdiction=DG_JURISDICTION,
@@ -385,9 +386,9 @@ async def schemas_info(include_content: bool = False):
 # =============================================================================
 
 def compute_decision_id(input_hash: str) -> str:
-    """Compute deterministic decision ID from input + versions."""
+    """Compute deterministic decision ID from input + versions (full 64-char SHA-256)."""
     combined = f"{input_hash}:{DG_ENGINE_VERSION}:{DG_POLICY_VERSION}"
-    return hashlib.sha256(combined.encode()).hexdigest()[:16]
+    return hashlib.sha256(combined.encode()).hexdigest()
 
 def validate_input(data: dict) -> tuple:
     """Validate input against schema. Returns (valid, errors)."""
@@ -511,25 +512,24 @@ async def decide(request: Request):
             fintrac_indicators=fintrac_indicators,
         )
 
-        # Add additional meta fields
+        # Add engine commit (decision_pack.py doesn't know about git)
         decision_pack["meta"]["engine_commit"] = DG_ENGINE_COMMIT
-        decision_pack["meta"]["policy_hash"] = POLICY_HASH
-        decision_pack["meta"]["decision_id"] = decision_id
+        # Note: policy_hash and decision_id are computed by decision_pack.py with full SHA-256
 
         # Calculate duration
         duration_ms = int((time.time() - start_time) * 1000)
 
-        # Log decision
+        # Log decision (short hashes for readability, full hashes in decision pack)
         logger.info(
             "Decision complete",
             extra={
                 "request_id": request_id,
                 "external_id": external_id,
-                "input_hash": input_hash[:16],
-                "decision_id": decision_id,
+                "input_hash_short": decision_pack["meta"]["input_hash"][:16],
+                "decision_id_short": decision_pack["meta"]["decision_id"][:16],
                 "verdict": decision_pack["decision"]["verdict"],
                 "policy_version": DG_POLICY_VERSION,
-                "policy_hash": POLICY_HASH,
+                "policy_hash_short": decision_pack["meta"]["policy_hash"][:16],
                 "duration_ms": duration_ms,
             }
         )
@@ -673,7 +673,7 @@ async def startup_event():
         }
     )
     logger.info(f"Engine: v{DG_ENGINE_VERSION} ({DG_ENGINE_COMMIT})")
-    logger.info(f"Policy: v{DG_POLICY_VERSION} ({POLICY_HASH})")
+    logger.info(f"Policy: v{DG_POLICY_VERSION} ({POLICY_HASH_SHORT})")
     logger.info(f"Schemas loaded: {SCHEMAS_LOADED}")
     logger.info(f"Docs enabled: {DG_DOCS_ENABLED}")
 
