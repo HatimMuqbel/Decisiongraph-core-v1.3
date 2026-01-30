@@ -1,0 +1,490 @@
+# Ontario Automobile Policy - Owner's Policy (OAP 1)
+# Sample policy pack for ClaimPilot
+#
+# Reference: Ontario Automobile Policy (OAP 1) - FSRA Approved Forms
+# Jurisdiction: Ontario, Canada
+# Regulatory Body: Financial Services Regulatory Authority (FSRA)
+
+schema_version: "1.0.0"
+id: "CA-ON-OAP1-2024"
+jurisdiction: "CA-ON"
+line_of_business: "auto"
+product_code: "OAP1"
+name: "Ontario Automobile Policy - Owner's Policy"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Standard Ontario automobile insurance policy for vehicle owners"
+issuer: "Sample Insurance Company"
+regulatory_body: "FSRA"
+
+# =============================================================================
+# Authorities (Citations)
+# =============================================================================
+authorities:
+  - id: "oap1-section-1"
+    type: "policy_wording"
+    title: "Ontario Automobile Policy (OAP 1)"
+    section: "Section 1 - Insuring Agreement"
+    source_name: "OAP 1"
+    jurisdiction: "CA-ON"
+    effective_date: "2024-01-01"
+    quote_excerpt: "The insurer agrees to indemnify the insured..."
+
+  - id: "oap1-exclusion-commercial"
+    type: "policy_wording"
+    title: "Ontario Automobile Policy (OAP 1)"
+    section: "Section 4.1 - Commercial Use Exclusion"
+    source_name: "OAP 1"
+    jurisdiction: "CA-ON"
+    quote_excerpt: "This policy does not provide coverage while the automobile is used to carry passengers for compensation or hire..."
+
+  - id: "fsra-claims-handling"
+    type: "regulation"
+    title: "FSRA Claims Handling Guidelines"
+    section: "Part IV - Timelines"
+    source_name: "FSRA"
+    jurisdiction: "CA-ON"
+    effective_date: "2024-01-01"
+    quote_excerpt: "Insurers must acknowledge receipt of a claim within 3 business days..."
+
+  - id: "insurance-act-ontario"
+    type: "statute"
+    title: "Insurance Act (Ontario)"
+    section: "R.S.O. 1990, c. I.8"
+    source_name: "Ontario Legislature"
+    jurisdiction: "CA-ON"
+
+# =============================================================================
+# Reusable Conditions
+# =============================================================================
+conditions:
+  - id: "is-high-value-claim"
+    op: "gte"
+    field: "claim.amount"
+    value: 25000
+    description: "Claim amount exceeds $25,000"
+
+  - id: "is-bodily-injury"
+    op: "eq"
+    field: "claim.injury_type"
+    value: "bodily_injury"
+    description: "Claim involves bodily injury"
+
+  - id: "is-total-loss"
+    op: "eq"
+    field: "claim.total_loss"
+    value: true
+    description: "Vehicle is a total loss"
+
+  - id: "requires-supervisor-review"
+    op: "or"
+    children:
+      - op: "gte"
+        field: "claim.amount"
+        value: 50000
+      - op: "eq"
+        field: "claim.injury_type"
+        value: "bodily_injury"
+      - op: "eq"
+        field: "claim.fatality"
+        value: true
+    description: "Claim requires supervisor review"
+
+# =============================================================================
+# Coverage Sections
+# =============================================================================
+coverage_sections:
+  - id: "third-party-liability"
+    code: "Section A"
+    name: "Third Party Liability"
+    description: "Covers legal liability arising from use or operation of the automobile"
+    triggers:
+      - loss_type: "third_party_liability"
+        claimant_types: ["insured", "named_insured"]
+      - loss_type: "bodily_injury_liability"
+        claimant_types: ["insured", "named_insured"]
+      - loss_type: "property_damage_liability"
+        claimant_types: ["insured", "named_insured"]
+    limits:
+      per_occurrence: 1000000
+      currency: "CAD"
+    authority_ref_id: "oap1-section-1"
+
+  - id: "accident-benefits"
+    code: "Section B"
+    name: "Accident Benefits"
+    description: "Statutory Accident Benefits Schedule (SABS) coverage"
+    triggers:
+      - loss_type: "accident_benefits"
+      - loss_type: "medical_rehabilitation"
+      - loss_type: "income_replacement"
+      - loss_type: "caregiver_benefits"
+    limits:
+      per_person: 65000
+      currency: "CAD"
+
+  - id: "uninsured-automobile"
+    code: "Section C"
+    name: "Uninsured Automobile"
+    description: "Coverage for damages caused by uninsured or unidentified automobiles"
+    triggers:
+      - loss_type: "uninsured_motorist"
+      - loss_type: "hit_and_run"
+    limits:
+      per_occurrence: 200000
+      currency: "CAD"
+
+  - id: "direct-compensation"
+    code: "Section D"
+    name: "Direct Compensation - Property Damage"
+    description: "Coverage for damage to own vehicle when not at fault"
+    triggers:
+      - loss_type: "dcpd"
+        claimant_types: ["insured", "named_insured"]
+      - loss_type: "not_at_fault_collision"
+        claimant_types: ["insured", "named_insured"]
+    preconditions:
+      - op: "ne"
+        field: "claim.fault_percentage"
+        value: 100
+        description: "Insured is not 100% at fault"
+    deductibles:
+      standard: 500
+      currency: "CAD"
+
+  - id: "collision"
+    code: "Optional - Collision"
+    name: "Collision or Upset Coverage"
+    description: "Optional coverage for collision damage to own vehicle"
+    triggers:
+      - loss_type: "collision"
+        claimant_types: ["insured", "named_insured"]
+      - loss_type: "rollover"
+        claimant_types: ["insured", "named_insured"]
+    deductibles:
+      collision: 500
+      currency: "CAD"
+    exclusion_ids:
+      - "commercial-use"
+      - "racing"
+
+  - id: "comprehensive"
+    code: "Optional - Comprehensive"
+    name: "Comprehensive Coverage"
+    description: "Optional coverage for non-collision losses"
+    triggers:
+      - loss_type: "theft"
+      - loss_type: "vandalism"
+      - loss_type: "fire"
+      - loss_type: "weather"
+      - loss_type: "animal_collision"
+      - loss_type: "glass_breakage"
+    deductibles:
+      comprehensive: 300
+      currency: "CAD"
+    exclusion_ids:
+      - "commercial-use"
+
+# =============================================================================
+# Exclusions
+# =============================================================================
+exclusions:
+  - id: "commercial-use"
+    code: "4.1"
+    name: "Commercial Use Exclusion"
+    description: "Excludes coverage while vehicle is used for commercial purposes"
+    policy_wording: "This policy does not provide coverage while the automobile is used to carry passengers for compensation or hire, or to deliver goods for compensation."
+    policy_section_ref: "OAP 1, Section 4.1"
+    applies_to_coverages:
+      - "collision"
+      - "comprehensive"
+      - "direct-compensation"
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            field: "vehicle.use_type"
+            value: "commercial"
+          - op: "eq"
+            field: "vehicle.rideshare_active"
+            value: true
+          - op: "eq"
+            field: "vehicle.delivery_active"
+            value: true
+    evaluation_questions:
+      - "Was the vehicle being used for commercial purposes at the time of loss?"
+      - "Was the insured carrying passengers for compensation?"
+      - "Was the insured delivering goods for compensation?"
+      - "Was a rideshare or delivery app active at the time of loss?"
+    evidence_to_confirm:
+      - "rideshare_app_records"
+      - "delivery_app_records"
+      - "commercial_contracts"
+    evidence_to_rule_out:
+      - "insured_statement"
+      - "witness_statements"
+    authority_ref_id: "oap1-exclusion-commercial"
+
+  - id: "racing"
+    code: "4.2"
+    name: "Racing Exclusion"
+    description: "Excludes coverage during racing or speed contests"
+    policy_wording: "This policy does not provide coverage while the automobile is used in any race or speed test."
+    policy_section_ref: "OAP 1, Section 4.2"
+    applies_to_coverages:
+      - "collision"
+      - "comprehensive"
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            field: "claim.racing_involved"
+            value: true
+          - op: "eq"
+            field: "claim.speed_contest"
+            value: true
+          - op: "contains"
+            field: "claim.location"
+            value: "racetrack"
+    evaluation_questions:
+      - "Was the vehicle participating in a race or speed contest?"
+      - "Was the loss at a racetrack or racing venue?"
+    evidence_to_confirm:
+      - "police_report"
+      - "witness_statements"
+    evidence_to_rule_out:
+      - "insured_statement"
+
+  - id: "intentional-damage"
+    code: "4.3"
+    name: "Intentional Damage Exclusion"
+    description: "Excludes coverage for intentional damage by the insured"
+    policy_wording: "This policy does not provide coverage for any loss or damage caused intentionally by the insured."
+    policy_section_ref: "OAP 1, Section 4.3"
+    applies_to_coverages: []  # Applies to all
+    trigger_conditions:
+      - op: "eq"
+        field: "claim.intentional_damage"
+        value: true
+    severity: "absolute"
+
+  - id: "impaired-driving"
+    code: "4.4"
+    name: "Impaired Driving Exclusion"
+    description: "Exclusion for operating vehicle while impaired"
+    policy_wording: "Coverage may be denied if the insured was operating the automobile while impaired by alcohol or drugs."
+    policy_section_ref: "OAP 1, Section 4.4"
+    applies_to_coverages:
+      - "collision"
+      - "comprehensive"
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            field: "driver.impaired"
+            value: true
+          - op: "gt"
+            field: "driver.bac"
+            value: 0.08
+    evaluation_questions:
+      - "Was the driver impaired at the time of the accident?"
+      - "Are there any impaired driving charges?"
+    evidence_to_confirm:
+      - "police_report"
+      - "breathalyzer_results"
+      - "toxicology_report"
+
+# =============================================================================
+# Timeline Rules (FSRA Requirements)
+# =============================================================================
+timeline_rules:
+  - id: "acknowledge-claim"
+    name: "Acknowledge Claim Receipt"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 3
+    business_days: true
+    description: "Acknowledge receipt of claim within 3 business days"
+    penalty_description: "FSRA compliance violation"
+    authority_ref_id: "fsra-claims-handling"
+    jurisdiction: "CA-ON"
+
+  - id: "request-additional-info"
+    name: "Request Additional Information"
+    event_type: "request_info"
+    anchor: "report_date"
+    days_from_anchor: 10
+    business_days: true
+    description: "Request any additional information within 10 business days"
+    authority_ref_id: "fsra-claims-handling"
+    jurisdiction: "CA-ON"
+
+  - id: "coverage-decision"
+    name: "Coverage Decision"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 60
+    business_days: false
+    description: "Make coverage decision within 60 calendar days"
+    penalty_description: "FSRA compliance violation - insured may complain to regulator"
+    authority_ref_id: "fsra-claims-handling"
+    jurisdiction: "CA-ON"
+
+  - id: "payment-after-decision"
+    name: "Payment After Approval"
+    event_type: "payment_due"
+    anchor: "coverage_decision_date"
+    days_from_anchor: 15
+    business_days: true
+    description: "Issue payment within 15 business days of coverage approval"
+    authority_ref_id: "fsra-claims-handling"
+    jurisdiction: "CA-ON"
+
+  - id: "denial-notice"
+    name: "Denial Notice"
+    event_type: "denial_notice_due"
+    anchor: "coverage_decision_date"
+    days_from_anchor: 5
+    business_days: true
+    description: "Send written denial notice within 5 business days"
+    penalty_description: "Must include specific policy provisions and appeal rights"
+    authority_ref_id: "fsra-claims-handling"
+    jurisdiction: "CA-ON"
+    applies_when:
+      op: "eq"
+      field: "recommendation.disposition"
+      value: "deny"
+
+# =============================================================================
+# Evidence Rules
+# =============================================================================
+evidence_rules:
+  - id: "collision-evidence"
+    name: "Collision Claim Evidence"
+    description: "Required evidence for collision claims"
+    required_documents:
+      - doc_type: "proof_of_loss"
+        description: "Signed Proof of Loss form"
+        strictness: "blocking_finalization"
+      - doc_type: "repair_estimate"
+        description: "Repair estimate from licensed facility"
+        strictness: "blocking_finalization"
+      - doc_type: "photos"
+        description: "Photos of vehicle damage"
+        strictness: "blocking_finalization"
+    recommended_documents:
+      - doc_type: "police_report"
+        description: "Police report (if available)"
+        strictness: "recommended"
+        applies_when:
+          op: "gte"
+          field: "claim.amount"
+          value: 2000
+    applies_when:
+      op: "in"
+      field: "claim.loss_type"
+      value: ["collision", "rollover", "dcpd"]
+    jurisdiction: "CA-ON"
+
+  - id: "theft-evidence"
+    name: "Theft Claim Evidence"
+    description: "Required evidence for theft claims"
+    required_documents:
+      - doc_type: "police_report"
+        description: "Police report with case number"
+        strictness: "blocking_recommendation"
+      - doc_type: "proof_of_ownership"
+        description: "Vehicle registration or ownership documents"
+        strictness: "blocking_finalization"
+      - doc_type: "key_affidavit"
+        description: "Affidavit regarding all keys"
+        strictness: "blocking_finalization"
+    applies_when:
+      op: "eq"
+      field: "claim.loss_type"
+      value: "theft"
+    jurisdiction: "CA-ON"
+
+  - id: "bodily-injury-evidence"
+    name: "Bodily Injury Claim Evidence"
+    description: "Required evidence for bodily injury claims"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "medical_records"
+        description: "Medical records documenting injuries"
+        strictness: "blocking_finalization"
+      - doc_type: "treatment_plan"
+        description: "Treatment plan from healthcare provider"
+        strictness: "blocking_finalization"
+    recommended_documents:
+      - doc_type: "expert_report"
+        description: "Independent medical examination"
+        strictness: "recommended"
+        applies_when:
+          op: "gte"
+          field: "claim.amount"
+          value: 25000
+    applies_when:
+      op: "eq"
+      field: "claim.injury_type"
+      value: "bodily_injury"
+    jurisdiction: "CA-ON"
+
+# =============================================================================
+# Authority Rules (Escalation)
+# =============================================================================
+authority_rules:
+  - id: "supervisor-high-value"
+    name: "Supervisor Review - High Value"
+    description: "Claims over $50,000 require supervisor approval"
+    required_role: "supervisor"
+    trigger_condition:
+      op: "gte"
+      field: "claim.amount"
+      value: 50000
+    priority: 10
+
+  - id: "supervisor-bodily-injury"
+    name: "Supervisor Review - Bodily Injury"
+    description: "Bodily injury claims require supervisor review"
+    required_role: "supervisor"
+    trigger_condition:
+      op: "eq"
+      field: "claim.injury_type"
+      value: "bodily_injury"
+    priority: 10
+
+  - id: "manager-fatality"
+    name: "Manager Review - Fatality"
+    description: "Claims involving fatality require manager approval"
+    required_role: "manager"
+    trigger_condition:
+      op: "eq"
+      field: "claim.fatality"
+      value: true
+    priority: 20
+
+  - id: "siu-fraud-indicators"
+    name: "SIU Referral - Fraud Indicators"
+    description: "Claims with fraud indicators require SIU review"
+    required_role: "siu"
+    trigger_condition:
+      op: "or"
+      children:
+        - op: "eq"
+          field: "claim.fraud_indicators"
+          value: true
+        - op: "gte"
+          field: "claim.fraud_score"
+          value: 70
+    priority: 30
+
+  - id: "legal-litigation"
+    name: "Legal Review - Litigation"
+    description: "Claims in litigation require legal review"
+    required_role: "legal"
+    trigger_condition:
+      op: "eq"
+      field: "claim.litigation_status"
+      value: "active"
+    priority: 25
