@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClaimPilot - Insurance Claims Evaluation Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background: #020617; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    // Icons as simple SVG components
+    const Icon = ({ name, className = "w-5 h-5" }) => {
+      const icons = {
+        shield: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+        check: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+        x: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+        play: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+        refresh: <svg className={className + " animate-spin"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+        chevronDown: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
+        plus: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+        hash: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>,
+        lock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
+        navigation: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>,
+        zap: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+        ban: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,
+      };
+      return icons[name] || null;
+    };
+
+    const API_URL = window.location.origin;
+
+    const FALLBACK_CASES = [
+      { id: "auto-approve", name: "Auto - Standard Collision (APPROVE)", policy_id: "CA-ON-OAP1-2024", facts: [
+        { field: "policy.status", value: "active" },
+        { field: "driver.rideshare_app_active", value: false },
+        { field: "driver.bac_level", value: 0.0 },
+        { field: "driver.impairment_indicated", value: false },
+        { field: "loss.racing_activity", value: false }
+      ]},
+      { id: "auto-deny-rideshare", name: "Auto - Rideshare (DENY)", policy_id: "CA-ON-OAP1-2024", facts: [
+        { field: "policy.status", value: "active" },
+        { field: "driver.rideshare_app_active", value: true },
+        { field: "vehicle.use_at_loss", value: "rideshare" }
+      ]},
+      { id: "auto-deny-dui", name: "Auto - DUI (DENY)", policy_id: "CA-ON-OAP1-2024", facts: [
+        { field: "policy.status", value: "active" },
+        { field: "driver.bac_level", value: 0.12 },
+        { field: "driver.impairment_indicated", value: true }
+      ]}
+    ];
+
+    function App() {
+      const [demoCases, setDemoCases] = useState(FALLBACK_CASES);
+      const [selectedCase, setSelectedCase] = useState(FALLBACK_CASES[0]);
+      const [facts, setFacts] = useState(FALLBACK_CASES[0].facts.map((f, i) => ({ ...f, id: i })));
+      const [evaluation, setEvaluation] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [showDropdown, setShowDropdown] = useState(false);
+
+      useEffect(() => {
+        fetch(`${API_URL}/demo/cases`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.length) {
+              setDemoCases(data);
+              setSelectedCase(data[0]);
+              setFacts(data[0].facts.map((f, i) => ({ ...f, id: i })));
+            }
+          })
+          .catch(() => {});
+      }, []);
+
+      const selectCase = (c) => {
+        setSelectedCase(c);
+        setFacts(c.facts.map((f, i) => ({ ...f, id: i })));
+        setEvaluation(null);
+        setShowDropdown(false);
+      };
+
+      const updateFact = (id, value) => {
+        setFacts(prev => prev.map(f => f.id === id ? { ...f, value } : f));
+      };
+
+      const evaluate = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`${API_URL}/evaluate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              policy_id: selectedCase.policy_id,
+              loss_type: "collision",
+              loss_date: "2024-01-15",
+              report_date: "2024-01-16",
+              facts: facts.map(f => ({ field: f.field, value: f.value }))
+            })
+          });
+          const data = await res.json();
+          setEvaluation(data);
+        } catch (e) {
+          console.error(e);
+        }
+        setLoading(false);
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100">
+          {/* Nav */}
+          <nav className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur border-b border-slate-800 z-50">
+            <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="navigation" className="w-6 h-6 text-blue-400" />
+                <span className="font-bold text-lg">ClaimPilot</span>
+              </div>
+              <a href="/docs" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                API Docs
+              </a>
+            </div>
+          </nav>
+
+          {/* Hero */}
+          <section className="pt-32 pb-16 px-6">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="flex flex-wrap justify-center gap-2 mb-6">
+                <span className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full text-sm">
+                  <Icon name="shield" className="w-4 h-4" /> Deterministic Engine
+                </span>
+                <span className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-full text-sm">
+                  <Icon name="check" className="w-4 h-4" /> 8 Policy Packs
+                </span>
+                <span className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full text-sm">
+                  <Icon name="ban" className="w-4 h-4" /> Zero LLM
+                </span>
+              </div>
+              <h1 className="text-5xl font-bold mb-6">
+                Insurance Claims<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Evaluation API</span>
+              </h1>
+              <p className="text-xl text-slate-400 mb-8 max-w-2xl mx-auto">
+                Deterministic policy rule evaluation with full reasoning chains, provenance hashes, and audit trails.
+              </p>
+            </div>
+          </section>
+
+          {/* Interactive Demo */}
+          <section className="py-12 px-6">
+            <div className="max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-center mb-8">Try It Live</h2>
+
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Facts Panel */}
+                <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                    <span className="font-medium">Claim Facts</span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowDropdown(!showDropdown)}
+                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm"
+                      >
+                        <span className="truncate max-w-[150px]">{selectedCase?.name || 'Select'}</span>
+                        <Icon name="chevronDown" className="w-4 h-4" />
+                      </button>
+                      {showDropdown && (
+                        <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                          {demoCases.map(c => (
+                            <button
+                              key={c.id}
+                              onClick={() => selectCase(c)}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-700 text-sm"
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-2 max-h-[350px] overflow-y-auto">
+                    {facts.map(f => (
+                      <div key={f.id} className="flex items-center gap-2 bg-slate-800 rounded-lg p-3">
+                        <span className="flex-1 text-sm text-slate-300 truncate">{f.field}</span>
+                        {typeof f.value === 'boolean' ? (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => updateFact(f.id, true)}
+                              className={`px-3 py-1 rounded text-xs font-medium ${f.value === true ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400'}`}
+                            >Yes</button>
+                            <button
+                              onClick={() => updateFact(f.id, false)}
+                              className={`px-3 py-1 rounded text-xs font-medium ${f.value === false ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400'}`}
+                            >No</button>
+                          </div>
+                        ) : typeof f.value === 'number' ? (
+                          <input
+                            type="number"
+                            value={f.value}
+                            onChange={(e) => updateFact(f.id, parseFloat(e.target.value) || 0)}
+                            className="w-20 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-right"
+                            step="0.01"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={f.value}
+                            onChange={(e) => updateFact(f.id, e.target.value)}
+                            className="w-28 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="px-4 py-3 bg-slate-800 border-t border-slate-700">
+                    <button
+                      onClick={evaluate}
+                      disabled={loading}
+                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2"
+                    >
+                      {loading ? <><Icon name="refresh" className="w-4 h-4" /> Evaluating...</> : <><Icon name="play" className="w-4 h-4" /> Evaluate Claim</>}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Result Panel */}
+                <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                    <span className="font-medium">Recommendation</span>
+                    {evaluation && <span className="text-xs text-slate-500 font-mono">{evaluation.request_id}</span>}
+                  </div>
+
+                  <div className="p-4 max-h-[400px] overflow-y-auto">
+                    {!evaluation ? (
+                      <div className="text-center py-16 text-slate-500">
+                        <Icon name="navigation" className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p>Click "Evaluate Claim" to see the recommendation</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Disposition */}
+                        <div className={`rounded-xl p-5 ${
+                          evaluation.recommended_disposition === 'pay' ? 'bg-emerald-500/10 border border-emerald-500/30' :
+                          evaluation.recommended_disposition === 'deny' ? 'bg-red-500/10 border border-red-500/30' :
+                          'bg-amber-500/10 border border-amber-500/30'
+                        }`}>
+                          <div className="flex items-center gap-3 mb-2">
+                            {evaluation.recommended_disposition === 'pay' ?
+                              <Icon name="check" className="w-8 h-8 text-emerald-400" /> :
+                              evaluation.recommended_disposition === 'deny' ?
+                              <Icon name="x" className="w-8 h-8 text-red-400" /> :
+                              <Icon name="zap" className="w-8 h-8 text-amber-400" />
+                            }
+                            <div className={`text-2xl font-bold ${
+                              evaluation.recommended_disposition === 'pay' ? 'text-emerald-400' :
+                              evaluation.recommended_disposition === 'deny' ? 'text-red-400' : 'text-amber-400'
+                            }`}>
+                              {evaluation.recommended_disposition === 'pay' ? 'APPROVE' :
+                               evaluation.recommended_disposition === 'deny' ? 'DENY' : 'REQUEST INFO'}
+                            </div>
+                          </div>
+                          <p className="text-slate-300 text-sm">{evaluation.disposition_reason}</p>
+                        </div>
+
+                        {/* Exclusions */}
+                        {evaluation.exclusions_evaluated?.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-400 mb-2">Exclusions Evaluated</h4>
+                            <div className="space-y-2">
+                              {evaluation.exclusions_evaluated.slice(0, 4).map((exc, i) => (
+                                <div key={i} className={`rounded-lg p-3 ${exc.triggered ? 'bg-red-500/10 border border-red-500/20' : 'bg-slate-800'}`}>
+                                  <div className="flex items-center gap-2">
+                                    {exc.triggered ? <Icon name="x" className="w-4 h-4 text-red-400" /> : <Icon name="check" className="w-4 h-4 text-slate-500" />}
+                                    <span className={`text-sm font-medium ${exc.triggered ? 'text-red-400' : 'text-slate-400'}`}>
+                                      {exc.code} - {exc.name}
+                                    </span>
+                                  </div>
+                                  {exc.triggered && exc.policy_wording && (
+                                    <div className="mt-2 bg-slate-900 rounded p-2 border-l-2 border-red-500">
+                                      <p className="text-xs text-slate-400 italic">"{exc.policy_wording.substring(0, 150)}..."</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Provenance */}
+                        <div className="pt-3 border-t border-slate-700 text-xs text-slate-500">
+                          <div className="flex items-center gap-2">
+                            <Icon name="hash" className="w-3 h-3" />
+                            <span>Hash: {evaluation.policy_pack_hash?.substring(0, 16)}...</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Icon name="lock" className="w-3 h-3" />
+                            <span>Deterministic • Reproducible • Auditable</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Hint */}
+              <div className="mt-6 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 max-w-xl mx-auto">
+                <div className="flex items-start gap-3">
+                  <Icon name="zap" className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-400">
+                    <span className="text-blue-400 font-medium">Try this:</span> Select "Auto - Standard Collision" (APPROVE),
+                    then toggle <code className="bg-slate-800 px-1.5 py-0.5 rounded text-xs">rideshare_app_active</code> to Yes
+                    and evaluate again to see it change to DENY.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* API Endpoints */}
+          <section className="py-12 px-6 bg-slate-900/50">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl font-bold text-center mb-8">API Endpoints</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { method: 'GET', path: '/policies', desc: 'List all 8 policy packs' },
+                  { method: 'POST', path: '/evaluate', desc: 'Evaluate a claim' },
+                  { method: 'GET', path: '/demo/cases', desc: 'Pre-built demo scenarios' },
+                  { method: 'POST', path: '/verify', desc: 'Verify recommendation provenance' },
+                  { method: 'GET', path: '/validate/policies', desc: 'Validate all YAML packs' },
+                  { method: 'GET', path: '/docs', desc: 'Swagger UI documentation' },
+                ].map((ep, i) => (
+                  <div key={i} className="bg-slate-800/50 rounded-lg p-4 flex items-center gap-4">
+                    <span className={`px-2 py-1 rounded text-xs font-mono font-bold ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                      {ep.method}
+                    </span>
+                    <div>
+                      <code className="text-slate-200 text-sm">{ep.path}</code>
+                      <p className="text-slate-500 text-xs mt-1">{ep.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="py-8 px-6 border-t border-slate-800">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="navigation" className="w-5 h-5 text-blue-400" />
+                <span className="font-semibold">ClaimPilot</span>
+                <span className="text-slate-500 text-sm">v1.0.0</span>
+              </div>
+              <a href="/docs" className="text-slate-500 hover:text-white text-sm">API Documentation</a>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

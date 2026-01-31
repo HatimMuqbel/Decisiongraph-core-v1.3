@@ -14,6 +14,8 @@ if str(src_path) not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
 from claimpilot.packs.loader import PolicyPackLoader
@@ -118,10 +120,33 @@ app.include_router(evaluate.router)
 app.include_router(demo.router)
 app.include_router(verify.router)
 
+# Mount static files (for CSS, JS, images if needed)
+static_path = Path(__file__).parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
-@app.get("/", tags=["Health"])
+
+@app.get("/", tags=["Landing"], include_in_schema=False)
 async def root():
-    """API root - health check and info."""
+    """Serve the landing page."""
+    static_dir = Path(__file__).parent / "static"
+    index_file = static_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file, media_type="text/html")
+    # Fallback to JSON if no landing page
+    return {
+        "service": "ClaimPilot API",
+        "version": "1.0.0",
+        "status": "running",
+        "policies_loaded": len(policies_cache),
+        "docs": "/docs",
+        "openapi": "/openapi.json"
+    }
+
+
+@app.get("/api", tags=["Health"])
+async def api_info():
+    """API info endpoint - JSON health check and info."""
     return {
         "service": "ClaimPilot API",
         "version": "1.0.0",
