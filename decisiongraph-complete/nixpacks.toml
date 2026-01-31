@@ -15,6 +15,6 @@ cmd = ". /opt/venv/bin/activate && uvicorn service.main:app --host 0.0.0.0 --por
 
 [variables]
 PYTHONUNBUFFERED = "1"
-PYTHONPATH = "src"
+PYTHONPATH = "/app:/app/src"
 VIRTUAL_ENV = "/opt/venv"
 PATH = "/opt/venv/bin:$PATH"
