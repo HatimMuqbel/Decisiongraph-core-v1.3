@@ -36,19 +36,19 @@ def get_cached_decision(decision_id: str) -> Optional[dict]:
 
 def build_report_context(decision: dict) -> dict:
     """Build template context from decision pack."""
-    meta = decision.get("meta", {})
-    dec = decision.get("decision", {})
-    gates = decision.get("gates", {})
-    layers = decision.get("layers", {})
-    rationale = decision.get("rationale", {})
-    compliance = decision.get("compliance", {})
+    meta = decision.get("meta", {}) or {}
+    dec = decision.get("decision", {}) or {}
+    gates = decision.get("gates", {}) or {}
+    layers = decision.get("layers", {}) or {}
+    rationale = decision.get("rationale", {}) or {}
+    compliance = decision.get("compliance", {}) or {}
 
     # Determine verdict styling
-    verdict = dec.get("verdict", "UNKNOWN")
+    verdict = dec.get("verdict", "UNKNOWN") or "UNKNOWN"
     if verdict in ["PASS", "PASS_WITH_EDD"]:
         verdict_class = "pass"
         verdict_icon = "✓"
-    elif verdict in ["HARD_STOP", "STR"]:
+    elif verdict in ["HARD_STOP", "STR", "ESCALATE"]:
         verdict_class = "escalate"
         verdict_icon = "⚠"
     else:
@@ -56,26 +56,32 @@ def build_report_context(decision: dict) -> dict:
         verdict_icon = "?"
 
     # Build gate results
-    gate1 = gates.get("gate1", {})
-    gate2 = gates.get("gate2", {})
+    gate1 = gates.get("gate1", {}) or {}
+    gate2 = gates.get("gate2", {}) or {}
 
     gate1_sections = []
-    for section_id, section_data in gate1.get("sections", {}).items():
-        gate1_sections.append({
-            "id": section_id,
-            "name": section_data.get("name", section_id),
-            "passed": section_data.get("passed", False),
-            "reason": section_data.get("reason", "")
-        })
+    sections1 = gate1.get("sections", {}) or {}
+    if isinstance(sections1, dict):
+        for section_id, section_data in sections1.items():
+            if isinstance(section_data, dict):
+                gate1_sections.append({
+                    "id": section_id,
+                    "name": section_data.get("name", section_id),
+                    "passed": section_data.get("passed", False),
+                    "reason": section_data.get("reason", "")
+                })
 
     gate2_sections = []
-    for section_id, section_data in gate2.get("sections", {}).items():
-        gate2_sections.append({
-            "id": section_id,
-            "name": section_data.get("name", section_id),
-            "passed": section_data.get("passed", False),
-            "reason": section_data.get("reason", "")
-        })
+    sections2 = gate2.get("sections", {}) or {}
+    if isinstance(sections2, dict):
+        for section_id, section_data in sections2.items():
+            if isinstance(section_data, dict):
+                gate2_sections.append({
+                    "id": section_id,
+                    "name": section_data.get("name", section_id),
+                    "passed": section_data.get("passed", False),
+                    "reason": section_data.get("reason", "")
+                })
 
     # Build layer summaries
     layer_summaries = []
@@ -88,55 +94,67 @@ def build_report_context(decision: dict) -> dict:
         "layer6_suspicion": "L6: Suspicion"
     }
     for layer_key, layer_name in layer_names.items():
-        layer_data = layers.get(layer_key, {})
+        layer_data = layers.get(layer_key, {}) or {}
         layer_summaries.append({
             "name": layer_name,
             "data": layer_data
         })
 
+    # Handle str_required - convert bool to string
+    str_required = dec.get("str_required", "NO")
+    if isinstance(str_required, bool):
+        str_required = "YES" if str_required else "NO"
+    elif str_required is None:
+        str_required = "NO"
+
+    # Safe string extraction
+    decision_id = meta.get("decision_id", "") or ""
+    input_hash = meta.get("input_hash", "") or ""
+    policy_hash = meta.get("policy_hash", "") or ""
+
     return {
         # Meta
-        "decision_id": meta.get("decision_id", ""),
-        "decision_id_short": meta.get("decision_id", "")[:16],
-        "case_id": meta.get("case_id", ""),
-        "input_hash": meta.get("input_hash", ""),
-        "input_hash_short": meta.get("input_hash", "")[:16],
-        "policy_hash": meta.get("policy_hash", ""),
-        "policy_hash_short": meta.get("policy_hash", "")[:16],
-        "engine_version": meta.get("engine_version", ""),
-        "policy_version": meta.get("policy_version", ""),
-        "jurisdiction": meta.get("jurisdiction", "CA"),
-        "timestamp": meta.get("timestamp", datetime.utcnow().isoformat()),
+        "decision_id": decision_id,
+        "decision_id_short": decision_id[:16] if decision_id else "N/A",
+        "case_id": meta.get("case_id", "") or "N/A",
+        "input_hash": input_hash,
+        "input_hash_short": input_hash[:16] if input_hash else "N/A",
+        "policy_hash": policy_hash,
+        "policy_hash_short": policy_hash[:16] if policy_hash else "N/A",
+        "engine_version": meta.get("engine_version", "") or "N/A",
+        "policy_version": meta.get("policy_version", "") or "N/A",
+        "jurisdiction": meta.get("jurisdiction", "CA") or "CA",
+        "timestamp": meta.get("timestamp", "") or datetime.utcnow().isoformat(),
 
         # Decision
         "verdict": verdict,
         "verdict_class": verdict_class,
         "verdict_icon": verdict_icon,
-        "action": dec.get("action", ""),
-        "escalation": dec.get("escalation", ""),
-        "str_required": dec.get("str_required", "NO"),
-        "path": dec.get("path"),
-        "priority": dec.get("priority", ""),
+        "action": dec.get("action", "") or "N/A",
+        "escalation": dec.get("escalation", "") or "N/A",
+        "str_required": str_required,
+        "path": dec.get("path") or "",
+        "priority": dec.get("priority", "") or "",
 
         # Gates
-        "gate1_decision": gate1.get("decision", ""),
+        "gate1_decision": gate1.get("decision", "") or "N/A",
         "gate1_sections": gate1_sections,
-        "gate2_decision": gate2.get("decision", ""),
-        "gate2_status": gate2.get("status", ""),
+        "gate2_decision": gate2.get("decision", "") or "N/A",
+        "gate2_status": gate2.get("status", "") or "N/A",
         "gate2_sections": gate2_sections,
 
         # Layers
         "layer_summaries": layer_summaries,
 
         # Rationale
-        "summary": rationale.get("summary", ""),
-        "non_escalation_justification": rationale.get("non_escalation_justification", ""),
-        "absolute_rules_validated": rationale.get("absolute_rules_validated", []),
-        "regulatory_citations": rationale.get("regulatory_citations", []),
+        "summary": rationale.get("summary", "") or "No summary available",
+        "non_escalation_justification": rationale.get("non_escalation_justification", "") or "",
+        "absolute_rules_validated": rationale.get("absolute_rules_validated", []) or [],
+        "regulatory_citations": rationale.get("regulatory_citations", []) or [],
 
         # Compliance
-        "legislation": compliance.get("legislation", "PCMLTFA"),
-        "fintrac_indicators": compliance.get("fintrac_indicators_matched", []),
+        "legislation": compliance.get("legislation", "PCMLTFA") or "PCMLTFA",
+        "fintrac_indicators": compliance.get("fintrac_indicators_matched", []) or [],
     }
 
 
@@ -312,74 +330,93 @@ async def get_report_html(decision_id: str):
                    f"Re-run the decision and immediately request the report."
         )
 
-    ctx = build_report_context(decision)
+    try:
+        ctx = build_report_context(decision)
 
-    # Build dynamic HTML parts
-    path_html = f"<p><strong>Path:</strong> {ctx['path']}</p>" if ctx['path'] else ""
+        # Build dynamic HTML parts
+        path_html = f"<p><strong>Path:</strong> {ctx['path']}</p>" if ctx.get('path') else ""
 
-    gate1_class = "pass" if ctx['gate1_decision'] == "PROHIBITED" else "fail"
-    gate2_class = "pass" if ctx['gate2_decision'] == "PROHIBITED" else "fail"
+        gate1_class = "pass" if ctx.get('gate1_decision') == "PROHIBITED" else "fail"
+        gate2_class = "pass" if ctx.get('gate2_decision') == "PROHIBITED" else "fail"
 
-    # Gate 1 sections
-    gate1_sections_html = ""
-    for section in ctx['gate1_sections']:
-        status = "✓" if section['passed'] else "✗"
-        status_class = "pass" if section['passed'] else "fail"
-        gate1_sections_html += f"""
-        <div class="gate-section">
-          <div class="section-header">
-            <span class="pill {status_class}">{status}</span>
-            <span>{section['id']}: {section['name']}</span>
-          </div>
-          <div class="section-reason">{section['reason']}</div>
-        </div>
-        """
+        # Gate 1 sections
+        gate1_sections_html = ""
+        for section in ctx.get('gate1_sections', []):
+            status = "✓" if section.get('passed') else "✗"
+            status_class = "pass" if section.get('passed') else "fail"
+            gate1_sections_html += f"""
+            <div class="gate-section">
+              <div class="section-header">
+                <span class="pill {status_class}">{status}</span>
+                <span>{section.get('id', 'N/A')}: {section.get('name', 'N/A')}</span>
+              </div>
+              <div class="section-reason">{section.get('reason', '')}</div>
+            </div>
+            """
 
-    # Gate 2 sections
-    gate2_sections_html = ""
-    for section in ctx['gate2_sections']:
-        status = "✓" if section['passed'] else "✗"
-        status_class = "pass" if section['passed'] else "fail"
-        gate2_sections_html += f"""
-        <div class="gate-section">
-          <div class="section-header">
-            <span class="pill {status_class}">{status}</span>
-            <span>{section['id']}: {section['name']}</span>
-          </div>
-          <div class="section-reason">{section['reason']}</div>
-        </div>
-        """
+        # Gate 2 sections
+        gate2_sections_html = ""
+        for section in ctx.get('gate2_sections', []):
+            status = "✓" if section.get('passed') else "✗"
+            status_class = "pass" if section.get('passed') else "fail"
+            gate2_sections_html += f"""
+            <div class="gate-section">
+              <div class="section-header">
+                <span class="pill {status_class}">{status}</span>
+                <span>{section.get('id', 'N/A')}: {section.get('name', 'N/A')}</span>
+              </div>
+              <div class="section-reason">{section.get('reason', '')}</div>
+            </div>
+            """
 
-    # Rationale parts
-    justification_html = ""
-    if ctx['non_escalation_justification']:
-        justification_html = f"<p><strong>Non-Escalation Justification:</strong> {ctx['non_escalation_justification']}</p>"
+        # Rationale parts
+        justification_html = ""
+        if ctx.get('non_escalation_justification'):
+            justification_html = f"<p><strong>Non-Escalation Justification:</strong> {ctx['non_escalation_justification']}</p>"
 
-    rules_html = ""
-    if ctx['absolute_rules_validated']:
-        rules_html = "<p><strong>Absolute Rules Validated:</strong></p><ul>"
-        for rule in ctx['absolute_rules_validated']:
-            rules_html += f"<li>{rule}</li>"
-        rules_html += "</ul>"
+        rules_html = ""
+        if ctx.get('absolute_rules_validated'):
+            rules_html = "<p><strong>Absolute Rules Validated:</strong></p><ul>"
+            for rule in ctx['absolute_rules_validated']:
+                rules_html += f"<li>{rule}</li>"
+            rules_html += "</ul>"
 
-    citations_html = ""
-    if ctx['regulatory_citations']:
-        citations_html = f"<p><strong>Regulatory Citations:</strong> {', '.join(ctx['regulatory_citations'])}</p>"
+        citations_html = ""
+        if ctx.get('regulatory_citations'):
+            citations_html = f"<p><strong>Regulatory Citations:</strong> {', '.join(ctx['regulatory_citations'])}</p>"
 
-    # Format the template
-    html = REPORT_HTML_TEMPLATE.format(
-        **ctx,
-        path_html=path_html,
-        gate1_class=gate1_class,
-        gate2_class=gate2_class,
-        gate1_sections_html=gate1_sections_html or "<p>No sections evaluated</p>",
-        gate2_sections_html=gate2_sections_html or "<p>No sections evaluated</p>",
-        justification_html=justification_html,
-        rules_html=rules_html,
-        citations_html=citations_html,
-    )
+        # Ensure str_required is a string
+        str_required = ctx.get('str_required', 'NO')
+        if isinstance(str_required, bool):
+            str_required = "YES" if str_required else "NO"
+        ctx['str_required'] = str_required
 
-    return HTMLResponse(content=html)
+        # Format the template
+        html = REPORT_HTML_TEMPLATE.format(
+            **ctx,
+            path_html=path_html,
+            gate1_class=gate1_class,
+            gate2_class=gate2_class,
+            gate1_sections_html=gate1_sections_html or "<p>No sections evaluated</p>",
+            gate2_sections_html=gate2_sections_html or "<p>No sections evaluated</p>",
+            justification_html=justification_html,
+            rules_html=rules_html,
+            citations_html=citations_html,
+        )
+
+        return HTMLResponse(content=html)
+
+    except Exception as e:
+        # Return a simple error page instead of 500
+        error_html = f"""<!DOCTYPE html>
+<html><head><title>Report Error</title></head>
+<body style="font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto;">
+<h1>Report Generation Error</h1>
+<p>Could not generate report for decision: <code>{decision_id[:16]}...</code></p>
+<p><strong>Error:</strong> {str(e)}</p>
+<p><a href="/">Back to Demo</a></p>
+</body></html>"""
+        return HTMLResponse(content=error_html, status_code=500)
 
 
 @router.get("/{decision_id}/json")
