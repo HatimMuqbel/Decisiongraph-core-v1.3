@@ -18,7 +18,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # =============================================================================
@@ -26,6 +26,20 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # =============================================================================
 
 SCHEMA_VERSION = "1.0.0"
+
+
+# =============================================================================
+# Base Configuration
+# =============================================================================
+
+class StrictBaseModel(BaseModel):
+    """
+    Base model with strict validation.
+
+    Uses extra="forbid" to reject unknown fields at load time.
+    This catches typos and drift in YAML configs.
+    """
+    model_config = ConfigDict(extra="forbid")
 
 
 # =============================================================================
@@ -81,7 +95,7 @@ TimelineEventTypeValue = Literal[
 # Base Schemas
 # =============================================================================
 
-class PredicateSchema(BaseModel):
+class PredicateSchema(StrictBaseModel):
     """Schema for a condition predicate (leaf comparison)."""
     field: str = Field(..., description="Dot-notation field path (e.g., 'claim.amount')")
     operator: ConditionOperatorValue = Field(..., description="Comparison operator")
@@ -89,7 +103,7 @@ class PredicateSchema(BaseModel):
     description: Optional[str] = Field(None, description="Human-readable description")
 
 
-class ConditionSchema(BaseModel):
+class ConditionSchema(StrictBaseModel):
     """
     Schema for a composable condition.
 
@@ -133,7 +147,7 @@ class ConditionSchema(BaseModel):
 # Authority Schemas
 # =============================================================================
 
-class AuthorityRefSchema(BaseModel):
+class AuthorityRefSchema(StrictBaseModel):
     """Schema for an authority reference (citation)."""
     id: str = Field(..., description="Unique identifier")
     type: AuthorityTypeValue = Field(..., description="Type of authority")
@@ -148,7 +162,7 @@ class AuthorityRefSchema(BaseModel):
     full_text: Optional[str] = Field(None, description="Full text for hashing")
 
 
-class AuthorityRuleSchema(BaseModel):
+class AuthorityRuleSchema(StrictBaseModel):
     """Schema for an authority/escalation rule."""
     id: str = Field(..., description="Unique identifier")
     name: str = Field(..., description="Human-readable name")
@@ -165,7 +179,7 @@ class AuthorityRuleSchema(BaseModel):
 # Coverage Schemas
 # =============================================================================
 
-class CoverageLimitsSchema(BaseModel):
+class CoverageLimitsSchema(StrictBaseModel):
     """Schema for coverage limits."""
     per_occurrence: Optional[Decimal] = None
     per_person: Optional[Decimal] = None
@@ -176,7 +190,7 @@ class CoverageLimitsSchema(BaseModel):
     currency: str = Field("CAD", description="Currency code (default: CAD for Ontario)")
 
 
-class DeductiblesSchema(BaseModel):
+class DeductiblesSchema(StrictBaseModel):
     """Schema for deductibles."""
     standard: Optional[Decimal] = None
     collision: Optional[Decimal] = None
@@ -187,7 +201,7 @@ class DeductiblesSchema(BaseModel):
     currency: str = Field("CAD", description="Currency code")
 
 
-class LossTypeTriggerSchema(BaseModel):
+class LossTypeTriggerSchema(StrictBaseModel):
     """Schema for a loss type trigger."""
     loss_type: str = Field(..., description="Loss type that triggers coverage")
     claimant_types: list[ClaimantTypeValue] = Field(
@@ -196,7 +210,7 @@ class LossTypeTriggerSchema(BaseModel):
     )
 
 
-class CoverageSectionSchema(BaseModel):
+class CoverageSectionSchema(StrictBaseModel):
     """Schema for a coverage section within a policy."""
     id: str = Field(..., description="Unique identifier")
     code: str = Field(..., description="Section code (e.g., 'Section A')")
@@ -226,7 +240,7 @@ class CoverageSectionSchema(BaseModel):
 # Exclusion Schemas
 # =============================================================================
 
-class ExclusionSchema(BaseModel):
+class ExclusionSchema(StrictBaseModel):
     """Schema for a policy exclusion."""
     id: str = Field(..., description="Unique identifier")
     code: str = Field(..., description="Policy reference code (e.g., '4.2.1')")
@@ -263,7 +277,7 @@ class ExclusionSchema(BaseModel):
 # Timeline Schemas
 # =============================================================================
 
-class TimelineRuleSchema(BaseModel):
+class TimelineRuleSchema(StrictBaseModel):
     """
     Schema for a timeline rule.
 
@@ -290,7 +304,7 @@ class TimelineRuleSchema(BaseModel):
 # Evidence Schemas
 # =============================================================================
 
-class DocumentRequirementSchema(BaseModel):
+class DocumentRequirementSchema(StrictBaseModel):
     """Schema for a document requirement."""
     doc_type: str = Field(..., description="Document type identifier")
     description: str = Field(..., description="Human-readable description")
@@ -306,7 +320,7 @@ class DocumentRequirementSchema(BaseModel):
     applies_when: Optional[ConditionSchema] = None
 
 
-class EvidenceRuleSchema(BaseModel):
+class EvidenceRuleSchema(StrictBaseModel):
     """Schema for an evidence requirement rule."""
     id: str = Field(..., description="Unique identifier")
     name: str = Field(..., description="Human-readable name")
@@ -329,7 +343,7 @@ class EvidenceRuleSchema(BaseModel):
 # Policy Pack Schema (Top-Level)
 # =============================================================================
 
-class PolicyPackSchema(BaseModel):
+class PolicyPackSchema(StrictBaseModel):
     """
     Top-level schema for a policy pack YAML/JSON file.
 
@@ -400,9 +414,7 @@ class PolicyPackSchema(BaseModel):
             pass  # Flexible for now
         return v.upper()
 
-    model_config = {
-        "extra": "forbid",  # Reject unknown fields
-    }
+    # Inherits model_config with extra="forbid" from StrictBaseModel
 
 
 # =============================================================================

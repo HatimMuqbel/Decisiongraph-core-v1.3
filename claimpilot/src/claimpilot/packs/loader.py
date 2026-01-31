@@ -58,6 +58,61 @@ from .schema import (
 
 
 # =============================================================================
+# Reference Integrity Validation
+# =============================================================================
+
+def validate_reference_integrity(policy: Policy, path: str = "") -> None:
+    """
+    Validate internal references are consistent.
+
+    Catches:
+    - Exclusions referencing non-existent coverages
+    - Duplicate coverage IDs
+    - Duplicate exclusion IDs
+
+    Args:
+        policy: The policy to validate
+        path: File path for error messages
+
+    Raises:
+        ValueError: If reference integrity errors are found
+    """
+    errors = []
+
+    # Collect valid coverage IDs
+    coverage_ids = {c.id for c in policy.coverage_sections}
+
+    # Check exclusion references
+    for exc in policy.exclusions:
+        for cov_id in exc.applies_to_coverages:
+            if cov_id not in coverage_ids:
+                errors.append(
+                    f"Exclusion '{exc.id}' references non-existent coverage '{cov_id}'"
+                )
+
+    # Check for duplicate coverage IDs
+    seen_coverage_ids: set[str] = set()
+    for cov in policy.coverage_sections:
+        if cov.id in seen_coverage_ids:
+            errors.append(f"Duplicate coverage ID: '{cov.id}'")
+        seen_coverage_ids.add(cov.id)
+
+    # Check for duplicate exclusion IDs
+    seen_exclusion_ids: set[str] = set()
+    for exc in policy.exclusions:
+        if exc.id in seen_exclusion_ids:
+            errors.append(f"Duplicate exclusion ID: '{exc.id}'")
+        seen_exclusion_ids.add(exc.id)
+
+    if errors:
+        path_str = f" in {path}" if path else ""
+        raise ValueError(
+            f"Reference integrity errors{path_str}:\n" +
+            "\n".join(f"  - {e}" for e in errors)
+        )
+
+
+# =============================================================================
 # Schema to Model Converters
 # =============================================================================
 
@@ -352,6 +407,15 @@ class PolicyPackLoader:
 
         # Convert to domain models
         policy = _convert_policy_pack(schema)
+
+        # Validate reference integrity
+        try:
+            validate_reference_integrity(policy, str(path))
+        except ValueError as e:
+            raise PolicyValidationError(
+                message=f"Reference integrity validation failed",
+                details={"errors": str(e), "path": str(path)},
+            )
 
         # Cache authorities
         for auth_schema in schema.authorities:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-ClaimPilot is a **universal insurance claims decision guidance framework**. It provides guided workflows for adjusters (not automation — adjusters decide), surfacing policy rules, enforcing evidence requirements, and capturing reasoning at the moment of evaluation.
+ClaimPilot is a **product-agnostic evaluation engine (pack-driven)**. The core engine handles any insurance product without code changes — all product-specific logic lives in YAML policy packs. It provides guided workflows for adjusters (not automation — adjusters decide), surfacing policy rules, enforcing evidence requirements, and capturing reasoning at the moment of evaluation.
 
 **Core Principle**: "The adjuster decides. ClaimPilot recommends and documents."
 
@@ -365,6 +365,49 @@ hash_value = content_hash(data)  # SHA-256 hex string
 - **UUIDs**: `uuid.UUID` internally, serialize as `str`
 - **Timestamps**: `datetime` timezone-aware UTC always
 - **Determinism**: Same inputs → same outputs (verified by tests)
+
+## Audit Guarantees
+
+ClaimPilot is designed to withstand scrutiny from regulators, legal, and compliance.
+
+### Schema Strictness
+
+- All schemas use `extra="forbid"` to reject unknown fields at load time
+- Misspelled fields caught immediately (no silent data loss)
+- Reference integrity validated: exclusions must reference existing coverages
+- Duplicate IDs rejected at load time
+
+### Deterministic Hashing
+
+- Lists sorted by `id` for stable ordering (RFC 8785 canonical JSON)
+- Whitespace normalized (not lowercased) for excerpt hashing
+- Same policy content → same hash, regardless of insertion order
+
+### What the Hash Proves
+
+- Recommendation was generated using specific policy pack version
+- Exact policy text was loaded at recommendation time
+- Any content change (wording, rules, version) produces different hash
+- Tampering is cryptographically detectable
+
+### What the Hash Does NOT Prove
+
+- Archive integrity (requires WORM/object lock storage)
+- Time of creation (use `evaluated_at` timestamp with trusted clock)
+- That the policy was the "official" version (no PKI chain)
+
+### Audit Trail Fields
+
+```python
+RecommendationRecord:
+    policy_pack_id          # Which policy was used
+    policy_pack_version     # Human-readable version
+    policy_pack_hash        # SHA-256 of canonical policy
+    policy_pack_loaded_at   # When policy was loaded
+    evaluated_at            # When recommendation generated
+    engine_version          # ClaimPilot version (git SHA)
+    authority_hashes        # Per-citation excerpt hashes
+```
 
 ## Implementation Status
 
