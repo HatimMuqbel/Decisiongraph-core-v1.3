@@ -436,15 +436,21 @@
                           <h4 className="text-sm font-medium text-slate-400 mb-2">Dual-Gate Results</h4>
                           <div className="grid grid-cols-2 gap-2">
                             <div className={`rounded-lg p-2.5 ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                              <div className="text-[10px] text-slate-400 mb-0.5">Gate 1: Zero-False-Esc</div>
+                              <div className="text-[10px] text-slate-400 mb-0.5">Gate 1: Escalation Gate</div>
                               <div className={`text-sm font-bold ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'BLOCKED' : 'ALLOWED'}
+                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'ESC. BLOCKED' : 'ESC. PERMITTED'}
+                              </div>
+                              <div className="text-[9px] text-slate-500 mt-0.5">
+                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'No lawful basis → Txn proceeds' : 'May escalate if warranted'}
                               </div>
                             </div>
                             <div className={`rounded-lg p-2.5 ${decision.decision?.str_required === 'YES' ? 'bg-red-500/10 border border-red-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
                               <div className="text-[10px] text-slate-400 mb-0.5">Gate 2: STR Threshold</div>
                               <div className={`text-sm font-bold ${decision.decision?.str_required === 'YES' ? 'text-red-400' : 'text-emerald-400'}`}>
                                 {decision.decision?.str_required === 'YES' ? 'STR REQUIRED' : 'NOT REQUIRED'}
+                              </div>
+                              <div className="text-[9px] text-slate-500 mt-0.5">
+                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'Skipped — escalation blocked' : (decision.decision?.str_required === 'YES' ? 'File STR within 30 days' : 'No STR obligation')}
                               </div>
                             </div>
                           </div>

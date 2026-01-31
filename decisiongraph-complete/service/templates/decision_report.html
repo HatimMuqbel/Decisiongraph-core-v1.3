@@ -131,16 +131,22 @@
       </div>
     {% endif %}
 
-    <h2>Gate 1: Zero-False-Escalation</h2>
+    <h2>Gate 1: Escalation Permission</h2>
     <div class="gate-block break">
       <h4>
-        Decision:
         {% if gate1_passed %}
-          <span class="pill pass">ALLOWED</span>
+          <span class="pill pass">ESCALATION PERMITTED</span>
         {% else %}
-          <span class="pill trig">BLOCKED</span>
+          <span class="pill trig">ESCALATION BLOCKED</span>
         {% endif %}
       </h4>
+      <p class="small" style="margin-bottom:12px;">
+        {% if gate1_passed %}
+          Sufficient lawful basis exists to permit escalation if warranted by Gate 2.
+        {% else %}
+          Escalation blocked = insufficient lawful basis to escalate. Transaction is permitted to proceed.
+        {% endif %}
+      </p>
       {% if gate1_sections and gate1_sections|length > 0 %}
         {% for section in gate1_sections %}
         <div class="gate-section">
@@ -165,22 +171,35 @@
       <h4>
         STR Required:
         {% if str_required %}
-          <span class="pill trig">YES</span>
+          <span class="pill trig">YES — FILE STR</span>
         {% else %}
           <span class="pill pass">NO</span>
         {% endif %}
       </h4>
+      {% if not gate1_passed %}
+        <p class="small" style="margin-bottom:12px; font-style:italic;">
+          Gate 2 evaluation skipped — escalation not permitted by Gate 1.
+        </p>
+      {% endif %}
       {% if gate2_sections and gate2_sections|length > 0 %}
         {% for section in gate2_sections %}
-        <div class="gate-section">
-          {% if section.passed %}
+        <div class="gate-section" {% if not gate1_passed %}style="opacity:0.5;"{% endif %}>
+          {% if not gate1_passed %}
+            <span class="pill na">SKIPPED</span>
+          {% elif section.passed %}
             <span class="pill pass">PASS</span>
           {% else %}
             <span class="pill req">REVIEW</span>
           {% endif %}
           <div>
             <div class="section-name">{{ section.name }}</div>
-            <div class="section-reason">{{ section.reason }}</div>
+            <div class="section-reason">
+              {% if not gate1_passed %}
+                Skipped — escalation not permitted
+              {% else %}
+                {{ section.reason }}
+              {% endif %}
+            </div>
           </div>
         </div>
         {% endfor %}
