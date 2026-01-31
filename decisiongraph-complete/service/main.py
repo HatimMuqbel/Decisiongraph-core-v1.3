@@ -191,9 +191,12 @@ app.include_router(verify.router)
 
 # Static files for landing page
 STATIC_DIR = Path(__file__).parent / "static"
-if STATIC_DIR.exists():
-    from fastapi.staticfiles import StaticFiles
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+try:
+    if STATIC_DIR.exists():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+except Exception as e:
+    print(f"Warning: Could not mount static files: {e}")
 
 # =============================================================================
 # Request/Response Models
@@ -694,23 +697,26 @@ def extract_instrument_type(case_data: dict) -> str:
 @app.get("/", tags=["Landing"])
 async def landing_page():
     """Serve the landing page."""
-    from fastapi.responses import FileResponse
-    index_path = STATIC_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    else:
-        return JSONResponse(content={
-            "service": "DecisionGraph",
-            "version": DG_ENGINE_VERSION,
-            "description": "Bank-Grade AML/KYC Decision Engine",
-            "endpoints": {
-                "decide": "POST /decide - Run decision engine",
-                "demo_cases": "GET /demo/cases - List demo cases",
-                "report": "GET /report/{id} - Get decision report",
-                "verify": "POST /verify - Verify decision provenance",
-                "docs": "GET /docs - API documentation"
-            }
-        })
+    try:
+        from fastapi.responses import FileResponse
+        index_path = STATIC_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+    except Exception as e:
+        pass
+
+    return JSONResponse(content={
+        "service": "DecisionGraph",
+        "version": DG_ENGINE_VERSION,
+        "description": "Bank-Grade AML/KYC Decision Engine",
+        "endpoints": {
+            "decide": "POST /decide - Run decision engine",
+            "demo_cases": "GET /demo/cases - List demo cases",
+            "report": "GET /report/{id} - Get decision report",
+            "verify": "POST /verify - Verify decision provenance",
+            "docs": "GET /docs - API documentation"
+        }
+    })
 
 
 @app.on_event("startup")
