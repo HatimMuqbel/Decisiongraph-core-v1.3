@@ -368,27 +368,26 @@ hash_value = content_hash(data)  # SHA-256 hex string
 
 ## Audit Guarantees
 
-ClaimPilot is designed to withstand scrutiny from regulators, legal, and compliance.
+Policy packs are human-editable YAML but strictly validated (unknown fields forbidden) and reference-checked (e.g., exclusions must reference valid coverages, authority refs must exist). At recommendation time, the engine computes `policy_pack_hash` as SHA-256 over an order-independent RFC 8785 canonical JSON rendering of the validated pack. Each recommendation stores `(policy_pack_id, policy_pack_version, policy_pack_hash)` plus per-citation excerpt hashes using case-preserving normalization. During verification, the archived pack is reloaded and rehashed; any post-hoc modifications to policy content or cited wording are detected via hash mismatch. End-to-end audit simulation tests demonstrate tamper detection for policy, versioning, and citation changes.
 
-### Schema Strictness
+### What You Can Claim (Precisely)
 
-- All schemas use `extra="forbid"` to reject unknown fields at load time
-- Misspelled fields caught immediately (no silent data loss)
-- Reference integrity validated: exclusions must reference existing coverages
-- Duplicate IDs rejected at load time
+**1) Policy packs are validated configs**
+- Any unknown/misspelled YAML field is rejected at load time (`extra="forbid"`)
+- Cross-references (exclusion → coverage, authority_ref_id → authority) are validated
+- Cannot silently drift
 
-### Deterministic Hashing
+**2) Recommendations are bound to exact policy content**
+- Every recommendation stores `policy_pack_id`, `policy_pack_version`, and `policy_pack_hash`
+- Any post-hoc policy edit (wording, IDs, version, dates, conditions) changes the hash
 
-- Lists sorted by `id` for stable ordering (RFC 8785 canonical JSON)
-- Whitespace normalized (not lowercased) for excerpt hashing
-- Same policy content → same hash, regardless of insertion order
+**3) Citations are verifiable**
+- Each cited excerpt is hashed after normalization that preserves case (legal fidelity)
+- Audit tests demonstrate excerpt tampering detection
 
-### What the Hash Proves
-
-- Recommendation was generated using specific policy pack version
-- Exact policy text was loaded at recommendation time
-- Any content change (wording, rules, version) produces different hash
-- Tampering is cryptographically detectable
+**4) Hashing is deterministic and order-independent**
+- Canonical JSON sorts lists by stable IDs before hashing (`_sort_by_id()`)
+- Reordering YAML doesn't change the hash
 
 ### What the Hash Does NOT Prove
 

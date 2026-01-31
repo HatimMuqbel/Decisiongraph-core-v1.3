@@ -444,3 +444,171 @@ class TestFullAuditTrail:
 
         assert compute_policy_pack_hash(policy1) == compute_policy_pack_hash(policy2), \
             "Hash must be identical regardless of list insertion order"
+
+
+class TestCollisionResistance:
+    """Sanity checks for hash collision resistance."""
+
+    def test_similar_packs_different_hashes(self) -> None:
+        """Two similar but different packs must have different hashes."""
+        policy1 = Policy(
+            id="PACK-A",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="OAP1",
+            name="Policy A",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+        )
+
+        policy2 = Policy(
+            id="PACK-B",  # Only ID differs
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="OAP1",
+            name="Policy A",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+        )
+
+        hash1 = compute_policy_pack_hash(policy1)
+        hash2 = compute_policy_pack_hash(policy2)
+
+        assert hash1 != hash2, \
+            "Different packs must have different hashes"
+
+    def test_hash_format_validity(self) -> None:
+        """Hash must be valid hex string of correct length."""
+        policy = Policy(
+            id="FORMAT-TEST",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="OAP1",
+            name="Test",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+        )
+
+        hash_value = compute_policy_pack_hash(policy)
+
+        # SHA-256 produces 64 hex characters
+        assert len(hash_value) == 64, \
+            f"Hash must be 64 characters, got {len(hash_value)}"
+        assert all(c in "0123456789abcdef" for c in hash_value), \
+            "Hash must be valid lowercase hex"
+
+    def test_empty_vs_populated_different(self) -> None:
+        """Empty policy vs policy with content must differ."""
+        empty = Policy(
+            id="EMPTY",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="E",
+            name="Empty",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+        )
+
+        populated = Policy(
+            id="EMPTY",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="E",
+            name="Empty",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+            coverage_sections=[
+                CoverageSection(id="cov", code="C", name="Cov", description="D")
+            ]
+        )
+
+        assert compute_policy_pack_hash(empty) != compute_policy_pack_hash(populated), \
+            "Empty vs populated must have different hashes"
+
+
+class TestSchemaAuthorityReferences:
+    """Test authority reference validation at schema level."""
+
+    def test_duplicate_authority_id_rejected(self) -> None:
+        """Duplicate authority IDs should fail."""
+        from claimpilot.packs.loader import validate_schema_reference_integrity
+        from claimpilot.packs.schema import PolicyPackSchema, AuthorityRefSchema
+
+        schema = PolicyPackSchema(
+            id="TEST",
+            jurisdiction="CA-ON",
+            line_of_business="auto",
+            product_code="T",
+            name="T",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+            authorities=[
+                AuthorityRefSchema(
+                    id="auth-1", type="policy_wording", title="A",
+                    section="1", source_name="S"
+                ),
+                AuthorityRefSchema(
+                    id="auth-1", type="policy_wording", title="B",  # Duplicate!
+                    section="2", source_name="S"
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="Duplicate authority ID"):
+            validate_schema_reference_integrity(schema, "test.yaml")
+
+    def test_invalid_authority_ref_in_coverage_rejected(self) -> None:
+        """Coverage referencing non-existent authority should fail."""
+        from claimpilot.packs.loader import validate_schema_reference_integrity
+        from claimpilot.packs.schema import PolicyPackSchema, CoverageSectionSchema
+
+        schema = PolicyPackSchema(
+            id="TEST",
+            jurisdiction="CA-ON",
+            line_of_business="auto",
+            product_code="T",
+            name="T",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+            coverage_sections=[
+                CoverageSectionSchema(
+                    id="cov-1", code="C", name="Cov", description="D",
+                    authority_ref_id="nonexistent"  # Invalid!
+                )
+            ]
+        )
+
+        with pytest.raises(ValueError, match="non-existent authority"):
+            validate_schema_reference_integrity(schema, "test.yaml")
+
+    def test_valid_authority_refs_pass(self) -> None:
+        """Valid authority references should pass."""
+        from claimpilot.packs.loader import validate_schema_reference_integrity
+        from claimpilot.packs.schema import (
+            PolicyPackSchema, AuthorityRefSchema, CoverageSectionSchema
+        )
+
+        schema = PolicyPackSchema(
+            id="TEST",
+            jurisdiction="CA-ON",
+            line_of_business="auto",
+            product_code="T",
+            name="T",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+            authorities=[
+                AuthorityRefSchema(
+                    id="auth-1", type="policy_wording", title="A",
+                    section="1", source_name="S"
+                )
+            ],
+            coverage_sections=[
+                CoverageSectionSchema(
+                    id="cov-1", code="C", name="Cov", description="D",
+                    authority_ref_id="auth-1"  # Valid reference
+                )
+            ]
+        )
+
+        # Should not raise
+        validate_schema_reference_integrity(schema, "test.yaml")

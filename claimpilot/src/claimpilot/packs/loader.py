@@ -112,6 +112,92 @@ def validate_reference_integrity(policy: Policy, path: str = "") -> None:
         )
 
 
+def validate_schema_reference_integrity(schema: PolicyPackSchema, path: str = "") -> None:
+    """
+    Validate reference integrity at the schema level (before conversion).
+
+    Catches:
+    - Duplicate authority IDs
+    - authority_ref_id references to non-existent authorities
+    - Duplicate timeline/evidence/authority rule IDs
+
+    Args:
+        schema: The validated schema
+        path: File path for error messages
+
+    Raises:
+        ValueError: If reference integrity errors are found
+    """
+    errors = []
+
+    # Collect valid authority IDs
+    authority_ids = {a.id for a in schema.authorities}
+
+    # Check for duplicate authority IDs
+    seen_authority_ids: set[str] = set()
+    for auth in schema.authorities:
+        if auth.id in seen_authority_ids:
+            errors.append(f"Duplicate authority ID: '{auth.id}'")
+        seen_authority_ids.add(auth.id)
+
+    # Check authority_ref_id references in coverage sections
+    for cov in schema.coverage_sections:
+        if cov.authority_ref_id and cov.authority_ref_id not in authority_ids:
+            errors.append(
+                f"Coverage '{cov.id}' references non-existent authority '{cov.authority_ref_id}'"
+            )
+
+    # Check authority_ref_id references in exclusions
+    for exc in schema.exclusions:
+        if exc.authority_ref_id and exc.authority_ref_id not in authority_ids:
+            errors.append(
+                f"Exclusion '{exc.id}' references non-existent authority '{exc.authority_ref_id}'"
+            )
+
+    # Check authority_ref_id references in authority rules
+    for rule in schema.authority_rules:
+        if rule.authority_ref_id and rule.authority_ref_id not in authority_ids:
+            errors.append(
+                f"Authority rule '{rule.id}' references non-existent authority '{rule.authority_ref_id}'"
+            )
+
+    # Check for duplicate timeline rule IDs
+    seen_timeline_ids: set[str] = set()
+    for rule in schema.timeline_rules:
+        if rule.id in seen_timeline_ids:
+            errors.append(f"Duplicate timeline rule ID: '{rule.id}'")
+        seen_timeline_ids.add(rule.id)
+        if rule.authority_ref_id and rule.authority_ref_id not in authority_ids:
+            errors.append(
+                f"Timeline rule '{rule.id}' references non-existent authority '{rule.authority_ref_id}'"
+            )
+
+    # Check for duplicate evidence rule IDs
+    seen_evidence_ids: set[str] = set()
+    for rule in schema.evidence_rules:
+        if rule.id in seen_evidence_ids:
+            errors.append(f"Duplicate evidence rule ID: '{rule.id}'")
+        seen_evidence_ids.add(rule.id)
+        if rule.authority_ref_id and rule.authority_ref_id not in authority_ids:
+            errors.append(
+                f"Evidence rule '{rule.id}' references non-existent authority '{rule.authority_ref_id}'"
+            )
+
+    # Check for duplicate authority rule IDs
+    seen_auth_rule_ids: set[str] = set()
+    for rule in schema.authority_rules:
+        if rule.id in seen_auth_rule_ids:
+            errors.append(f"Duplicate authority rule ID: '{rule.id}'")
+        seen_auth_rule_ids.add(rule.id)
+
+    if errors:
+        path_str = f" in {path}" if path else ""
+        raise ValueError(
+            f"Schema reference integrity errors{path_str}:\n" +
+            "\n".join(f"  - {e}" for e in errors)
+        )
+
+
 # =============================================================================
 # Schema to Model Converters
 # =============================================================================
@@ -403,6 +489,15 @@ class PolicyPackLoader:
             raise PolicyValidationError(
                 message=f"Policy pack validation failed: {e.error_count()} errors",
                 details={"errors": e.errors(), "path": str(path)},
+            )
+
+        # Validate schema-level reference integrity (authorities, rule IDs)
+        try:
+            validate_schema_reference_integrity(schema, str(path))
+        except ValueError as e:
+            raise PolicyValidationError(
+                message=f"Schema reference integrity validation failed",
+                details={"errors": str(e), "path": str(path)},
             )
 
         # Convert to domain models
