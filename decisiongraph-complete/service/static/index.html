@@ -12,12 +12,14 @@
     body { background: #020617; }
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .highlight-new { animation: highlight 2s ease-out; }
+    @keyframes highlight { 0% { background: rgba(59, 130, 246, 0.3); } 100% { background: transparent; } }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useCallback } = React;
+    const { useState, useEffect, useCallback, useRef } = React;
 
     const Icon = ({ name, className = "w-5 h-5" }) => {
       const icons = {
@@ -31,6 +33,7 @@
         alert: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
         bank: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
         zap: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+        arrowRight: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>,
       };
       return icons[name] || null;
     };
@@ -44,7 +47,6 @@
         return fact ? fact.value : null;
       };
 
-      // Generate a mock case JSON from the flat facts
       const isPEP = getValue('customer.pep_flag');
       const customerType = getValue('customer.type') || 'IND';
       const residence = getValue('customer.residence') || 'CA';
@@ -63,7 +65,6 @@
       const mltfLinked = getValue('screening.mltf_linked') ?? false;
       const beneficialOwnerPEP = getValue('screening.beneficial_owner_pep') ?? false;
 
-      // Determine work_item_type based on facts
       let workItemType = 'TXN_MONITORING';
       if (listType === 'OFAC_SDN' || listType === 'SANCTIONS') {
         workItemType = 'SANCTIONS_SCREENING';
@@ -74,11 +75,7 @@
       }
 
       return {
-        header: {
-          system_id: "DEMO-UI",
-          export_timestamp: new Date().toISOString(),
-          batch_sequence: 1
-        },
+        header: { system_id: "DEMO-UI", export_timestamp: new Date().toISOString(), batch_sequence: 1 },
         alert_details: {
           external_id: `DEMO-${Date.now()}`,
           work_item_type: workItemType,
@@ -97,19 +94,17 @@
           pep_category_code: isPEP ? "FOREIGN" : null,
           disclosure_docs_received: docsComplete
         },
-        transaction_history_slice: [
-          {
-            tx_id: `TX-${Date.now()}`,
-            amt_native: amountCAD,
-            currency_iso: "CAD",
-            amt_base_cad: amountCAD,
-            flow_direction: "OUT",
-            method: method,
-            target_name: "DEMO COUNTERPARTY",
-            benef_country: destination || undefined,
-            status_code: "COMPLETED"
-          }
-        ],
+        transaction_history_slice: [{
+          tx_id: `TX-${Date.now()}`,
+          amt_native: amountCAD,
+          currency_iso: "CAD",
+          amt_base_cad: amountCAD,
+          flow_direction: "OUT",
+          method: method,
+          target_name: "DEMO COUNTERPARTY",
+          benef_country: destination || undefined,
+          status_code: "COMPLETED"
+        }],
         screening_payload: {
           provider: "WORLD_CHECK",
           match_count: matchCount,
@@ -119,41 +114,38 @@
             matched_name: "Demo Match",
             match_reason: listType === 'OFAC_SDN' ? "OFAC SDN Match" : listType === 'PEP' ? "PEP Match" : "Adverse Media Match"
           } : null,
-          adverse_media: mltfLinked ? {
-            found: true,
-            mltf_linked: true,
-            categories: ["MONEY_LAUNDERING"]
-          } : undefined
+          adverse_media: mltfLinked ? { found: true, mltf_linked: true, categories: ["MONEY_LAUNDERING"] } : undefined
         },
         mitigating_factors: {
           relationship_tenure_years: tenure,
           documentation_complete: docsComplete,
           source_of_funds_verified: sourceVerified
         },
-        suspicion_evidence: (structuring || layering) ? {
-          has_intent: true,
-          has_deception: true,
-          has_sustained_pattern: structuring
-        } : undefined,
-        indicators: structuring ? [
-          { code: "FINTRAC_A1", description: "Transactions below reporting threshold" }
-        ] : layering ? [
-          { code: "FINTRAC_B2", description: "Complex corporate structure" }
-        ] : undefined,
+        suspicion_evidence: (structuring || layering) ? { has_intent: true, has_deception: true, has_sustained_pattern: structuring } : undefined,
+        indicators: structuring ? [{ code: "FINTRAC_A1", description: "Transactions below reporting threshold" }] : layering ? [{ code: "FINTRAC_B2", description: "Complex corporate structure" }] : undefined,
         typology_maturity: (structuring || layering) ? "CONFIRMED" : undefined
       };
+    };
+
+    // Format value for display
+    const formatValue = (value) => {
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'number') return value.toLocaleString();
+      return String(value);
     };
 
     function App() {
       const [demoCases, setDemoCases] = useState([]);
       const [selectedCase, setSelectedCase] = useState(null);
       const [facts, setFacts] = useState([]);
+      const [baselineFacts, setBaselineFacts] = useState([]); // Track original facts
       const [decision, setDecision] = useState(null);
       const [loading, setLoading] = useState(false);
       const [showDropdown, setShowDropdown] = useState(false);
       const [verifyResult, setVerifyResult] = useState(null);
       const [verifying, setVerifying] = useState(false);
       const [error, setError] = useState(null);
+      const [changedFields, setChangedFields] = useState([]); // Track what changed
 
       useEffect(() => {
         fetch(`${API_URL}/demo/cases`)
@@ -162,7 +154,9 @@
             if (data && data.length) {
               setDemoCases(data);
               setSelectedCase(data[0]);
-              setFacts(data[0].facts.map((f, i) => ({ ...f, id: i })));
+              const initialFacts = data[0].facts.map((f, i) => ({ ...f, id: i }));
+              setFacts(initialFacts);
+              setBaselineFacts(JSON.parse(JSON.stringify(initialFacts))); // Deep copy
             }
           })
           .catch(e => console.error('Failed to load demo cases:', e));
@@ -170,10 +164,13 @@
 
       const selectCase = (c) => {
         setSelectedCase(c);
-        setFacts(c.facts.map((f, i) => ({ ...f, id: i })));
+        const newFacts = c.facts.map((f, i) => ({ ...f, id: i }));
+        setFacts(newFacts);
+        setBaselineFacts(JSON.parse(JSON.stringify(newFacts))); // Deep copy
         setDecision(null);
         setVerifyResult(null);
         setError(null);
+        setChangedFields([]);
         setShowDropdown(false);
       };
 
@@ -181,10 +178,27 @@
         setFacts(prev => prev.map(f => f.id === id ? { ...f, value } : f));
       };
 
+      // Calculate diff between baseline and current facts
+      const calculateDiff = useCallback(() => {
+        const changes = [];
+        facts.forEach(fact => {
+          const baseline = baselineFacts.find(b => b.field === fact.field);
+          if (baseline && baseline.value !== fact.value) {
+            changes.push({
+              field: fact.label || fact.field,
+              from: formatValue(baseline.value),
+              to: formatValue(fact.value)
+            });
+          }
+        });
+        return changes;
+      }, [facts, baselineFacts]);
+
       const runDecision = async () => {
         setLoading(true);
         setVerifyResult(null);
         setError(null);
+        setChangedFields(calculateDiff());
 
         try {
           const inputJson = buildInputJson(facts);
@@ -194,7 +208,6 @@
             body: JSON.stringify(inputJson)
           });
           const data = await res.json();
-
           if (res.ok) {
             setDecision(data);
           } else {
@@ -210,7 +223,6 @@
         if (!decision) return;
         setVerifying(true);
         setVerifyResult(null);
-
         try {
           const res = await fetch(`${API_URL}/verify`, {
             method: 'POST',
@@ -239,6 +251,12 @@
         return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: 'alert' };
       };
 
+      const getRuleStyle = (result) => {
+        if (result === 'CLEAR' || result === 'NOT_APPLICABLE') return 'bg-emerald-500/20 text-emerald-400';
+        if (result === 'TRIGGERED' || result === 'ACTIVATED' || result === 'APPLIED') return 'bg-red-500/20 text-red-400';
+        return 'bg-slate-700 text-slate-300';
+      };
+
       return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
           {/* Nav */}
@@ -255,59 +273,41 @@
           </nav>
 
           {/* Hero */}
-          <section className="pt-28 pb-12 px-6">
+          <section className="pt-28 pb-8 px-6">
             <div className="max-w-4xl mx-auto text-center">
-              <div className="flex flex-wrap justify-center gap-2 mb-6">
-                <span className="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-full text-sm font-medium">
-                  Dual-Gate
-                </span>
-                <span className="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-full text-sm font-medium">
-                  Zero-False-Escalation
-                </span>
-                <span className="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-full text-sm font-medium">
-                  Bank-Grade
-                </span>
+              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm">Dual-Gate</span>
+                <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm">Zero-False-Escalation</span>
+                <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm">Bank-Grade</span>
               </div>
-              <h1 className="text-5xl font-bold mb-4">DecisionGraph</h1>
-              <p className="text-2xl text-slate-300 mb-4">Bank-Grade AML/KYC Decision Engine</p>
-              <p className="text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                Evaluate transactions using <span className="text-slate-200">dual-gate logic</span>, producing
-                <span className="text-slate-200"> zero-false-escalation decisions</span>,
-                <span className="text-slate-200"> 6-layer taxonomy breakdowns</span>, and
-                <span className="text-slate-200"> cryptographic provenance</span> for audits.
+              <h1 className="text-4xl font-bold mb-2">DecisionGraph</h1>
+              <p className="text-xl text-slate-300 mb-2">Bank-Grade AML/KYC Decision Engine</p>
+              <p className="text-sm text-slate-400 max-w-2xl mx-auto">
+                Toggle facts below and watch the decision change in real-time.
               </p>
             </div>
           </section>
 
           {/* Interactive Demo */}
-          <section className="py-8 px-6">
+          <section className="py-4 px-6">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-2xl font-bold text-center mb-8">Try It Live</h2>
-
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* Facts Panel */}
                 <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
                   <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
                     <span className="font-medium">Case Facts</span>
                     <div className="relative">
-                      <button
-                        onClick={() => setShowDropdown(!showDropdown)}
-                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm"
-                      >
-                        <span className="truncate max-w-[160px]">{selectedCase?.name || 'Select Case'}</span>
+                      <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm">
+                        <span className="truncate max-w-[140px]">{selectedCase?.name || 'Select'}</span>
                         <Icon name="chevronDown" className="w-4 h-4" />
                       </button>
                       {showDropdown && (
-                        <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                        <div className="absolute right-0 mt-2 w-80 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
                           {demoCases.map(c => (
-                            <button
-                              key={c.id}
-                              onClick={() => selectCase(c)}
+                            <button key={c.id} onClick={() => selectCase(c)}
                               className={`w-full text-left px-4 py-3 hover:bg-slate-700 text-sm border-b border-slate-700/50 last:border-0 ${
-                                c.category === 'PASS' ? 'text-emerald-300' :
-                                c.category === 'ESCALATE' ? 'text-red-300' : 'text-amber-300'
-                              }`}
-                            >
+                                c.category === 'PASS' ? 'text-emerald-300' : c.category === 'ESCALATE' ? 'text-red-300' : 'text-amber-300'
+                              }`}>
                               <div className="font-medium">{c.name}</div>
                               <div className="text-xs text-slate-400 mt-1">{c.description}</div>
                             </button>
@@ -317,83 +317,47 @@
                     </div>
                   </div>
 
-                  <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
-                    {facts.map(f => (
-                      <div key={f.id} className="flex items-center gap-3 bg-slate-800 rounded-lg p-3">
-                        <span className="flex-1 text-sm text-slate-300">{f.label || f.field}</span>
-                        {typeof f.value === 'boolean' ? (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => updateFact(f.id, true)}
-                              className={`px-3 py-1 rounded text-xs font-medium ${f.value === true ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
-                            >Yes</button>
-                            <button
-                              onClick={() => updateFact(f.id, false)}
-                              className={`px-3 py-1 rounded text-xs font-medium ${f.value === false ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
-                            >No</button>
-                          </div>
-                        ) : typeof f.value === 'number' ? (
-                          <input
-                            type="number"
-                            value={f.value}
-                            onChange={(e) => updateFact(f.id, parseFloat(e.target.value) || 0)}
-                            className="w-28 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <select
-                            value={f.value}
-                            onChange={(e) => updateFact(f.id, e.target.value)}
-                            className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          >
-                            {f.field.includes('type') && <>
-                              <option value="IND">Individual</option>
-                              <option value="CORP">Corporate</option>
-                            </>}
-                            {f.field.includes('method') && <>
-                              <option value="WIRE">Wire</option>
-                              <option value="CASH">Cash</option>
-                              <option value="CRYPTO">Crypto</option>
-                              <option value="ACH">ACH</option>
-                              <option value="CHEQUE">Cheque</option>
-                            </>}
-                            {f.field.includes('list_type') && <>
-                              <option value="PEP">PEP</option>
-                              <option value="OFAC_SDN">OFAC SDN</option>
-                              <option value="ADVERSE_MEDIA">Adverse Media</option>
-                              <option value="SANCTIONS">Sanctions</option>
-                            </>}
-                            {f.field.includes('residence') || f.field.includes('destination') ? <>
-                              <option value="CA">Canada</option>
-                              <option value="US">USA</option>
-                              <option value="IT">Italy</option>
-                              <option value="BR">Brazil</option>
-                              <option value="RU">Russia</option>
-                              <option value="CN">China</option>
-                              <option value="HK">Hong Kong</option>
-                              <option value="SG">Singapore</option>
-                              <option value="AE">UAE</option>
-                              <option value="CH">Switzerland</option>
-                              <option value="CY">Cyprus</option>
-                              <option value="VG">BVI</option>
-                            </> : null}
-                          </select>
-                        )}
-                      </div>
-                    ))}
+                  <div className="p-3 space-y-1.5 max-h-[380px] overflow-y-auto">
+                    {facts.map(f => {
+                      const baseline = baselineFacts.find(b => b.field === f.field);
+                      const isChanged = baseline && baseline.value !== f.value;
+                      return (
+                        <div key={f.id} className={`flex items-center gap-2 rounded-lg p-2.5 ${isChanged ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-slate-800'}`}>
+                          <span className="flex-1 text-sm text-slate-300">{f.label || f.field}</span>
+                          {isChanged && <span className="text-[10px] text-blue-400 font-medium">CHANGED</span>}
+                          {typeof f.value === 'boolean' ? (
+                            <div className="flex gap-1">
+                              <button onClick={() => updateFact(f.id, true)}
+                                className={`px-2.5 py-1 rounded text-xs font-medium ${f.value === true ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>Yes</button>
+                              <button onClick={() => updateFact(f.id, false)}
+                                className={`px-2.5 py-1 rounded text-xs font-medium ${f.value === false ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>No</button>
+                            </div>
+                          ) : typeof f.value === 'number' ? (
+                            <input type="number" value={f.value} onChange={(e) => updateFact(f.id, parseFloat(e.target.value) || 0)}
+                              className="w-24 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          ) : (
+                            <select value={f.value} onChange={(e) => updateFact(f.id, e.target.value)}
+                              className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                              {f.field.includes('type') && <><option value="IND">Individual</option><option value="CORP">Corporate</option></>}
+                              {f.field.includes('method') && <><option value="WIRE">Wire</option><option value="CASH">Cash</option><option value="CRYPTO">Crypto</option><option value="ACH">ACH</option></>}
+                              {f.field.includes('list_type') && <><option value="PEP">PEP</option><option value="OFAC_SDN">OFAC SDN</option><option value="ADVERSE_MEDIA">Adverse Media</option></>}
+                              {(f.field.includes('residence') || f.field.includes('destination')) && <>
+                                <option value="CA">Canada</option><option value="US">USA</option><option value="IT">Italy</option><option value="BR">Brazil</option>
+                                <option value="RU">Russia</option><option value="CN">China</option><option value="HK">Hong Kong</option><option value="AE">UAE</option>
+                                <option value="CH">Switzerland</option><option value="CY">Cyprus</option><option value="VG">BVI</option><option value="SG">Singapore</option>
+                              </>}
+                            </select>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {error && (
-                    <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20 text-red-400 text-sm">
-                      {error}
-                    </div>
-                  )}
+                  {error && <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20 text-red-400 text-sm">{error}</div>}
 
                   <div className="px-4 py-3 bg-slate-800 border-t border-slate-700">
-                    <button
-                      onClick={runDecision}
-                      disabled={loading}
-                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2"
-                    >
+                    <button onClick={runDecision} disabled={loading}
+                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white py-2.5 rounded-lg font-medium flex items-center justify-center gap-2">
                       {loading ? <><Icon name="refresh" className="w-4 h-4" /> Running...</> : <><Icon name="play" className="w-4 h-4" /> Run Decision</>}
                     </button>
                   </div>
@@ -403,14 +367,14 @@
                 <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
                   <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
                     <span className="font-medium">Decision Output</span>
-                    {decision && <span className="text-xs text-slate-500 font-mono">{decision.meta?.decision_id?.substring(0, 16)}...</span>}
+                    {decision && <span className="text-xs text-slate-500 font-mono">{decision.meta?.decision_id?.substring(0, 12)}...</span>}
                   </div>
 
                   <div className="p-4 max-h-[500px] overflow-y-auto">
                     {!decision ? (
-                      <div className="text-center py-16 text-slate-500">
-                        <Icon name="bank" className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                        <p>Click "Run Decision" to see the result</p>
+                      <div className="text-center py-12 text-slate-500">
+                        <Icon name="bank" className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">Click "Run Decision" to see the result</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -418,117 +382,103 @@
                         {(() => {
                           const style = getVerdictStyle(decision.decision?.verdict);
                           return (
-                            <div className={`rounded-xl p-5 ${style.bg} border ${style.border}`}>
+                            <div className={`rounded-xl p-4 ${style.bg} border ${style.border}`}>
                               <div className="flex items-center gap-3 mb-2">
-                                <Icon name={style.icon} className={`w-8 h-8 ${style.text}`} />
-                                <div className={`text-2xl font-bold ${style.text}`}>
-                                  {decision.decision?.verdict}
-                                </div>
+                                <Icon name={style.icon} className={`w-7 h-7 ${style.text}`} />
+                                <div className={`text-xl font-bold ${style.text}`}>{decision.decision?.verdict}</div>
                               </div>
-                              <p className="text-slate-300 text-sm">{decision.rationale?.summary}</p>
-                              <div className="flex gap-2 mt-3 flex-wrap">
-                                <span className="px-2 py-1 bg-slate-800 rounded text-xs">Action: {decision.decision?.action}</span>
-                                <span className="px-2 py-1 bg-slate-800 rounded text-xs">STR: {String(decision.decision?.str_required)}</span>
-                                {decision.decision?.path && (
-                                  <span className="px-2 py-1 bg-slate-800 rounded text-xs">Path: {decision.decision?.path}</span>
-                                )}
+                              <p className="text-slate-300 text-sm mb-2">{decision.rationale?.summary}</p>
+                              <div className="flex gap-2 flex-wrap">
+                                <span className="px-2 py-0.5 bg-slate-800 rounded text-xs">Action: {decision.decision?.action}</span>
+                                <span className="px-2 py-0.5 bg-slate-800 rounded text-xs">STR: {decision.decision?.str_required}</span>
+                                {decision.decision?.path && <span className="px-2 py-0.5 bg-slate-800 rounded text-xs">Path: {decision.decision?.path}</span>}
                               </div>
                             </div>
                           );
                         })()}
 
-                        {/* Gate Results */}
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-400 mb-2">Dual-Gate Results</h4>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className={`rounded-lg p-3 ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                              <div className="text-xs text-slate-400 mb-1">Gate 1: Zero-False-Esc</div>
-                              <div className={`font-bold ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {decision.gates?.gate1?.decision || 'N/A'}
-                              </div>
-                            </div>
-                            <div className={`rounded-lg p-3 ${decision.gates?.gate2?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                              <div className="text-xs text-slate-400 mb-1">Gate 2: STR Check</div>
-                              <div className={`font-bold ${decision.gates?.gate2?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {decision.gates?.gate2?.decision || 'N/A'}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Absolute Rules */}
-                        {decision.rationale?.absolute_rules_validated?.length > 0 && (
+                        {/* What Changed (Diff) */}
+                        {changedFields.length > 0 && (
                           <div>
-                            <h4 className="text-sm font-medium text-slate-400 mb-2">Absolute Rules Validated</h4>
+                            <h4 className="text-sm font-medium text-blue-400 mb-2">What Changed</h4>
                             <div className="space-y-1">
-                              {decision.rationale.absolute_rules_validated.map((rule, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm">
-                                  <Icon name="check" className="w-4 h-4 text-emerald-400" />
-                                  <span className="text-slate-300">{rule}</span>
+                              {changedFields.map((change, i) => (
+                                <div key={i} className="flex items-center gap-2 text-sm bg-blue-500/10 rounded-lg px-3 py-2 border border-blue-500/20">
+                                  <span className="text-slate-300">{change.field}:</span>
+                                  <span className="text-red-400 line-through">{change.from}</span>
+                                  <Icon name="arrowRight" className="w-3 h-3 text-slate-500" />
+                                  <span className="text-emerald-400 font-medium">{change.to}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* Provenance */}
-                        <div className="pt-3 border-t border-slate-700">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-medium text-slate-400">Provenance</h4>
-                            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
-                              Audit & verification
-                            </span>
+                        {/* Why (Rules Fired) */}
+                        {decision.evaluation_trace?.rules_fired?.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-amber-400 mb-2">Why (Rules Fired)</h4>
+                            <div className="space-y-1">
+                              {decision.evaluation_trace.rules_fired.map((rule, i) => (
+                                <div key={i} className="flex items-center gap-2 text-sm bg-slate-800 rounded-lg px-3 py-2">
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRuleStyle(rule.result)}`}>{rule.result}</span>
+                                  <code className="text-slate-400 text-xs">{rule.code}</code>
+                                  <span className="text-slate-500">-</span>
+                                  <span className="text-slate-300 text-xs">{rule.reason}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
+                        )}
 
-                          <div className="bg-slate-800/50 rounded-lg p-3 mb-3 space-y-1.5">
+                        {/* Gate Results */}
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-400 mb-2">Dual-Gate Results</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className={`rounded-lg p-2.5 ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                              <div className="text-[10px] text-slate-400 mb-0.5">Gate 1: Zero-False-Esc</div>
+                              <div className={`text-sm font-bold ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'BLOCKED' : 'ALLOWED'}
+                              </div>
+                            </div>
+                            <div className={`rounded-lg p-2.5 ${decision.decision?.str_required === 'YES' ? 'bg-red-500/10 border border-red-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
+                              <div className="text-[10px] text-slate-400 mb-0.5">Gate 2: STR Threshold</div>
+                              <div className={`text-sm font-bold ${decision.decision?.str_required === 'YES' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {decision.decision?.str_required === 'YES' ? 'STR REQUIRED' : 'NOT REQUIRED'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Provenance + Actions */}
+                        <div className="pt-3 border-t border-slate-700">
+                          <div className="bg-slate-800/50 rounded-lg p-2.5 mb-3 space-y-1">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-slate-500">Decision Hash</span>
-                              <span className="font-mono text-slate-300">{decision.meta?.decision_id?.substring(0, 16)}...</span>
+                              <span className="font-mono text-slate-300">{decision.meta?.decision_id?.substring(0, 12)}...</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-slate-500">Input Hash</span>
-                              <span className="font-mono text-slate-300">{decision.meta?.input_hash?.substring(0, 16)}...</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-500">Policy</span>
-                              <span className="font-mono text-slate-300">v{decision.meta?.policy_version}</span>
+                              <span className="font-mono text-slate-300">{decision.meta?.input_hash?.substring(0, 12)}...</span>
                             </div>
                           </div>
 
-                          {/* Verify Button */}
-                          <button
-                            onClick={verifyDecision}
-                            disabled={verifying}
-                            className={`w-full py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                              verifyResult?.valid === true ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                              verifyResult?.valid === false ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                              'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                            }`}
-                          >
-                            {verifying ? (
-                              <><Icon name="refresh" className="w-4 h-4" /> Verifying...</>
-                            ) : verifyResult?.valid === true ? (
-                              <><Icon name="check" className="w-4 h-4" /> Verified</>
-                            ) : verifyResult?.valid === false ? (
-                              <><Icon name="x" className="w-4 h-4" /> Failed</>
-                            ) : (
-                              <><Icon name="shield" className="w-4 h-4" /> Verify Provenance</>
-                            )}
-                          </button>
-
-                          {/* View Report */}
-                          <a
-                            href={`${API_URL}/report/${decision.meta?.decision_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full mt-2 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
-                          >
-                            <Icon name="bank" className="w-4 h-4" /> View Full Report
-                          </a>
-
-                          <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-500">
-                            <Icon name="lock" className="w-3 h-3" />
-                            <span>Deterministic - Reproducible - Auditable</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button onClick={verifyDecision} disabled={verifying}
+                              className={`py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+                                verifyResult?.valid === true ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                                verifyResult?.valid === false ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                              }`}>
+                              {verifying ? <><Icon name="refresh" className="w-3 h-3" /> Verifying</> :
+                               verifyResult?.valid === true ? <><Icon name="check" className="w-3 h-3" /> Verified</> :
+                               verifyResult?.valid === false ? <><Icon name="x" className="w-3 h-3" /> Failed</> :
+                               <><Icon name="shield" className="w-3 h-3" /> Verify</>}
+                            </button>
+                            <a href={`${API_URL}/report/${decision.meta?.decision_id}`} target="_blank" rel="noopener noreferrer"
+                              className="py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+                              <Icon name="bank" className="w-3 h-3" /> Full Report
+                            </a>
                           </div>
                         </div>
                       </div>
@@ -538,37 +488,29 @@
               </div>
 
               {/* Hint */}
-              <div className="mt-6 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 max-w-xl mx-auto">
-                <div className="flex items-start gap-3">
-                  <Icon name="zap" className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-slate-400">
-                    <span className="text-blue-400 font-medium">Try this:</span> Select "Foreign PEP - Legal Fees (PASS)",
-                    then toggle <code className="bg-slate-800 px-1.5 py-0.5 rounded text-xs">Documentation Complete</code> to No
-                    and see how the decision changes.
+              <div className="mt-4 bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 max-w-lg mx-auto">
+                <div className="flex items-start gap-2">
+                  <Icon name="zap" className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-400">
+                    <span className="text-blue-400 font-medium">Try this:</span> Select a PASS case, toggle
+                    <code className="bg-slate-800 px-1 rounded mx-1">Documentation Complete</code> to No, and
+                    <span className="text-amber-400"> watch which rule fires</span>.
                   </p>
                 </div>
               </div>
-
-              <p className="mt-4 text-center text-xs text-slate-500">
-                Demo scenarios illustrate zero-false-escalation logic.
-              </p>
             </div>
           </section>
 
           {/* Absolute Rules */}
-          <section className="py-12 px-6">
+          <section className="py-8 px-6">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-center mb-8">Absolute Rules (No Exceptions)</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  { icon: 'x', text: 'PEP status alone can NEVER escalate' },
-                  { icon: 'x', text: 'Cross-border alone can NEVER escalate' },
-                  { icon: 'x', text: 'Risk score alone can NEVER escalate' },
-                  { icon: 'x', text: '"High confidence" can NEVER override facts' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-                    <Icon name={item.icon} className="w-5 h-5 text-red-400 flex-shrink-0" />
-                    <span className="text-slate-300">{item.text}</span>
+              <h2 className="text-xl font-bold text-center mb-6">Absolute Rules (No Exceptions)</h2>
+              <div className="grid md:grid-cols-2 gap-3">
+                {['PEP status alone can NEVER escalate', 'Cross-border alone can NEVER escalate',
+                  'Risk score alone can NEVER escalate', '"High confidence" can NEVER override facts'].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                    <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-slate-300 text-sm">{item}</span>
                   </div>
                 ))}
               </div>
@@ -576,27 +518,21 @@
           </section>
 
           {/* API Endpoints */}
-          <section className="py-12 px-6 bg-slate-900/50">
+          <section className="py-8 px-6 bg-slate-900/50">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-center mb-8">API Endpoints</h2>
-              <div className="grid md:grid-cols-2 gap-4">
+              <h2 className="text-xl font-bold text-center mb-6">API Endpoints</h2>
+              <div className="grid md:grid-cols-2 gap-3">
                 {[
-                  { method: 'POST', path: '/decide', desc: 'Run dual-gate decision engine' },
-                  { method: 'GET', path: '/demo/cases', desc: 'List demo cases' },
-                  { method: 'GET', path: '/report/{id}', desc: 'Get decision report (HTML)' },
-                  { method: 'POST', path: '/verify', desc: 'Verify decision provenance' },
-                  { method: 'GET', path: '/health', desc: 'Liveness probe' },
-                  { method: 'GET', path: '/ready', desc: 'Readiness probe' },
-                  { method: 'GET', path: '/version', desc: 'Version info' },
-                  { method: 'GET', path: '/docs', desc: 'OpenAPI documentation' },
+                  { method: 'POST', path: '/decide', desc: 'Run dual-gate decision' },
+                  { method: 'GET', path: '/demo/cases', desc: 'List demo scenarios' },
+                  { method: 'GET', path: '/report/{id}', desc: 'Decision report' },
+                  { method: 'POST', path: '/verify', desc: 'Verify provenance' },
                 ].map((ep, i) => (
-                  <div key={i} className="bg-slate-800/50 rounded-lg p-4 flex items-center gap-4">
-                    <span className={`px-2 py-1 rounded text-xs font-mono font-bold ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                      {ep.method}
-                    </span>
+                  <div key={i} className="bg-slate-800/50 rounded-lg p-3 flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>{ep.method}</span>
                     <div>
                       <code className="text-slate-200 text-sm">{ep.path}</code>
-                      <p className="text-slate-500 text-xs mt-1">{ep.desc}</p>
+                      <p className="text-slate-500 text-xs">{ep.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -605,14 +541,14 @@
           </section>
 
           {/* Footer */}
-          <footer className="py-8 px-6 border-t border-slate-800">
+          <footer className="py-6 px-6 border-t border-slate-800">
             <div className="max-w-6xl mx-auto flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Icon name="bank" className="w-5 h-5 text-blue-400" />
-                <span className="font-semibold">DecisionGraph</span>
-                <span className="text-slate-500 text-sm">v2.1.1</span>
+                <Icon name="bank" className="w-4 h-4 text-blue-400" />
+                <span className="font-semibold text-sm">DecisionGraph</span>
+                <span className="text-slate-500 text-xs">v2.1.1</span>
               </div>
-              <a href="/docs" className="text-slate-500 hover:text-white text-sm">API Documentation</a>
+              <a href="/docs" className="text-slate-500 hover:text-white text-xs">API Docs</a>
             </div>
           </footer>
         </div>
