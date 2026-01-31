@@ -155,6 +155,12 @@ def build_report_context(decision: dict) -> dict:
         # Compliance
         "legislation": compliance.get("legislation", "PCMLTFA") or "PCMLTFA",
         "fintrac_indicators": compliance.get("fintrac_indicators_matched", []) or [],
+
+        # Evaluation trace
+        "evaluation_trace": decision.get("evaluation_trace", {}) or {},
+        "rules_fired": (decision.get("evaluation_trace", {}) or {}).get("rules_fired", []) or [],
+        "evidence_used": (decision.get("evaluation_trace", {}) or {}).get("evidence_used", []) or [],
+        "decision_path_trace": (decision.get("evaluation_trace", {}) or {}).get("decision_path", "") or "",
     }
 
 
@@ -273,6 +279,15 @@ REPORT_HTML_TEMPLATE = """<!DOCTYPE html>
       {citations_html}
     </div>
 
+    <h2>Evaluation Trace</h2>
+    <div class="card">
+      <h3 style="margin-top: 0;">Rules Evaluated</h3>
+      {rules_fired_html}
+      <h3>Evidence Considered</h3>
+      {evidence_used_html}
+      <p><strong>Decision Path:</strong> <code>{decision_path_trace}</code></p>
+    </div>
+
     <h2>Provenance</h2>
     <div class="provenance">
       <div class="kv">
@@ -339,35 +354,67 @@ async def get_report_html(decision_id: str):
         gate1_class = "pass" if ctx.get('gate1_decision') == "PROHIBITED" else "fail"
         gate2_class = "pass" if ctx.get('gate2_decision') == "PROHIBITED" else "fail"
 
-        # Gate 1 sections
+        # Gate 1 sections (handle both dict and list format)
         gate1_sections_html = ""
-        for section in ctx.get('gate1_sections', []):
-            status = "✓" if section.get('passed') else "✗"
-            status_class = "pass" if section.get('passed') else "fail"
-            gate1_sections_html += f"""
-            <div class="gate-section">
-              <div class="section-header">
-                <span class="pill {status_class}">{status}</span>
-                <span>{section.get('id', 'N/A')}: {section.get('name', 'N/A')}</span>
-              </div>
-              <div class="section-reason">{section.get('reason', '')}</div>
-            </div>
-            """
+        gate1_sections_data = ctx.get('gate1_sections', {})
+        if isinstance(gate1_sections_data, dict):
+            for section_id, section in gate1_sections_data.items():
+                if isinstance(section, dict):
+                    status = "✓" if section.get('passed') else "✗"
+                    status_class = "pass" if section.get('passed') else "fail"
+                    gate1_sections_html += f"""
+                    <div class="gate-section">
+                      <div class="section-header">
+                        <span class="pill {status_class}">{status}</span>
+                        <span>{section_id}: {section.get('name', 'N/A')}</span>
+                      </div>
+                      <div class="section-reason">{section.get('reason', '')}</div>
+                    </div>
+                    """
+        elif isinstance(gate1_sections_data, list):
+            for section in gate1_sections_data:
+                status = "✓" if section.get('passed') else "✗"
+                status_class = "pass" if section.get('passed') else "fail"
+                gate1_sections_html += f"""
+                <div class="gate-section">
+                  <div class="section-header">
+                    <span class="pill {status_class}">{status}</span>
+                    <span>{section.get('id', 'N/A')}: {section.get('name', 'N/A')}</span>
+                  </div>
+                  <div class="section-reason">{section.get('reason', '')}</div>
+                </div>
+                """
 
-        # Gate 2 sections
+        # Gate 2 sections (handle both dict and list format)
         gate2_sections_html = ""
-        for section in ctx.get('gate2_sections', []):
-            status = "✓" if section.get('passed') else "✗"
-            status_class = "pass" if section.get('passed') else "fail"
-            gate2_sections_html += f"""
-            <div class="gate-section">
-              <div class="section-header">
-                <span class="pill {status_class}">{status}</span>
-                <span>{section.get('id', 'N/A')}: {section.get('name', 'N/A')}</span>
-              </div>
-              <div class="section-reason">{section.get('reason', '')}</div>
-            </div>
-            """
+        gate2_sections_data = ctx.get('gate2_sections', {})
+        if isinstance(gate2_sections_data, dict):
+            for section_id, section in gate2_sections_data.items():
+                if isinstance(section, dict):
+                    status = "✓" if section.get('passed') else "✗"
+                    status_class = "pass" if section.get('passed') else "fail"
+                    gate2_sections_html += f"""
+                    <div class="gate-section">
+                      <div class="section-header">
+                        <span class="pill {status_class}">{status}</span>
+                        <span>{section_id}: {section.get('name', 'N/A')}</span>
+                      </div>
+                      <div class="section-reason">{section.get('reason', '')}</div>
+                    </div>
+                    """
+        elif isinstance(gate2_sections_data, list):
+            for section in gate2_sections_data:
+                status = "✓" if section.get('passed') else "✗"
+                status_class = "pass" if section.get('passed') else "fail"
+                gate2_sections_html += f"""
+                <div class="gate-section">
+                  <div class="section-header">
+                    <span class="pill {status_class}">{status}</span>
+                    <span>{section.get('id', 'N/A')}: {section.get('name', 'N/A')}</span>
+                  </div>
+                  <div class="section-reason">{section.get('reason', '')}</div>
+                </div>
+                """
 
         # Rationale parts
         justification_html = ""
@@ -384,6 +431,26 @@ async def get_report_html(decision_id: str):
         citations_html = ""
         if ctx.get('regulatory_citations'):
             citations_html = f"<p><strong>Regulatory Citations:</strong> {', '.join(ctx['regulatory_citations'])}</p>"
+
+        # Rules fired (evaluation trace)
+        rules_fired_html = "<table><tr><th>Rule</th><th>Result</th><th>Reason</th></tr>"
+        for rule in ctx.get('rules_fired', []):
+            result_class = "pass" if rule.get('result') in ['CLEAR', 'NOT_APPLICABLE'] else "fail"
+            rules_fired_html += f"<tr><td><code>{rule.get('code', 'N/A')}</code></td><td><span class='pill {result_class}'>{rule.get('result', 'N/A')}</span></td><td>{rule.get('reason', '')}</td></tr>"
+        rules_fired_html += "</table>"
+        if not ctx.get('rules_fired'):
+            rules_fired_html = "<p>No rules evaluated</p>"
+
+        # Evidence used (evaluation trace)
+        evidence_used_html = "<table><tr><th>Field</th><th>Value</th></tr>"
+        for ev in ctx.get('evidence_used', []):
+            value = ev.get('value', 'N/A')
+            if isinstance(value, bool):
+                value = "Yes" if value else "No"
+            evidence_used_html += f"<tr><td><code>{ev.get('field', 'N/A')}</code></td><td>{value}</td></tr>"
+        evidence_used_html += "</table>"
+        if not ctx.get('evidence_used'):
+            evidence_used_html = "<p>No evidence recorded</p>"
 
         # Ensure str_required is a string
         str_required = ctx.get('str_required', 'NO')
@@ -402,6 +469,9 @@ async def get_report_html(decision_id: str):
             justification_html=justification_html,
             rules_html=rules_html,
             citations_html=citations_html,
+            rules_fired_html=rules_fired_html,
+            evidence_used_html=evidence_used_html,
+            decision_path_trace=ctx.get('decision_path_trace', 'N/A'),
         )
 
         return HTMLResponse(content=html)

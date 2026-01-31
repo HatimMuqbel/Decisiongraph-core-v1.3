@@ -1,0 +1,328 @@
+========================================================================
+TRANSACTION MONITORING ALERT REPORT
+Alert ID: AMLE-P88-2026
+========================================================================
+
+========================================================================
+CASE SUMMARY
+========================================================================
+Case ID:        AMLE-P88-2026
+Case Type:      AML_ALERT
+Jurisdiction:   CA
+Status:         OPEN
+Priority:       HIGH
+
+Primary Customer:
+  Name:         Elena Moretti
+  ID:           IND-99283
+  Risk Rating:  HIGH
+
+========================================================================
+TRANSACTION DETAILS
+========================================================================
+  [OUTBOUND] 265000.00 CAD
+             To: LONDON LEGAL PARTNERS
+             Country: GB
+
+========================================================================
+SCREENING RESULTS
+========================================================================
+  [HIT]    PEP             CONFIRMED
+           Vendor: REF_WORLD_CHECK
+
+========================================================================
+DOCUMENTATION STATUS
+========================================================================
+  [OK] government_id
+  [OK] pep_result
+  [OK] transaction_records
+
+  Documentation Score: 3/8 (38%)
+
+
+========================================================================
+SECTION 10B: MITIGATING FACTORS ANALYSIS
+========================================================================
+
+GATE 1: CONTEXTUAL TYPOLOGY
+------------------------------------------------------------------------
+   Typology Class: CRYPTO_MIXING
+   Forbidden Typologies: NONE DETECTED
+
+GATE 2: INHERENT RISKS DETECTED
+------------------------------------------------------------------------
+   01. [MEDIUM  ] TXN_LARGE_CASH
+       Large Cash Transaction
+   02. [HIGH    ] TXN_JUST_BELOW_THRESHOLD
+       Transaction Just Below Threshold
+   03. [MEDIUM  ] TXN_RAPID_MOVEMENT
+       Rapid Movement of Funds
+   04. [LOW     ] TXN_ROUND_AMOUNT
+       Unusual Round Amounts
+   05. [MEDIUM  ] TXN_CRYPTO
+       Virtual Currency Transaction
+   06. [HIGH    ] TXN_UNUSUAL_PATTERN
+       Unusual Transaction Pattern
+   07. [HIGH    ] GEO_HIGH_RISK_COUNTRY
+       High-Risk Jurisdiction
+   08. [CRITICAL] GEO_SANCTIONED_COUNTRY
+       Sanctioned Jurisdiction
+   09. [MEDIUM  ] GEO_TAX_HAVEN
+       Tax Haven Jurisdiction
+   10. [HIGH    ] PEP_FOREIGN
+       Foreign PEP Identified
+   11. [MEDIUM  ] PEP_DOMESTIC
+       Domestic PEP Identified
+   12. [MEDIUM  ] PEP_HIO
+       Head of International Organization
+   13. [MEDIUM  ] PEP_FAMILY_ASSOCIATE
+       PEP Family Member or Close Associate
+   14. [HIGH    ] STRUCT_CASH_MULTIPLE
+       Multiple Cash Deposits
+   15. [CRITICAL] STRUCT_SMURFING
+       Potential Smurfing Activity
+   16. [CRITICAL] SCREEN_SANCTIONS_HIT
+       Sanctions List Match
+   17. [MEDIUM  ] SCREEN_ADVERSE_MEDIA
+       Adverse Media Hit
+   18. [HIGH    ] CDD_UBO_UNKNOWN
+       Unknown Beneficial Owner
+   19. [MEDIUM  ] CDD_HIGH_RISK_INDUSTRY
+       High-Risk Industry
+
+GATE 2: MITIGATING FACTORS (Pause & Pivot)
+------------------------------------------------------------------------
+   MF_ESTABLISHED_RELATIONSHIP: Established Customer Relationship
+      Data: relationship_tenure: 22
+      Source: fincrime.assertion.relationship_tenure
+      Impact: -0.25 Risk Weight applied
+   MF_DOCUMENTATION_COMPLETE: Documentation Complete
+      Data: documentation_status: complete
+      Source: fincrime.assertion.documentation_status
+      Impact: -0.25 Risk Weight applied
+   MF_TXN_SUPPORTING_INVOICE: Supporting Invoice/Contract
+      Data: evidence_collected: {'evidence_id': 'EV-001', '...
+      Source: fincrime.evidence.evidence_collected
+      Data: evidence_collected: {'evidence_id': 'EV-002', '...
+      Source: fincrime.evidence.evidence_collected
+      Data: evidence_collected: {'evidence_id': 'EV-003', '...
+      Source: fincrime.evidence.evidence_collected
+      Impact: -0.25 Risk Weight applied
+   MF_SCREEN_FALSE_POSITIVE: Confirmed False Positive
+      Data: screening_completed: {'event_id': 'SCR-001', 'ev...
+      Source: fincrime.screening.screening_completed
+      Impact: -0.50 Risk Weight applied
+
+GATE 3: RESIDUAL RISK CALCULATION
+------------------------------------------------------------------------
+   EVIDENCE ANCHOR GRID:
+   ------------------------------------------------------------
+   Offset Type               Data Anchor              Weight
+   ------------------------------------------------------------
+   Inherent Risk             All Signals              +12.25
+   Established Customer Relationship relationship_tenure       -0.25
+   Documentation Complete    documentation_status      -0.25
+   Supporting Invoice/Contract evidence_collected        -0.25
+   Confirmed False Positive  screening_completed       -0.50
+   ------------------------------------------------------------
+   RESIDUAL SCORE                                     11.00
+
+   Residual Score: 11.0
+   Threshold Gate: STR_CONSIDERATION
+
+GATE 4: INTEGRITY AUDIT
+------------------------------------------------------------------------
+   Typology Match:     PASS
+   Verdict Alignment:  PASS
+   Language Audit:     PASS
+   Chain Integrity:    PASS
+   Overall Integrity:  PASS
+
+========================================================================
+POLICY CITATIONS
+========================================================================
+
+Signal: CDD_HIGH_RISK_INDUSTRY (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 9.6
+   SHA256: c758891807881725...
+
+
+Signal: CDD_UBO_UNKNOWN (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 11.1
+   SHA256: 06348a7e466a71dc...
+
+
+Signal: GEO_HIGH_RISK_COUNTRY (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 9.6
+   SHA256: c758891807881725...
+
+
+Signal: GEO_SANCTIONED_COUNTRY (1 citation)
+------------------------------------------------------------------------
+1. SEMA
+   Section: (Special Economic Measures Act)
+   SHA256: 86d7ca664c073e69...
+
+
+Signal: GEO_TAX_HAVEN (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 6
+   SHA256: 287e575ff9cfad6e...
+
+
+Signal: PEP_DOMESTIC (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 9.3(1)
+   SHA256: 29de38b321ea4b77...
+
+
+Signal: PEP_FAMILY_ASSOCIATE (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 9.3(4)
+   SHA256: 61f944371cd6ed5b...
+
+
+Signal: PEP_FOREIGN (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 9.3(3)
+   SHA256: 9db0ccb9b4dc9bdd...
+
+
+Signal: PEP_HIO (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 9.3(2)
+   SHA256: f9e4e2974c6bab1b...
+
+
+Signal: SCREEN_ADVERSE_MEDIA (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 6
+   SHA256: 287e575ff9cfad6e...
+
+
+Signal: SCREEN_SANCTIONS_HIT (1 citation)
+------------------------------------------------------------------------
+1. SEMA,
+   Section: PCMLTFA s. 11.42
+   SHA256: 6c00ac18fc88116f...
+
+
+Signal: STRUCT_CASH_MULTIPLE (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 2
+   SHA256: 6d171f1b1ff2edc1...
+
+
+Signal: STRUCT_SMURFING (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: ML/TF Typologies
+   SHA256: 8c8afbcf499d4df3...
+
+
+Signal: TXN_CRYPTO (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: Part 1.1
+   SHA256: 0ba8763cb12fb8bc...
+
+
+Signal: TXN_JUST_BELOW_THRESHOLD (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 2
+   SHA256: 6d171f1b1ff2edc1...
+
+
+Signal: TXN_LARGE_CASH (1 citation)
+------------------------------------------------------------------------
+1. PCMLTFR
+   Section: s. 12
+   SHA256: 7e5b63813897bc43...
+
+
+Signal: TXN_RAPID_MOVEMENT (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 3
+   SHA256: d6f503948d196e52...
+
+
+Signal: TXN_ROUND_AMOUNT (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 2
+   SHA256: 6d171f1b1ff2edc1...
+
+
+Signal: TXN_UNUSUAL_PATTERN (1 citation)
+------------------------------------------------------------------------
+1. FINTRAC
+   Section: Guideline 3
+   SHA256: d6f503948d196e52...
+
+========================================================================
+CITATION QUALITY SUMMARY
+========================================================================
+Total Citations:    19
+Signals Covered:    19/19
+Citation Quality:   100%
+
+========================================================================
+DECISION
+========================================================================
+Action:         STR_CONSIDERATION
+Auto-Archive:   NO
+Tier:           3
+Escalate To:    COMPLIANCE_OFFICER
+
+========================================================================
+REQUIRED ACTIONS
+========================================================================
+  (none)
+
+========================================================================
+FEEDBACK SCORES
+========================================================================
+  Score                             Value Assessment                
+  ------------------------------ -------- --------------------------
+  confidence                         0.78 Navigation confidence
+  citation_quality                   1.00 Signals with citations
+  signal_coverage                    0.86 Signals evaluated
+  evidence_completeness              1.00 Evidence anchored
+  decision_clarity                   0.50 Needs review
+  documentation_completeness         0.38 Docs on file
+
+========================================================================
+AUDIT TRAIL
+========================================================================
+Case Created:     2026-01-24T20:25:12.445000+00:00
+Report Generated: 2026-01-29T18:12:11.500Z
+Engine Version:   1.0.0
+Pack Version:     1.0.0
+Pack Hash:        390c23d3d389fb481f0c8795b8b73f67...
+
+========================================================================
+CASE INTEGRITY
+========================================================================
+Graph ID:         graph:ecb820ff-e57e-4189-a759-b35843a02317
+Chain Length:     64 cells
+Chain Status:     VALID
+
+========================================================================
+END OF REPORT
+========================================================================
+

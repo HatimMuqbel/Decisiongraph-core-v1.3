@@ -277,42 +277,60 @@ def build_decision_pack(
     else:
         priority = "LOW"
 
-    # Build Gate 1 sections
+    # Build Gate 1 sections with full details
     gate1_sections = {}
+    section_names_g1 = {
+        "A": ("A_fact_hard_stop", "Fact-Based Hard Stop Check"),
+        "B": ("B_instrument_context", "Instrument Context Validation"),
+        "C": ("C_obligation_isolation", "Obligation Isolation Check"),
+        "D": ("D_indicator_corroboration", "Indicator Corroboration"),
+        "E": ("E_typology_maturity", "Typology Maturity Assessment"),
+        "F": ("F_mitigation_override", "Mitigation Override Check"),
+        "G": ("G_suspicion_definition", "Suspicion Definition Test"),
+    }
     for section in esc_result.sections:
-        section_key = {
-            "A": "A_fact_hard_stop",
-            "B": "B_instrument_context",
-            "C": "C_obligation_isolation",
-            "D": "D_indicator_corroboration",
-            "E": "E_typology_maturity",
-            "F": "F_mitigation_override",
-            "G": "G_suspicion_definition",
-        }.get(section.section_id, section.section_id)
-        gate1_sections[section_key] = "PASS" if section.passed else "FAIL"
+        section_key, section_display_name = section_names_g1.get(
+            section.section_id, (section.section_id, section.section_name or section.section_id)
+        )
+        gate1_sections[section_key] = {
+            "name": section_display_name,
+            "passed": section.passed,
+            "reason": section.gate_message or ("Section passed" if section.passed else "Section failed"),
+        }
 
-    # Build Gate 2 sections
+    # Build Gate 2 sections with full details
     gate2_sections = {}
     gate2_skipped = False
     gate2_skip_reason = None
+
+    section_names_g2 = {
+        "1": ("S1_legal_suspicion", "Legal Suspicion Threshold"),
+        "2": ("S2_evidence_quality", "Evidence Quality Check"),
+        "3": ("S3_mitigation_failure", "Mitigation Failure Analysis"),
+        "4": ("S4_typology_confirmation", "Typology Confirmation"),
+        "5": ("S5_regulatory_reasonableness", "Regulatory Reasonableness"),
+    }
 
     if str_result.decision == STRDecision.PROHIBITED and not escalation_permitted:
         # Gate 2 not evaluated - Gate 1 blocked escalation
         gate2_skipped = True
         gate2_skip_reason = "Gate 1 blocked escalation"
-        for s in ["S1_legal_suspicion", "S2_evidence_quality", "S3_mitigation_failure",
-                  "S4_typology_confirmation", "S5_regulatory_reasonableness"]:
-            gate2_sections[s] = "NOT_EVALUATED"
+        for s_id, (s_key, s_name) in section_names_g2.items():
+            gate2_sections[s_key] = {
+                "name": s_name,
+                "passed": False,
+                "reason": "Not evaluated - Gate 1 blocked escalation",
+            }
     else:
         for section in str_result.sections:
-            section_key = {
-                "1": "S1_legal_suspicion",
-                "2": "S2_evidence_quality",
-                "3": "S3_mitigation_failure",
-                "4": "S4_typology_confirmation",
-                "5": "S5_regulatory_reasonableness",
-            }.get(section.section_id, section.section_id)
-            gate2_sections[section_key] = "PASS" if section.passed else "FAIL"
+            section_key, section_display_name = section_names_g2.get(
+                section.section_id, (section.section_id, section.section_name or section.section_id)
+            )
+            gate2_sections[section_key] = {
+                "name": section_display_name,
+                "passed": section.passed,
+                "reason": section.gate_message or ("Section passed" if section.passed else "Section failed"),
+            }
 
     # Build summary
     if str_required:
@@ -425,6 +443,8 @@ def build_decision_pack(
                 "decision": esc_result.decision.value.upper(),
                 "rationale": esc_result.rationale,
                 "sections": gate1_sections,
+                "sections_evaluated": len([s for s in gate1_sections.values() if isinstance(s, dict)]),
+                "sections_passed": len([s for s in gate1_sections.values() if isinstance(s, dict) and s.get("passed")]),
             },
             "gate2": {
                 "decision": str_result.decision.value.upper(),
@@ -432,7 +452,27 @@ def build_decision_pack(
                 "skip_reason": gate2_skip_reason,
                 "rationale": str_result.rationale,
                 "sections": gate2_sections,
+                "sections_evaluated": 0 if gate2_skipped else len([s for s in gate2_sections.values() if isinstance(s, dict)]),
+                "sections_passed": 0 if gate2_skipped else len([s for s in gate2_sections.values() if isinstance(s, dict) and s.get("passed")]),
             },
+        },
+        "evaluation_trace": {
+            "rules_fired": [
+                {"code": "HARD_STOP_CHECK", "result": "TRIGGERED" if hard_stop_triggered else "CLEAR", "reason": hard_stop_reason or "No hard stop conditions"},
+                {"code": "PEP_ISOLATION", "result": "APPLIED" if has_pep else "NOT_APPLICABLE", "reason": "PEP status alone cannot escalate" if has_pep else "Not a PEP"},
+                {"code": "SUSPICION_TEST", "result": "ACTIVATED" if suspicion_activated else "CLEAR", "reason": suspicion_basis},
+            ],
+            "evidence_used": [
+                {"field": "facts.sanctions_result", "value": facts.get("sanctions_result", "NO_MATCH")},
+                {"field": "facts.adverse_media_mltf", "value": facts.get("adverse_media_mltf", False)},
+                {"field": "suspicion.has_intent", "value": suspicion_evidence.get("has_intent", False)},
+                {"field": "suspicion.has_deception", "value": suspicion_evidence.get("has_deception", False)},
+                {"field": "suspicion.has_sustained_pattern", "value": suspicion_evidence.get("has_sustained_pattern", False)},
+                {"field": "obligations.count", "value": len(obligations)},
+                {"field": "mitigations.count", "value": len(mitigations)},
+                {"field": "typology.maturity", "value": typology_maturity},
+            ],
+            "decision_path": path or "NO_ESCALATION",
         },
         "rationale": {
             "summary": summary,

@@ -1,0 +1,443 @@
+========================================================================
+TRANSACTION MONITORING ALERT REPORT
+Alert ID: AMLE-P88-2026
+========================================================================
+
+========================================================================
+  PEP ALERT - ESCALATE  
+========================================================================
+Alert ID:       AMLE-P88-2026
+Priority:       HIGH
+Source:         PEP Monitoring
+Processed:      2026-01-24
+
+========================================================================
+ALERT REASON CODES
+========================================================================
+* PEP_TRANSACTION
+* CROSS_BORDER_TRANSFER
+* HIGH_VALUE_TRANSACTION
+* TXN_LARGE_CASH
+* TXN_JUST_BELOW_THRESHOLD
+
+========================================================================
+DECISION METHODOLOGY
+========================================================================
+This decision was produced using a deterministic rules-based
+evaluation under the DecisionGraph framework.
+
+  * Inherent Risk Score: Raw aggregation of triggered risk indicators
+  * Mitigation Adjustments: Evidence-backed reductions
+  * Normalized Score: Probability union (0-1) for threshold gates
+  * Verdict Gates: Threshold-based regulatory decision points
+
+No probabilistic or generative AI was used in this determination.
+All decisions are reproducible given identical inputs.
+
+========================================================================
+CASE SUMMARY
+========================================================================
+Customer:       Hon. Elena Moretti
+Customer ID:    IND-99283
+Type:           INDIVIDUAL
+Country:        IT
+Risk Rating:    HIGH
+
+========================================================================
+TRANSACTION DETAILS
+========================================================================
+Type:           Wire Transfer
+Amount:         CAD 265000.00
+Date:           2026-01-24
+Beneficiary:    LONDON LEGAL PARTNERS
+Benef Country:  GB
+
+========================================================================
+BENEFICIAL OWNERSHIP
+========================================================================
+Owner 1:
+  Name:         Elena Moretti
+  Nationality:  IT
+  Ownership:    100%
+  PEP Status:   FOREIGN_PEP
+
+========================================================================
+CORPORATE STRUCTURE
+========================================================================
+Direct ownership - Individual account
+
+Jurisdictions:  3 (CA, GB, IT)
+
+========================================================================
+SCREENING RESULTS
+========================================================================
+Sanctions:      NO_MATCH
+PEP:            FOREIGN_PEP
+Adverse Media:  NONE_FOUND
+PEP Details:  PEP_LEVEL_1_FOREIGN
+Transparency Level:  MEDIUM. Core documentation on file.
+Account History:  Customer relationship: 22 years. Consistent activity pattern.
+
+========================================================================
+DOCUMENTATION STATUS
+========================================================================
+Documents On File:
+  [x] government_id.pdf
+  [x] pep_result.pdf
+  [x] transaction_records.pdf
+
+Documentation Score: 75%
+
+========================================================================
+RISK INDICATORS
+========================================================================
+1. TXN_LARGE_CASH: Large Cash Transaction (MEDIUM)
+   - Transaction amount exceeds threshold
+   - Reporting obligations may apply
+
+2. TXN_JUST_BELOW_THRESHOLD: Transaction Just Below Threshold (HIGH)
+
+3. TXN_RAPID_MOVEMENT: Rapid Movement of Funds (MEDIUM)
+
+4. TXN_ROUND_AMOUNT: Unusual Round Amounts (LOW)
+
+5. TXN_CRYPTO: Virtual Currency Transaction (MEDIUM)
+
+
+SECTION 10B: MITIGATING FACTORS ANALYSIS
+========================================================================
+
+GATE 1: CONTEXTUAL TYPOLOGY
+------------------------------------------------------------------------
+   Typology Class: PEP_TRANSACTION
+   Forbidden Typologies: TRADE_BASED_ML, MARITIME_DECEPTION
+
+GATE 2A: REGULATORY OBLIGATIONS TRIGGERED
+------------------------------------------------------------------------
+   TXN_LARGE_CASH: Large Cash Transaction
+   GEO_SANCTIONED_COUNTRY: Sanctioned Jurisdiction
+   PEP_FOREIGN: Foreign PEP Identified
+   PEP_DOMESTIC: Domestic PEP Identified
+   PEP_HIO: Head of International Organization
+   PEP_FAMILY_ASSOCIATE: PEP Family Member or Close Associate
+   SCREEN_SANCTIONS_HIT: Sanctions List Match
+
+GATE 2B: RISK INDICATORS DETECTED
+------------------------------------------------------------------------
+   TXN_JUST_BELOW_THRESHOLD: Transaction Just Below Threshold
+   TXN_RAPID_MOVEMENT: Rapid Movement of Funds
+   TXN_ROUND_AMOUNT: Unusual Round Amounts
+   TXN_CRYPTO: Virtual Currency Transaction
+   TXN_UNUSUAL_PATTERN: Unusual Transaction Pattern
+   GEO_HIGH_RISK_COUNTRY: High-Risk Jurisdiction
+   GEO_TAX_HAVEN: Tax Haven Jurisdiction
+   STRUCT_CASH_MULTIPLE: Multiple Cash Deposits
+
+GATE 2C: MITIGATING FACTORS (Pause & Pivot)
+------------------------------------------------------------------------
+   MF_ESTABLISHED_RELATIONSHIP: Established Customer Relationship
+      Evidence: relationship_tenure: 22
+      Source: fincrime.assertion.relationship_tenure
+      Regulatory Effect: -0.25 contextual risk adjustment
+      Limitation: Applies to risk assessment only
+      Citation: 400020c4c50c3f48...
+
+   MF_DOCUMENTATION_COMPLETE: Documentation Complete
+      Evidence: documentation_status: complete
+      Source: fincrime.assertion.documentation_status
+      Regulatory Effect: -0.25 contextual risk adjustment
+      Limitation: Applies to risk assessment only
+      Citation: 3c38624e6347eb6f...
+
+   MF_TXN_SUPPORTING_INVOICE: Supporting Invoice/Contract
+      Evidence: evidence_collected: {'evidence_id': 'EV-001', 'evidence_t...
+      Source: fincrime.evidence.evidence_collected
+      Evidence: evidence_collected: {'evidence_id': 'EV-002', 'evidence_t...
+      Source: fincrime.evidence.evidence_collected
+      Regulatory Effect: -0.25 contextual risk adjustment
+      Limitation: Applies to risk assessment only
+      Citation: 546930b39e1f2f43...
+
+   MF_SCREEN_FALSE_POSITIVE: Confirmed False Positive
+      Evidence: screening_completed: {'event_id': 'SCR-001', 'event_type':...
+      Source: fincrime.screening.screening_completed
+      Regulatory Effect: -0.50 contextual risk adjustment
+      Limitation: Does NOT override EDD obligations
+      Citation: 853ccce049e08825...
+
+MITIGATION ASSESSMENT
+------------------------------------------------------------------------
+   Status: Mitigations applied but INSUFFICIENT to clear gate
+   Reason: Residual risk remains above automated clearance threshold
+
+GATE 3: RESIDUAL RISK CALCULATION
+------------------------------------------------------------------------
+   RAW SCORES (Additive - for transparency):
+      Inherent (raw):     12.25
+      Mitigations:        -1.25
+      Residual (raw):     11.00
+
+   NORMALIZED SCORES (Probability union - for thresholds):
+      Inherent (norm):    1.00
+      Residual (norm):    0.90
+      Risk Reduction:     10%
+
+   THRESHOLD GATES (applied to normalized score):
+      <=0.25 = AUTO_CLOSE
+      0.26-0.50 = ANALYST_REVIEW
+      0.51-0.75 = SENIOR_REVIEW
+      0.76-1.00 = COMPLIANCE_REVIEW
+      >1.00 = STR_CONSIDERATION
+
+CLEARANCE CONDITIONS (COUNTERFACTUAL ANALYSIS)
+------------------------------------------------------------------------
+This case could not be cleared automatically due to:
+
+   * Foreign PEP status requires senior compliance approval
+   * Sanctions screening requires manual disposition
+   * Residual risk score exceeds automated clearance threshold (0.25)
+   * Cross-border wire activity exceeds low-risk thresholds
+
+If these conditions were resolved, the case would be eligible
+for re-evaluation at a lower review tier.
+
+VERDICT
+------------------------------------------------------------------------
+   Verdict: COMPLIANCE_ESCALATION
+   Rationale: Normalized Risk: 0.90 (raw: 11.00). Mitigating factors: Established Cus, Documentation C, Supporting Invo. Risk reduction: 10%. Manual review required.
+
+========================================================================
+
+========================================================================
+POLICY CITATIONS
+========================================================================
+Signal: CDD_HIGH_RISK_INDUSTRY (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 9.6
+   Applies: Policy citation for CDD_HIGH_RISK_INDUSTRY signal
+   SHA256: c758891807881725...
+
+Signal: CDD_UBO_UNKNOWN (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 11.1
+   Applies: Policy citation for CDD_UBO_UNKNOWN signal
+   SHA256: 06348a7e466a71dc...
+
+Signal: GEO_HIGH_RISK_COUNTRY (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 9.6
+   Applies: Policy citation for GEO_HIGH_RISK_COUNTRY signal
+   SHA256: c758891807881725...
+
+Signal: GEO_SANCTIONED_COUNTRY (1 citations)
+------------------------------------------------------------------------
+1. SEMA:SEMA
+   Section: (Special Economic Measures Act)
+   Applies: Policy citation for GEO_SANCTIONED_COUNTRY signal
+   SHA256: 86d7ca664c073e69...
+
+Signal: GEO_TAX_HAVEN (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 6
+   Applies: Policy citation for GEO_TAX_HAVEN signal
+   SHA256: 287e575ff9cfad6e...
+
+Signal: PEP_DOMESTIC (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 9.3(1)
+   Applies: Policy citation for PEP_DOMESTIC signal
+   SHA256: 29de38b321ea4b77...
+
+Signal: PEP_FAMILY_ASSOCIATE (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 9.3(4)
+   Applies: Policy citation for PEP_FAMILY_ASSOCIATE signal
+   SHA256: 61f944371cd6ed5b...
+
+Signal: PEP_FOREIGN (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 9.3(3)
+   Applies: Policy citation for PEP_FOREIGN signal
+   SHA256: 9db0ccb9b4dc9bdd...
+
+Signal: PEP_HIO (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 9.3(2)
+   Applies: Policy citation for PEP_HIO signal
+   SHA256: f9e4e2974c6bab1b...
+
+Signal: SCREEN_ADVERSE_MEDIA (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 6
+   Applies: Policy citation for SCREEN_ADVERSE_MEDIA signal
+   SHA256: 287e575ff9cfad6e...
+
+Signal: SCREEN_SANCTIONS_HIT (1 citations)
+------------------------------------------------------------------------
+1. SEMA,:SEMA,
+   Section: PCMLTFA s. 11.42
+   Applies: Policy citation for SCREEN_SANCTIONS_HIT signal
+   SHA256: 6c00ac18fc88116f...
+
+Signal: STRUCT_CASH_MULTIPLE (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 2
+   Applies: Policy citation for STRUCT_CASH_MULTIPLE signal
+   SHA256: 6d171f1b1ff2edc1...
+
+Signal: STRUCT_SMURFING (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: ML/TF Typologies
+   Applies: Policy citation for STRUCT_SMURFING signal
+   SHA256: 8c8afbcf499d4df3...
+
+Signal: TXN_CRYPTO (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: Part 1.1
+   Applies: Policy citation for TXN_CRYPTO signal
+   SHA256: 0ba8763cb12fb8bc...
+
+Signal: TXN_JUST_BELOW_THRESHOLD (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 2
+   Applies: Policy citation for TXN_JUST_BELOW_THRESHOLD signal
+   SHA256: 6d171f1b1ff2edc1...
+
+Signal: TXN_LARGE_CASH (1 citations)
+------------------------------------------------------------------------
+1. PCMLTFR:PCMLTFR
+   Section: s. 12
+   Applies: Policy citation for TXN_LARGE_CASH signal
+   SHA256: 7e5b63813897bc43...
+
+Signal: TXN_RAPID_MOVEMENT (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 3
+   Applies: Policy citation for TXN_RAPID_MOVEMENT signal
+   SHA256: d6f503948d196e52...
+
+Signal: TXN_ROUND_AMOUNT (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 2
+   Applies: Policy citation for TXN_ROUND_AMOUNT signal
+   SHA256: 6d171f1b1ff2edc1...
+
+Signal: TXN_UNUSUAL_PATTERN (1 citations)
+------------------------------------------------------------------------
+1. FINTRAC:FINTRAC
+   Section: Guideline 3
+   Applies: Policy citation for TXN_UNUSUAL_PATTERN signal
+   SHA256: d6f503948d196e52...
+
+========================================================================
+CITATION QUALITY SUMMARY
+========================================================================
+Total Citations:    19
+Signals Covered:    19/19
+Citation Quality:   100%
+
+========================================================================
+DECISION
+========================================================================
+Action:         ESCALATE
+Confidence:     80%
+Tier:           2
+Escalate To:    SENIOR ANALYST
+
+Rationale:
+  1. ADJUDICATION: COMPLIANCE_ESCALATION
+  2. Three-Gate Protocol: Residual risk 11.00 after mitigation factors applied
+  3. Mitigating factors verified against case evidence per Section 10B
+  4. Manual review required
+
+========================================================================
+HUMAN REVIEW REQUIREMENT
+========================================================================
+This decision REQUIRES manual review by a qualified compliance officer.
+
+Automated Components:
+  * Signal detection and scoring
+  * Risk indicator aggregation
+  * Citation mapping and policy alignment
+  * Mitigation factor identification
+
+Human-Required Actions:
+  * Final adjudication decision
+  * STR filing determination (if applicable)
+  * Enhanced due diligence approval
+  * Customer communication (if required)
+
+No automated adverse action has been taken.
+Final disposition requires human judgment.
+
+========================================================================
+REQUIRED ACTIONS
+========================================================================
+  1. Complete detailed case review
+  2. Document analysis and findings
+  3. Escalate if additional concerns identified
+
+SLA: 168 hours
+
+========================================================================
+FEEDBACK SCORES (Opik Evaluation)
+========================================================================
+  Score                             Value Assessment                    
+  ------------------------------ -------- ------------------------------
+  confidence                         0.88 Navigation confidence: 88%
+  citation_quality                   1.00 100% signals have citations
+  signal_coverage                    0.86 All signals covered
+  evidence_completeness              1.00 Sufficient evidence
+  decision_clarity                   0.50 Needs human review
+  documentation_completeness         0.75 75% documents on file
+
+========================================================================
+AUDIT TRAIL
+========================================================================
+Alert Generated:  2026-01-24 20:25:12 UTC
+Case Created:     2026-01-24 20:25:12 UTC
+Navigation Run:   2026-01-24 20:25:12 UTC
+Report Generated: 2026-01-29
+Tier:             3
+Action:           ESCALATE
+Reviewer:         [PENDING ASSIGNMENT]
+
+========================================================================
+CASE INTEGRITY
+========================================================================
+Alert ID:         AMLE-P88-2026
+Case ID:          amle_p88_2026
+Pack Version:     1.0.0
+Nav Confidence:   0.88
+Citation Quality: 100%
+
+========================================================================
+REGULATORY REFERENCES
+========================================================================
+FATF: Recommendation 12 (Politically Exposed Persons)
+FINTRAC: Electronic Funds Transfer Reporting
+FINTRAC: Large Cash Transaction Reporting
+FINTRAC: PEP Guidance
+FINTRAC: Proceeds of Crime (Money Laundering) and Terrorist Financing Act
+PCMLTFA: Primary Legislation
+PCMLTFR (SOR/2002-184): Regulations
+
+========================================================================
+END OF ALERT REPORT
+========================================================================
+

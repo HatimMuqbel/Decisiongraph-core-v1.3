@@ -1,0 +1,34 @@
+{
+  "case_id": "AML-2026-00142",
+  "checks": [
+    {
+      "bytes": 3090,
+      "hash": "fdb541b94cf84e7cbaceb6d68a3c7318f4876f318c7d08337dbe3c5ec0f6c72a",
+      "name": "report_hash",
+      "status": "PASS"
+    },
+    {
+      "errors": [],
+      "name": "chain_integrity",
+      "status": "PASS"
+    },
+    {
+      "message": "Report renders identically",
+      "name": "determinism",
+      "status": "PASS"
+    },
+    {
+      "name": "policy_coverage",
+      "signals_without_refs": [],
+      "status": "PASS"
+    },
+    {
+      "name": "gate_consistency",
+      "score_gate": "STR_CONSIDERATION",
+      "status": "PASS",
+      "verdict": "STR_CONSIDERATION"
+    }
+  ],
+  "overall": "PASS",
+  "timestamp": "2026-01-29T16:03:20.907Z"
+}

@@ -1,0 +1,49 @@
+{
+  "case_id": "AMLE-P88-2026",
+  "checks": [
+    {
+      "bytes": 13802,
+      "hash": "1257f1b7503091ebcdbeb68c15153ccbef147ba0045ea9ff7bc3e4ab73475713",
+      "name": "report_hash",
+      "status": "PASS"
+    },
+    {
+      "errors": [],
+      "name": "chain_integrity",
+      "status": "PASS"
+    },
+    {
+      "message": "Report renders identically",
+      "name": "determinism",
+      "status": "PASS"
+    },
+    {
+      "name": "policy_coverage",
+      "signals_without_refs": [],
+      "status": "PASS"
+    },
+    {
+      "name": "gate_consistency",
+      "score_gate": "COMPLIANCE_REVIEW",
+      "status": "WARN",
+      "verdict": "COMPLIANCE_ESCALATION"
+    },
+    {
+      "hash": "7dd31c54e199a0f825fb0c8063c585434dcfc4ca645eb281a7ffe7d808c19966",
+      "name": "manifest_hash",
+      "status": "PASS"
+    }
+  ],
+  "environment": {
+    "architecture": "x86_64",
+    "container": "docker",
+    "engine_version": "1.0.0",
+    "git_commit": "c8434f6",
+    "platform": "Linux",
+    "platform_release": "6.8.0-1030-azure",
+    "python_version": "3.12.1"
+  },
+  "overall": "PASS",
+  "strict_mode": false,
+  "timestamp": "2026-01-29T18:30:02.709Z"
+}

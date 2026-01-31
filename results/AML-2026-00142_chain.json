@@ -1,0 +1,1995 @@
+{
+  "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+  "root_namespace": "fincrime",
+  "cells": [
+    {
+      "cell_id": "2ef490dd1ee36755b2eda0ca15ff75f0c7ed99117829e62a462f3933a7e3ec36",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "genesis",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime",
+        "subject": "graph:root",
+        "predicate": "instance_of",
+        "object": "Case_AML-2026-00142",
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "system:genesis_boot_v1.3",
+        "rule_logic_hash": "6b4a2b6b201d071eb03abc377f17d33800e71ba02a0e8d55df3f70147814d076",
+        "interpreter": "system:v1.3"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": "system:genesis",
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "be967a40db99fa323067d0ecaf8fb907d6cff046a0ed6cbd2c14e7ae508ecf0e",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "2ef490dd1ee36755b2eda0ca15ff75f0c7ed99117829e62a462f3933a7e3ec36",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.case",
+        "subject": "case:AML-2026-00142",
+        "predicate": "case_opened",
+        "object": {
+          "case_id": "AML-2026-00142",
+          "case_type": "aml_alert",
+          "case_phase": "analysis",
+          "jurisdiction": "CA",
+          "primary_entity_type": "individual",
+          "primary_entity_id": "IND-001",
+          "status": "open",
+          "priority": "high",
+          "assigned_to": null,
+          "assigned_team": null,
+          "due_date": null,
+          "sla_deadline": null,
+          "sla_breached": false,
+          "regulatory_deadline": null,
+          "filing_required": false,
+          "filing_type": null,
+          "opened_by": null,
+          "created_at": "2026-01-29T10:30:00Z",
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml",
+            "fincrime"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "2f8efb7128c3314c0f287accc85ddc645f190e23bea52cddc10f0bdcb0955847",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "be967a40db99fa323067d0ecaf8fb907d6cff046a0ed6cbd2c14e7ae508ecf0e",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.phase",
+        "subject": "case:AML-2026-00142",
+        "predicate": "phase_transition",
+        "object": {
+          "case_id": "AML-2026-00142",
+          "phase": "analysis",
+          "previous_phase": null,
+          "transition_reason": "case_bundle_loaded"
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "36e087c467ac0d0fd7204304f3f0fe82e0735f4b7a905b9458db6e6726d3cc95",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "2f8efb7128c3314c0f287accc85ddc645f190e23bea52cddc10f0bdcb0955847",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.entity",
+        "subject": "individual:IND-001",
+        "predicate": "entity_profile",
+        "object": {
+          "entity_id": "IND-001",
+          "entity_type": "individual",
+          "given_name": "John",
+          "family_name": "Smith",
+          "full_name": "John Smith",
+          "date_of_birth": "1975-03-15",
+          "nationality": "CA",
+          "country_of_residence": "CA",
+          "tax_id": null,
+          "occupation": null,
+          "employer": null,
+          "pep_status": "none",
+          "risk_rating": "medium",
+          "customer_status": null,
+          "addresses": [],
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 0.9,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "37ad372ed4b254dbcc883947879d4e07f586e6671c3c6ffa70d08e5ff0816c76",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "36e087c467ac0d0fd7204304f3f0fe82e0735f4b7a905b9458db6e6726d3cc95",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.account",
+        "subject": "account:ACC-001",
+        "predicate": "account_profile",
+        "object": {
+          "account_id": "ACC-001",
+          "account_number": "****4567",
+          "account_type": "checking",
+          "currency": "CAD",
+          "opened_date": null,
+          "closed_date": null,
+          "status": "active",
+          "branch_code": null,
+          "product_code": null,
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 0.9,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "ddfb2a87990b8bf1d937b77241b40db645102734a10a36b5e4f277fb2342e16f",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "37ad372ed4b254dbcc883947879d4e07f586e6671c3c6ffa70d08e5ff0816c76",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.relationship",
+        "subject": "rel:account_holder:individual:IND-001:individual:ACC-001",
+        "predicate": "account_holder",
+        "object": {
+          "relationship_id": "REL-001",
+          "relationship_type": "account_holder",
+          "from_entity_type": "individual",
+          "from_entity_id": "IND-001",
+          "to_entity_type": "individual",
+          "to_entity_id": "ACC-001",
+          "ownership_percentage": null,
+          "voting_percentage": null,
+          "is_direct": true,
+          "verified": false,
+          "verified_date": null,
+          "verified_by": null,
+          "effective_from": null,
+          "effective_to": null,
+          "evidence_ids": [],
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 0.9,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "f26b21a9224c7d3cab102fb4935292ab7da3deb27ba786a4aa89d784197484c0",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "evidence",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "ddfb2a87990b8bf1d937b77241b40db645102734a10a36b5e4f277fb2342e16f",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.evidence",
+        "subject": "evidence:EV-001:18ed5ab1dbf9e980",
+        "predicate": "evidence_collected",
+        "object": {
+          "evidence_id": "EV-001",
+          "evidence_type": "transaction_records",
+          "description": "Wire transfer records for January 2026",
+          "source": "core_banking",
+          "collected_date": "2026-01-29",
+          "document_date": null,
+          "expiry_date": null,
+          "issuing_authority": null,
+          "document_number": null,
+          "verified": true,
+          "verified_by": null,
+          "verified_date": null,
+          "storage_ref": null,
+          "subject_entity_type": null,
+          "subject_entity_id": null,
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "675a3e27545c7e02bfd2ee14c3e5f8dcdc4ed794989b5b59568b24376cb5b1df",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "evidence",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "f26b21a9224c7d3cab102fb4935292ab7da3deb27ba786a4aa89d784197484c0",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.evidence",
+        "subject": "evidence:EV-002:04c81c7e46f7a87b",
+        "predicate": "evidence_collected",
+        "object": {
+          "evidence_id": "EV-002",
+          "evidence_type": "sanctions_result",
+          "description": "Sanctions screening result - no hits",
+          "source": "screening_vendor",
+          "collected_date": "2026-01-29",
+          "document_date": null,
+          "expiry_date": null,
+          "issuing_authority": null,
+          "document_number": null,
+          "verified": true,
+          "verified_by": null,
+          "verified_date": null,
+          "storage_ref": null,
+          "subject_entity_type": null,
+          "subject_entity_id": null,
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-29T15:58:16.332Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "14161c51f23db10a72cb7552129227887a59e69981e813b83749491e14fb5529",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "675a3e27545c7e02bfd2ee14c3e5f8dcdc4ed794989b5b59568b24376cb5b1df",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.transaction",
+        "subject": "txn:TXN-001",
+        "predicate": "transaction_occurred",
+        "object": {
+          "event_id": "TXN-001",
+          "event_type": "transaction",
+          "timestamp": "2026-01-15T14:30:00Z",
+          "description": "International wire transfer",
+          "amount": "25000.00",
+          "currency": "CAD",
+          "direction": "outbound",
+          "counterparty_name": "Global Trading Ltd",
+          "counterparty_country": "KY",
+          "counterparty_account": null,
+          "counterparty_bank": null,
+          "payment_method": "wire",
+          "purpose": null,
+          "reference": null,
+          "account_id": null,
+          "evidence_ids": [],
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-15T14:30:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "4ab2c32853f24f6a95af282f9e32c41988d74c2384c739988831f6921595383f",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "14161c51f23db10a72cb7552129227887a59e69981e813b83749491e14fb5529",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.transaction",
+        "subject": "txn:TXN-002",
+        "predicate": "transaction_occurred",
+        "object": {
+          "event_id": "TXN-002",
+          "event_type": "transaction",
+          "timestamp": "2026-01-20T09:15:00Z",
+          "description": "Cash deposit",
+          "amount": "9500.00",
+          "currency": "CAD",
+          "direction": "inbound",
+          "counterparty_name": null,
+          "counterparty_country": null,
+          "counterparty_account": null,
+          "counterparty_bank": null,
+          "payment_method": "cash",
+          "purpose": null,
+          "reference": null,
+          "account_id": null,
+          "evidence_ids": [],
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-20T09:15:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "1d38cd5896817f6a7a3d0a5675b7fcf1058cc3ee71d7fbdca365a3bf525570d8",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "4ab2c32853f24f6a95af282f9e32c41988d74c2384c739988831f6921595383f",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.transaction",
+        "subject": "txn:TXN-003",
+        "predicate": "transaction_occurred",
+        "object": {
+          "event_id": "TXN-003",
+          "event_type": "transaction",
+          "timestamp": "2026-01-22T11:00:00Z",
+          "description": "Cash deposit",
+          "amount": "9800.00",
+          "currency": "CAD",
+          "direction": "inbound",
+          "counterparty_name": null,
+          "counterparty_country": null,
+          "counterparty_account": null,
+          "counterparty_bank": null,
+          "payment_method": "cash",
+          "purpose": null,
+          "reference": null,
+          "account_id": null,
+          "evidence_ids": [],
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-22T11:00:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "f5c1a9bae2f5eda4f20e163a53261aee6b34675c2389e764c5aa6dff91fe4452",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "1d38cd5896817f6a7a3d0a5675b7fcf1058cc3ee71d7fbdca365a3bf525570d8",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.alert",
+        "subject": "alert:ALERT-001",
+        "predicate": "alert_triggered",
+        "object": {
+          "event_id": "ALERT-001",
+          "event_type": "alert",
+          "timestamp": "2026-01-28T08:00:00Z",
+          "description": "Potential structuring activity detected",
+          "alert_type": "structuring",
+          "rule_id": "STRUCT-001",
+          "rule_name": null,
+          "score": null,
+          "threshold": null,
+          "triggering_transactions": [],
+          "evidence_ids": [],
+          "sensitivity": "confidential",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-28T08:00:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "2e621fe598959e9ec7f00b36870a605d51e0a6472ac7fed55cf32034705a26ae",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "f5c1a9bae2f5eda4f20e163a53261aee6b34675c2389e764c5aa6dff91fe4452",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.screening",
+        "subject": "screening:SCREEN-001",
+        "predicate": "screening_completed",
+        "object": {
+          "event_id": "SCREEN-001",
+          "event_type": "screening",
+          "timestamp": "2026-01-28T08:05:00Z",
+          "description": "Sanctions screening - no match",
+          "screening_type": "sanctions",
+          "vendor": "WorldCheck",
+          "match_score": null,
+          "matched_list": null,
+          "matched_name": null,
+          "match_details": null,
+          "disposition": "false_positive",
+          "screened_entity_type": null,
+          "screened_entity_id": null,
+          "evidence_ids": [],
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": "2026-01-28T08:05:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "507d413443a124de0940fc086f2605bd207ed01ff46277deb34052ad23e540f3",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "2e621fe598959e9ec7f00b36870a605d51e0a6472ac7fed55cf32034705a26ae",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.assertion",
+        "subject": "individual:IND-001",
+        "predicate": "relationship_tenure",
+        "object": {
+          "assertion_id": "ASSERT-001",
+          "subject_type": "individual",
+          "subject_id": "IND-001",
+          "predicate": "relationship_tenure",
+          "value": "7",
+          "asserted_at": "2026-01-28T08:10:00Z",
+          "asserted_by": "system",
+          "assertion_source": "system",
+          "confidence": null,
+          "evidence_ids": [],
+          "supersedes": null,
+          "valid_from": null,
+          "valid_to": null,
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 0.9,
+        "source_quality": "verified",
+        "valid_from": "2026-01-28T08:10:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "d9f44fcfcbcdd3bb948af8a720aa4cd54f082f14fd4bde314ff65773475757f8",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "507d413443a124de0940fc086f2605bd207ed01ff46277deb34052ad23e540f3",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.assertion",
+        "subject": "individual:IND-001",
+        "predicate": "documentation_status",
+        "object": {
+          "assertion_id": "ASSERT-002",
+          "subject_type": "individual",
+          "subject_id": "IND-001",
+          "predicate": "documentation_status",
+          "value": "complete",
+          "asserted_at": "2026-01-28T08:10:00Z",
+          "asserted_by": "system",
+          "assertion_source": "system",
+          "confidence": null,
+          "evidence_ids": [],
+          "supersedes": null,
+          "valid_from": null,
+          "valid_to": null,
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 0.9,
+        "source_quality": "verified",
+        "valid_from": "2026-01-28T08:10:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "3adfb60598709f2239dc6057d3e8e316c2b7fee8e49ba2a6a060e344afda3551",
+      "header": {
+        "version": "1.3",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "fact",
+        "system_time": "2026-01-29T15:58:16.332Z",
+        "prev_cell_hash": "d9f44fcfcbcdd3bb948af8a720aa4cd54f082f14fd4bde314ff65773475757f8",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.assertion",
+        "subject": "individual:IND-001",
+        "predicate": "source_of_wealth",
+        "object": {
+          "assertion_id": "ASSERT-003",
+          "subject_type": "individual",
+          "subject_id": "IND-001",
+          "predicate": "source_of_wealth",
+          "value": "verified",
+          "asserted_at": "2026-01-28T08:10:00Z",
+          "asserted_by": "analyst",
+          "assertion_source": "system",
+          "confidence": null,
+          "evidence_ids": [],
+          "supersedes": null,
+          "valid_from": null,
+          "valid_to": null,
+          "sensitivity": "internal",
+          "access_tags": [
+            "aml"
+          ]
+        },
+        "confidence": 0.9,
+        "source_quality": "verified",
+        "valid_from": "2026-01-28T08:10:00Z",
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime:case_loader_v1.0",
+        "rule_logic_hash": "a85e9ac2c5fe19d58408144ca527c730f844e943d446bd3dc2f8b2d05002f221",
+        "interpreter": "case_loader:v1.0"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "fc7a98ac1e9e2dcaa235bfb91addd7334da082030c0fb3e542247ccc1ebd6c04",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "3adfb60598709f2239dc6057d3e8e316c2b7fee8e49ba2a6a060e344afda3551",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "TXN_LARGE_CASH",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 12"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:TXN_LARGE_CASH",
+        "rule_logic_hash": "0802d0af13dff23319159b55cd573b741021a232bb240c219791aa773a6b9730",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "141519e328f6f3cfac980a88e2becea9ba94a901ec2d28aa1226cc0cc494b947",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "fc7a98ac1e9e2dcaa235bfb91addd7334da082030c0fb3e542247ccc1ebd6c04",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "TXN_JUST_BELOW_THRESHOLD",
+          "severity": "HIGH",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 2"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:TXN_JUST_BELOW_THRESHOLD",
+        "rule_logic_hash": "539e79c93499ddd52fb27e871d45080ccfcd7fbd36740509a02007e095232dbb",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "df17950325be2e4e707ee5178d717826b615c4eb66f558f8a3cb7c558f430f67",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "141519e328f6f3cfac980a88e2becea9ba94a901ec2d28aa1226cc0cc494b947",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "TXN_RAPID_MOVEMENT",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 3"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:TXN_RAPID_MOVEMENT",
+        "rule_logic_hash": "0de8bd6a18a2bfac1506e293f844af96fef5cbd03e4ba8029e9a82373f7058da",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "09ffa5ab0f026a63184be957864c5f1ab0d18f9397b73289b8d007b03fbed37e",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "df17950325be2e4e707ee5178d717826b615c4eb66f558f8a3cb7c558f430f67",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "TXN_ROUND_AMOUNT",
+          "severity": "LOW",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 2"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:TXN_ROUND_AMOUNT",
+        "rule_logic_hash": "51a67bbca36a17b7b1d927b5e0ab4ef71d06fbb1db8a08fd69034bdc60e92470",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "db19a6efaf1f95be09701c5570576419e471496c1149e716a8d7253f638d5cce",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "09ffa5ab0f026a63184be957864c5f1ab0d18f9397b73289b8d007b03fbed37e",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "TXN_CRYPTO",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR Part 1.1"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:TXN_CRYPTO",
+        "rule_logic_hash": "170bb82f8ce687b83f87038e40013b70636496be31be542f4053cfcd9f733587",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "17b06312fb6644570e4f303e182075d4db57a8cf9db347f2cf228b9cc9ae4802",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "db19a6efaf1f95be09701c5570576419e471496c1149e716a8d7253f638d5cce",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "TXN_UNUSUAL_PATTERN",
+          "severity": "HIGH",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 3"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:TXN_UNUSUAL_PATTERN",
+        "rule_logic_hash": "8b2d1deff29c171a73ed7b866dffd8c21623c6ff1d0e6a5d2465408bbfde47f1",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "738ae9e348c9c7008655df23ac1c934af0f5d958fd304d8434ef4c8b21b5a553",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "17b06312fb6644570e4f303e182075d4db57a8cf9db347f2cf228b9cc9ae4802",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "GEO_HIGH_RISK_COUNTRY",
+          "severity": "HIGH",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.6"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:GEO_HIGH_RISK_COUNTRY",
+        "rule_logic_hash": "5afa5bc4dbc542b2f3ef5609d4e52fa4e6bd84c5f907cda4d46514a8f3060153",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "a754dec12cc5704f2193c97e499b33daeff33bc640cbbfc9bea3942f89b83d4a",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "738ae9e348c9c7008655df23ac1c934af0f5d958fd304d8434ef4c8b21b5a553",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "GEO_SANCTIONED_COUNTRY",
+          "severity": "CRITICAL",
+          "trigger_facts": [],
+          "policy_refs": [
+            "SEMA (Special Economic Measures Act)"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:GEO_SANCTIONED_COUNTRY",
+        "rule_logic_hash": "3c4d278c2a219e8f4aeb41fbe9a172341664d364dd1757b162af62da3aa63cd7",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "f26821af27eb1ba3d647b83805ccc63dfbcbebb7438847429e2485ccbe313ffc",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "a754dec12cc5704f2193c97e499b33daeff33bc640cbbfc9bea3942f89b83d4a",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "GEO_TAX_HAVEN",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 6"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:GEO_TAX_HAVEN",
+        "rule_logic_hash": "842d92e0eb81361eebb18941b91bab7468e08ad07ac22e8ec92ad57b96849b52",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "8dc26b0413df0e01459023f3843187424b1351e796d366bfecb899584fd9a456",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "f26821af27eb1ba3d647b83805ccc63dfbcbebb7438847429e2485ccbe313ffc",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "PEP_FOREIGN",
+          "severity": "HIGH",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.3(3)"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:PEP_FOREIGN",
+        "rule_logic_hash": "deaff5d48a249cda64c02f9502d4ae9ef2c601698081ad7c9b4cc718361f4686",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "c8b489d29d872c3aaa168b2649981c29bccf60ccd38bd9fe81c4ba4aacf0ca49",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "8dc26b0413df0e01459023f3843187424b1351e796d366bfecb899584fd9a456",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "PEP_DOMESTIC",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.3(1)"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:PEP_DOMESTIC",
+        "rule_logic_hash": "8bf75e56dcb8cc90de4f59aa7750dc4a1cc3f7702217c641f35888cdee1cb285",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "487e53f9dd20ef1a019113aa2b7a89fcf36f18d44a2a846663e1688bb2f6189a",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "c8b489d29d872c3aaa168b2649981c29bccf60ccd38bd9fe81c4ba4aacf0ca49",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "PEP_HIO",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.3(2)"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:PEP_HIO",
+        "rule_logic_hash": "dc0626ce5058c11de5da81419a17fdb98695dee5285de6ef8b52c5d5af821b81",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "d9291edf0f53b58d4cb41a28e29969ba4ea86043e16fd4820847b29a864af7b4",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "487e53f9dd20ef1a019113aa2b7a89fcf36f18d44a2a846663e1688bb2f6189a",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "PEP_FAMILY_ASSOCIATE",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.3(4)"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:PEP_FAMILY_ASSOCIATE",
+        "rule_logic_hash": "e07aee75da1de7a0af9f2d63cf6744f937d39e87445faed84cd78a86e4228223",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "66efd3e413711c5fb1724b54accf2758f146f944e181c337d643240265ddecbb",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "d9291edf0f53b58d4cb41a28e29969ba4ea86043e16fd4820847b29a864af7b4",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "STRUCT_CASH_MULTIPLE",
+          "severity": "HIGH",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 2"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:STRUCT_CASH_MULTIPLE",
+        "rule_logic_hash": "e5066d58d3c00e2aa9ca3fed79af069ea54bfb89fc91ef61ca7e7c8577daa037",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "47def9d3ff6fe881ed986e589d1c88fcc66d08ed90c77d248e8421d4f3d6fb0b",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "66efd3e413711c5fb1724b54accf2758f146f944e181c337d643240265ddecbb",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "STRUCT_SMURFING",
+          "severity": "CRITICAL",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC ML/TF Typologies"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:STRUCT_SMURFING",
+        "rule_logic_hash": "25943a758f37c9bd704b38cb8f96d062871e382bd2924d2afe55d739bd6c887f",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "b71d9747ef975cddd3e0d9cdc48c9675ae124cef669d7bd7e16b1b0d85c946f9",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "47def9d3ff6fe881ed986e589d1c88fcc66d08ed90c77d248e8421d4f3d6fb0b",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "SCREEN_SANCTIONS_HIT",
+          "severity": "CRITICAL",
+          "trigger_facts": [],
+          "policy_refs": [
+            "SEMA, PCMLTFA s. 11.42"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:SCREEN_SANCTIONS_HIT",
+        "rule_logic_hash": "8d070753c75ac13aba79726dd249161a0440339f8bad27a05bc52c27ca6d01fb",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "2ac2ddcaf425f2c8985d8cbd4e07b0ee7da31c50ece785a98d4a177a7feaf309",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "b71d9747ef975cddd3e0d9cdc48c9675ae124cef669d7bd7e16b1b0d85c946f9",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "SCREEN_ADVERSE_MEDIA",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "FINTRAC Guideline 6"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:SCREEN_ADVERSE_MEDIA",
+        "rule_logic_hash": "129b74dc903198d1a2dcb0bcc319fcb044136252d4aec513746eb53a470ff51f",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "48958a9e8f553abb6467387ad734a5392788150939c32b42c8e64c682a29cb44",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "2ac2ddcaf425f2c8985d8cbd4e07b0ee7da31c50ece785a98d4a177a7feaf309",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "CDD_UBO_UNKNOWN",
+          "severity": "HIGH",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 11.1"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:CDD_UBO_UNKNOWN",
+        "rule_logic_hash": "1a3817d8cf34b7de3ad4aac0d99d7f7afe891c3c0f7d35a95f4924e6acb07a33",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "da206745f3796abb55a175e239a2073e0e4d0c8c17b8c2638dd0c879a47ba96c",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "48958a9e8f553abb6467387ad734a5392788150939c32b42c8e64c682a29cb44",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "CDD_SOW_UNDOCUMENTED",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.6"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:CDD_SOW_UNDOCUMENTED",
+        "rule_logic_hash": "aab2305621e6f149e258989675d5f987b4055de626e2dbe7b5cbd46b92e25b77",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "8eb29112cbf7f186d80b9da2bd64f6b6dca2621c3837f698d7bb2bb138a45563",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "signal",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "da206745f3796abb55a175e239a2073e0e4d0c8c17b8c2638dd0c879a47ba96c",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "signal.fired",
+        "object": {
+          "schema_version": "1.0",
+          "code": "CDD_HIGH_RISK_INDUSTRY",
+          "severity": "MEDIUM",
+          "trigger_facts": [],
+          "policy_refs": [
+            "PCMLTFR s. 9.6"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "sig:CDD_HIGH_RISK_INDUSTRY",
+        "rule_logic_hash": "6c391fd5b8b9fc2b2abadc6b917897bab6aaff8f1be5804d27b3a6558e21a4ca",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "1a7179d8ebd56d1375efe430c5ef146a7f873750d1df73f50a0faf55b3087d0a",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "mitigation",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "8eb29112cbf7f186d80b9da2bd64f6b6dca2621c3837f698d7bb2bb138a45563",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "mitigation.applied",
+        "object": {
+          "schema_version": "1.0",
+          "code": "MF_ESTABLISHED_RELATIONSHIP",
+          "weight": "-0.25",
+          "anchors": [],
+          "applies_to_signals": [
+            "fc7a98ac1e9e2dcaa235bfb91addd7334da082030c0fb3e542247ccc1ebd6c04",
+            "df17950325be2e4e707ee5178d717826b615c4eb66f558f8a3cb7c558f430f67",
+            "17b06312fb6644570e4f303e182075d4db57a8cf9db347f2cf228b9cc9ae4802",
+            "f26821af27eb1ba3d647b83805ccc63dfbcbebb7438847429e2485ccbe313ffc"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "mit:MF_ESTABLISHED_RELATIONSHIP",
+        "rule_logic_hash": "7d7ddc4b58f94e2ce086ed07765d39eb1b72d6eee78312cd21e7f73c93b93fb1",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "508917d25be526b29b9279176a98d216e171de33941c9e5efc8a5d612e60305d",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "mitigation",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "1a7179d8ebd56d1375efe430c5ef146a7f873750d1df73f50a0faf55b3087d0a",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "mitigation.applied",
+        "object": {
+          "schema_version": "1.0",
+          "code": "MF_DOCUMENTATION_COMPLETE",
+          "weight": "-0.25",
+          "anchors": [],
+          "applies_to_signals": [
+            "738ae9e348c9c7008655df23ac1c934af0f5d958fd304d8434ef4c8b21b5a553",
+            "8dc26b0413df0e01459023f3843187424b1351e796d366bfecb899584fd9a456",
+            "c8b489d29d872c3aaa168b2649981c29bccf60ccd38bd9fe81c4ba4aacf0ca49",
+            "da206745f3796abb55a175e239a2073e0e4d0c8c17b8c2638dd0c879a47ba96c"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "mit:MF_DOCUMENTATION_COMPLETE",
+        "rule_logic_hash": "15b4d6fd642dab98b1f789af22516cc46cf0118f3a9a5904b403a673238a2a56",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "751135f318edaf1a1d451faa6c3fac8dfb39862281eac17a2f53840a55a54fde",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "mitigation",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "508917d25be526b29b9279176a98d216e171de33941c9e5efc8a5d612e60305d",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "mitigation.applied",
+        "object": {
+          "schema_version": "1.0",
+          "code": "MF_SOW_VERIFIED",
+          "weight": "-0.35",
+          "anchors": [],
+          "applies_to_signals": [
+            "fc7a98ac1e9e2dcaa235bfb91addd7334da082030c0fb3e542247ccc1ebd6c04",
+            "8dc26b0413df0e01459023f3843187424b1351e796d366bfecb899584fd9a456",
+            "c8b489d29d872c3aaa168b2649981c29bccf60ccd38bd9fe81c4ba4aacf0ca49",
+            "487e53f9dd20ef1a019113aa2b7a89fcf36f18d44a2a846663e1688bb2f6189a",
+            "da206745f3796abb55a175e239a2073e0e4d0c8c17b8c2638dd0c879a47ba96c"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "mit:MF_SOW_VERIFIED",
+        "rule_logic_hash": "5ca12a1a5387836204847cf2ed2c20d755fba5e0de7f6bdb1eb9aadc1658670d",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "7fb23be37fa8939dcffca224f9d1125035df4bf0e909ba6b97e2a66b7fcd8e75",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "mitigation",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "751135f318edaf1a1d451faa6c3fac8dfb39862281eac17a2f53840a55a54fde",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "mitigation.applied",
+        "object": {
+          "schema_version": "1.0",
+          "code": "MF_TXN_SUPPORTING_INVOICE",
+          "weight": "-0.25",
+          "anchors": [],
+          "applies_to_signals": [
+            "fc7a98ac1e9e2dcaa235bfb91addd7334da082030c0fb3e542247ccc1ebd6c04",
+            "17b06312fb6644570e4f303e182075d4db57a8cf9db347f2cf228b9cc9ae4802",
+            "738ae9e348c9c7008655df23ac1c934af0f5d958fd304d8434ef4c8b21b5a553",
+            "f26821af27eb1ba3d647b83805ccc63dfbcbebb7438847429e2485ccbe313ffc"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "mit:MF_TXN_SUPPORTING_INVOICE",
+        "rule_logic_hash": "f31b8ff256795e1f28b6f5a8f53c62b399bc11a29583f98c4f96a1aee2174aa9",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "07933718c587f953c0b53d0cf2368bd0a321c0be32e673f8d3299040e1e2a7d6",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "mitigation",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "7fb23be37fa8939dcffca224f9d1125035df4bf0e909ba6b97e2a66b7fcd8e75",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "mitigation.applied",
+        "object": {
+          "schema_version": "1.0",
+          "code": "MF_SCREEN_FALSE_POSITIVE",
+          "weight": "-0.50",
+          "anchors": [],
+          "applies_to_signals": [
+            "b71d9747ef975cddd3e0d9cdc48c9675ae124cef669d7bd7e16b1b0d85c946f9",
+            "2ac2ddcaf425f2c8985d8cbd4e07b0ee7da31c50ece785a98d4a177a7feaf309"
+          ]
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "mit:MF_SCREEN_FALSE_POSITIVE",
+        "rule_logic_hash": "fd583de56c086292bb30a5d8ccc674e1b6bfd5670824b064fb0ef04de377aec8",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "811948a6eec9c1f13b0e61a91066e53bc2d37bc2710a2e7f91191216ad6eeec7",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "score",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "07933718c587f953c0b53d0cf2368bd0a321c0be32e673f8d3299040e1e2a7d6",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "score.computed",
+        "object": {
+          "schema_version": "1.0",
+          "inherent_score": "12.75",
+          "mitigation_sum": "-1.6",
+          "residual_score": "11.15",
+          "threshold_gate": "STR_CONSIDERATION"
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime_canada_score_v1",
+        "rule_logic_hash": "f2ec34982585e159aa54253c1c885702ca8a1c540cf1d12477627f44e87ff308",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    },
+    {
+      "cell_id": "e3f1ecdfdbd35f3973b9c60f1cdb8977b8b44386b7fbd075b33e2d7a132275d8",
+      "header": {
+        "version": "1.0",
+        "graph_id": "graph:340cbff7-d28d-4d39-ae7c-ace0f26ca882",
+        "cell_type": "verdict",
+        "system_time": "2026-01-29T15:58:16.340Z",
+        "prev_cell_hash": "811948a6eec9c1f13b0e61a91066e53bc2d37bc2710a2e7f91191216ad6eeec7",
+        "hash_scheme": "canon:rfc8785:v1"
+      },
+      "fact": {
+        "namespace": "fincrime.eval",
+        "subject": "AML-2026-00142",
+        "predicate": "verdict.rendered",
+        "object": {
+          "schema_version": "1.0",
+          "verdict": "STR_CONSIDERATION",
+          "rationale_fact_refs": [
+            "fc7a98ac1e9e2dcaa235bfb91addd7334da082030c0fb3e542247ccc1ebd6c04",
+            "141519e328f6f3cfac980a88e2becea9ba94a901ec2d28aa1226cc0cc494b947",
+            "df17950325be2e4e707ee5178d717826b615c4eb66f558f8a3cb7c558f430f67",
+            "09ffa5ab0f026a63184be957864c5f1ab0d18f9397b73289b8d007b03fbed37e",
+            "db19a6efaf1f95be09701c5570576419e471496c1149e716a8d7253f638d5cce",
+            "17b06312fb6644570e4f303e182075d4db57a8cf9db347f2cf228b9cc9ae4802",
+            "738ae9e348c9c7008655df23ac1c934af0f5d958fd304d8434ef4c8b21b5a553",
+            "a754dec12cc5704f2193c97e499b33daeff33bc640cbbfc9bea3942f89b83d4a",
+            "f26821af27eb1ba3d647b83805ccc63dfbcbebb7438847429e2485ccbe313ffc",
+            "8dc26b0413df0e01459023f3843187424b1351e796d366bfecb899584fd9a456",
+            "c8b489d29d872c3aaa168b2649981c29bccf60ccd38bd9fe81c4ba4aacf0ca49",
+            "487e53f9dd20ef1a019113aa2b7a89fcf36f18d44a2a846663e1688bb2f6189a",
+            "d9291edf0f53b58d4cb41a28e29969ba4ea86043e16fd4820847b29a864af7b4",
+            "66efd3e413711c5fb1724b54accf2758f146f944e181c337d643240265ddecbb",
+            "47def9d3ff6fe881ed986e589d1c88fcc66d08ed90c77d248e8421d4f3d6fb0b",
+            "b71d9747ef975cddd3e0d9cdc48c9675ae124cef669d7bd7e16b1b0d85c946f9",
+            "2ac2ddcaf425f2c8985d8cbd4e07b0ee7da31c50ece785a98d4a177a7feaf309",
+            "48958a9e8f553abb6467387ad734a5392788150939c32b42c8e64c682a29cb44",
+            "da206745f3796abb55a175e239a2073e0e4d0c8c17b8c2638dd0c879a47ba96c",
+            "8eb29112cbf7f186d80b9da2bd64f6b6dca2621c3837f698d7bb2bb138a45563",
+            "1a7179d8ebd56d1375efe430c5ef146a7f873750d1df73f50a0faf55b3087d0a",
+            "508917d25be526b29b9279176a98d216e171de33941c9e5efc8a5d612e60305d",
+            "751135f318edaf1a1d451faa6c3fac8dfb39862281eac17a2f53840a55a54fde",
+            "7fb23be37fa8939dcffca224f9d1125035df4bf0e909ba6b97e2a66b7fcd8e75",
+            "07933718c587f953c0b53d0cf2368bd0a321c0be32e673f8d3299040e1e2a7d6",
+            "811948a6eec9c1f13b0e61a91066e53bc2d37bc2710a2e7f91191216ad6eeec7"
+          ],
+          "auto_archive_permitted": false
+        },
+        "confidence": 1.0,
+        "source_quality": "verified",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "logic_anchor": {
+        "rule_id": "fincrime_canada_verdict_v1",
+        "rule_logic_hash": "160cebd238ce419ce83f5e736e3cc654fd92a8fb4ebc68ce05a30c7a7df8e18e",
+        "interpreter": "decisiongraph:rules:v2"
+      },
+      "evidence": [],
+      "proof": {
+        "signer_id": null,
+        "signer_key_id": null,
+        "signature": null,
+        "merkle_root": null,
+        "signature_required": false
+      }
+    }
+  ]
+}

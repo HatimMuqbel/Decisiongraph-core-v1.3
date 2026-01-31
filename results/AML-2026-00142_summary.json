@@ -1,0 +1,20 @@
+{
+  "case_id": "AML-2026-00142",
+  "pack_id": "fincrime_canada_v1",
+  "pack_version": "1.0.0",
+  "pack_hash": "390c23d3d389fb481f0c8795b8b73f671efa2e4d9646bf49f13dfe75d326dc5d",
+  "evaluated_at": "2026-01-29T15:58:16.354Z",
+  "rules_evaluated": 40,
+  "signals_fired": 20,
+  "mitigations_applied": 5,
+  "score": {
+    "inherent": "12.75",
+    "mitigation_sum": "-1.6",
+    "residual": "11.15",
+    "threshold_gate": "STR_CONSIDERATION"
+  },
+  "verdict": {
+    "verdict": "STR_CONSIDERATION",
+    "auto_archive_permitted": false
+  }
+}
