@@ -37,6 +37,7 @@ class ExclusionEvaluated(BaseModel):
 class EvaluateResponse(BaseModel):
     """Response from claim evaluation."""
     # Identifiers
+    request_id: str  # Unique request ID for tracing
     claim_id: str
     policy_pack_id: str
     policy_pack_version: str
@@ -140,3 +141,45 @@ class DemoCase(BaseModel):
 
     # Key facts that drive the outcome
     key_facts: list[str]
+
+
+class VerifyRequest(BaseModel):
+    """Request to verify a recommendation's provenance."""
+    policy_pack_hash: str
+    policy_pack_id: str
+    policy_pack_version: str
+    claim_id: str
+    recommended_disposition: str
+    exclusions_triggered: list[str] = []
+
+
+class VerifyResponse(BaseModel):
+    """Response from verification."""
+    valid: bool
+    reason: str
+    checks_performed: list[str]
+    mismatches: list[str] = []
+
+
+class ValidationError(BaseModel):
+    """A validation error in a policy pack."""
+    location: str
+    message: str
+    error_type: str
+
+
+class PolicyValidationResult(BaseModel):
+    """Result of validating a policy pack."""
+    file: str
+    policy_id: Optional[str] = None
+    valid: bool
+    errors: list[ValidationError] = []
+
+
+class ValidatePoliciesResponse(BaseModel):
+    """Response from policy validation."""
+    total_files: int
+    valid_count: int
+    invalid_count: int
+    valid_policies: list[str]
+    invalid_policies: list[PolicyValidationResult]

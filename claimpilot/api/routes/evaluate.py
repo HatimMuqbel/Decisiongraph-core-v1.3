@@ -235,7 +235,11 @@ async def evaluate_claim(request: EvaluateRequest):
         requires_authority = False
         required_role = None
 
+    # Generate request ID for tracing
+    request_id = f"REQ-{uuid.uuid4().hex[:12].upper()}"
+
     return EvaluateResponse(
+        request_id=request_id,
         claim_id=claim_id,
         policy_pack_id=policy.id,
         policy_pack_version=policy.version,

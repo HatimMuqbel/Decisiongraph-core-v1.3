@@ -1,2 +1,2 @@
 """API routes."""
-from . import policies, evaluate, demo
+from . import policies, evaluate, demo, verify

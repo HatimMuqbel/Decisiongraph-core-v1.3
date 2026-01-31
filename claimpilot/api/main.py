@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from claimpilot.packs.loader import PolicyPackLoader
 from claimpilot.models import Policy
 
-from api.routes import policies, evaluate, demo
+from api.routes import policies, evaluate, demo, verify
 
 
 # Policy loader and cache
@@ -64,6 +64,7 @@ async def lifespan(app: FastAPI):
     # Share loader with routes
     policies.set_loader(loader, policies_cache)
     evaluate.set_loader(loader, policies_cache)
+    verify.set_loader(loader, policies_cache)
 
     yield
 
@@ -115,6 +116,7 @@ app.add_middleware(
 app.include_router(policies.router)
 app.include_router(evaluate.router)
 app.include_router(demo.router)
+app.include_router(verify.router)
 
 
 @app.get("/", tags=["Health"])
