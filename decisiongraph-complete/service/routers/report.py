@@ -459,6 +459,7 @@ async def get_report_html(decision_id: str):
         ctx['str_required'] = str_required
 
         # Format the template
+        # Note: decision_path_trace is already in ctx, don't pass it again
         html = REPORT_HTML_TEMPLATE.format(
             **ctx,
             path_html=path_html,
@@ -471,7 +472,6 @@ async def get_report_html(decision_id: str):
             citations_html=citations_html,
             rules_fired_html=rules_fired_html,
             evidence_used_html=evidence_used_html,
-            decision_path_trace=ctx.get('decision_path_trace', 'N/A'),
         )
 
         return HTMLResponse(content=html)
