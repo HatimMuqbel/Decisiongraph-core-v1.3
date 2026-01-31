@@ -1,0 +1,15 @@
+# ClaimPilot API - Railway Deployment
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[phases.install]
+cmds = ["pip install -r claimpilot/requirements.txt"]
+
+[start]
+cmd = "cd claimpilot && uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+
+[variables]
+PYTHONUNBUFFERED = "1"
+PYTHONPATH = "claimpilot/src"
