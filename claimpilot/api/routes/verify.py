@@ -105,7 +105,7 @@ async def verify_recommendation(request: VerifyRequest):
     )
 
 
-@router.get("/policies/validate", response_model=ValidatePoliciesResponse)
+@router.get("/validate/policies", response_model=ValidatePoliciesResponse)
 async def validate_policies():
     """
     Validate all policy pack YAML files.
