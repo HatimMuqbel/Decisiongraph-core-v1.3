@@ -2,6 +2,8 @@
 
 Each case is designed to demonstrate different decision outcomes
 when key fields are modified by the user.
+
+All cases comply with input.case.schema.json v1.0.0
 """
 
 DEMO_CASES = [
@@ -12,7 +14,7 @@ DEMO_CASES = [
         "description": "Italian minister paying London law firm. PEP status alone cannot trigger escalation.",
         "category": "PASS",
         "expected_verdict": "PASS_WITH_EDD",
-        "key_levers": ["pep_flag", "amt_native", "sanctions_hit"],
+        "key_levers": ["pep_flag", "amt_base_cad", "match_count"],
         "tags": ["PEP", "Wire", "Legal"],
         "input": {
             "header": {
@@ -22,8 +24,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-PEP-LEGAL-001",
-                "work_item_type": "PEP_RE_ALERT",
+                "work_item_type": "PEP_REVIEW",
                 "assigned_queue": "FIU_TIER_1",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_772", "GEO_009"]
             },
             "customer_record": {
@@ -34,8 +37,8 @@ DEMO_CASES = [
                 "onboarding_epoch": 1084147200,
                 "last_kyc_refresh": "2025-05-10",
                 "pep_flag": "Y",
-                "pep_category_code": "PEP_LEVEL_1_FOREIGN",
-                "disclosure_docs_received": "TRUE"
+                "pep_category_code": "FOREIGN",
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -44,27 +47,24 @@ DEMO_CASES = [
                     "currency_iso": "GBP",
                     "amt_base_cad": 265000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "LONDON LEGAL PARTNERS",
-                    "target_country": "GB",
                     "status_code": "COMPLETED"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 1,
                 "top_match": {
-                    "entity_type": "PERSON",
-                    "risk_level": "CRITICAL",
-                    "description": "Minister of Infrastructure - Italy",
-                    "confirmed_sanctions_match": False,
-                    "list_type": "PEP"
+                    "match_score": 95,
+                    "list_type": "PEP",
+                    "matched_name": "Elena Moretti",
+                    "match_reason": "Minister of Infrastructure - Italy"
                 }
             },
             "mitigating_factors": {
                 "relationship_tenure_years": 22,
                 "documentation_complete": True,
-                "supporting_invoice": True,
                 "source_of_funds_verified": True
             }
         }
@@ -75,7 +75,7 @@ DEMO_CASES = [
         "description": "Large corporate wire with complete documentation. Amount alone cannot trigger.",
         "category": "PASS",
         "expected_verdict": "PASS",
-        "key_levers": ["amt_native", "documentation_complete", "supporting_invoice"],
+        "key_levers": ["amt_base_cad", "documentation_complete"],
         "tags": ["Corporate", "Wire", "High-Value"],
         "input": {
             "header": {
@@ -85,8 +85,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-CORP-WIRE-001",
-                "work_item_type": "THRESHOLD_ALERT",
+                "work_item_type": "TXN_MONITORING",
                 "assigned_queue": "FIU_TIER_1",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_HIGH_VALUE"]
             },
             "customer_record": {
@@ -98,7 +99,7 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2025-09-15",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "TRUE"
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -107,23 +108,20 @@ DEMO_CASES = [
                     "currency_iso": "CAD",
                     "amt_base_cad": 2500000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "DEUTSCHE MACHINERY GMBH",
-                    "target_country": "DE",
                     "status_code": "COMPLETED"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 0,
                 "top_match": None
             },
             "mitigating_factors": {
                 "relationship_tenure_years": 15,
                 "documentation_complete": True,
-                "supporting_invoice": True,
-                "source_of_funds_verified": True,
-                "business_purpose_verified": "Equipment purchase - matches industry"
+                "source_of_funds_verified": True
             }
         }
     },
@@ -133,7 +131,7 @@ DEMO_CASES = [
         "description": "Regular cross-border payments matching historical pattern. Geography alone cannot trigger.",
         "category": "PASS",
         "expected_verdict": "PASS",
-        "key_levers": ["target_country", "amt_native", "velocity"],
+        "key_levers": ["amt_base_cad", "flow_direction"],
         "tags": ["Cross-Border", "Routine"],
         "input": {
             "header": {
@@ -143,8 +141,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-XBORDER-001",
-                "work_item_type": "GEO_ALERT",
+                "work_item_type": "TXN_MONITORING",
                 "assigned_queue": "FIU_TIER_1",
+                "previous_analyst": None,
                 "hit_rule_ids": ["GEO_HIGH_RISK"]
             },
             "customer_record": {
@@ -156,7 +155,7 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2025-06-01",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "TRUE"
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -165,22 +164,21 @@ DEMO_CASES = [
                     "currency_iso": "CAD",
                     "amt_base_cad": 25000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "CHEN FAMILY TRUST",
-                    "target_country": "HK",
+                    "benef_country": "HK",
                     "status_code": "COMPLETED"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 0,
                 "top_match": None
             },
             "mitigating_factors": {
                 "relationship_tenure_years": 10,
                 "documentation_complete": True,
-                "source_of_funds_verified": True,
-                "recurring_pattern_explained": "Monthly family support - 5 year history"
+                "source_of_funds_verified": True
             }
         }
     },
@@ -192,7 +190,7 @@ DEMO_CASES = [
         "description": "Confirmed OFAC sanctions match. Immediate escalation required.",
         "category": "ESCALATE",
         "expected_verdict": "HARD_STOP",
-        "key_levers": ["confirmed_sanctions_match", "list_type"],
+        "key_levers": ["list_type", "match_score"],
         "tags": ["Sanctions", "Hard-Stop"],
         "input": {
             "header": {
@@ -202,8 +200,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-SANCTIONS-001",
-                "work_item_type": "SANCTIONS_ALERT",
+                "work_item_type": "SANCTIONS_SCREENING",
                 "assigned_queue": "FIU_PRIORITY",
+                "previous_analyst": None,
                 "hit_rule_ids": ["SANCTIONS_OFAC"]
             },
             "customer_record": {
@@ -215,7 +214,7 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2024-01-15",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "TRUE"
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -224,22 +223,20 @@ DEMO_CASES = [
                     "currency_iso": "USD",
                     "amt_base_cad": 680000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "PETROCHEMICAL TRADING LLC",
-                    "target_country": "AE",
+                    "benef_country": "AE",
                     "status_code": "PENDING"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 1,
                 "top_match": {
-                    "entity_type": "PERSON",
-                    "risk_level": "CRITICAL",
-                    "description": "OFAC SDN List - Energy Sector",
-                    "confirmed_sanctions_match": True,
+                    "match_score": 98,
                     "list_type": "OFAC_SDN",
-                    "match_score": 98
+                    "matched_name": "Viktor PETROV",
+                    "match_reason": "OFAC SDN List - Energy Sector"
                 }
             },
             "mitigating_factors": {
@@ -255,7 +252,7 @@ DEMO_CASES = [
         "description": "Multiple cash deposits just under $10K threshold. Classic structuring pattern.",
         "category": "ESCALATE",
         "expected_verdict": "STR",
-        "key_levers": ["amt_native", "transaction_count", "method"],
+        "key_levers": ["amt_base_cad", "method"],
         "tags": ["Structuring", "Cash", "Pattern"],
         "input": {
             "header": {
@@ -265,8 +262,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-STRUCT-001",
-                "work_item_type": "PATTERN_ALERT",
+                "work_item_type": "TXN_MONITORING",
                 "assigned_queue": "FIU_TIER_2",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_STRUCTURING", "RULE_VELOCITY"]
             },
             "customer_record": {
@@ -278,7 +276,7 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2025-02-01",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "TRUE"
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -289,7 +287,6 @@ DEMO_CASES = [
                     "flow_direction": "IN",
                     "method": "CASH",
                     "target_name": "CASH DEPOSIT",
-                    "target_country": "CA",
                     "status_code": "COMPLETED"
                 },
                 {
@@ -300,7 +297,6 @@ DEMO_CASES = [
                     "flow_direction": "IN",
                     "method": "CASH",
                     "target_name": "CASH DEPOSIT",
-                    "target_country": "CA",
                     "status_code": "COMPLETED"
                 },
                 {
@@ -311,19 +307,13 @@ DEMO_CASES = [
                     "flow_direction": "IN",
                     "method": "CASH",
                     "target_name": "CASH DEPOSIT",
-                    "target_country": "CA",
                     "status_code": "COMPLETED"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 0,
                 "top_match": None
-            },
-            "mitigating_factors": {
-                "relationship_tenure_years": 4,
-                "documentation_complete": False,
-                "source_of_funds_verified": False
             },
             "suspicion_evidence": {
                 "has_intent": True,
@@ -343,7 +333,7 @@ DEMO_CASES = [
         "description": "Funds moving through multiple shell companies in tax havens.",
         "category": "ESCALATE",
         "expected_verdict": "STR",
-        "key_levers": ["beneficial_owners", "target_country", "corporate_structure"],
+        "key_levers": ["c_type", "residence_iso", "disclosure_docs_received"],
         "tags": ["Layering", "Shell", "Corporate"],
         "input": {
             "header": {
@@ -353,12 +343,13 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-LAYER-001",
-                "work_item_type": "COMPLEX_STRUCTURE_ALERT",
+                "work_item_type": "ENHANCED_MONITORING",
                 "assigned_queue": "FIU_TIER_2",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_LAYERING", "RULE_SHELL"]
             },
             "customer_record": {
-                "SRC_SYS_KEY": "CORP-1192-BVI",
+                "SRC_SYS_KEY": "CORP-1192-VG",
                 "fullName": "Global Ventures Holdings Ltd",
                 "c_type": "CORP",
                 "residence_iso": "VG",
@@ -366,19 +357,8 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2025-01-10",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "FALSE"
+                "disclosure_docs_received": False
             },
-            "beneficial_owners": [
-                {
-                    "name": "Unknown Nominee",
-                    "country": "PA",
-                    "percent": 100,
-                    "is_foreign": True,
-                    "is_pep": False,
-                    "is_sanctioned": False,
-                    "verified": False
-                }
-            ],
             "transaction_history_slice": [
                 {
                     "tx_id": "TX-006",
@@ -386,21 +366,16 @@ DEMO_CASES = [
                     "currency_iso": "USD",
                     "amt_base_cad": 1632000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "PACIFIC RIM INVESTMENTS LTD",
-                    "target_country": "SG",
+                    "benef_country": "SG",
                     "status_code": "PENDING"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 0,
                 "top_match": None
-            },
-            "mitigating_factors": {
-                "relationship_tenure_years": 1,
-                "documentation_complete": False,
-                "source_of_funds_verified": False
             },
             "suspicion_evidence": {
                 "has_intent": True,
@@ -422,7 +397,7 @@ DEMO_CASES = [
         "description": "Foreign PEP with recent adverse media. Tests corroboration requirements.",
         "category": "EDGE",
         "expected_verdict": "ESCALATE",
-        "key_levers": ["pep_flag", "adverse_media_mltf", "documentation_complete"],
+        "key_levers": ["pep_flag", "mltf_linked", "documentation_complete"],
         "tags": ["PEP", "Adverse-Media", "Edge"],
         "input": {
             "header": {
@@ -432,8 +407,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-PEP-ADVERSE-001",
-                "work_item_type": "PEP_RE_ALERT",
+                "work_item_type": "PEP_REVIEW",
                 "assigned_queue": "FIU_TIER_2",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_772", "RULE_ADVERSE"]
             },
             "customer_record": {
@@ -444,8 +420,8 @@ DEMO_CASES = [
                 "onboarding_epoch": 1483228800,
                 "last_kyc_refresh": "2024-08-01",
                 "pep_flag": "Y",
-                "pep_category_code": "PEP_LEVEL_1_FOREIGN",
-                "disclosure_docs_received": "TRUE"
+                "pep_category_code": "FOREIGN",
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -454,27 +430,25 @@ DEMO_CASES = [
                     "currency_iso": "USD",
                     "amt_base_cad": 476000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "SILVA FAMILY OFFICE - MIAMI",
-                    "target_country": "US",
+                    "benef_country": "US",
                     "status_code": "COMPLETED"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 1,
                 "top_match": {
-                    "entity_type": "PERSON",
-                    "risk_level": "CRITICAL",
-                    "description": "Former Senator - Brazil - Corruption investigation",
-                    "confirmed_sanctions_match": False,
-                    "list_type": "PEP"
+                    "match_score": 92,
+                    "list_type": "ADVERSE_MEDIA",
+                    "matched_name": "Ricardo Silva",
+                    "match_reason": "Named in Operation Car Wash documents"
                 },
                 "adverse_media": {
+                    "found": True,
                     "mltf_linked": True,
-                    "articles_count": 3,
-                    "most_recent": "2025-11-15",
-                    "summary": "Named in Operation Car Wash documents"
+                    "categories": ["CORRUPTION", "MONEY_LAUNDERING"]
                 }
             },
             "mitigating_factors": {
@@ -490,7 +464,7 @@ DEMO_CASES = [
         "description": "Crypto conversion to wire through high-risk jurisdiction.",
         "category": "EDGE",
         "expected_verdict": "ESCALATE",
-        "key_levers": ["method", "target_country", "source_of_funds_verified"],
+        "key_levers": ["method", "benef_country", "source_of_funds_verified"],
         "tags": ["Crypto", "High-Risk", "Edge"],
         "input": {
             "header": {
@@ -500,8 +474,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-CRYPTO-001",
-                "work_item_type": "CRYPTO_ALERT",
+                "work_item_type": "TXN_MONITORING",
                 "assigned_queue": "FIU_TIER_2",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_CRYPTO", "GEO_HIGH_RISK"]
             },
             "customer_record": {
@@ -513,18 +488,17 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2025-03-01",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "TRUE"
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
                     "tx_id": "TX-008-A",
                     "amt_native": 75000.00,
-                    "currency_iso": "USDT",
+                    "currency_iso": "USD",
                     "amt_base_cad": 102000.00,
                     "flow_direction": "IN",
                     "method": "CRYPTO",
                     "target_name": "EXTERNAL WALLET",
-                    "target_country": "UNKNOWN",
                     "status_code": "COMPLETED"
                 },
                 {
@@ -533,14 +507,14 @@ DEMO_CASES = [
                     "currency_iso": "CAD",
                     "amt_base_cad": 74000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "TRADING COMPANY FZE",
-                    "target_country": "AE",
+                    "benef_country": "AE",
                     "status_code": "PENDING"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 0,
                 "top_match": None
             },
@@ -557,7 +531,7 @@ DEMO_CASES = [
         "description": "Long-term customer with sudden 10x increase in transaction volume.",
         "category": "EDGE",
         "expected_verdict": "ESCALATE",
-        "key_levers": ["velocity_ratio", "documentation_complete", "business_purpose"],
+        "key_levers": ["amt_base_cad", "documentation_complete"],
         "tags": ["Velocity", "Behavioral", "Edge"],
         "input": {
             "header": {
@@ -567,8 +541,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-VELOCITY-001",
-                "work_item_type": "VELOCITY_ALERT",
+                "work_item_type": "TXN_MONITORING",
                 "assigned_queue": "FIU_TIER_1",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_VELOCITY_SPIKE"]
             },
             "customer_record": {
@@ -580,7 +555,7 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2025-04-15",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "TRUE"
+                "disclosure_docs_received": True
             },
             "transaction_history_slice": [
                 {
@@ -589,21 +564,14 @@ DEMO_CASES = [
                     "currency_iso": "CAD",
                     "amt_base_cad": 850000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "SHENZHEN ELECTRONICS CO",
-                    "target_country": "CN",
+                    "benef_country": "CN",
                     "status_code": "COMPLETED"
                 }
             ],
-            "velocity_metrics": {
-                "current_month_total": 850000.00,
-                "historical_monthly_avg": 75000.00,
-                "velocity_ratio": 11.3,
-                "transactions_current_month": 1,
-                "transactions_historical_avg": 8
-            },
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 0,
                 "top_match": None
             },
@@ -620,7 +588,7 @@ DEMO_CASES = [
         "description": "Corporate entity with undisclosed PEP beneficial owner.",
         "category": "EDGE",
         "expected_verdict": "ESCALATE",
-        "key_levers": ["beneficial_owners", "disclosure_docs_received"],
+        "key_levers": ["pep_flag", "disclosure_docs_received", "match_score"],
         "tags": ["Corporate", "PEP", "Ownership"],
         "input": {
             "header": {
@@ -630,8 +598,9 @@ DEMO_CASES = [
             },
             "alert_details": {
                 "external_id": "DEMO-HIDDEN-PEP-001",
-                "work_item_type": "OWNERSHIP_ALERT",
+                "work_item_type": "PERIODIC_REVIEW",
                 "assigned_queue": "FIU_TIER_2",
+                "previous_analyst": None,
                 "hit_rule_ids": ["RULE_HIDDEN_PEP", "RULE_OWNERSHIP"]
             },
             "customer_record": {
@@ -643,29 +612,8 @@ DEMO_CASES = [
                 "last_kyc_refresh": "2024-12-01",
                 "pep_flag": "N",
                 "pep_category_code": None,
-                "disclosure_docs_received": "FALSE"
+                "disclosure_docs_received": False
             },
-            "beneficial_owners": [
-                {
-                    "name": "Maria Konstantinos",
-                    "country": "GR",
-                    "percent": 51,
-                    "is_foreign": True,
-                    "is_pep": True,
-                    "pep_role": "Former Minister of Finance - Greece",
-                    "is_sanctioned": False,
-                    "verified": False
-                },
-                {
-                    "name": "Cyprus Nominees Ltd",
-                    "country": "CY",
-                    "percent": 49,
-                    "is_foreign": False,
-                    "is_pep": False,
-                    "is_sanctioned": False,
-                    "verified": False
-                }
-            ],
             "transaction_history_slice": [
                 {
                     "tx_id": "TX-010",
@@ -673,21 +621,20 @@ DEMO_CASES = [
                     "currency_iso": "EUR",
                     "amt_base_cad": 2900000.00,
                     "flow_direction": "OUT",
-                    "method": "SWIFT_WIRE",
+                    "method": "WIRE",
                     "target_name": "SWISS PRIVATE BANK AG",
-                    "target_country": "CH",
+                    "benef_country": "CH",
                     "status_code": "PENDING"
                 }
             ],
             "screening_payload": {
-                "provider": "REF_WORLD_CHECK",
+                "provider": "WORLD_CHECK",
                 "match_count": 1,
                 "top_match": {
-                    "entity_type": "PERSON",
-                    "risk_level": "HIGH",
-                    "description": "Former Minister of Finance - Greece",
-                    "confirmed_sanctions_match": False,
-                    "list_type": "PEP"
+                    "match_score": 88,
+                    "list_type": "PEP",
+                    "matched_name": "Maria Konstantinos",
+                    "match_reason": "Former Minister of Finance - Greece (Beneficial Owner)"
                 }
             },
             "mitigating_factors": {
