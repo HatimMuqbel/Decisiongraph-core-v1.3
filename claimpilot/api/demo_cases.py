@@ -360,6 +360,368 @@ DEMO_CASES = [
             {"doc_type": "environmental_report", "status": "verified"},
         ]
     },
+
+    # ============== MARINE BOUNDARY CASES ==============
+    {
+        "id": "marine-edge-nav-boundary",
+        "name": "Nav Boundary Edge - NEEDS EVIDENCE",
+        "description": "Loss occurred at exact edge of navigation limits. GPS shows position on boundary line.",
+        "line_of_business": "marine",
+        "policy_id": "CA-ON-MARINE-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Navigation limits boundary requires verification",
+        "key_facts": ["GPS position on boundary", "Limits interpretation unclear"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "grounding"},
+            {"field": "vessel.within_navigation_limits", "value": "unknown"},
+            {"field": "loss.gps_latitude", "value": 43.7942},
+            {"field": "loss.gps_longitude", "value": -79.2654},
+            {"field": "operator.pcoc_valid", "value": True},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "gps_records", "status": "verified"},
+            {"doc_type": "navigation_chart", "status": "pending"},
+        ]
+    },
+    {
+        "id": "marine-deny-nav-exceeded",
+        "name": "Nav Limits Exceeded by 2nm - DENY",
+        "description": "Vessel grounded 2 nautical miles outside approved cruising area.",
+        "line_of_business": "marine",
+        "policy_id": "CA-ON-MARINE-2024",
+        "expected_outcome": "deny",
+        "expected_reason": "Navigation Limits Exclusion (EX-NAV) triggered - 2nm outside boundary",
+        "key_facts": ["2nm outside limits", "GPS verified"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "grounding"},
+            {"field": "vessel.within_navigation_limits", "value": False},
+            {"field": "vessel.distance_outside_limits_nm", "value": 2},
+            {"field": "operator.pcoc_valid", "value": True},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "gps_records", "status": "verified"},
+            {"doc_type": "coast_guard_report", "status": "verified"},
+        ]
+    },
+    {
+        "id": "marine-edge-pcoc-expired",
+        "name": "PCOC Expired 3 Days Ago - NEEDS EVIDENCE",
+        "description": "Operator's PCOC expired 3 days before loss. Renewal may have been in process.",
+        "line_of_business": "marine",
+        "policy_id": "CA-ON-MARINE-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "PCOC validity requires documentation of renewal status",
+        "key_facts": ["PCOC expired 3 days prior", "Possible renewal pending"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "collision"},
+            {"field": "vessel.within_navigation_limits", "value": True},
+            {"field": "operator.pcoc_valid", "value": False},
+            {"field": "operator.pcoc_expiry_date", "value": "2024-07-12"},
+            {"field": "loss.date", "value": "2024-07-15"},
+            {"field": "operator.pcoc_days_expired", "value": 3},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "pcoc_certificate", "status": "pending"},
+            {"doc_type": "renewal_application", "status": "pending"},
+        ]
+    },
+    {
+        "id": "marine-edge-commercial-mixed",
+        "name": "Mixed Use Charter - NEEDS EVIDENCE",
+        "description": "Owner occasionally charters vessel. Loss occurred during claimed personal use.",
+        "line_of_business": "marine",
+        "policy_id": "CA-ON-MARINE-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Commercial Use Exclusion requires verification of use at time of loss",
+        "key_facts": ["Known charter history", "Claims personal use at loss"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "storm_damage"},
+            {"field": "vessel.within_navigation_limits", "value": True},
+            {"field": "operator.pcoc_valid", "value": True},
+            {"field": "vessel.commercial_use", "value": "unknown"},
+            {"field": "vessel.charter_history", "value": True},
+            {"field": "owner.stated_use_at_loss", "value": "personal"},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "charter_records", "status": "pending"},
+            {"doc_type": "marina_log", "status": "pending"},
+        ]
+    },
+    {
+        "id": "marine-edge-maintenance-gap",
+        "name": "Maintenance Lapsed 45 Days - NEEDS EVIDENCE",
+        "description": "Scheduled maintenance was 45 days overdue. Loss may be related to unmaintained systems.",
+        "line_of_business": "marine",
+        "policy_id": "CA-ON-MARINE-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Maintenance Exclusion requires determination of causal relationship",
+        "key_facts": ["45-day maintenance gap", "Possible causal link"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "mechanical_failure"},
+            {"field": "vessel.within_navigation_limits", "value": True},
+            {"field": "operator.pcoc_valid", "value": True},
+            {"field": "vessel.maintenance_current", "value": False},
+            {"field": "vessel.days_since_scheduled_maintenance", "value": 45},
+            {"field": "loss.system_affected", "value": "engine"},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "maintenance_records", "status": "verified"},
+            {"doc_type": "marine_surveyor_report", "status": "pending"},
+        ]
+    },
+    {
+        "id": "marine-edge-ice-offseason",
+        "name": "Ice Damage Outside Lay-Up - NEEDS EVIDENCE",
+        "description": "Ice damage occurred in early November. Policy lay-up period starts November 15.",
+        "line_of_business": "marine",
+        "policy_id": "CA-ON-MARINE-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Seasonal coverage boundary requires verification",
+        "key_facts": ["Loss Nov 8", "Lay-up starts Nov 15", "Ice conditions unusual"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "ice_damage"},
+            {"field": "loss.date", "value": "2024-11-08"},
+            {"field": "policy.layup_start_date", "value": "2024-11-15"},
+            {"field": "vessel.within_navigation_limits", "value": True},
+            {"field": "vessel.in_water", "value": True},
+            {"field": "weather.conditions", "value": "early_freeze"},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "weather_report", "status": "verified"},
+            {"doc_type": "marina_haul_out_records", "status": "pending"},
+        ]
+    },
+
+    # ============== AUTO BOUNDARY CASES ==============
+    {
+        "id": "auto-edge-bac-threshold",
+        "name": "BAC Exactly 0.08 - NEEDS EVIDENCE",
+        "description": "Driver BAC measured at exactly 0.08. Breathalyzer calibration and timing may be relevant.",
+        "line_of_business": "auto",
+        "policy_id": "CA-ON-OAP1-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Impairment Exclusion threshold at exact boundary - requires verification",
+        "key_facts": ["BAC exactly 0.08", "Calibration records needed"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "vehicle.use_at_loss", "value": "personal"},
+            {"field": "driver.rideshare_app_active", "value": False},
+            {"field": "driver.license_status", "value": "valid"},
+            {"field": "driver.bac_level", "value": 0.08},
+            {"field": "driver.impairment_indicated", "value": "unknown"},
+            {"field": "police_report.impaired_charges", "value": False},
+        ],
+        "evidence": [
+            {"doc_type": "police_report", "status": "verified"},
+            {"doc_type": "breathalyzer_calibration_cert", "status": "pending"},
+            {"doc_type": "toxicology_report", "status": "pending"},
+        ]
+    },
+    {
+        "id": "auto-edge-license-same-day",
+        "name": "License Expired Same Day - NEEDS EVIDENCE",
+        "description": "Driver's license expired on the same day as the loss. Time of expiry vs time of loss unclear.",
+        "line_of_business": "auto",
+        "policy_id": "CA-ON-OAP1-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "License validity at exact time of loss requires verification",
+        "key_facts": ["License expired same day", "Time of loss unclear"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "vehicle.use_at_loss", "value": "personal"},
+            {"field": "driver.rideshare_app_active", "value": False},
+            {"field": "driver.license_status", "value": "unknown"},
+            {"field": "driver.license_expiry_date", "value": "2024-08-15"},
+            {"field": "loss.date", "value": "2024-08-15"},
+            {"field": "loss.time", "value": "unknown"},
+            {"field": "driver.bac_level", "value": 0.0},
+        ],
+        "evidence": [
+            {"doc_type": "police_report", "status": "verified"},
+            {"doc_type": "mto_driver_abstract", "status": "pending"},
+        ]
+    },
+    {
+        "id": "auto-approve-rideshare-inactive",
+        "name": "Rideshare Installed but Inactive - APPROVE",
+        "description": "Driver has Uber app installed but was not logged in or accepting rides at time of loss.",
+        "line_of_business": "auto",
+        "policy_id": "CA-ON-OAP1-2024",
+        "expected_outcome": "pay",
+        "expected_reason": "Commercial Use Exclusion not triggered - app not active during loss",
+        "key_facts": ["App installed", "Not logged in", "Personal use confirmed"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "vehicle.use_at_loss", "value": "personal"},
+            {"field": "driver.rideshare_app_installed", "value": True},
+            {"field": "driver.rideshare_app_active", "value": False},
+            {"field": "driver.rideshare_logged_in", "value": False},
+            {"field": "driver.license_status", "value": "valid"},
+            {"field": "driver.bac_level", "value": 0.0},
+        ],
+        "evidence": [
+            {"doc_type": "police_report", "status": "verified"},
+            {"doc_type": "driver_statement", "status": "verified"},
+            {"doc_type": "app_activity_records", "status": "verified"},
+        ]
+    },
+
+    # ============== PROPERTY BOUNDARY CASES ==============
+    {
+        "id": "property-edge-vacancy-30",
+        "name": "Vacant Exactly 30 Days - NEEDS EVIDENCE",
+        "description": "Property was vacant for exactly 30 days when loss occurred. Exclusion threshold is 30 days.",
+        "line_of_business": "property",
+        "policy_id": "CA-ON-HO3-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Vacancy Exclusion at exact 30-day boundary - verification required",
+        "key_facts": ["30 days vacant exactly", "Threshold boundary"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "vandalism"},
+            {"field": "dwelling.days_vacant", "value": 30},
+            {"field": "dwelling.vacancy_start_date", "value": "2024-06-15"},
+            {"field": "loss.date", "value": "2024-07-15"},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "police_report", "status": "verified"},
+            {"doc_type": "utility_records", "status": "pending"},
+            {"doc_type": "neighbor_statements", "status": "pending"},
+        ]
+    },
+    {
+        "id": "property-edge-gradual-sudden",
+        "name": "Gradual + Sudden Damage - NEEDS EVIDENCE",
+        "description": "Pipe burst (sudden) but evidence of prior slow leak (gradual). Damage attribution unclear.",
+        "line_of_business": "property",
+        "policy_id": "CA-ON-HO3-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Mixed gradual/sudden causation requires damage attribution",
+        "key_facts": ["Pipe burst (sudden)", "Prior slow leak (gradual)", "Damage separation needed"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "water_damage"},
+            {"field": "loss.cause", "value": "pipe_burst"},
+            {"field": "loss.sudden_event", "value": True},
+            {"field": "loss.gradual_damage_present", "value": True},
+            {"field": "dwelling.days_vacant", "value": 0},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "plumber_report", "status": "verified"},
+            {"doc_type": "damage_attribution_report", "status": "pending"},
+        ]
+    },
+
+    # ============== HEALTH BOUNDARY CASES ==============
+    {
+        "id": "health-edge-preexisting-boundary",
+        "name": "Pre-existing at 12-Month Boundary - NEEDS EVIDENCE",
+        "description": "Member enrolled exactly 12 months ago. Condition was treated 13 months ago.",
+        "line_of_business": "health",
+        "policy_id": "CA-ON-GH-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Pre-existing waiting period boundary requires exact enrollment date verification",
+        "key_facts": ["12 months coverage exactly", "Condition treated 13 months ago"],
+        "facts": [
+            {"field": "member.status", "value": "active"},
+            {"field": "member.coverage_months", "value": 12},
+            {"field": "member.enrollment_date", "value": "2023-08-15"},
+            {"field": "condition.preexisting", "value": True},
+            {"field": "condition.last_treatment_date", "value": "2023-07-10"},
+            {"field": "claim.service_date", "value": "2024-08-15"},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "enrollment_records", "status": "pending"},
+            {"doc_type": "medical_records", "status": "verified"},
+        ]
+    },
+    {
+        "id": "health-edge-experimental-approved",
+        "name": "Experimental Later Approved - NEEDS EVIDENCE",
+        "description": "Treatment was experimental when started but FDA/HC approved during treatment course.",
+        "line_of_business": "health",
+        "policy_id": "CA-ON-GH-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Experimental Exclusion applicability depends on approval timeline",
+        "key_facts": ["Treatment started as experimental", "Approved mid-treatment"],
+        "facts": [
+            {"field": "member.status", "value": "active"},
+            {"field": "treatment.type", "value": "gene_therapy"},
+            {"field": "treatment.start_date", "value": "2024-03-01"},
+            {"field": "treatment.experimental_at_start", "value": True},
+            {"field": "treatment.regulatory_approval_date", "value": "2024-05-15"},
+            {"field": "claim.service_date", "value": "2024-06-01"},
+        ],
+        "evidence": [
+            {"doc_type": "claim_form", "status": "verified"},
+            {"doc_type": "treatment_records", "status": "verified"},
+            {"doc_type": "hc_approval_notice", "status": "pending"},
+        ]
+    },
+
+    # ============== CGL/E&O BOUNDARY CASES ==============
+    {
+        "id": "cgl-edge-pollution-secondary",
+        "name": "Pollution as Secondary Cause - NEEDS EVIDENCE",
+        "description": "Equipment failure caused fire; fire suppression chemicals caused secondary contamination.",
+        "line_of_business": "liability",
+        "policy_id": "CA-CGL-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Pollution Exclusion applicability unclear when pollution is secondary consequence",
+        "key_facts": ["Primary cause: equipment failure", "Secondary: chemical contamination"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "loss.type", "value": "property_damage_tp"},
+            {"field": "loss.primary_cause", "value": "equipment_failure"},
+            {"field": "loss.pollution_related", "value": True},
+            {"field": "loss.pollution_primary", "value": False},
+            {"field": "occurrence.during_policy_period", "value": True},
+        ],
+        "evidence": [
+            {"doc_type": "claim_notice", "status": "verified"},
+            {"doc_type": "fire_investigation_report", "status": "verified"},
+            {"doc_type": "environmental_assessment", "status": "pending"},
+        ]
+    },
+    {
+        "id": "eo-edge-prior-acts-known",
+        "name": "E&O Prior Acts - Known Circumstance - NEEDS EVIDENCE",
+        "description": "Professional error occurred before policy inception. Insured was aware of potential claim.",
+        "line_of_business": "liability",
+        "policy_id": "CA-EO-2024",
+        "expected_outcome": "request_info",
+        "expected_reason": "Prior Acts/Known Circumstance Exclusion requires disclosure verification",
+        "key_facts": ["Error pre-policy", "Possible knowledge at inception"],
+        "facts": [
+            {"field": "policy.status", "value": "active"},
+            {"field": "policy.inception_date", "value": "2024-01-01"},
+            {"field": "loss.type", "value": "professional_liability"},
+            {"field": "occurrence.error_date", "value": "2023-11-15"},
+            {"field": "occurrence.claim_made_date", "value": "2024-06-01"},
+            {"field": "insured.knew_of_circumstances", "value": "unknown"},
+            {"field": "occurrence.in_coverage_territory", "value": True},
+        ],
+        "evidence": [
+            {"doc_type": "claim_notice", "status": "verified"},
+            {"doc_type": "application_disclosure", "status": "pending"},
+            {"doc_type": "client_correspondence", "status": "pending"},
+        ]
+    },
 ]
 
 
