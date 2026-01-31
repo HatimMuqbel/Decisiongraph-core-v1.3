@@ -9,10 +9,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY . .
 
-# Set environment
-ENV PYTHONUNBUFFERED=1
+# Set Python path for src imports
 ENV PYTHONPATH=/app:/app/src
-ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
 
-# Run - use shell form to expand $PORT
-CMD uvicorn service.main:app --host 0.0.0.0 --port $PORT
+# Expose port
+EXPOSE 8000
+
+# Run the application
+CMD ["sh", "-c", "uvicorn service.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
