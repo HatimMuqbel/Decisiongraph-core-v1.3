@@ -1,0 +1,338 @@
+policy:
+  id: "CA-CGL-2024"
+  jurisdiction: "CA"
+  line_of_business: "liability"
+  product_code: "CGL"
+  name: "Commercial General Liability"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "coverage_a"
+    code: "Coverage A"
+    name: "Bodily Injury and Property Damage Liability"
+    description: "Third-party liability for BI and PD"
+    triggers:
+      - loss_type: "bodily_injury_tp"
+      - loss_type: "property_damage_tp"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "occurrence.during_policy_period"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "occurrence.in_coverage_territory"
+              operator: "eq"
+              value: true
+
+  - id: "coverage_b"
+    code: "Coverage B"
+    name: "Personal and Advertising Injury Liability"
+    description: "Liability for personal injury offenses"
+    triggers:
+      - loss_type: "defamation"
+      - loss_type: "false_arrest"
+      - loss_type: "invasion_of_privacy"
+      - loss_type: "copyright_infringement_advertising"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "offense.committed_during_policy"
+              operator: "eq"
+              value: true
+
+  - id: "coverage_c"
+    code: "Coverage C"
+    name: "Medical Payments"
+    description: "Medical expenses regardless of liability"
+    triggers:
+      - loss_type: "medical_expense"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "injury.on_premises"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "claimant.not_insured"
+              operator: "eq"
+              value: true
+    limits:
+      per_person: 10000
+      currency: "CAD"
+
+  - id: "products_completed"
+    code: "Products-Completed Operations"
+    name: "Products-Completed Operations Hazard"
+    description: "Liability for products and completed work"
+    triggers:
+      - loss_type: "product_liability"
+      - loss_type: "completed_operations"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "or"
+            children:
+              - op: "eq"
+                predicate:
+                  field: "loss.from_product"
+                  operator: "eq"
+                  value: true
+              - op: "eq"
+                predicate:
+                  field: "loss.from_completed_work"
+                  operator: "eq"
+                  value: true
+
+exclusions:
+  - id: "ex_expected_intended"
+    code: "EX-EI"
+    name: "Expected or Intended Injury"
+    description: "Injury expected or intended by insured"
+    policy_wording: |
+      This insurance does not apply to bodily injury or property damage
+      expected or intended from the standpoint of the insured.
+    policy_section_ref: "Coverage A Exclusions, a."
+    applies_to_coverages: ["coverage_a", "products_completed"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "injury.expected_intended"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Was the injury/damage expected or intended?"
+      - "What was the insured's state of mind?"
+    evidence_to_confirm:
+      - "investigation_report"
+      - "witness_statements"
+    evidence_to_rule_out:
+      - "accidental_nature_confirmed"
+
+  - id: "ex_contractual"
+    code: "EX-CONT"
+    name: "Contractual Liability"
+    description: "Liability assumed under contract"
+    policy_wording: |
+      This insurance does not apply to bodily injury or property damage for
+      which the insured is obligated to pay damages by reason of the assumption
+      of liability in a contract or agreement.
+    policy_section_ref: "Coverage A Exclusions, b."
+    applies_to_coverages: ["coverage_a"]
+    trigger_conditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "liability.contractual"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "contract.insured_contract"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Is this liability assumed under a contract?"
+      - "Does the contract qualify as an 'insured contract'?"
+    evidence_to_confirm:
+      - "contract_review"
+    evidence_to_rule_out:
+      - "insured_contract_qualification"
+
+  - id: "ex_pollution"
+    code: "EX-POLL"
+    name: "Pollution"
+    description: "Pollution liability"
+    policy_wording: |
+      This insurance does not apply to bodily injury or property damage arising
+      out of the actual, alleged or threatened discharge, dispersal, seepage,
+      migration, release or escape of pollutants.
+    policy_section_ref: "Coverage A Exclusions, f."
+    applies_to_coverages: ["coverage_a", "products_completed"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.pollution_related"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Did the loss involve pollutants?"
+      - "Is there a pollution liability endorsement?"
+    evidence_to_confirm:
+      - "environmental_report"
+      - "incident_details"
+    evidence_to_rule_out:
+      - "pollution_endorsement"
+      - "sudden_accidental_exception"
+
+  - id: "ex_professional"
+    code: "EX-PROF"
+    name: "Professional Services"
+    description: "Professional liability excluded"
+    policy_wording: |
+      This insurance does not apply to bodily injury or property damage arising
+      out of the rendering of or failure to render any professional service.
+    policy_section_ref: "Coverage A Exclusions, j."
+    applies_to_coverages: ["coverage_a"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.professional_services"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Did the loss arise from professional services?"
+      - "Is there professional liability coverage?"
+    evidence_to_confirm:
+      - "service_description"
+      - "professional_designation"
+    evidence_to_rule_out:
+      - "professional_liability_policy"
+
+  - id: "ex_auto"
+    code: "EX-AUTO"
+    name: "Automobile"
+    description: "Auto liability excluded"
+    policy_wording: |
+      This insurance does not apply to bodily injury or property damage arising
+      out of the ownership, maintenance, use or entrustment to others of any
+      aircraft, auto, or watercraft owned or operated by or rented or loaned
+      to any insured.
+    policy_section_ref: "Coverage A Exclusions, g."
+    applies_to_coverages: ["coverage_a"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.auto_involved"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Did the loss involve an auto?"
+      - "Was the auto owned/operated by the insured?"
+    evidence_to_confirm:
+      - "incident_report"
+      - "vehicle_ownership"
+    evidence_to_rule_out:
+      - "hired_auto_endorsement"
+      - "non_owned_auto_endorsement"
+
+  - id: "ex_your_work"
+    code: "EX-WORK"
+    name: "Damage to Your Work"
+    description: "Damage to insured's own work"
+    policy_wording: |
+      This insurance does not apply to property damage to your work arising
+      out of it or any part of it and included in the products-completed
+      operations hazard.
+    policy_section_ref: "Coverage A Exclusions, l."
+    applies_to_coverages: ["products_completed"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "damage.to_insureds_work"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Is the damage to the insured's own work?"
+      - "Is there a subcontractor exception?"
+    evidence_to_confirm:
+      - "scope_of_work"
+      - "damage_location"
+    evidence_to_rule_out:
+      - "subcontractor_exception"
+
+evidence_rules:
+  - id: "liability_claim"
+    name: "Liability Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "claim_notice"
+        description: "Notice of claim or suit"
+        required: true
+      - doc_type: "incident_report"
+        description: "Insured's incident report"
+        required: true
+      - doc_type: "claimant_demand"
+        description: "Claimant's demand or complaint"
+        required: true
+    recommended_documents:
+      - doc_type: "witness_statements"
+        description: "Witness accounts"
+        required: false
+      - doc_type: "photos"
+        description: "Scene and injury photos"
+        required: false
+
+authority_rules:
+  - id: "lawsuit"
+    name: "Lawsuit Requires Claims Counsel"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.lawsuit_filed"
+        operator: "eq"
+        value: true
+    required_role: "claims_counsel"
+    reason: "All lawsuits require claims counsel involvement"
+
+  - id: "high_exposure"
+    name: "High Exposure Requires Manager"
+    trigger_conditions:
+      op: "gt"
+      predicate:
+        field: "claim.exposure_estimate"
+        operator: "gt"
+        value: 250000
+    required_role: "claims_manager"
+    reason: "High exposure claims require manager oversight"
+
+  - id: "coverage_dispute"
+    name: "Coverage Dispute Requires Coverage Counsel"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "coverage.disputed"
+        operator: "eq"
+        value: true
+    required_role: "coverage_counsel"
+    reason: "Coverage disputes require coverage counsel review"
+
+timeline_rules:
+  - id: "acknowledge"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 1
+    business_days: true
+    description: "Acknowledge claim within 1 business day"
+
+  - id: "coverage_position"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 30
+    business_days: false
+    description: "Coverage position within 30 days"

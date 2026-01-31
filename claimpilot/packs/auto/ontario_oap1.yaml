@@ -1,0 +1,372 @@
+policy:
+  id: "CA-ON-OAP1-2024"
+  jurisdiction: "CA-ON"
+  line_of_business: "auto"
+  product_code: "OAP1"
+  name: "Ontario Automobile Policy - Owner's Form"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "section_a"
+    code: "Section A"
+    name: "Third Party Liability"
+    description: "Coverage for legal liability arising from ownership or operation of the automobile"
+    triggers:
+      - loss_type: "bodily_injury_tp"
+        claimant_types: ["third_party"]
+      - loss_type: "property_damage_tp"
+        claimant_types: ["third_party"]
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "policy.premiums_current"
+              operator: "eq"
+              value: true
+
+  - id: "section_b"
+    code: "Section B"
+    name: "Accident Benefits"
+    description: "Statutory accident benefits regardless of fault"
+    triggers:
+      - loss_type: "bodily_injury"
+        claimant_types: ["insured", "named_insured"]
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "policy.status"
+          operator: "eq"
+          value: "active"
+
+  - id: "section_c_collision"
+    code: "Section C - Collision"
+    name: "Loss or Damage - Collision"
+    description: "Direct and accidental loss or damage caused by collision"
+    triggers:
+      - loss_type: "collision"
+        claimant_types: ["insured", "named_insured"]
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "claim.vehicle_vin"
+              operator: "in"
+              value: "policy.listed_vehicles"
+
+  - id: "section_c_comprehensive"
+    code: "Section C - Comprehensive"
+    name: "Loss or Damage - Comprehensive"
+    description: "Direct and accidental loss or damage other than collision"
+    triggers:
+      - loss_type: "theft"
+      - loss_type: "vandalism"
+      - loss_type: "fire"
+      - loss_type: "flood"
+      - loss_type: "hail"
+      - loss_type: "glass_breakage"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "claim.vehicle_vin"
+              operator: "in"
+              value: "policy.listed_vehicles"
+
+exclusions:
+  - id: "ex_commercial_use"
+    code: "4.2.1"
+    name: "Commercial Use"
+    description: "Vehicle used to carry passengers or goods for compensation"
+    policy_wording: |
+      We do not cover loss or damage that occurs while the automobile is used
+      as a taxicab, bus, livery vehicle, or to carry passengers for compensation
+      or hire, or to deliver food, goods or other products for compensation.
+    policy_section_ref: "Section 4.2.1"
+    applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "vehicle.use_at_loss"
+              operator: "in"
+              value: ["rideshare", "delivery", "taxi", "livery", "courier"]
+          - op: "eq"
+            predicate:
+              field: "driver.rideshare_app_active"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Was the vehicle being used for compensation at the time of loss?"
+      - "Was the driver logged into a rideshare or delivery app?"
+      - "Was there a passenger or goods being transported for a fee?"
+    evidence_to_confirm:
+      - "driver_statement"
+      - "police_report"
+      - "app_activity_records"
+    evidence_to_rule_out:
+      - "driver_statement_denying_commercial_use"
+      - "employer_confirmation_personal_use"
+
+  - id: "ex_impaired"
+    code: "4.3.3"
+    name: "Impaired Operation"
+    description: "Operation while impaired by alcohol or drugs"
+    policy_wording: |
+      We do not cover loss or damage that occurs while the automobile is operated
+      by any person while under the influence of intoxicating liquor or drugs to
+      such a degree as to be incapable of proper control of the automobile.
+    policy_section_ref: "Section 4.3.3"
+    applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "gt"
+            predicate:
+              field: "driver.bac_level"
+              operator: "gt"
+              value: 0.08
+          - op: "eq"
+            predicate:
+              field: "driver.impairment_indicated"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "police_report.impaired_charges"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Was the driver impaired at the time of the collision?"
+      - "Were impairment charges laid?"
+      - "What was the BAC level if tested?"
+    evidence_to_confirm:
+      - "police_report"
+      - "toxicology_report"
+      - "breathalyzer_results"
+    evidence_to_rule_out:
+      - "police_report_no_impairment"
+      - "witness_statements"
+
+  - id: "ex_unlicensed"
+    code: "4.1.2"
+    name: "Unlicensed Driver"
+    description: "Driver not authorized by law to drive"
+    policy_wording: |
+      We do not cover loss or damage that occurs while the automobile is operated
+      by any person who is not authorized by law to drive.
+    policy_section_ref: "Section 4.1.2"
+    applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "driver.license_status"
+              operator: "in"
+              value: ["suspended", "revoked", "expired", "none"]
+          - op: "eq"
+            predicate:
+              field: "driver.license_class_valid"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Was the driver properly licensed at the time of loss?"
+      - "Was the license valid for the class of vehicle?"
+    evidence_to_confirm:
+      - "mto_driver_abstract"
+      - "police_report"
+    evidence_to_rule_out:
+      - "valid_license_copy"
+      - "mto_confirmation"
+
+  - id: "ex_racing"
+    code: "4.5.1"
+    name: "Racing"
+    description: "Use in any race or speed test"
+    policy_wording: |
+      We do not cover loss or damage that occurs while the automobile is used
+      in any race, speed test, or other contest.
+    policy_section_ref: "Section 4.5.1"
+    applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.racing_activity"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Was the vehicle being used in a race or speed contest?"
+      - "Was this at a track or organized event?"
+    evidence_to_confirm:
+      - "police_report"
+      - "witness_statements"
+    evidence_to_rule_out:
+      - "driver_statement"
+
+  - id: "ex_intentional"
+    code: "4.6.1"
+    name: "Intentional Loss"
+    description: "Loss caused intentionally by the insured"
+    policy_wording: |
+      We do not cover loss or damage caused by an intentional act of the insured
+      or any person acting with the insured's knowledge or consent.
+    policy_section_ref: "Section 4.6.1"
+    applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.intentional_indicators"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Are there indicators the loss was intentional?"
+      - "Is there evidence of fraud?"
+    evidence_to_confirm:
+      - "siu_report"
+      - "police_report"
+    evidence_to_rule_out:
+      - "investigation_findings"
+
+evidence_rules:
+  - id: "denial_evidence"
+    name: "Denial Evidence Requirements"
+    disposition_type: "deny"
+    required_documents:
+      - doc_type: "police_report"
+        description: "Official collision report"
+        required: true
+      - doc_type: "adjuster_notes"
+        description: "Investigation summary"
+        required: true
+    recommended_documents:
+      - doc_type: "witness_statements"
+        description: "Third-party accounts"
+        required: false
+      - doc_type: "photos"
+        description: "Scene and damage photos"
+        required: false
+
+  - id: "approval_evidence"
+    name: "Approval Evidence Requirements"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "police_report"
+        description: "Official collision report"
+        required: true
+        alternatives: ["self_report_form"]
+      - doc_type: "damage_estimate"
+        description: "Repair estimate"
+        required: true
+      - doc_type: "proof_of_ownership"
+        description: "Registration or title"
+        required: true
+
+authority_rules:
+  - id: "denial_supervisor"
+    name: "Denial Requires Supervisor"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "recommendation.disposition_type"
+        operator: "eq"
+        value: "deny"
+    required_role: "supervisor"
+    reason: "All denial recommendations require supervisor review"
+
+  - id: "high_value"
+    name: "High Value Requires Manager"
+    trigger_conditions:
+      op: "gt"
+      predicate:
+        field: "claim.reserve_amount"
+        operator: "gt"
+        value: 50000
+    required_role: "manager"
+    reason: "Claims over $50,000 require manager approval"
+
+  - id: "siu_referral"
+    name: "Fraud Indicators Require SIU"
+    trigger_conditions:
+      op: "or"
+      children:
+        - op: "eq"
+          predicate:
+            field: "claim.fraud_score"
+            operator: "gt"
+            value: 0.7
+        - op: "eq"
+          predicate:
+            field: "exclusion.intentional_triggered"
+            operator: "eq"
+            value: true
+    required_role: "siu"
+    reason: "Potential fraud indicators require SIU review"
+
+timeline_rules:
+  - id: "acknowledge"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 1
+    business_days: true
+    description: "Acknowledge claim within 1 business day"
+    authority_ref:
+      authority_type: "regulation"
+      title: "FSRA Claims Handling Guidelines"
+      section: "Section 3.1"
+      source_name: "FSRA"
+
+  - id: "decision_due"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 60
+    business_days: false
+    description: "Coverage decision within 60 calendar days"
+    authority_ref:
+      authority_type: "regulation"
+      title: "Insurance Act (Ontario)"
+      section: "Regulation 664"
+      source_name: "Government of Ontario"
+
+  - id: "payment_due"
+    event_type: "payment_due"
+    anchor: "report_date"
+    days_from_anchor: 60
+    business_days: false
+    description: "Payment within 60 days if approved"
+    authority_ref:
+      authority_type: "regulation"
+      title: "Insurance Act (Ontario)"
+      section: "Regulation 664"
+      source_name: "Government of Ontario"
+
+regulatory:
+  regulator: "FSRA"
+  regulator_full_name: "Financial Services Regulatory Authority of Ontario"
+  jurisdiction: "CA-ON"
+  key_regulations:
+    - name: "Insurance Act (Ontario)"
+      reference: "R.S.O. 1990, c. I.8"
+    - name: "Statutory Accident Benefits Schedule"
+      reference: "O. Reg. 34/10"
+    - name: "Automobile Insurance Regulation"
+      reference: "O. Reg. 664"

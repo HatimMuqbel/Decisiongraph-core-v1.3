@@ -1,0 +1,365 @@
+policy:
+  id: "CA-ON-MARINE-2024"
+  jurisdiction: "CA-ON"
+  line_of_business: "marine"
+  product_code: "PLEASURE"
+  name: "Pleasure Craft Insurance Policy"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "hull_coverage"
+    code: "Section I"
+    name: "Hull Coverage"
+    description: "Physical damage to the vessel"
+    triggers:
+      - loss_type: "collision_water"
+      - loss_type: "grounding"
+      - loss_type: "sinking"
+      - loss_type: "fire"
+      - loss_type: "theft"
+      - loss_type: "vandalism"
+      - loss_type: "storm_damage"
+      - loss_type: "lightning"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "vessel.within_navigation_limits"
+              operator: "eq"
+              value: true
+
+  - id: "machinery_coverage"
+    code: "Section II"
+    name: "Machinery Coverage"
+    description: "Engine and mechanical equipment"
+    triggers:
+      - loss_type: "mechanical_breakdown"
+      - loss_type: "engine_damage"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.machinery_endorsement"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "vessel.maintenance_current"
+              operator: "eq"
+              value: true
+
+  - id: "equipment_coverage"
+    code: "Section III"
+    name: "Equipment and Personal Effects"
+    description: "Navigation equipment, fishing gear, personal property"
+    triggers:
+      - loss_type: "theft"
+      - loss_type: "damage"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "policy.status"
+          operator: "eq"
+          value: "active"
+    limits:
+      per_occurrence: 10000
+      currency: "CAD"
+
+  - id: "liability_coverage"
+    code: "Section IV"
+    name: "Protection and Indemnity (P&I)"
+    description: "Liability for bodily injury and property damage"
+    triggers:
+      - loss_type: "bodily_injury_tp"
+      - loss_type: "property_damage_tp"
+      - loss_type: "wreck_removal"
+      - loss_type: "pollution_liability"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "policy.status"
+          operator: "eq"
+          value: "active"
+
+  - id: "towing_coverage"
+    code: "Section V"
+    name: "Emergency Towing"
+    description: "On-water towing and assistance"
+    triggers:
+      - loss_type: "breakdown"
+      - loss_type: "fuel_exhaustion"
+      - loss_type: "grounding_minor"
+    limits:
+      per_occurrence: 5000
+      currency: "CAD"
+
+exclusions:
+  - id: "ex_navigation_limits"
+    code: "EX-NAV"
+    name: "Outside Navigation Limits"
+    description: "Operation outside defined cruising area"
+    policy_wording: |
+      We do not cover loss occurring while the vessel is operated outside
+      the navigation limits specified in the Declarations, unless prior
+      written approval has been obtained.
+    policy_section_ref: "Exclusions, Section A.1"
+    applies_to_coverages: ["hull_coverage", "machinery_coverage", "liability_coverage"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "vessel.within_navigation_limits"
+          operator: "eq"
+          value: false
+    evaluation_questions:
+      - "Where did the loss occur?"
+      - "What are the policy navigation limits?"
+      - "Was there a navigation extension endorsement?"
+    evidence_to_confirm:
+      - "gps_records"
+      - "coast_guard_report"
+      - "marina_records"
+    evidence_to_rule_out:
+      - "navigation_extension_endorsement"
+
+  - id: "ex_racing"
+    code: "EX-RACE"
+    name: "Racing"
+    description: "Use in any race or speed contest"
+    policy_wording: |
+      We do not cover loss occurring while the vessel is used in any race,
+      speed test, or organized water competition.
+    policy_section_ref: "Exclusions, Section A.2"
+    applies_to_coverages: ["hull_coverage", "machinery_coverage"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "vessel.racing_activity"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Was the vessel participating in a race or competition?"
+      - "Was this an organized event?"
+    evidence_to_confirm:
+      - "event_records"
+      - "witness_statements"
+    evidence_to_rule_out:
+      - "racing_endorsement"
+
+  - id: "ex_commercial_use"
+    code: "EX-COMM"
+    name: "Commercial Use"
+    description: "Use for hire or commercial purposes"
+    policy_wording: |
+      We do not cover loss occurring while the vessel is used for commercial
+      purposes, carrying passengers for hire, or any business activity.
+    policy_section_ref: "Exclusions, Section A.3"
+    applies_to_coverages: ["hull_coverage", "machinery_coverage", "liability_coverage"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "vessel.commercial_use"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "vessel.charter_activity"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Was the vessel being used for commercial purposes?"
+      - "Were passengers carried for compensation?"
+      - "Was goods transport involved?"
+    evidence_to_confirm:
+      - "charter_agreement"
+      - "payment_records"
+    evidence_to_rule_out:
+      - "owner_statement"
+
+  - id: "ex_lack_maintenance"
+    code: "EX-MAINT"
+    name: "Lack of Maintenance"
+    description: "Damage from failure to maintain"
+    policy_wording: |
+      We do not cover loss resulting from wear and tear, gradual deterioration,
+      corrosion, osmotic blistering, or the failure to maintain the vessel in
+      a seaworthy condition.
+    policy_section_ref: "Exclusions, Section B.1"
+    applies_to_coverages: ["hull_coverage", "machinery_coverage"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "damage.cause"
+              operator: "in"
+              value: ["wear_tear", "corrosion", "osmosis", "rot"]
+          - op: "eq"
+            predicate:
+              field: "vessel.maintenance_current"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Is the damage result of gradual deterioration?"
+      - "When was the vessel last surveyed?"
+      - "Were maintenance records kept?"
+    evidence_to_confirm:
+      - "marine_survey"
+      - "maintenance_records"
+    evidence_to_rule_out:
+      - "proof_sudden_damage"
+      - "recent_survey_seaworthy"
+
+  - id: "ex_operator_unqualified"
+    code: "EX-OPER"
+    name: "Unqualified Operator"
+    description: "Operation by unlicensed or unqualified person"
+    policy_wording: |
+      We do not cover loss occurring while the vessel is operated by any
+      person who does not hold a valid Pleasure Craft Operator Card or
+      equivalent certification as required by Transport Canada.
+    policy_section_ref: "Exclusions, Section A.4"
+    applies_to_coverages: ["hull_coverage", "machinery_coverage", "liability_coverage"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "operator.pcoc_valid"
+          operator: "eq"
+          value: false
+    evaluation_questions:
+      - "Did the operator hold a valid PCOC?"
+      - "Was the operator of legal age?"
+    evidence_to_confirm:
+      - "operator_card_verification"
+      - "coast_guard_report"
+    evidence_to_rule_out:
+      - "valid_pcoc_copy"
+
+  - id: "ex_ice_damage"
+    code: "EX-ICE"
+    name: "Ice Damage"
+    description: "Damage from ice while in water"
+    policy_wording: |
+      We do not cover loss caused by ice or freezing while the vessel is
+      in the water, unless specifically endorsed.
+    policy_section_ref: "Exclusions, Section B.2"
+    applies_to_coverages: ["hull_coverage", "machinery_coverage"]
+    trigger_conditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "damage.cause"
+              operator: "in"
+              value: ["ice", "freezing"]
+          - op: "eq"
+            predicate:
+              field: "vessel.in_water"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Was the vessel in the water when damage occurred?"
+      - "Was damage caused by ice or freezing?"
+      - "Is there a winter layup endorsement?"
+    evidence_to_confirm:
+      - "weather_records"
+      - "marina_records"
+    evidence_to_rule_out:
+      - "winter_endorsement"
+      - "proof_vessel_on_land"
+
+evidence_rules:
+  - id: "marine_claim_basic"
+    name: "Basic Marine Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "claim_form"
+        description: "Marine loss notice"
+        required: true
+      - doc_type: "damage_photos"
+        description: "Photos of damage"
+        required: true
+      - doc_type: "repair_estimate"
+        description: "Marine surveyor estimate"
+        required: true
+    recommended_documents:
+      - doc_type: "coast_guard_report"
+        description: "If applicable"
+        required: false
+      - doc_type: "gps_track"
+        description: "If navigation relevant"
+        required: false
+
+  - id: "sinking_total_loss"
+    name: "Sinking/Total Loss Evidence"
+    disposition_type: "pay"
+    applies_when:
+      op: "eq"
+      predicate:
+        field: "loss.type"
+        operator: "in"
+        value: ["sinking", "total_loss"]
+    required_documents:
+      - doc_type: "coast_guard_report"
+        description: "Coast Guard incident report"
+        required: true
+      - doc_type: "marine_survey"
+        description: "Surveyor total loss assessment"
+        required: true
+      - doc_type: "salvage_report"
+        description: "Salvage assessment"
+        required: true
+
+authority_rules:
+  - id: "total_loss_marine"
+    name: "Total Loss Requires Marine Manager"
+    trigger_conditions:
+      op: "or"
+      children:
+        - op: "eq"
+          predicate:
+            field: "loss.type"
+            operator: "eq"
+            value: "sinking"
+        - op: "eq"
+          predicate:
+            field: "claim.total_loss"
+            operator: "eq"
+            value: true
+    required_role: "marine_manager"
+    reason: "Marine total losses require specialist review"
+
+  - id: "pollution_incident"
+    name: "Pollution Requires Environmental Team"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "loss.pollution_involved"
+        operator: "eq"
+        value: true
+    required_role: "environmental_specialist"
+    reason: "Pollution incidents require environmental review"
+
+timeline_rules:
+  - id: "acknowledge"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 1
+    business_days: true
+    description: "Acknowledge claim within 1 business day"
+
+  - id: "survey_appointment"
+    event_type: "request_info"
+    anchor: "report_date"
+    days_from_anchor: 3
+    business_days: true
+    description: "Arrange marine survey within 3 business days"

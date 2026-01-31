@@ -1,0 +1,216 @@
+policy:
+  id: "CA-EO-2024"
+  jurisdiction: "CA"
+  line_of_business: "liability"
+  product_code: "E&O"
+  name: "Professional Liability - Errors & Omissions"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "professional_liability"
+    code: "Coverage A"
+    name: "Professional Liability"
+    description: "Coverage for wrongful acts in professional services"
+    triggers:
+      - loss_type: "professional_negligence"
+      - loss_type: "errors_omissions"
+      - loss_type: "breach_of_duty"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "claim.first_made_during_policy"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "wrongful_act.in_professional_capacity"
+              operator: "eq"
+              value: true
+
+  - id: "defense_costs"
+    code: "Defense"
+    name: "Defense Costs"
+    description: "Costs to defend claims"
+    triggers:
+      - loss_type: "defense"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "claim.potentially_covered"
+          operator: "eq"
+          value: true
+
+exclusions:
+  - id: "ex_prior_acts"
+    code: "EX-PRIOR"
+    name: "Prior Acts"
+    description: "Acts before retroactive date"
+    policy_wording: |
+      This policy does not apply to any claim arising out of any wrongful act
+      committed before the retroactive date stated in the Declarations.
+    policy_section_ref: "Exclusions, Section 1"
+    applies_to_coverages: ["professional_liability"]
+    trigger_conditions:
+      - op: "lt"
+        predicate:
+          field: "wrongful_act.date"
+          operator: "lt"
+          value: "policy.retroactive_date"
+    evaluation_questions:
+      - "When did the alleged wrongful act occur?"
+      - "What is the policy retroactive date?"
+    evidence_to_confirm:
+      - "claim_allegations"
+      - "policy_declarations"
+    evidence_to_rule_out:
+      - "prior_acts_coverage_endorsement"
+
+  - id: "ex_known_circumstances"
+    code: "EX-KNOWN"
+    name: "Known Circumstances"
+    description: "Circumstances known before policy inception"
+    policy_wording: |
+      This policy does not apply to any claim arising from circumstances
+      known to the insured before the inception of this policy that could
+      reasonably be expected to give rise to a claim.
+    policy_section_ref: "Exclusions, Section 2"
+    applies_to_coverages: ["professional_liability"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "circumstances.known_prior"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Did the insured know of these circumstances before policy inception?"
+      - "Was this disclosed on the application?"
+    evidence_to_confirm:
+      - "application_review"
+      - "insured_statement"
+    evidence_to_rule_out:
+      - "no_prior_knowledge_confirmed"
+
+  - id: "ex_intentional"
+    code: "EX-INTENT"
+    name: "Intentional/Dishonest Acts"
+    description: "Intentional or dishonest conduct"
+    policy_wording: |
+      This policy does not apply to any claim arising from any dishonest,
+      fraudulent, criminal, or intentional act or omission committed by
+      any insured.
+    policy_section_ref: "Exclusions, Section 3"
+    applies_to_coverages: ["professional_liability"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "act.dishonest"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "act.fraudulent"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "act.criminal"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Is there an allegation of intentional or dishonest conduct?"
+      - "Has there been a final adjudication?"
+    evidence_to_confirm:
+      - "court_findings"
+      - "investigation_report"
+    evidence_to_rule_out:
+      - "no_final_adjudication"
+
+  - id: "ex_bodily_injury"
+    code: "EX-BI"
+    name: "Bodily Injury"
+    description: "Bodily injury claims"
+    policy_wording: |
+      This policy does not apply to any claim for bodily injury, sickness,
+      disease or death of any person, or damage to or destruction of any
+      tangible property.
+    policy_section_ref: "Exclusions, Section 4"
+    applies_to_coverages: ["professional_liability"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "claim.bodily_injury"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "claim.property_damage"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Does the claim allege bodily injury or property damage?"
+      - "Is there a separate CGL policy?"
+    evidence_to_confirm:
+      - "claim_allegations"
+    evidence_to_rule_out:
+      - "financial_loss_only"
+
+evidence_rules:
+  - id: "eo_claim"
+    name: "E&O Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "claim_notice"
+        description: "Written claim or demand"
+        required: true
+      - doc_type: "engagement_letter"
+        description: "Client engagement documentation"
+        required: true
+      - doc_type: "work_product"
+        description: "Relevant work product"
+        required: true
+    recommended_documents:
+      - doc_type: "correspondence"
+        description: "Client correspondence"
+        required: false
+      - doc_type: "expert_report"
+        description: "Expert opinion if needed"
+        required: false
+
+authority_rules:
+  - id: "all_eo_claims"
+    name: "All E&O Claims Require Specialist"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.type"
+        operator: "eq"
+        value: "professional_liability"
+    required_role: "eo_specialist"
+    reason: "All E&O claims require specialist adjuster"
+
+timeline_rules:
+  - id: "acknowledge"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 1
+    business_days: true
+    description: "Acknowledge claim within 1 business day"
+
+  - id: "coverage_analysis"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 21
+    business_days: true
+    description: "Initial coverage analysis within 21 business days"

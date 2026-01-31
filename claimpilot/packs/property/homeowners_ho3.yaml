@@ -1,0 +1,337 @@
+policy:
+  id: "CA-ON-HO3-2024"
+  jurisdiction: "CA-ON"
+  line_of_business: "property"
+  product_code: "HO3"
+  name: "Homeowners Comprehensive Form"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "coverage_a"
+    code: "Coverage A"
+    name: "Dwelling"
+    description: "Coverage for the dwelling structure"
+    triggers:
+      - loss_type: "fire"
+      - loss_type: "lightning"
+      - loss_type: "windstorm"
+      - loss_type: "hail"
+      - loss_type: "explosion"
+      - loss_type: "riot"
+      - loss_type: "aircraft"
+      - loss_type: "vehicles"
+      - loss_type: "smoke"
+      - loss_type: "vandalism"
+      - loss_type: "theft"
+      - loss_type: "falling_objects"
+      - loss_type: "weight_of_ice_snow"
+      - loss_type: "water_damage_sudden"
+      - loss_type: "electrical_damage"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "loss.location"
+              operator: "eq"
+              value: "policy.insured_location"
+
+  - id: "coverage_b"
+    code: "Coverage B"
+    name: "Other Structures"
+    description: "Coverage for detached structures (garage, shed, fence)"
+    triggers:
+      - loss_type: "fire"
+      - loss_type: "windstorm"
+      - loss_type: "vandalism"
+      - loss_type: "theft"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "structure.type"
+              operator: "in"
+              value: ["detached_garage", "shed", "fence", "pool", "guest_house"]
+
+  - id: "coverage_c"
+    code: "Coverage C"
+    name: "Personal Property"
+    description: "Coverage for contents and personal belongings"
+    triggers:
+      - loss_type: "theft"
+      - loss_type: "fire"
+      - loss_type: "water_damage_sudden"
+      - loss_type: "vandalism"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "policy.status"
+          operator: "eq"
+          value: "active"
+
+  - id: "coverage_d"
+    code: "Coverage D"
+    name: "Loss of Use"
+    description: "Additional living expenses if home is uninhabitable"
+    triggers:
+      - loss_type: "displacement"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "dwelling.habitable"
+              operator: "eq"
+              value: false
+
+  - id: "coverage_e"
+    code: "Coverage E"
+    name: "Personal Liability"
+    description: "Liability for bodily injury or property damage to others"
+    triggers:
+      - loss_type: "bodily_injury_tp"
+      - loss_type: "property_damage_tp"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "policy.status"
+          operator: "eq"
+          value: "active"
+
+exclusions:
+  - id: "ex_flood"
+    code: "EX-FLOOD"
+    name: "Flood"
+    description: "Surface water, flood, overflow of water bodies"
+    policy_wording: |
+      We do not cover loss caused directly or indirectly by flood, surface water,
+      waves, tidal water, overflow of a body of water, or spray from any of these,
+      whether or not driven by wind.
+    policy_section_ref: "Exclusions, Section 1.a"
+    applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.cause"
+          operator: "in"
+          value: ["flood", "surface_water", "storm_surge", "tidal_wave", "overflow"]
+    evaluation_questions:
+      - "Was the water damage caused by flood or surface water?"
+      - "Did water enter from ground level or below?"
+      - "Was there overflow from a body of water?"
+    evidence_to_confirm:
+      - "adjuster_inspection_report"
+      - "photos_water_source"
+      - "weather_report"
+    evidence_to_rule_out:
+      - "plumber_report_pipe_burst"
+      - "appliance_failure_report"
+
+  - id: "ex_earthquake"
+    code: "EX-QUAKE"
+    name: "Earthquake"
+    description: "Earth movement including earthquake"
+    policy_wording: |
+      We do not cover loss caused directly or indirectly by earthquake, including
+      land shock waves or tremors before, during or after a volcanic eruption.
+    policy_section_ref: "Exclusions, Section 1.b"
+    applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.cause"
+          operator: "in"
+          value: ["earthquake", "earth_movement", "landslide", "mudflow"]
+    evaluation_questions:
+      - "Was there seismic activity at the time of loss?"
+      - "Is the damage consistent with earth movement?"
+    evidence_to_confirm:
+      - "seismic_report"
+      - "structural_engineer_report"
+    evidence_to_rule_out:
+      - "seismic_data_no_activity"
+
+  - id: "ex_neglect"
+    code: "EX-NEGLECT"
+    name: "Neglect"
+    description: "Failure to protect property after loss"
+    policy_wording: |
+      We do not cover loss caused by neglect of an insured to use all reasonable
+      means to save and preserve property at and after the time of loss.
+    policy_section_ref: "Exclusions, Section 2.a"
+    applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "insured.mitigation_efforts"
+          operator: "eq"
+          value: false
+    evaluation_questions:
+      - "Did the insured take reasonable steps to prevent further damage?"
+      - "Was property left unprotected after the initial loss?"
+    evidence_to_confirm:
+      - "adjuster_report"
+      - "timeline_of_events"
+    evidence_to_rule_out:
+      - "mitigation_receipts"
+      - "emergency_service_records"
+
+  - id: "ex_vacancy"
+    code: "EX-VACANT"
+    name: "Vacancy"
+    description: "Property vacant beyond policy terms"
+    policy_wording: |
+      We do not cover loss occurring while the dwelling has been vacant for more
+      than 30 consecutive days immediately before the loss.
+    policy_section_ref: "Conditions, Section 3"
+    applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
+    trigger_conditions:
+      - op: "gt"
+        predicate:
+          field: "dwelling.days_vacant"
+          operator: "gt"
+          value: 30
+    evaluation_questions:
+      - "How long has the property been vacant?"
+      - "Was there a vacancy permit in place?"
+    evidence_to_confirm:
+      - "neighbor_statement"
+      - "utility_records"
+    evidence_to_rule_out:
+      - "vacancy_permit"
+      - "proof_of_occupancy"
+
+  - id: "ex_wear_tear"
+    code: "EX-WEAR"
+    name: "Wear and Tear"
+    description: "Normal deterioration and maintenance issues"
+    policy_wording: |
+      We do not cover loss caused by wear and tear, marring, deterioration,
+      inherent vice, latent defect, mechanical breakdown, rust, mold, wet or
+      dry rot, or gradual water damage.
+    policy_section_ref: "Exclusions, Section 2.c"
+    applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "loss.cause"
+              operator: "in"
+              value: ["wear_tear", "deterioration", "rust", "rot", "mold_gradual"]
+          - op: "eq"
+            predicate:
+              field: "damage.gradual"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Is the damage result of gradual deterioration?"
+      - "Was this a maintenance issue?"
+      - "How long has the condition existed?"
+    evidence_to_confirm:
+      - "contractor_report"
+      - "inspection_photos"
+    evidence_to_rule_out:
+      - "proof_of_sudden_event"
+
+  - id: "ex_intentional"
+    code: "EX-INTENT"
+    name: "Intentional Loss"
+    description: "Loss caused intentionally by insured"
+    policy_wording: |
+      We do not cover loss arising out of any act committed by or at the
+      direction of an insured with the intent to cause a loss.
+    policy_section_ref: "Exclusions, Section 2.b"
+    applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c", "coverage_e"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "loss.intentional_act"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Was the loss caused intentionally?"
+      - "Is there evidence of arson or fraud?"
+    evidence_to_confirm:
+      - "fire_marshal_report"
+      - "police_report"
+      - "siu_investigation"
+    evidence_to_rule_out:
+      - "accidental_cause_confirmed"
+
+evidence_rules:
+  - id: "property_claim_basic"
+    name: "Basic Property Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "claim_form"
+        description: "Signed proof of loss"
+        required: true
+      - doc_type: "damage_photos"
+        description: "Photos of damage"
+        required: true
+      - doc_type: "repair_estimate"
+        description: "Contractor estimate"
+        required: true
+    recommended_documents:
+      - doc_type: "receipts"
+        description: "Receipts for damaged items"
+        required: false
+      - doc_type: "police_report"
+        description: "If theft or vandalism"
+        required: false
+
+authority_rules:
+  - id: "total_loss"
+    name: "Total Loss Requires Manager"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.total_loss"
+        operator: "eq"
+        value: true
+    required_role: "manager"
+    reason: "Total loss claims require manager review"
+
+  - id: "arson_suspected"
+    name: "Arson Requires SIU"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "loss.arson_suspected"
+        operator: "eq"
+        value: true
+    required_role: "siu"
+    reason: "Suspected arson requires SIU investigation"
+
+timeline_rules:
+  - id: "acknowledge"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 1
+    business_days: true
+    description: "Acknowledge claim within 1 business day"
+
+  - id: "adjuster_contact"
+    event_type: "request_info"
+    anchor: "report_date"
+    days_from_anchor: 5
+    business_days: true
+    description: "Adjuster contact within 5 business days"

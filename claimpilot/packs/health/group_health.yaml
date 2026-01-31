@@ -1,0 +1,406 @@
+policy:
+  id: "CA-ON-GH-2024"
+  jurisdiction: "CA-ON"
+  line_of_business: "health"
+  product_code: "GROUP-HEALTH"
+  name: "Group Health Benefits Plan"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "prescription_drugs"
+    code: "Section A"
+    name: "Prescription Drug Coverage"
+    description: "Coverage for eligible prescription medications"
+    triggers:
+      - loss_type: "prescription_claim"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "member.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "drug.din_eligible"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "prescription.valid"
+              operator: "eq"
+              value: true
+
+  - id: "paramedical"
+    code: "Section B"
+    name: "Paramedical Services"
+    description: "Coverage for paramedical practitioners"
+    triggers:
+      - loss_type: "paramedical_claim"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "member.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "provider.licensed"
+              operator: "eq"
+              value: true
+    limits:
+      per_practitioner_annual: 500
+      combined_annual: 2000
+      currency: "CAD"
+
+  - id: "dental_basic"
+    code: "Section C"
+    name: "Dental - Basic Services"
+    description: "Coverage for basic dental procedures"
+    triggers:
+      - loss_type: "dental_claim"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "member.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "procedure.category"
+              operator: "in"
+              value: ["preventive", "basic_restorative", "endodontics", "periodontics"]
+          - op: "eq"
+            predicate:
+              field: "provider.dentist_licensed"
+              operator: "eq"
+              value: true
+
+  - id: "dental_major"
+    code: "Section D"
+    name: "Dental - Major Services"
+    description: "Coverage for major dental procedures"
+    triggers:
+      - loss_type: "dental_claim"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "member.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "procedure.category"
+              operator: "in"
+              value: ["crowns", "bridges", "dentures"]
+          - op: "gte"
+            predicate:
+              field: "member.waiting_period_major"
+              operator: "gte"
+              value: 12
+
+  - id: "vision"
+    code: "Section E"
+    name: "Vision Care"
+    description: "Coverage for eye exams and corrective lenses"
+    triggers:
+      - loss_type: "vision_claim"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "member.status"
+          operator: "eq"
+          value: "active"
+    limits:
+      eye_exam_annual: 100
+      glasses_biennial: 300
+      contacts_biennial: 200
+      currency: "CAD"
+
+  - id: "hospital"
+    code: "Section F"
+    name: "Hospital Coverage"
+    description: "Semi-private or private hospital room"
+    triggers:
+      - loss_type: "hospital_claim"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "member.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "admission.medically_necessary"
+              operator: "eq"
+              value: true
+
+  - id: "out_of_province"
+    code: "Section G"
+    name: "Out of Province/Country Emergency"
+    description: "Emergency medical coverage while traveling"
+    triggers:
+      - loss_type: "emergency_travel_claim"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "member.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "treatment.emergency"
+              operator: "eq"
+              value: true
+          - op: "lte"
+            predicate:
+              field: "trip.duration_days"
+              operator: "lte"
+              value: 60
+
+exclusions:
+  - id: "ex_cosmetic"
+    code: "EX-COSM"
+    name: "Cosmetic Procedures"
+    description: "Procedures primarily for cosmetic purposes"
+    policy_wording: |
+      We do not cover any treatment, service, or supply that is primarily
+      cosmetic in nature, including but not limited to teeth whitening,
+      cosmetic surgery, and elective procedures for appearance.
+    policy_section_ref: "General Exclusions, Section 1"
+    applies_to_coverages: ["dental_basic", "dental_major", "paramedical"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "procedure.cosmetic"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Is this procedure primarily cosmetic?"
+      - "Is there medical necessity documentation?"
+    evidence_to_confirm:
+      - "procedure_code_review"
+      - "clinical_notes"
+    evidence_to_rule_out:
+      - "medical_necessity_letter"
+
+  - id: "ex_preexisting"
+    code: "EX-PRE"
+    name: "Pre-existing Condition"
+    description: "Conditions existing before coverage"
+    policy_wording: |
+      For the first 12 months of coverage, we do not cover expenses related
+      to any condition for which the member received treatment, consultation,
+      or medication in the 90 days prior to the effective date.
+    policy_section_ref: "General Exclusions, Section 2"
+    applies_to_coverages: ["prescription_drugs", "paramedical", "hospital"]
+    trigger_conditions:
+      - op: "and"
+        children:
+          - op: "lt"
+            predicate:
+              field: "member.coverage_months"
+              operator: "lt"
+              value: 12
+          - op: "eq"
+            predicate:
+              field: "condition.preexisting"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "When did the member's coverage begin?"
+      - "Was this condition treated in the 90 days prior?"
+    evidence_to_confirm:
+      - "medical_records"
+      - "prior_claims_history"
+    evidence_to_rule_out:
+      - "physician_statement_new_condition"
+
+  - id: "ex_experimental"
+    code: "EX-EXP"
+    name: "Experimental Treatment"
+    description: "Treatments not approved or experimental"
+    policy_wording: |
+      We do not cover treatments, drugs, or procedures that are experimental,
+      investigational, or not approved by Health Canada.
+    policy_section_ref: "General Exclusions, Section 3"
+    applies_to_coverages: ["prescription_drugs", "hospital", "paramedical"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "treatment.experimental"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "drug.health_canada_approved"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Is this treatment approved by Health Canada?"
+      - "Is this part of a clinical trial?"
+    evidence_to_confirm:
+      - "health_canada_status"
+      - "clinical_trial_documentation"
+    evidence_to_rule_out:
+      - "approval_documentation"
+
+  - id: "ex_work_related"
+    code: "EX-WORK"
+    name: "Work-Related Injury/Illness"
+    description: "Covered by workers compensation"
+    policy_wording: |
+      We do not cover any injury, illness, or condition that is covered or
+      eligible to be covered under any workers' compensation legislation.
+    policy_section_ref: "General Exclusions, Section 4"
+    applies_to_coverages: ["prescription_drugs", "paramedical", "hospital"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "claim.work_related"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Did the injury/illness occur at work?"
+      - "Has a WSIB claim been filed?"
+    evidence_to_confirm:
+      - "incident_report"
+      - "wsib_claim_number"
+    evidence_to_rule_out:
+      - "physician_statement_not_work_related"
+
+  - id: "ex_non_formulary"
+    code: "EX-FORM"
+    name: "Non-Formulary Drug"
+    description: "Drug not on approved formulary"
+    policy_wording: |
+      We do not cover drugs that are not listed on the plan formulary unless
+      prior authorization has been obtained and medical necessity established.
+    policy_section_ref: "Drug Exclusions, Section 1"
+    applies_to_coverages: ["prescription_drugs"]
+    trigger_conditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "drug.on_formulary"
+              operator: "eq"
+              value: false
+          - op: "eq"
+            predicate:
+              field: "drug.prior_auth_approved"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Is this drug on the plan formulary?"
+      - "Has prior authorization been requested?"
+      - "Are there formulary alternatives?"
+    evidence_to_confirm:
+      - "formulary_lookup"
+      - "prior_auth_status"
+    evidence_to_rule_out:
+      - "approved_prior_auth"
+      - "exception_approval"
+
+evidence_rules:
+  - id: "drug_claim"
+    name: "Prescription Drug Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "pharmacy_receipt"
+        description: "Receipt with DIN and pharmacy info"
+        required: true
+      - doc_type: "prescription"
+        description: "Valid prescription"
+        required: true
+        alternatives: ["pharmacy_confirmation"]
+
+  - id: "paramedical_claim"
+    name: "Paramedical Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "provider_receipt"
+        description: "Receipt from licensed provider"
+        required: true
+      - doc_type: "physician_referral"
+        description: "Physician referral if required"
+        required: false
+
+  - id: "dental_predetermination"
+    name: "Major Dental Predetermination"
+    disposition_type: "pay"
+    applies_when:
+      op: "and"
+      children:
+        - op: "eq"
+          predicate:
+            field: "coverage.section"
+            operator: "eq"
+            value: "dental_major"
+        - op: "gt"
+          predicate:
+            field: "estimate.amount"
+            operator: "gt"
+            value: 500
+    required_documents:
+      - doc_type: "treatment_plan"
+        description: "Detailed treatment plan"
+        required: true
+      - doc_type: "xrays"
+        description: "Current x-rays"
+        required: true
+      - doc_type: "predetermination_form"
+        description: "Predetermination request"
+        required: true
+
+authority_rules:
+  - id: "high_cost_drug"
+    name: "High Cost Drug Review"
+    trigger_conditions:
+      op: "gt"
+      predicate:
+        field: "drug.cost_monthly"
+        operator: "gt"
+        value: 500
+    required_role: "clinical_pharmacist"
+    reason: "High-cost drugs require clinical pharmacist review"
+
+  - id: "prior_auth"
+    name: "Prior Authorization Review"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "drug.prior_auth_required"
+        operator: "eq"
+        value: true
+    required_role: "clinical_reviewer"
+    reason: "Prior authorization drugs require clinical review"
+
+timeline_rules:
+  - id: "adjudicate"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 30
+    business_days: false
+    description: "Adjudicate claim within 30 days"
+
+  - id: "payment"
+    event_type: "payment_due"
+    anchor: "report_date"
+    days_from_anchor: 45
+    business_days: false
+    description: "Payment within 45 days if approved"

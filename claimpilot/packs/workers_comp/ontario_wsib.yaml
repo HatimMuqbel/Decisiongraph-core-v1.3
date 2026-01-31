@@ -1,0 +1,297 @@
+policy:
+  id: "CA-ON-WSIB-2024"
+  jurisdiction: "CA-ON"
+  line_of_business: "workers_comp"
+  product_code: "WSIB"
+  name: "Ontario Workers Compensation"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "loss_of_earnings"
+    code: "LOE"
+    name: "Loss of Earnings Benefits"
+    description: "Wage replacement for work-related injury"
+    triggers:
+      - loss_type: "work_injury"
+      - loss_type: "occupational_disease"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "employer.wsib_registered"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "injury.work_related"
+              operator: "eq"
+              value: true
+          - op: "gt"
+            predicate:
+              field: "time_loss.days"
+              operator: "gt"
+              value: 0
+
+  - id: "healthcare"
+    code: "HC"
+    name: "Healthcare Benefits"
+    description: "Medical treatment for work-related injury"
+    triggers:
+      - loss_type: "work_injury"
+      - loss_type: "occupational_disease"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "employer.wsib_registered"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "injury.work_related"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "treatment.related_to_injury"
+              operator: "eq"
+              value: true
+
+  - id: "permanent_impairment"
+    code: "NEL"
+    name: "Non-Economic Loss (Permanent Impairment)"
+    description: "Compensation for permanent physical impairment"
+    triggers:
+      - loss_type: "permanent_impairment"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "injury.work_related"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "injury.maximum_medical_recovery"
+              operator: "eq"
+              value: true
+          - op: "gt"
+            predicate:
+              field: "impairment.rating_percent"
+              operator: "gt"
+              value: 0
+
+  - id: "survivor_benefits"
+    code: "SURV"
+    name: "Survivor Benefits"
+    description: "Benefits to dependents of worker who died from work injury"
+    triggers:
+      - loss_type: "fatality"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "death.work_related"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "claimant.dependent_status"
+              operator: "eq"
+              value: true
+
+exclusions:
+  - id: "ex_self_inflicted"
+    code: "EX-SELF"
+    name: "Self-Inflicted Injury"
+    description: "Intentionally self-inflicted injury"
+    policy_wording: |
+      A worker is not entitled to benefits if the injury is caused by the
+      worker's serious and wilful misconduct, unless the injury results in
+      death or serious impairment.
+    policy_section_ref: "WSIA Section 17"
+    applies_to_coverages: ["loss_of_earnings", "healthcare"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "injury.self_inflicted"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Was the injury intentionally self-inflicted?"
+      - "Is there evidence of serious and wilful misconduct?"
+    evidence_to_confirm:
+      - "investigation_report"
+      - "witness_statements"
+    evidence_to_rule_out:
+      - "medical_evidence"
+      - "mental_health_assessment"
+
+  - id: "ex_not_work_related"
+    code: "EX-WORK"
+    name: "Not Work-Related"
+    description: "Injury did not arise out of employment"
+    policy_wording: |
+      Benefits are only payable where the injury arises out of and in the
+      course of employment.
+    policy_section_ref: "WSIA Section 13"
+    applies_to_coverages: ["loss_of_earnings", "healthcare", "permanent_impairment"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "injury.work_related"
+          operator: "eq"
+          value: false
+    evaluation_questions:
+      - "Did the injury occur at work?"
+      - "Was the worker performing job duties?"
+      - "Was the injury related to employment?"
+    evidence_to_confirm:
+      - "employer_report"
+      - "medical_records"
+      - "investigation_findings"
+    evidence_to_rule_out:
+      - "worker_statement"
+      - "witness_statements"
+
+  - id: "ex_preexisting"
+    code: "EX-PRE"
+    name: "Pre-existing Condition (Enhancement Only)"
+    description: "Pre-existing condition not aggravated by work"
+    policy_wording: |
+      Where a pre-existing condition is not aggravated, accelerated, or
+      enhanced by the work injury, benefits are not payable for that condition.
+    policy_section_ref: "WSIA Policy 15-02-03"
+    applies_to_coverages: ["loss_of_earnings", "healthcare"]
+    trigger_conditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "condition.preexisting"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "condition.aggravated_by_work"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Did the worker have a pre-existing condition?"
+      - "Was the condition aggravated by the work injury?"
+      - "What is the work-related component?"
+    evidence_to_confirm:
+      - "medical_records"
+      - "functional_abilities_form"
+    evidence_to_rule_out:
+      - "specialist_opinion"
+      - "diagnostic_imaging"
+
+  - id: "ex_intoxication"
+    code: "EX-INTOX"
+    name: "Intoxication"
+    description: "Injury caused solely by intoxication"
+    policy_wording: |
+      A worker is not entitled to benefits if the injury is caused solely by
+      the worker's intoxication by alcohol or drugs.
+    policy_section_ref: "WSIA Section 17"
+    applies_to_coverages: ["loss_of_earnings", "healthcare"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "injury.intoxication_sole_cause"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "Was the worker intoxicated at the time of injury?"
+      - "Was intoxication the sole cause of the injury?"
+    evidence_to_confirm:
+      - "toxicology_report"
+      - "witness_statements"
+    evidence_to_rule_out:
+      - "contributing_work_factors"
+
+evidence_rules:
+  - id: "initial_claim"
+    name: "Initial Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "form_7"
+        description: "Employer's Report of Injury (Form 7)"
+        required: true
+      - doc_type: "form_8"
+        description: "Health Professional's Report (Form 8)"
+        required: true
+      - doc_type: "worker_statement"
+        description: "Worker's statement of injury"
+        required: true
+
+  - id: "ongoing_benefits"
+    name: "Ongoing Benefits Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "functional_abilities_form"
+        description: "FAF from treating physician"
+        required: true
+      - doc_type: "treatment_plan"
+        description: "Current treatment plan"
+        required: true
+
+authority_rules:
+  - id: "initial_entitlement"
+    name: "Initial Entitlement Decision"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.type"
+        operator: "eq"
+        value: "initial"
+    required_role: "adjudicator"
+    reason: "All initial entitlement decisions require adjudicator"
+
+  - id: "fatality"
+    name: "Fatality Claims"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.fatality"
+        operator: "eq"
+        value: true
+    required_role: "manager"
+    reason: "Fatality claims require manager review"
+
+  - id: "permanent_impairment"
+    name: "NEL Assessment"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.nel_assessment"
+        operator: "eq"
+        value: true
+    required_role: "nel_specialist"
+    reason: "Permanent impairment requires specialist assessment"
+
+timeline_rules:
+  - id: "initial_decision"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 14
+    business_days: true
+    description: "Initial entitlement decision within 14 business days"
+    authority_ref:
+      authority_type: "regulation"
+      title: "WSIB Operational Policy"
+      section: "11-01-01"
+      source_name: "WSIB"
+
+  - id: "first_payment"
+    event_type: "payment_due"
+    anchor: "report_date"
+    days_from_anchor: 14
+    business_days: true
+    description: "First payment within 14 business days if entitled"

@@ -1,0 +1,296 @@
+policy:
+  id: "CA-TRAVEL-2024"
+  jurisdiction: "CA"
+  line_of_business: "health"
+  product_code: "TRAVEL"
+  name: "Travel Medical Insurance"
+  version: "2024.1"
+  effective_date: "2024-01-01"
+
+coverage_sections:
+  - id: "emergency_medical"
+    code: "Section A"
+    name: "Emergency Medical"
+    description: "Emergency medical expenses while traveling"
+    triggers:
+      - loss_type: "emergency_medical"
+      - loss_type: "hospitalization"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "policy.status"
+              operator: "eq"
+              value: "active"
+          - op: "eq"
+            predicate:
+              field: "treatment.emergency"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "insured.outside_home_province"
+              operator: "eq"
+              value: true
+    limits:
+      per_occurrence: 5000000
+      currency: "CAD"
+
+  - id: "trip_cancellation"
+    code: "Section B"
+    name: "Trip Cancellation"
+    description: "Reimbursement for cancelled trips"
+    triggers:
+      - loss_type: "trip_cancellation"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "cancellation.covered_reason"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "cancellation.before_departure"
+              operator: "eq"
+              value: true
+
+  - id: "trip_interruption"
+    code: "Section C"
+    name: "Trip Interruption"
+    description: "Coverage for interrupted trips"
+    triggers:
+      - loss_type: "trip_interruption"
+    preconditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "interruption.covered_reason"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "interruption.after_departure"
+              operator: "eq"
+              value: true
+
+  - id: "baggage"
+    code: "Section D"
+    name: "Baggage and Personal Effects"
+    description: "Lost, stolen, or damaged baggage"
+    triggers:
+      - loss_type: "baggage_loss"
+      - loss_type: "baggage_delay"
+    limits:
+      per_occurrence: 2000
+      per_item: 500
+      baggage_delay: 500
+      currency: "CAD"
+
+  - id: "evacuation"
+    code: "Section E"
+    name: "Emergency Evacuation"
+    description: "Medical evacuation and repatriation"
+    triggers:
+      - loss_type: "medical_evacuation"
+      - loss_type: "repatriation"
+    preconditions:
+      - op: "eq"
+        predicate:
+          field: "evacuation.medically_necessary"
+          operator: "eq"
+          value: true
+
+exclusions:
+  - id: "ex_preexisting"
+    code: "EX-PRE"
+    name: "Pre-existing Condition"
+    description: "Conditions existing before travel"
+    policy_wording: |
+      We do not cover expenses related to any medical condition for which
+      you received treatment, consultation, investigation, or medication
+      in the 90 days before your departure date, unless the condition has
+      been stable for the stability period shown in your certificate.
+    policy_section_ref: "Exclusions, Section 1"
+    applies_to_coverages: ["emergency_medical", "evacuation"]
+    trigger_conditions:
+      - op: "and"
+        children:
+          - op: "eq"
+            predicate:
+              field: "condition.preexisting"
+              operator: "eq"
+              value: true
+          - op: "eq"
+            predicate:
+              field: "condition.stable"
+              operator: "eq"
+              value: false
+    evaluation_questions:
+      - "Did the insured have this condition before departure?"
+      - "Was the condition stable for the required period?"
+      - "What is the stability period requirement?"
+    evidence_to_confirm:
+      - "medical_records"
+      - "stability_questionnaire"
+    evidence_to_rule_out:
+      - "physician_stability_letter"
+
+  - id: "ex_not_emergency"
+    code: "EX-ELEC"
+    name: "Non-Emergency / Elective"
+    description: "Treatment that is not emergency"
+    policy_wording: |
+      We do not cover treatment that is not emergency in nature, including
+      elective or routine treatment that could reasonably be delayed until
+      you return home.
+    policy_section_ref: "Exclusions, Section 2"
+    applies_to_coverages: ["emergency_medical"]
+    trigger_conditions:
+      - op: "or"
+        children:
+          - op: "eq"
+            predicate:
+              field: "treatment.emergency"
+              operator: "eq"
+              value: false
+          - op: "eq"
+            predicate:
+              field: "treatment.elective"
+              operator: "eq"
+              value: true
+    evaluation_questions:
+      - "Was this treatment emergency or could it wait?"
+      - "Did the treating physician confirm emergency?"
+    evidence_to_confirm:
+      - "medical_records"
+      - "treatment_notes"
+    evidence_to_rule_out:
+      - "emergency_certification"
+
+  - id: "ex_high_risk"
+    code: "EX-RISK"
+    name: "High-Risk Activities"
+    description: "Injuries from excluded activities"
+    policy_wording: |
+      We do not cover claims arising from participation in extreme sports,
+      mountaineering above 4,500 meters, scuba diving below 30 meters, or
+      other high-risk activities unless specifically endorsed.
+    policy_section_ref: "Exclusions, Section 5"
+    applies_to_coverages: ["emergency_medical", "evacuation"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "activity.high_risk"
+          operator: "eq"
+          value: true
+    evaluation_questions:
+      - "What activity was the insured doing when injured?"
+      - "Is there a sports/adventure endorsement?"
+    evidence_to_confirm:
+      - "incident_description"
+      - "medical_records"
+    evidence_to_rule_out:
+      - "adventure_sports_endorsement"
+
+  - id: "ex_travel_advisory"
+    code: "EX-ADV"
+    name: "Travel Advisory"
+    description: "Travel against government advisory"
+    policy_wording: |
+      We do not cover claims arising from travel to a country or region for
+      which the Government of Canada has issued a Level 4 (Avoid all travel)
+      advisory at the time of your departure.
+    policy_section_ref: "Exclusions, Section 6"
+    applies_to_coverages: ["emergency_medical", "trip_cancellation", "evacuation"]
+    trigger_conditions:
+      - op: "eq"
+        predicate:
+          field: "destination.advisory_level"
+          operator: "eq"
+          value: 4
+    evaluation_questions:
+      - "What was the advisory level at departure?"
+      - "When did the insured book travel?"
+    evidence_to_confirm:
+      - "travel_advisory_history"
+      - "booking_date"
+    evidence_to_rule_out:
+      - "advisory_issued_after_departure"
+
+evidence_rules:
+  - id: "medical_claim"
+    name: "Travel Medical Claim Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "claim_form"
+        description: "Completed claim form"
+        required: true
+      - doc_type: "medical_records"
+        description: "Foreign medical records"
+        required: true
+      - doc_type: "receipts"
+        description: "Original receipts"
+        required: true
+      - doc_type: "proof_of_travel"
+        description: "Travel itinerary/tickets"
+        required: true
+    recommended_documents:
+      - doc_type: "provincial_health_eob"
+        description: "Provincial health explanation of benefits"
+        required: false
+
+  - id: "cancellation_claim"
+    name: "Trip Cancellation Evidence"
+    disposition_type: "pay"
+    required_documents:
+      - doc_type: "booking_confirmation"
+        description: "Original booking"
+        required: true
+      - doc_type: "cancellation_proof"
+        description: "Proof of cancellation"
+        required: true
+      - doc_type: "reason_documentation"
+        description: "Documentation of reason (medical, death, etc.)"
+        required: true
+
+authority_rules:
+  - id: "high_value_medical"
+    name: "High Value Medical"
+    trigger_conditions:
+      op: "gt"
+      predicate:
+        field: "claim.amount"
+        operator: "gt"
+        value: 50000
+    required_role: "medical_director"
+    reason: "High value medical claims require medical director review"
+
+  - id: "evacuation"
+    name: "Evacuation Authorization"
+    trigger_conditions:
+      op: "eq"
+      predicate:
+        field: "claim.type"
+        operator: "eq"
+        value: "medical_evacuation"
+    required_role: "assistance_coordinator"
+    reason: "All evacuations require assistance coordinator authorization"
+
+timeline_rules:
+  - id: "acknowledge"
+    event_type: "acknowledge"
+    anchor: "report_date"
+    days_from_anchor: 1
+    business_days: true
+    description: "Acknowledge claim within 1 business day"
+
+  - id: "adjudicate"
+    event_type: "coverage_decision_due"
+    anchor: "report_date"
+    days_from_anchor: 15
+    business_days: true
+    description: "Adjudicate within 15 business days"
