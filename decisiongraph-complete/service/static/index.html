@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DecisionGraph - Bank-Grade AML/KYC Decision Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { background: #020617; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .json-editor { font-family: ui-monospace, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Icon = ({ name, className = "w-5 h-5" }) => {
+      const icons = {
+        shield: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+        check: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+        x: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+        play: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+        refresh: <svg className={className + " animate-spin"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+        chevronDown: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
+        lock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
+        alert: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+        bank: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+      };
+      return icons[name] || null;
+    };
+
+    const API_URL = window.location.origin;
+
+    function App() {
+      const [demoCases, setDemoCases] = useState([]);
+      const [selectedCase, setSelectedCase] = useState(null);
+      const [inputJson, setInputJson] = useState('');
+      const [decision, setDecision] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [showDropdown, setShowDropdown] = useState(false);
+      const [verifyResult, setVerifyResult] = useState(null);
+      const [verifying, setVerifying] = useState(false);
+      const [jsonError, setJsonError] = useState(null);
+
+      useEffect(() => {
+        fetch(`${API_URL}/demo/cases`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.length) {
+              setDemoCases(data);
+              // Load first case details
+              loadCase(data[0].id);
+            }
+          })
+          .catch(e => console.error('Failed to load demo cases:', e));
+      }, []);
+
+      const loadCase = async (caseId) => {
+        try {
+          const res = await fetch(`${API_URL}/demo/cases/${caseId}`);
+          const caseData = await res.json();
+          setSelectedCase(caseData);
+          setInputJson(JSON.stringify(caseData.input, null, 2));
+          setDecision(null);
+          setVerifyResult(null);
+          setJsonError(null);
+          setShowDropdown(false);
+        } catch (e) {
+          console.error('Failed to load case:', e);
+        }
+      };
+
+      const runDecision = async () => {
+        setLoading(true);
+        setVerifyResult(null);
+        setJsonError(null);
+
+        try {
+          const parsed = JSON.parse(inputJson);
+          const res = await fetch(`${API_URL}/decide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parsed)
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            setDecision(data);
+          } else {
+            setJsonError(data.error || 'Decision failed');
+          }
+        } catch (e) {
+          setJsonError(e.message);
+        }
+        setLoading(false);
+      };
+
+      const verifyDecision = async () => {
+        if (!decision) return;
+        setVerifying(true);
+        setVerifyResult(null);
+
+        try {
+          const res = await fetch(`${API_URL}/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decision_id: decision.meta?.decision_id || '',
+              input_hash: decision.meta?.input_hash || '',
+              policy_hash: decision.meta?.policy_hash || '',
+              verdict: decision.decision?.verdict || ''
+            })
+          });
+          const data = await res.json();
+          setVerifyResult(data);
+        } catch (e) {
+          setVerifyResult({ valid: false, reason: 'Verification request failed' });
+        }
+        setVerifying(false);
+      };
+
+      const getVerdictStyle = (verdict) => {
+        if (['PASS', 'PASS_WITH_EDD'].includes(verdict)) {
+          return { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', icon: 'check' };
+        } else if (['HARD_STOP', 'STR'].includes(verdict)) {
+          return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', icon: 'alert' };
+        }
+        return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: 'alert' };
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100">
+          {/* Nav */}
+          <nav className="fixed top-0 left-0 right-0 bg-slate-950/90 backdrop-blur border-b border-slate-800 z-50">
+            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="bank" className="w-6 h-6 text-blue-400" />
+                <span className="font-bold text-lg">DecisionGraph</span>
+              </div>
+              <a href="/docs" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                API Docs
+              </a>
+            </div>
+          </nav>
+
+          {/* Hero */}
+          <section className="pt-28 pb-12 px-6">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="flex flex-wrap justify-center gap-2 mb-6">
+                <span className="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-full text-sm font-medium">
+                  Dual-Gate
+                </span>
+                <span className="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-full text-sm font-medium">
+                  Zero-False-Escalation
+                </span>
+                <span className="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-full text-sm font-medium">
+                  Bank-Grade
+                </span>
+              </div>
+              <h1 className="text-5xl font-bold mb-4">DecisionGraph</h1>
+              <p className="text-2xl text-slate-300 mb-4">Bank-Grade AML/KYC Decision Engine</p>
+              <p className="text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed">
+                Evaluate transactions using <span className="text-slate-200">dual-gate logic</span>, producing
+                <span className="text-slate-200"> zero-false-escalation decisions</span>,
+                <span className="text-slate-200"> 6-layer taxonomy breakdowns</span>, and
+                <span className="text-slate-200"> cryptographic provenance</span> for audits.
+              </p>
+            </div>
+          </section>
+
+          {/* Interactive Demo */}
+          <section className="py-8 px-6">
+            <div className="max-w-7xl mx-auto">
+              <h2 className="text-2xl font-bold text-center mb-8">Try It Live</h2>
+
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Input Panel */}
+                <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                    <span className="font-medium">Case Input (JSON)</span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowDropdown(!showDropdown)}
+                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm"
+                      >
+                        <span className="truncate max-w-[180px]">{selectedCase?.name || 'Select Case'}</span>
+                        <Icon name="chevronDown" className="w-4 h-4" />
+                      </button>
+                      {showDropdown && (
+                        <div className="absolute right-0 mt-2 w-80 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                          {demoCases.map(c => (
+                            <button
+                              key={c.id}
+                              onClick={() => loadCase(c.id)}
+                              className={`w-full text-left px-4 py-3 hover:bg-slate-700 text-sm border-b border-slate-700/50 last:border-0 ${
+                                c.category === 'PASS' ? 'text-emerald-300' :
+                                c.category === 'ESCALATE' ? 'text-red-300' : 'text-amber-300'
+                              }`}
+                            >
+                              <div className="font-medium">{c.name}</div>
+                              <div className="text-xs text-slate-400 mt-1">{c.description}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    <textarea
+                      value={inputJson}
+                      onChange={(e) => setInputJson(e.target.value)}
+                      className="w-full h-[400px] bg-slate-800 border border-slate-600 rounded-lg p-3 text-sm font-mono text-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      spellCheck="false"
+                    />
+                    {jsonError && (
+                      <div className="mt-2 text-red-400 text-sm">{jsonError}</div>
+                    )}
+                  </div>
+
+                  <div className="px-4 py-3 bg-slate-800 border-t border-slate-700">
+                    <button
+                      onClick={runDecision}
+                      disabled={loading}
+                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2"
+                    >
+                      {loading ? <><Icon name="refresh" className="w-4 h-4" /> Running...</> : <><Icon name="play" className="w-4 h-4" /> Run Decision</>}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Result Panel */}
+                <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                    <span className="font-medium">Decision Output</span>
+                    {decision && <span className="text-xs text-slate-500 font-mono">{decision.meta?.decision_id?.substring(0, 16)}...</span>}
+                  </div>
+
+                  <div className="p-4 max-h-[500px] overflow-y-auto">
+                    {!decision ? (
+                      <div className="text-center py-16 text-slate-500">
+                        <Icon name="bank" className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p>Click "Run Decision" to see the result</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Verdict */}
+                        {(() => {
+                          const style = getVerdictStyle(decision.decision?.verdict);
+                          return (
+                            <div className={`rounded-xl p-5 ${style.bg} border ${style.border}`}>
+                              <div className="flex items-center gap-3 mb-2">
+                                <Icon name={style.icon} className={`w-8 h-8 ${style.text}`} />
+                                <div className={`text-2xl font-bold ${style.text}`}>
+                                  {decision.decision?.verdict}
+                                </div>
+                              </div>
+                              <p className="text-slate-300 text-sm">{decision.rationale?.summary}</p>
+                              <div className="flex gap-2 mt-3 flex-wrap">
+                                <span className="px-2 py-1 bg-slate-800 rounded text-xs">Action: {decision.decision?.action}</span>
+                                <span className="px-2 py-1 bg-slate-800 rounded text-xs">STR: {decision.decision?.str_required}</span>
+                                {decision.decision?.path && (
+                                  <span className="px-2 py-1 bg-slate-800 rounded text-xs">Path: {decision.decision?.path}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Gate Results */}
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-400 mb-2">Dual-Gate Results</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className={`rounded-lg p-3 ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                              <div className="text-xs text-slate-400 mb-1">Gate 1: Zero-False-Esc</div>
+                              <div className={`font-bold ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {decision.gates?.gate1?.decision}
+                              </div>
+                            </div>
+                            <div className={`rounded-lg p-3 ${decision.gates?.gate2?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                              <div className="text-xs text-slate-400 mb-1">Gate 2: STR Check</div>
+                              <div className={`font-bold ${decision.gates?.gate2?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {decision.gates?.gate2?.decision}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Absolute Rules */}
+                        {decision.rationale?.absolute_rules_validated?.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-400 mb-2">Absolute Rules Validated</h4>
+                            <div className="space-y-1">
+                              {decision.rationale.absolute_rules_validated.map((rule, i) => (
+                                <div key={i} className="flex items-center gap-2 text-sm">
+                                  <Icon name="check" className="w-4 h-4 text-emerald-400" />
+                                  <span className="text-slate-300">{rule}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Provenance */}
+                        <div className="pt-3 border-t border-slate-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-slate-400">Provenance</h4>
+                            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+                              Audit & verification
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-800/50 rounded-lg p-3 mb-3 space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500">Decision Hash</span>
+                              <span className="font-mono text-slate-300">{decision.meta?.decision_id?.substring(0, 16)}...</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500">Input Hash</span>
+                              <span className="font-mono text-slate-300">{decision.meta?.input_hash?.substring(0, 16)}...</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500">Policy</span>
+                              <span className="font-mono text-slate-300">v{decision.meta?.policy_version}</span>
+                            </div>
+                          </div>
+
+                          {/* Verify Button */}
+                          <button
+                            onClick={verifyDecision}
+                            disabled={verifying}
+                            className={`w-full py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                              verifyResult?.valid === true ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                              verifyResult?.valid === false ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                            }`}
+                          >
+                            {verifying ? (
+                              <><Icon name="refresh" className="w-4 h-4" /> Verifying...</>
+                            ) : verifyResult?.valid === true ? (
+                              <><Icon name="check" className="w-4 h-4" /> Verified</>
+                            ) : verifyResult?.valid === false ? (
+                              <><Icon name="x" className="w-4 h-4" /> Failed</>
+                            ) : (
+                              <><Icon name="shield" className="w-4 h-4" /> Verify Provenance</>
+                            )}
+                          </button>
+
+                          {/* View Report */}
+                          <a
+                            href={`${API_URL}/report/${decision.meta?.decision_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full mt-2 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+                          >
+                            <Icon name="bank" className="w-4 h-4" /> View Full Report
+                          </a>
+
+                          <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-500">
+                            <Icon name="lock" className="w-3 h-3" />
+                            <span>Deterministic • Reproducible • Auditable</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Levers Hint */}
+              {selectedCase?.key_levers && (
+                <div className="mt-6 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 max-w-2xl mx-auto">
+                  <div className="flex items-start gap-3">
+                    <Icon name="alert" className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-slate-400">
+                        <span className="text-blue-400 font-medium">Try this:</span> Edit these fields to change the decision:
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedCase.key_levers.map((lever, i) => (
+                          <code key={i} className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">{lever}</code>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Absolute Rules */}
+          <section className="py-12 px-6">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl font-bold text-center mb-8">Absolute Rules (No Exceptions)</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { icon: 'x', text: 'PEP status alone can NEVER escalate' },
+                  { icon: 'x', text: 'Cross-border alone can NEVER escalate' },
+                  { icon: 'x', text: 'Risk score alone can NEVER escalate' },
+                  { icon: 'x', text: '"High confidence" can NEVER override facts' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-red-500/5 border border-red-500/20 rounded-lg p-4">
+                    <Icon name={item.icon} className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <span className="text-slate-300">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* API Endpoints */}
+          <section className="py-12 px-6 bg-slate-900/50">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl font-bold text-center mb-8">API Endpoints</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { method: 'POST', path: '/decide', desc: 'Run dual-gate decision engine' },
+                  { method: 'GET', path: '/demo/cases', desc: 'List demo cases' },
+                  { method: 'GET', path: '/report/{id}', desc: 'Get decision report (HTML)' },
+                  { method: 'POST', path: '/verify', desc: 'Verify decision provenance' },
+                  { method: 'GET', path: '/health', desc: 'Liveness probe' },
+                  { method: 'GET', path: '/ready', desc: 'Readiness probe' },
+                  { method: 'GET', path: '/version', desc: 'Version info' },
+                  { method: 'GET', path: '/docs', desc: 'OpenAPI documentation' },
+                ].map((ep, i) => (
+                  <div key={i} className="bg-slate-800/50 rounded-lg p-4 flex items-center gap-4">
+                    <span className={`px-2 py-1 rounded text-xs font-mono font-bold ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                      {ep.method}
+                    </span>
+                    <div>
+                      <code className="text-slate-200 text-sm">{ep.path}</code>
+                      <p className="text-slate-500 text-xs mt-1">{ep.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="py-8 px-6 border-t border-slate-800">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="bank" className="w-5 h-5 text-blue-400" />
+                <span className="font-semibold">DecisionGraph</span>
+                <span className="text-slate-500 text-sm">v2.1.1</span>
+              </div>
+              <a href="/docs" className="text-slate-500 hover:text-white text-sm">API Documentation</a>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

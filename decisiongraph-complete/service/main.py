@@ -56,6 +56,9 @@ from decisiongraph.decision_pack import (
 from decisiongraph.escalation_gate import run_escalation_gate, EscalationDecision
 from decisiongraph.str_gate import run_str_gate, dual_gate_decision
 
+# Import routers
+from service.routers import demo, report, verify
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -180,6 +183,17 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(demo.router)
+app.include_router(report.router)
+app.include_router(verify.router)
+
+# Static files for landing page
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # =============================================================================
 # Request/Response Models
@@ -542,6 +556,9 @@ async def decide(request: Request):
             }
         )
 
+        # Cache decision for report generation
+        report.cache_decision(decision_pack["meta"]["decision_id"], decision_pack)
+
         return JSONResponse(content=decision_pack)
 
     except json.JSONDecodeError:
@@ -669,6 +686,32 @@ def extract_instrument_type(case_data: dict) -> str:
 # =============================================================================
 # Startup/Shutdown
 # =============================================================================
+
+# =============================================================================
+# Landing Page
+# =============================================================================
+
+@app.get("/", tags=["Landing"])
+async def landing_page():
+    """Serve the landing page."""
+    from fastapi.responses import FileResponse
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    else:
+        return JSONResponse(content={
+            "service": "DecisionGraph",
+            "version": DG_ENGINE_VERSION,
+            "description": "Bank-Grade AML/KYC Decision Engine",
+            "endpoints": {
+                "decide": "POST /decide - Run decision engine",
+                "demo_cases": "GET /demo/cases - List demo cases",
+                "report": "GET /report/{id} - Get decision report",
+                "verify": "POST /verify - Verify decision provenance",
+                "docs": "GET /docs - API documentation"
+            }
+        })
+
 
 @app.on_event("startup")
 async def startup_event():
