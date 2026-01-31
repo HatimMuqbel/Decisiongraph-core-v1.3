@@ -304,6 +304,12 @@ class RecommendationRecord:
     policy_pack_hash: str = ""               # SHA-256 of canonical JSON rendering
     authority_hashes: list[AuthorityCitation] = field(default_factory=list)
 
+    # === ENGINE PROVENANCE ===
+    # Enables verification of which engine version produced this recommendation
+    policy_pack_loaded_at: Optional[datetime] = None  # When policy pack was loaded
+    evaluated_at: Optional[datetime] = None           # When recommendation was generated
+    engine_version: str = ""                          # ClaimPilot version (git SHA or semver)
+
     @classmethod
     def create(
         cls,

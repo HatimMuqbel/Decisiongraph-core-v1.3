@@ -217,6 +217,10 @@ class RecommendationBuilder:
                 citation = AuthorityCitation.from_authority_ref(authority)
                 authority_hashes.append(citation)
 
+        # Get engine version for provenance
+        import claimpilot
+        engine_version = getattr(claimpilot, '__version__', 'unknown')
+
         recommendation = RecommendationRecord(
             id=str(uuid4()),
             claim_id=context.claim_id,
@@ -239,6 +243,9 @@ class RecommendationBuilder:
             policy_pack_version=policy.version,
             policy_pack_hash=policy_pack_hash,
             authority_hashes=authority_hashes,
+            # Engine Provenance
+            evaluated_at=now,
+            engine_version=engine_version,
         )
 
         return recommendation

@@ -282,6 +282,9 @@ Policy packs remain **human-editable YAML** — no sealing required. But each re
 - `policy_pack_version` — human-readable version string (e.g., "2024.1")
 - `policy_pack_hash` — SHA-256 of canonical JSON rendering
 - `authority_hashes` — per-citation hashes for each policy clause cited
+- `policy_pack_loaded_at` — when the policy pack was loaded
+- `evaluated_at` — when the recommendation was generated
+- `engine_version` — ClaimPilot version (git SHA or semver)
 
 **AuthorityCitation:**
 ```python
@@ -304,12 +307,25 @@ from claimpilot import compute_policy_pack_hash, excerpt_hash, normalize_excerpt
 policy_hash = compute_policy_pack_hash(policy)
 
 # Hash individual excerpt (normalized for consistency)
-normalized = normalize_excerpt("  The insurer\n  shall not pay...  ")
-# -> "the insurer shall not pay..."
-hash = excerpt_hash("The insurer shall not pay...")
+# Normalization: Unicode NFKC, whitespace collapse, strip — NO lowercasing
+normalized = normalize_excerpt("  The Insurer\n  shall not pay...  ")
+# -> "The Insurer shall not pay..."  (case preserved for legal text fidelity)
+hash = excerpt_hash("The Insurer shall not pay...")
 ```
 
-This ensures recommendations remain verifiable even if policy packs evolve, without turning policy editing into a cryptographic ceremony.
+**What the hash proves:**
+- Which exact policy text was loaded at recommendation time
+- Whitespace-invariant comparison (formatting changes don't break verification)
+- Deterministic: same policy rules → same hash (RFC 8785 canonical JSON)
+
+**What the hash does NOT prove:**
+- That the policy file hasn't been modified since (no file signing)
+- That the policy was the "official" version (no PKI chain)
+- Tamper-proofing against malicious actors (lightweight provenance, not cryptographic sealing)
+
+**Design rationale:** This provides "defensible byproduct" — enough to prove what was relied upon during audit — without turning policy editing into a cryptographic ceremony. For stronger guarantees, integrate with external signing/versioning systems.
+
+This ensures recommendations remain verifiable even if policy packs evolve.
 
 ## Exception Hierarchy
 

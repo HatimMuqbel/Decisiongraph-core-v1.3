@@ -696,21 +696,24 @@ class TestPolicyProvenance:
         text2 = "The insurer shall not pay..."
         assert normalize_excerpt(text1) == normalize_excerpt(text2)
 
-        # Lowercase
-        assert normalize_excerpt("HELLO") == "hello"
+        # Preserves case (no lowercasing - legal text fidelity)
+        assert normalize_excerpt("HELLO") == "HELLO"
+        assert normalize_excerpt("Hello World") == "Hello World"
 
     def test_excerpt_hash_consistency(self) -> None:
-        """Test that excerpt hash is consistent regardless of formatting."""
+        """Test that excerpt hash is consistent regardless of whitespace formatting."""
         from claimpilot.canon import excerpt_hash
 
-        # Same text with different formatting
+        # Same text with different whitespace formatting
         text1 = "The insurer shall not pay for loss or damage."
         text2 = "  The insurer  shall not pay for loss or damage.  "
-        text3 = "THE INSURER SHALL NOT PAY FOR LOSS OR DAMAGE."
 
-        # All should produce same hash
+        # Whitespace-different texts should produce same hash
         assert excerpt_hash(text1) == excerpt_hash(text2)
-        assert excerpt_hash(text1) == excerpt_hash(text3)
+
+        # But different case produces different hash (preserves legal text)
+        text3 = "THE INSURER SHALL NOT PAY FOR LOSS OR DAMAGE."
+        assert excerpt_hash(text1) != excerpt_hash(text3)
 
     def test_authority_citation_from_ref(self) -> None:
         """Test creating AuthorityCitation from AuthorityRef."""
@@ -749,12 +752,17 @@ class TestPolicyProvenance:
 
         citation = AuthorityCitation.from_authority_ref(ref)
 
-        # Should verify same text (with different formatting)
+        # Should verify same text (with different whitespace formatting)
         assert citation.verify_excerpt("Original text")
-        assert citation.verify_excerpt("  ORIGINAL TEXT  ")
+        assert citation.verify_excerpt("  Original text  ")  # Whitespace is normalized
+        assert citation.verify_excerpt("Original\n  text")   # Line breaks normalized too
 
         # Should fail for different text
         assert not citation.verify_excerpt("Modified text")
+
+        # Case is preserved for legal text fidelity - different case = different hash
+        assert not citation.verify_excerpt("ORIGINAL TEXT")
+        assert not citation.verify_excerpt("original text")
 
     def test_compute_policy_pack_hash(self) -> None:
         """Test computing policy pack hash."""
@@ -825,14 +833,102 @@ class TestPolicyProvenance:
             certainty=RecommendationCertainty.HIGH,
         )
 
-        # Should have provenance fields
+        # Should have policy provenance fields
         assert hasattr(rec, 'policy_pack_id')
         assert hasattr(rec, 'policy_pack_version')
         assert hasattr(rec, 'policy_pack_hash')
         assert hasattr(rec, 'authority_hashes')
+
+        # Should have engine provenance fields
+        assert hasattr(rec, 'policy_pack_loaded_at')
+        assert hasattr(rec, 'evaluated_at')
+        assert hasattr(rec, 'engine_version')
 
         # Default values
         assert rec.policy_pack_id == ""
         assert rec.policy_pack_version == ""
         assert rec.policy_pack_hash == ""
         assert rec.authority_hashes == []
+        assert rec.engine_version == ""
+
+    def test_policy_pack_hash_ordering_stability(self) -> None:
+        """
+        Policy pack hash should be stable regardless of insertion order.
+        Lists are sorted by 'id' during serialization.
+        """
+        from claimpilot.canon import compute_policy_pack_hash
+        from claimpilot.models import (
+            Policy,
+            CoverageSection,
+            Exclusion,
+            LineOfBusiness,
+        )
+
+        # Create two policies with same content but different insertion order
+        coverage_a = CoverageSection(
+            id="cov_a", code="A", name="Coverage A", description="First"
+        )
+        coverage_b = CoverageSection(
+            id="cov_b", code="B", name="Coverage B", description="Second"
+        )
+
+        exclusion_x = Exclusion(
+            id="ex_x",
+            code="X",
+            name="Exclusion X",
+            description="First",
+            policy_wording="Wording X",
+            policy_section_ref="Section X",
+        )
+        exclusion_y = Exclusion(
+            id="ex_y",
+            code="Y",
+            name="Exclusion Y",
+            description="Second",
+            policy_wording="Wording Y",
+            policy_section_ref="Section Y",
+        )
+
+        # Policy 1: A before B, X before Y
+        policy1 = Policy(
+            id="TEST-001",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="TEST",
+            name="Test Policy",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+            coverage_sections=[coverage_a, coverage_b],
+            exclusions=[exclusion_x, exclusion_y],
+        )
+
+        # Policy 2: B before A, Y before X (different insertion order)
+        policy2 = Policy(
+            id="TEST-001",
+            jurisdiction="CA-ON",
+            line_of_business=LineOfBusiness.AUTO,
+            product_code="TEST",
+            name="Test Policy",
+            version="1.0",
+            effective_date=date(2024, 1, 1),
+            coverage_sections=[coverage_b, coverage_a],  # Reversed
+            exclusions=[exclusion_y, exclusion_x],  # Reversed
+        )
+
+        # Hashes should be identical (sorted by id during serialization)
+        hash1 = compute_policy_pack_hash(policy1)
+        hash2 = compute_policy_pack_hash(policy2)
+
+        assert hash1 == hash2, "Policy pack hash should be stable regardless of list ordering"
+
+    def test_normalize_excerpt_preserves_case(self) -> None:
+        """Test that normalize_excerpt does NOT lowercase text (preserves legal fidelity)."""
+        from claimpilot.canon import normalize_excerpt
+
+        text = "The Insurer SHALL NOT pay for Loss or Damage"
+        normalized = normalize_excerpt(text)
+
+        # Should preserve case
+        assert "SHALL NOT" in normalized
+        assert "Insurer" in normalized
+        assert normalized != normalized.lower()

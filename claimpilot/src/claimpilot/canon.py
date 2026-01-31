@@ -172,12 +172,15 @@ def normalize_excerpt(text: str) -> str:
     Normalize policy wording excerpt for consistent hashing.
 
     Normalization:
-    - Collapse all whitespace (spaces, tabs, newlines) to single spaces
+    - Unicode normalize (NFKC)
+    - Normalize line endings to LF
+    - Collapse whitespace to single spaces
     - Strip leading/trailing whitespace
-    - Lowercase for comparison
+    - DO NOT lowercase (preserves legal text fidelity)
 
     This ensures the same policy wording produces the same hash
-    regardless of formatting differences.
+    regardless of formatting differences, while preserving the
+    exact legal text for audit purposes.
 
     Args:
         text: Raw policy wording excerpt
@@ -187,12 +190,23 @@ def normalize_excerpt(text: str) -> str:
 
     Example:
         >>> normalize_excerpt("  The insurer\\n  shall not pay...  ")
-        'the insurer shall not pay...'
+        'The insurer shall not pay...'
     """
-    # Collapse whitespace and strip
-    normalized = " ".join(text.split()).strip()
-    # Lowercase for comparison
-    return normalized.lower()
+    import unicodedata
+
+    # Unicode normalize (NFKC for compatibility)
+    text = unicodedata.normalize('NFKC', text)
+
+    # Normalize line endings (CRLF → LF, CR → LF)
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+    # Collapse whitespace (spaces, tabs, newlines) to single spaces
+    text = ' '.join(text.split())
+
+    # Strip leading/trailing whitespace
+    text = text.strip()
+
+    return text
 
 
 def excerpt_hash(text: str) -> str:
@@ -210,6 +224,11 @@ def excerpt_hash(text: str) -> str:
     return text_hash(normalize_excerpt(text))
 
 
+def _sort_by_id(items: list[dict]) -> list[dict]:
+    """Sort list of dicts by 'id' field for deterministic ordering."""
+    return sorted(items, key=lambda x: x.get('id', ''))
+
+
 def compute_policy_pack_hash(policy: Any) -> str:
     """
     Compute SHA-256 hash of policy pack in canonical JSON form.
@@ -220,9 +239,15 @@ def compute_policy_pack_hash(policy: Any) -> str:
 
     The hash includes:
     - Policy metadata (id, jurisdiction, version, dates)
-    - All coverage sections
-    - All exclusions
+    - All coverage sections (sorted by id)
+    - All exclusions (sorted by id)
     - Line of business
+
+    Follows RFC 8785 principles:
+    - Sorted keys (lexicographic)
+    - No whitespace
+    - Consistent formatting
+    - Lists sorted by stable key (id)
 
     Args:
         policy: A Policy dataclass instance
@@ -247,17 +272,15 @@ def compute_policy_pack_hash(policy: Any) -> str:
         "effective_date": policy.effective_date.isoformat() if policy.effective_date else None,
     }
 
-    # Add coverage sections
+    # Add coverage sections (sorted by id for deterministic ordering)
     if hasattr(policy, 'coverage_sections') and policy.coverage_sections:
-        policy_dict["coverage_sections"] = [
-            _serialize_coverage(c) for c in sorted(policy.coverage_sections, key=lambda x: x.id)
-        ]
+        serialized = [_serialize_coverage(c) for c in policy.coverage_sections]
+        policy_dict["coverage_sections"] = _sort_by_id(serialized)
 
-    # Add exclusions
+    # Add exclusions (sorted by id for deterministic ordering)
     if hasattr(policy, 'exclusions') and policy.exclusions:
-        policy_dict["exclusions"] = [
-            _serialize_exclusion(e) for e in sorted(policy.exclusions, key=lambda x: x.id)
-        ]
+        serialized = [_serialize_exclusion(e) for e in policy.exclusions]
+        policy_dict["exclusions"] = _sort_by_id(serialized)
 
     return content_hash(policy_dict)
 
