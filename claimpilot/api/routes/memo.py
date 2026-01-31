@@ -41,7 +41,7 @@ def get_cached_evaluation(request_id: str) -> Optional[EvaluateResponse]:
 
 
 def build_memo_context(eval_data: EvaluateResponse) -> dict:
-    """Build template context from evaluation response."""
+    """Build template context matching the canonical Jinja2 template structure."""
 
     # Determine decision status
     if eval_data.recommended_disposition == "pay":
@@ -56,31 +56,90 @@ def build_memo_context(eval_data: EvaluateResponse) -> dict:
         decision_status = "request_info"
         decision_note = "Outstanding evidence required"
 
-    # Build claim facts list
-    claim_facts = []
+    # Build claim facts list from unknown facts and evidence
+    claim_facts = [
+        {"key": "claim_id", "value": eval_data.claim_id},
+        {"key": "policy_id", "value": eval_data.policy_pack_id},
+        {"key": "certainty", "value": eval_data.certainty},
+    ]
+    if eval_data.unknown_facts:
+        for fact in eval_data.unknown_facts[:3]:
+            claim_facts.append({"key": fact, "value": "(unknown)"})
+
+    # Build exclusions_requiring_evidence with .code for template chips
+    exclusions_requiring_evidence = []
+    for req in eval_data.exclusions_requiring_evidence:
+        exclusions_requiring_evidence.append({
+            "code": req.exclusion_code,
+            "name": req.exclusion_name,
+        })
+
+    # Build exclusions_evaluated with .status for template pills
+    exclusions_evaluated = []
+    for exc in eval_data.exclusions_evaluated:
+        if exc.triggered:
+            status = "triggered"
+        elif exc.code in eval_data.exclusions_uncertain:
+            status = "requires_evidence"
+        else:
+            status = "not_applicable"
+
+        exclusions_evaluated.append({
+            "code": exc.code,
+            "name": exc.name,
+            "status": status,
+            "reason": exc.reason if exc.triggered or exc.code in eval_data.exclusions_uncertain else None,
+        })
+
+    # Build evidence_requests with to_confirm/to_rule_out structure
+    evidence_requests = []
+    for req in eval_data.exclusions_requiring_evidence:
+        # Split evidence items into confirm vs rule out
+        # First half for confirm, second half for rule out (simplified logic)
+        items = req.evidence_items
+        mid = len(items) // 2 or 1
+        evidence_requests.append({
+            "exclusion_code": req.exclusion_code,
+            "to_confirm": items[:mid],
+            "to_rule_out": items[mid:] if len(items) > mid else [],
+        })
+
+    # Build reasoning_steps with step_id and outcome
+    reasoning_steps = []
     for step in eval_data.reasoning_steps:
-        if step.step_type == "coverage_check":
-            claim_facts.append({"key": "coverage_check", "value": step.result})
+        reasoning_steps.append({
+            "step_id": str(step.sequence),
+            "description": step.description,
+            "outcome": step.result.upper(),
+        })
+
+    # Build authority_citations with expected fields
+    authority_citations = []
+    for auth in eval_data.authorities_cited:
+        authority_citations.append({
+            "section_ref": auth.section,
+            "authority_ref_id": f"{auth.authority_type}:{auth.title}",
+            "excerpt_hash": auth.excerpt_hash or "N/A",
+            "excerpt": auth.excerpt,
+        })
 
     return {
         "request_id": eval_data.request_id,
-        "claim_id": eval_data.claim_id,
         "evaluated_at": eval_data.evaluated_at,
         "engine_version": eval_data.engine_version,
         "memo_title": f"Claim Evaluation — {eval_data.claim_id}",
-        "policy_pack_id": eval_data.policy_pack_id,
-        "policy_pack_version": eval_data.policy_pack_version,
-        "policy_pack_hash": eval_data.policy_pack_hash,
-        "loss_type": "Collision",  # Would come from request in full implementation
         "claim_facts": claim_facts,
         "decision_status": decision_status,
         "decision_note": decision_note,
         "decision_explainer": eval_data.disposition_reason,
-        "exclusions_evaluated": [exc.model_dump() for exc in eval_data.exclusions_evaluated],
-        "exclusions_uncertain": eval_data.exclusions_uncertain,
-        "exclusions_requiring_evidence": [req.model_dump() for req in eval_data.exclusions_requiring_evidence],
-        "reasoning_steps": [step.model_dump() for step in eval_data.reasoning_steps],
-        "authorities_cited": [auth.model_dump() for auth in eval_data.authorities_cited],
+        "exclusions_requiring_evidence": exclusions_requiring_evidence,
+        "exclusions_evaluated": exclusions_evaluated,
+        "evidence_requests": evidence_requests,
+        "reasoning_steps": reasoning_steps,
+        "authority_citations": authority_citations,
+        "policy_pack_id": eval_data.policy_pack_id,
+        "policy_pack_version": eval_data.policy_pack_version,
+        "policy_pack_hash": eval_data.policy_pack_hash,
         "verification": None,  # Would be populated if pre-verified
     }
 
@@ -97,9 +156,9 @@ async def get_memo_html(request: Request, request_id: str):
     - Audit records
 
     The template follows regulator-style formatting with:
-    - Clear decision status (APPROVE/DENY/ADDITIONAL INFO REQUIRED)
+    - Clear decision status (APPROVE/DENY/REQUEST INFO)
     - Exclusions evaluated with status pills
-    - Evidence requirements for uncertain exclusions
+    - Evidence requests (to confirm / to rule out)
     - Reasoning chain
     - Policy provenance with hash verification
     """
@@ -139,8 +198,6 @@ async def get_memo_json(request_id: str):
         )
 
     context = build_memo_context(eval_data)
-    # Remove request object (not serializable)
-    context.pop("request", None)
 
     return {
         "format": "json",
@@ -171,9 +228,9 @@ async def get_memo_markdown(request_id: str):
     # Build exclusions table
     exclusions_rows = ""
     for exc in ctx["exclusions_evaluated"]:
-        if exc["triggered"]:
+        if exc["status"] == "triggered":
             status = "**TRIGGERED**"
-        elif exc["code"] in ctx["exclusions_uncertain"]:
+        elif exc["status"] == "requires_evidence":
             status = "NEEDS EVIDENCE"
         else:
             status = "Not Applicable"
@@ -181,26 +238,24 @@ async def get_memo_markdown(request_id: str):
 
     # Build evidence requirements
     evidence_section = ""
-    if ctx["exclusions_requiring_evidence"]:
-        evidence_section = "\n## Required Evidence to Finalize Evaluation\n\n"
-        for req in ctx["exclusions_requiring_evidence"]:
-            items = "\n".join([f"- {item}" for item in req["evidence_items"]])
-            evidence_section += f"""
-### {req['exclusion_code']} — {req['exclusion_name']}
-
-*{req['purpose']}*
-
-{items}
-
-**Resolution:** If applies → {req['resolution_if_applies']} | If not applicable → {req['resolution_if_not_applies']}
-
----
-"""
+    if ctx["evidence_requests"]:
+        evidence_section = "\n## Evidence Requests\n\n"
+        for req in ctx["evidence_requests"]:
+            evidence_section += f"### {req['exclusion_code']}\n\n"
+            if req.get("to_confirm"):
+                evidence_section += "**To confirm:**\n"
+                for item in req["to_confirm"]:
+                    evidence_section += f"- {item}\n"
+            if req.get("to_rule_out"):
+                evidence_section += "\n**To rule out:**\n"
+                for item in req["to_rule_out"]:
+                    evidence_section += f"- {item}\n"
+            evidence_section += "\n---\n"
 
     # Build reasoning chain
     reasoning_rows = ""
     for step in ctx["reasoning_steps"]:
-        reasoning_rows += f"| {step['sequence']} | {step['description']} | {step['result'].upper()} |\n"
+        reasoning_rows += f"| {step['step_id']} | {step['description']} | {step['outcome']} |\n"
 
     md = f"""# Claim Evaluation Memorandum
 
@@ -208,20 +263,15 @@ async def get_memo_markdown(request_id: str):
 
 ---
 
-## Claim Identification
-
 | Field | Value |
 |-------|-------|
 | Request ID | `{ctx['request_id']}` |
-| Claim ID | `{ctx['claim_id']}` |
-| Policy ID | `{ctx['policy_pack_id']}` |
-| Policy Version | `{ctx['policy_pack_version']}` |
-| Evaluation Timestamp | `{ctx['evaluated_at']}` |
+| Evaluated At | `{ctx['evaluated_at']}` |
 | Engine Version | `{ctx['engine_version']}` |
 
 ---
 
-## Recommended Disposition
+## Recommendation
 
 **{ctx['decision_status'].upper()}**{f" — {ctx['decision_note']}" if ctx['decision_note'] else ""}
 
@@ -240,8 +290,8 @@ async def get_memo_markdown(request_id: str):
 
 ## Reasoning Chain
 
-| Step | Description | Result |
-|------|-------------|--------|
+| Step | Description | Outcome |
+|------|-------------|---------|
 {reasoning_rows}
 
 ---
@@ -261,18 +311,7 @@ Re-evaluating with identical inputs produces identical outputs.
 
 ---
 
-### Regulatory Alignment
-
-Controls align with:
-- **OSFI E-23** — Model risk management
-- **FSRA** — Fair consumer outcome expectations
-- **NAIC** — AI governance principles
-
----
-
 *Generated by ClaimPilot {ctx['engine_version']} — Deterministic • Reproducible • Auditable*
-
-*This verification proves which policy rules were applied at evaluation time.*
 """
 
     return {

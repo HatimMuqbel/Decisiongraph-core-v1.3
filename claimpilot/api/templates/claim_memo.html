@@ -78,12 +78,8 @@
 
     <div class="grid2">
       <div class="card break">
-        <h2>Claim Identification</h2>
+        <h2>Claim Facts</h2>
         <div class="kv">
-          <div>Claim ID</div><div class="mono">{{ claim_id }}</div>
-          <div>Policy ID</div><div class="mono">{{ policy_pack_id }}</div>
-          <div>Policy Version</div><div class="mono">{{ policy_pack_version }}</div>
-          <div>Loss Type</div><div>{{ loss_type }}</div>
           {% for item in claim_facts %}
             <div class="mono">{{ item.key }}</div><div>{{ item.value }}</div>
           {% endfor %}
@@ -104,7 +100,7 @@
           </div>
         {% else %}
           <div class="status warn">
-            <div class="headline">ADDITIONAL INFO REQUIRED{% if decision_note %} — {{ decision_note }}{% endif %}</div>
+            <div class="headline">REQUEST INFO{% if decision_note %} — {{ decision_note }}{% endif %}</div>
             <div class="desc">{{ decision_explainer }}</div>
           </div>
         {% endif %}
@@ -114,7 +110,7 @@
             <div class="label">Additional evidence required for:</div>
             <div class="chips">
               {% for ex in exclusions_requiring_evidence %}
-                <span class="chip">{{ ex.exclusion_code }}</span>
+                <span class="chip">{{ ex.code }}</span>
               {% endfor %}
             </div>
           </div>
@@ -138,12 +134,12 @@
             <td class="mono">{{ ex.code }}</td>
             <td>{{ ex.name }}</td>
             <td>
-              {% if ex.triggered %}
-                <span class="pill trig">TRIGGERED</span>
-              {% elif ex.code in exclusions_uncertain %}
+              {% if ex.status == "not_applicable" %}
+                <span class="pill na">NOT APPLICABLE</span>
+              {% elif ex.status == "requires_evidence" %}
                 <span class="pill req">NEEDS EVIDENCE</span>
               {% else %}
-                <span class="pill na">NOT APPLICABLE</span>
+                <span class="pill trig">TRIGGERED</span>
               {% endif %}
               {% if ex.reason %}<div class="small" style="margin-top:6px;">{{ ex.reason }}</div>{% endif %}
             </td>
@@ -152,31 +148,33 @@
         </tbody>
       </table>
 
-      {% if exclusions_requiring_evidence and exclusions_requiring_evidence|length > 0 %}
+      {% if evidence_requests and evidence_requests|length > 0 %}
         <h2>Evidence Requests</h2>
         <div class="small">Standardized evidence requests to resolve indeterminate exclusions.</div>
         <table style="margin-top:8px;">
           <thead>
             <tr>
               <th style="width:140px;">Exclusion</th>
-              <th>Purpose & Evidence Required</th>
+              <th>Evidence to Confirm / Rule Out</th>
             </tr>
           </thead>
           <tbody>
-            {% for er in exclusions_requiring_evidence %}
+            {% for er in evidence_requests %}
             <tr>
-              <td class="mono">{{ er.exclusion_code }}<br><span class="small">{{ er.exclusion_name }}</span></td>
+              <td class="mono">{{ er.exclusion_code }}</td>
               <td>
-                <div class="small" style="font-style:italic; margin-bottom:6px;">{{ er.purpose }}</div>
-                <ul style="margin:6px 0 10px 18px;">
-                  {% for item in er.evidence_items %}
-                    <li>{{ item }}</li>
-                  {% endfor %}
-                </ul>
-                <div class="small">
-                  <strong>If applies:</strong> {{ er.resolution_if_applies }} |
-                  <strong>If not applicable:</strong> {{ er.resolution_if_not_applies }}
-                </div>
+                {% if er.to_confirm and er.to_confirm|length > 0 %}
+                  <div><strong>To confirm:</strong></div>
+                  <ul style="margin:6px 0 10px 18px;">
+                    {% for x in er.to_confirm %}<li>{{ x }}</li>{% endfor %}
+                  </ul>
+                {% endif %}
+                {% if er.to_rule_out and er.to_rule_out|length > 0 %}
+                  <div><strong>To rule out:</strong></div>
+                  <ul style="margin:6px 0 0 18px;">
+                    {% for x in er.to_rule_out %}<li>{{ x }}</li>{% endfor %}
+                  </ul>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -191,37 +189,35 @@
         <thead>
           <tr>
             <th style="width:80px;">Step</th>
-            <th>Description</th>
-            <th style="width:120px;">Result</th>
+            <th>Explanation</th>
+            <th style="width:180px;">Outcome</th>
           </tr>
         </thead>
         <tbody>
           {% for step in reasoning_steps %}
           <tr>
-            <td class="mono">{{ step.sequence }}</td>
+            <td class="mono">{{ step.step_id }}</td>
             <td>{{ step.description }}</td>
-            <td class="mono">{{ step.result | upper }}</td>
+            <td class="mono">{{ step.outcome }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
-    {% if authorities_cited and authorities_cited|length > 0 %}
+    {% if authority_citations and authority_citations|length > 0 %}
     <div class="card break" style="margin-top:12px;">
       <h2>Policy Citations</h2>
       <div class="small">Cited policy wording excerpts (hash-verified).</div>
-      {% for c in authorities_cited %}
+      {% for c in authority_citations %}
         <div class="citation break">
           <div class="ref">
-            <strong>{{ c.section }}</strong>
-            &nbsp;|&nbsp; <span class="mono">{{ c.authority_type }}: {{ c.title }}</span>
-            {% if c.excerpt_hash %}
-              &nbsp;|&nbsp; Hash: <span class="mono">{{ c.excerpt_hash[:16] }}...</span>
-            {% endif %}
+            <strong>{{ c.section_ref }}</strong>
+            &nbsp;|&nbsp; <span class="mono">{{ c.authority_ref_id }}</span>
+            &nbsp;|&nbsp; Excerpt Hash: <span class="mono">{{ c.excerpt_hash }}</span>
           </div>
           {% if c.excerpt %}
-            <div class="excerpt">"{{ c.excerpt }}"</div>
+            <div class="excerpt">{{ c.excerpt }}</div>
           {% endif %}
         </div>
       {% endfor %}
@@ -246,7 +242,6 @@
     <div class="foot">
       <div><strong>Determinism & Auditability:</strong> ClaimPilot is a deterministic rule engine (Zero LLM). Decisions are traceable to policy wording and verifiable via cryptographic hashes.</div>
       <div style="margin-top:6px;"><strong>Verification:</strong> This recommendation can be verified using the <span class="mono">/verify</span> endpoint with the recommendation's provenance fields.</div>
-      <div style="margin-top:6px;"><strong>Regulatory Alignment:</strong> Controls align with OSFI E-23 model risk management, FSRA fair consumer outcome expectations, and NAIC AI governance principles.</div>
     </div>
   </div>
 </body>
