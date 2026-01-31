@@ -15,233 +15,256 @@
     *{ box-sizing:border-box; }
     body{ margin:0; padding:24px; font-family:var(--sans); color:var(--fg); background:var(--bg); }
     .page{ max-width:900px; margin:0 auto; }
-    .topbar{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--border); }
-    .brand{ font-weight:700; letter-spacing:0.2px; }
-    .subtitle{ margin-top:4px; color:var(--muted); font-size:14px; }
-    .meta{ text-align:right; font-size:12px; color:var(--muted); line-height:1.4; }
-    .meta code{ font-family:var(--mono); color:var(--fg); }
-    h1{ font-size:20px; margin:18px 0 6px 0; }
-    h2{ font-size:14px; margin:18px 0 8px 0; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); }
-    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .card{ border:1px solid var(--border); border-radius:12px; padding:14px; }
-    .row{ display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed var(--border); }
-    .row:last-child{ border-bottom:none; }
-    .label{ color:var(--muted); font-size:12px; }
-    .value{ font-size:13px; font-weight:600; text-align:right; }
-    .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-    .chip{ background:var(--chip); padding:4px 8px; border-radius:999px; font-size:12px; font-family:var(--mono); }
-    .status{ border-radius:12px; padding:12px; border:1px solid var(--border); }
-    .status.ok{ background:var(--okbg); border-color:#a7f3d0; }
-    .status.warn{ background:var(--warnbg); border-color:#fcd34d; }
-    .status.bad{ background:var(--badbg); border-color:#fecaca; }
-    .status .headline{ font-weight:800; font-size:14px; }
-    .status .desc{ margin-top:4px; font-size:13px; color:var(--muted); }
-    table{ width:100%; border-collapse:collapse; font-size:13px; }
-    th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
-    th{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
-    .pill{ display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .header{ text-align:center; padding-bottom:20px; border-bottom:2px solid var(--fg); margin-bottom:24px; }
+    .header h1{ font-size:24px; margin:0 0 4px 0; }
+    .header .subtitle{ color:var(--muted); font-size:14px; }
+    h2{ font-size:16px; margin:24px 0 12px 0; padding-bottom:6px; border-bottom:1px solid var(--border); }
+    h3{ font-size:14px; margin:16px 0 8px 0; }
+    .card{ border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; }
+    .kv{ display:grid; grid-template-columns: 180px 1fr; gap:8px 16px; font-size:14px; }
+    .kv .label{ color:var(--muted); }
+    .kv .value{ font-weight:600; }
+    .kv .value.mono{ font-family:var(--mono); font-size:13px; }
+    table{ width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
+    th, td{ text-align:left; padding:10px 12px; border:1px solid var(--border); vertical-align:top; }
+    th{ background:#f9fafb; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
+    .status{ border-radius:8px; padding:16px; margin:12px 0; }
+    .status.ok{ background:var(--okbg); border:1px solid #a7f3d0; }
+    .status.warn{ background:var(--warnbg); border:1px solid #fcd34d; }
+    .status.bad{ background:var(--badbg); border:1px solid #fecaca; }
+    .status h3{ margin:0 0 8px 0; font-size:15px; }
+    .status p{ margin:0; font-size:14px; color:var(--fg); }
+    .status ul{ margin:8px 0 0 0; padding-left:20px; }
+    .status li{ margin:4px 0; }
+    .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; }
     .pill.na{ background:#f3f4f6; color:#374151; }
-    .pill.req{ background:#fffbeb; color:var(--warn); border:1px solid #fcd34d; }
-    .pill.trig{ background:#fef2f2; color:var(--bad); border:1px solid #fecaca; }
+    .pill.req{ background:#fffbeb; color:var(--warn); }
+    .pill.trig{ background:#fef2f2; color:var(--bad); }
+    .pill.pass{ background:#ecfdf5; color:var(--ok); }
     .mono{ font-family:var(--mono); }
     .small{ font-size:12px; color:var(--muted); }
-    .foot{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; line-height:1.5; }
-    .kv{ display:grid; grid-template-columns: 170px 1fr; gap:6px 12px; }
-    .kv div:nth-child(odd){ color:var(--muted); }
-    .kv div:nth-child(even){ font-weight:600; }
-    .evidence{ margin-top:10px; border-left:3px solid #fcd34d; padding-left:10px; }
-    .citation{ margin-top:8px; padding:10px; background:#f9fafb; border:1px solid var(--border); border-radius:10px; }
-    .citation .ref{ font-family:var(--mono); font-size:12px; }
-    .citation .excerpt{ margin-top:6px; font-size:13px; color:#111827; }
+    .evidence-block{ background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:16px; margin:12px 0; }
+    .evidence-block h4{ margin:0 0 8px 0; font-size:14px; color:var(--warn); }
+    .evidence-block .purpose{ font-style:italic; color:var(--muted); margin-bottom:12px; font-size:13px; }
+    .evidence-block h5{ margin:12px 0 6px 0; font-size:13px; font-weight:600; }
+    .evidence-block ul{ margin:0; padding-left:20px; font-size:13px; }
+    .evidence-block li{ margin:4px 0; }
+    .provenance{ background:#f9fafb; border:1px solid var(--border); border-radius:8px; padding:16px; }
+    .provenance .hash{ word-break:break-all; font-size:12px; }
+    .statement{ background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
+    .compliance{ background:#fefce8; border:1px solid #fde047; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
+    .foot{ margin-top:24px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; text-align:center; }
     .break{ break-inside:avoid; page-break-inside:avoid; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
+      .status, .evidence-block, .provenance, .statement, .compliance { break-inside: avoid; }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="topbar">
-      <div>
-        <div class="brand">ClaimPilot</div>
-        <div class="subtitle">Claim Evaluation Memorandum — Deterministic Policy Engine (Zero LLM)</div>
-      </div>
-      <div class="meta">
-        <div><span class="label">Request ID</span> <code class="mono">{{ request_id }}</code></div>
-        <div><span class="label">Evaluated At</span> <code class="mono">{{ evaluated_at }}</code></div>
-        <div><span class="label">Engine Version</span> <code class="mono">{{ engine_version }}</code></div>
+    <div class="header">
+      <h1>Claim Evaluation Memorandum</h1>
+      <div class="subtitle">Deterministic Policy Engine (Zero LLM)</div>
+    </div>
+
+    <h2>Administrative Details</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Request ID</div>
+        <div class="value mono">{{ request_id }}</div>
+        <div class="label">Claim ID</div>
+        <div class="value mono">{{ claim_id }}</div>
+        <div class="label">Policy ID</div>
+        <div class="value mono">{{ policy_pack_id }}</div>
+        <div class="label">Policy Version</div>
+        <div class="value mono">{{ policy_pack_version }}</div>
+        <div class="label">Evaluated At</div>
+        <div class="value mono">{{ evaluated_at }}</div>
+        <div class="label">Engine Version</div>
+        <div class="value mono">{{ engine_version }}</div>
+        <div class="label">Certainty Level</div>
+        <div class="value">{{ certainty_level }}</div>
       </div>
     </div>
 
-    <h1>{{ memo_title }}</h1>
+    <h2>Claim Facts</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fact in claim_facts %}
+        <tr>
+          <td>{{ fact.field }}</td>
+          <td class="mono">{{ fact.value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-    <div class="grid2">
-      <div class="card break">
-        <h2>Claim Facts</h2>
-        <div class="kv">
-          {% for item in claim_facts %}
-            <div class="mono">{{ item.key }}</div><div>{{ item.value }}</div>
-          {% endfor %}
-        </div>
+    <h2>Recommendation</h2>
+    {% if decision_status == "approve" %}
+      <div class="status ok break">
+        <h3>APPROVE{% if decision_note %} — {{ decision_note }}{% endif %}</h3>
+        <p>{{ decision_explainer }}</p>
       </div>
-
-      <div class="break">
-        <h2>Recommendation</h2>
-        {% if decision_status == "approve" %}
-          <div class="status ok">
-            <div class="headline">APPROVE{% if decision_note %} — {{ decision_note }}{% endif %}</div>
-            <div class="desc">{{ decision_explainer }}</div>
-          </div>
-        {% elif decision_status == "deny" %}
-          <div class="status bad">
-            <div class="headline">DENY{% if decision_note %} — {{ decision_note }}{% endif %}</div>
-            <div class="desc">{{ decision_explainer }}</div>
-          </div>
-        {% else %}
-          <div class="status warn">
-            <div class="headline">REQUEST INFO{% if decision_note %} — {{ decision_note }}{% endif %}</div>
-            <div class="desc">{{ decision_explainer }}</div>
-          </div>
-        {% endif %}
-
-        {% if exclusions_requiring_evidence and exclusions_requiring_evidence|length > 0 %}
-          <div class="evidence">
-            <div class="label">Additional evidence required for:</div>
-            <div class="chips">
-              {% for ex in exclusions_requiring_evidence %}
-                <span class="chip">{{ ex.code }}</span>
-              {% endfor %}
-            </div>
-          </div>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="card break" style="margin-top:12px;">
-      <h2>Exclusions Evaluated</h2>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:140px;">Code</th>
-            <th>Description</th>
-            <th style="width:180px;">Result</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for ex in exclusions_evaluated %}
-          <tr>
-            <td class="mono">{{ ex.code }}</td>
-            <td>{{ ex.name }}</td>
-            <td>
-              {% if ex.status == "not_applicable" %}
-                <span class="pill na">NOT APPLICABLE</span>
-              {% elif ex.status == "requires_evidence" %}
-                <span class="pill req">NEEDS EVIDENCE</span>
-              {% else %}
-                <span class="pill trig">TRIGGERED</span>
-              {% endif %}
-              {% if ex.reason %}<div class="small" style="margin-top:6px;">{{ ex.reason }}</div>{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
-      {% if evidence_requests and evidence_requests|length > 0 %}
-        <h2>Evidence Requests</h2>
-        <div class="small">Standardized evidence requests to resolve indeterminate exclusions.</div>
-        <table style="margin-top:8px;">
-          <thead>
-            <tr>
-              <th style="width:140px;">Exclusion</th>
-              <th>Evidence to Confirm / Rule Out</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for er in evidence_requests %}
-            <tr>
-              <td class="mono">{{ er.exclusion_code }}</td>
-              <td>
-                {% if er.to_confirm and er.to_confirm|length > 0 %}
-                  <div><strong>To confirm:</strong></div>
-                  <ul style="margin:6px 0 10px 18px;">
-                    {% for x in er.to_confirm %}<li>{{ x }}</li>{% endfor %}
-                  </ul>
-                {% endif %}
-                {% if er.to_rule_out and er.to_rule_out|length > 0 %}
-                  <div><strong>To rule out:</strong></div>
-                  <ul style="margin:6px 0 0 18px;">
-                    {% for x in er.to_rule_out %}<li>{{ x }}</li>{% endfor %}
-                  </ul>
-                {% endif %}
-              </td>
-            </tr>
+    {% elif decision_status == "deny" %}
+      <div class="status bad break">
+        <h3>DENY{% if decision_note %} — {{ decision_note }}{% endif %}</h3>
+        <p>{{ decision_explainer }}</p>
+        {% if exclusions_triggered and exclusions_triggered|length > 0 %}
+          <p style="margin-top:12px;"><strong>Exclusions triggered:</strong></p>
+          <ul>
+            {% for ex in exclusions_triggered %}
+              <li><strong>{{ ex.code }}</strong> — {{ ex.name }}</li>
             {% endfor %}
-          </tbody>
-        </table>
+          </ul>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="status warn break">
+        <h3>REQUEST ADDITIONAL INFORMATION</h3>
+        <p>{{ decision_explainer }}</p>
+        {% if unresolved_exclusions and unresolved_exclusions|length > 0 %}
+          <p style="margin-top:12px;"><strong>Unresolved exclusions requiring additional evidence:</strong></p>
+          <ul>
+            {% for ex in unresolved_exclusions %}
+              <li><strong>{{ ex.code }}</strong> — {{ ex.name }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        <p class="small" style="margin-top:12px;">No denial has been issued at this stage.</p>
+      </div>
+    {% endif %}
+
+    <h2>Exclusions Evaluated</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th style="width:80px;">Code</th>
+          <th>Description</th>
+          <th style="width:180px;">Evaluation Result</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ex in exclusions_evaluated %}
+        <tr>
+          <td class="mono">{{ ex.code }}</td>
+          <td>{{ ex.name }}</td>
+          <td>
+            {% if ex.status == "not_applicable" %}
+              <span class="pill na">Not Applicable</span>
+            {% elif ex.status == "requires_evidence" %}
+              <span class="pill req">Additional Evidence Required</span>
+            {% else %}
+              <span class="pill trig">Triggered</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ ex.notes or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if evidence_requests and evidence_requests|length > 0 %}
+    <h2>Evidence Requests</h2>
+    <p class="small">The following standardized evidence is required to resolve indeterminate exclusions.</p>
+
+    {% for er in evidence_requests %}
+    <div class="evidence-block break">
+      <h4>Exclusion {{ er.exclusion_code }} — {{ er.exclusion_name }}</h4>
+      <div class="purpose">{{ er.purpose }}</div>
+
+      {% if er.to_confirm and er.to_confirm|length > 0 %}
+      <h5>Evidence to Confirm Applicability</h5>
+      <ul>
+        {% for item in er.to_confirm %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if er.to_rule_out and er.to_rule_out|length > 0 %}
+      <h5>Evidence to Rule Out Applicability</h5>
+      <ul>
+        {% for item in er.to_rule_out %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
       {% endif %}
     </div>
+    {% endfor %}
+    {% endif %}
 
-    <div class="card break" style="margin-top:12px;">
-      <h2>Reasoning Chain</h2>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:80px;">Step</th>
-            <th>Explanation</th>
-            <th style="width:180px;">Outcome</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for step in reasoning_steps %}
-          <tr>
-            <td class="mono">{{ step.step_id }}</td>
-            <td>{{ step.description }}</td>
-            <td class="mono">{{ step.outcome }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <h2>Reasoning Chain</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th style="width:60px;">Step</th>
+          <th>Evaluation Action</th>
+          <th style="width:140px;">Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in reasoning_steps %}
+        <tr>
+          <td class="mono">{{ step.step_id }}</td>
+          <td>{{ step.action }}</td>
+          <td>
+            {% if step.outcome == "PASSED" %}
+              <span class="pill pass">Passed</span>
+            {% elif step.outcome == "INDETERMINATE" %}
+              <span class="pill req">Indeterminate</span>
+            {% elif step.outcome == "NOT_APPLICABLE" %}
+              <span class="pill na">Not Applicable</span>
+            {% else %}
+              <span class="pill trig">{{ step.outcome }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Policy Provenance</h2>
+    <div class="provenance break">
+      <div class="kv">
+        <div class="label">Policy Pack ID</div>
+        <div class="value mono">{{ policy_pack_id }}</div>
+        <div class="label">Policy Pack Version</div>
+        <div class="value mono">{{ policy_pack_version }}</div>
+        <div class="label">Policy Pack Hash (SHA-256)</div>
+        <div class="value mono hash">{{ policy_pack_hash }}</div>
+      </div>
+      <p class="small" style="margin-top:12px;">
+        This recommendation is cryptographically bound to the exact policy wording evaluated at decision time.
+      </p>
     </div>
 
-    {% if authority_citations and authority_citations|length > 0 %}
-    <div class="card break" style="margin-top:12px;">
-      <h2>Policy Citations</h2>
-      <div class="small">Cited policy wording excerpts (hash-verified).</div>
-      {% for c in authority_citations %}
-        <div class="citation break">
-          <div class="ref">
-            <strong>{{ c.section_ref }}</strong>
-            &nbsp;|&nbsp; <span class="mono">{{ c.authority_ref_id }}</span>
-            &nbsp;|&nbsp; Excerpt Hash: <span class="mono">{{ c.excerpt_hash }}</span>
-          </div>
-          {% if c.excerpt %}
-            <div class="excerpt">{{ c.excerpt }}</div>
-          {% endif %}
-        </div>
-      {% endfor %}
+    <div class="statement break">
+      <strong>Determinism & Auditability Statement</strong><br><br>
+      This claim evaluation was produced by a deterministic rule engine.
+      Re-evaluation using identical inputs and the same policy pack will produce identical results.<br><br>
+      The recommendation may be independently verified using the <code class="mono">/verify</code> endpoint and the recorded provenance fields.
+    </div>
+
+    {% if decision_status == "request_info" %}
+    <div class="compliance break">
+      <strong>Compliance Note</strong><br><br>
+      No coverage denial has been issued.
+      Outstanding exclusions are explicitly identified and require documentary resolution prior to final disposition.
     </div>
     {% endif %}
 
-    <div class="card break" style="margin-top:12px;">
-      <h2>Policy Provenance</h2>
-      <div class="kv">
-        <div>Policy Pack ID</div><div class="mono">{{ policy_pack_id }}</div>
-        <div>Policy Pack Version</div><div class="mono">{{ policy_pack_version }}</div>
-        <div>Policy Pack Hash (SHA-256)</div><div class="mono">{{ policy_pack_hash }}</div>
-        {% if verification %}
-          <div>Verification</div><div><strong>{{ "VALID" if verification.valid else "INVALID" }}</strong> — {{ verification.reason }}</div>
-        {% endif %}
-      </div>
-      <div class="small" style="margin-top:8px;">
-        This memorandum is deterministic and reproducible. Re-evaluating with identical inputs produces identical outputs.
-      </div>
-    </div>
-
     <div class="foot">
-      <div><strong>Determinism & Auditability:</strong> ClaimPilot is a deterministic rule engine (Zero LLM). Decisions are traceable to policy wording and verifiable via cryptographic hashes.</div>
-      <div style="margin-top:6px;"><strong>Verification:</strong> This recommendation can be verified using the <span class="mono">/verify</span> endpoint with the recommendation's provenance fields.</div>
+      <strong>ClaimPilot</strong> — Deterministic • Reproducible • Auditable<br>
+      Generated {{ evaluated_at }}
     </div>
   </div>
 </body>
