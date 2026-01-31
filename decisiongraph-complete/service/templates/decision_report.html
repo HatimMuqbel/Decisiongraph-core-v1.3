@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DecisionGraph - AML/KYC Decision Report</title>
+  <style>
+    :root{
+      --fg:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#ffffff;
+      --chip:#f3f4f6; --ok:#065f46; --warn:#92400e; --bad:#991b1b;
+      --okbg:#ecfdf5; --warnbg:#fffbeb; --badbg:#fef2f2;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{ box-sizing:border-box; }
+    body{ margin:0; padding:24px; font-family:var(--sans); color:var(--fg); background:var(--bg); }
+    .page{ max-width:900px; margin:0 auto; }
+    .header{ text-align:center; padding-bottom:20px; border-bottom:2px solid var(--fg); margin-bottom:24px; }
+    .header h1{ font-size:24px; margin:0 0 4px 0; }
+    .header .subtitle{ color:var(--muted); font-size:14px; }
+    h2{ font-size:16px; margin:24px 0 12px 0; padding-bottom:6px; border-bottom:1px solid var(--border); }
+    h3{ font-size:14px; margin:16px 0 8px 0; }
+    .card{ border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; }
+    .kv{ display:grid; grid-template-columns: 180px 1fr; gap:8px 16px; font-size:14px; }
+    .kv .label{ color:var(--muted); }
+    .kv .value{ font-weight:600; }
+    .kv .value.mono{ font-family:var(--mono); font-size:13px; }
+    table{ width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
+    th, td{ text-align:left; padding:10px 12px; border:1px solid var(--border); vertical-align:top; }
+    th{ background:#f9fafb; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
+    .status{ border-radius:8px; padding:16px; margin:12px 0; }
+    .status.ok{ background:var(--okbg); border:1px solid #a7f3d0; }
+    .status.warn{ background:var(--warnbg); border:1px solid #fcd34d; }
+    .status.bad{ background:var(--badbg); border:1px solid #fecaca; }
+    .status h3{ margin:0 0 8px 0; font-size:15px; }
+    .status p{ margin:0; font-size:14px; color:var(--fg); }
+    .status ul{ margin:8px 0 0 0; padding-left:20px; }
+    .status li{ margin:4px 0; }
+    .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+    .pill.na{ background:#f3f4f6; color:#374151; }
+    .pill.req{ background:#fffbeb; color:var(--warn); }
+    .pill.trig{ background:#fef2f2; color:var(--bad); }
+    .pill.pass{ background:#ecfdf5; color:var(--ok); }
+    .mono{ font-family:var(--mono); }
+    .small{ font-size:12px; color:var(--muted); }
+    .gate-block{ background:#f9fafb; border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; }
+    .gate-block h4{ margin:0 0 12px 0; font-size:14px; display:flex; align-items:center; gap:8px; }
+    .gate-section{ display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+    .gate-section:last-child{ border-bottom:none; }
+    .gate-section .section-name{ font-weight:600; font-size:13px; }
+    .gate-section .section-reason{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .provenance{ background:#f9fafb; border:1px solid var(--border); border-radius:8px; padding:16px; }
+    .provenance .hash{ word-break:break-all; font-size:12px; }
+    .statement{ background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
+    .regulatory{ background:#fefce8; border:1px solid #fde047; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
+    .foot{ margin-top:24px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; text-align:center; }
+    .break{ break-inside:avoid; page-break-inside:avoid; }
+    @media print {
+      body { padding: 12px; }
+      .page { max-width: 100%; }
+      .status, .gate-block, .provenance, .statement, .regulatory { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <h1>AML/KYC Decision Report</h1>
+      <div class="subtitle">Bank-Grade Dual-Gate Engine (Zero LLM)</div>
+    </div>
+
+    <h2>Administrative Details</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Decision ID</div>
+        <div class="value mono">{{ decision_id_short }}...</div>
+        <div class="label">Case ID</div>
+        <div class="value mono">{{ case_id }}</div>
+        <div class="label">Timestamp</div>
+        <div class="value mono">{{ timestamp }}</div>
+        <div class="label">Jurisdiction</div>
+        <div class="value">{{ jurisdiction }}</div>
+        <div class="label">Engine Version</div>
+        <div class="value mono">{{ engine_version }}</div>
+        <div class="label">Policy Version</div>
+        <div class="value mono">{{ policy_version }}</div>
+      </div>
+    </div>
+
+    <h2>Transaction Facts</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fact in transaction_facts %}
+        <tr>
+          <td>{{ fact.field }}</td>
+          <td class="mono">{{ fact.value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Decision</h2>
+    {% if decision_status == "pass" %}
+      <div class="status ok break">
+        <h3>PASS — Transaction Allowed</h3>
+        <p>{{ decision_explainer }}</p>
+      </div>
+    {% elif decision_status == "escalate" %}
+      <div class="status bad break">
+        <h3>ESCALATE — {{ action }}</h3>
+        <p>{{ decision_explainer }}</p>
+        {% if escalation_reasons and escalation_reasons|length > 0 %}
+          <p style="margin-top:12px;"><strong>Escalation triggers:</strong></p>
+          <ul>
+            {% for reason in escalation_reasons %}
+              <li>{{ reason }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="status warn break">
+        <h3>REVIEW REQUIRED</h3>
+        <p>{{ decision_explainer }}</p>
+      </div>
+    {% endif %}
+
+    <h2>Gate 1: Zero-False-Escalation</h2>
+    <div class="gate-block break">
+      <h4>
+        Decision:
+        {% if gate1_passed %}
+          <span class="pill pass">ALLOWED</span>
+        {% else %}
+          <span class="pill trig">BLOCKED</span>
+        {% endif %}
+      </h4>
+      {% if gate1_sections and gate1_sections|length > 0 %}
+        {% for section in gate1_sections %}
+        <div class="gate-section">
+          {% if section.passed %}
+            <span class="pill pass">PASS</span>
+          {% else %}
+            <span class="pill trig">FAIL</span>
+          {% endif %}
+          <div>
+            <div class="section-name">{{ section.name }}</div>
+            <div class="section-reason">{{ section.reason }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="small">No sections evaluated</p>
+      {% endif %}
+    </div>
+
+    <h2>Gate 2: STR Threshold</h2>
+    <div class="gate-block break">
+      <h4>
+        STR Required:
+        {% if str_required %}
+          <span class="pill trig">YES</span>
+        {% else %}
+          <span class="pill pass">NO</span>
+        {% endif %}
+      </h4>
+      {% if gate2_sections and gate2_sections|length > 0 %}
+        {% for section in gate2_sections %}
+        <div class="gate-section">
+          {% if section.passed %}
+            <span class="pill pass">PASS</span>
+          {% else %}
+            <span class="pill req">REVIEW</span>
+          {% endif %}
+          <div>
+            <div class="section-name">{{ section.name }}</div>
+            <div class="section-reason">{{ section.reason }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="small">No sections evaluated</p>
+      {% endif %}
+    </div>
+
+    <h2>Rules Evaluated</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th style="width:140px;">Rule Code</th>
+          <th style="width:120px;">Result</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules_fired %}
+        <tr>
+          <td class="mono">{{ rule.code }}</td>
+          <td>
+            {% if rule.result in ['CLEAR', 'NOT_APPLICABLE', 'APPLIED'] %}
+              <span class="pill pass">{{ rule.result }}</span>
+            {% elif rule.result == 'TRIGGERED' or rule.result == 'ACTIVATED' %}
+              <span class="pill trig">{{ rule.result }}</span>
+            {% else %}
+              <span class="pill na">{{ rule.result }}</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ rule.reason }}</td>
+        </tr>
+        {% endfor %}
+        {% if not rules_fired %}
+        <tr>
+          <td colspan="3" class="small">No rules evaluated</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <h2>Evidence Considered</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in evidence_used %}
+        <tr>
+          <td class="mono">{{ ev.field }}</td>
+          <td>
+            {% if ev.value is sameas true %}
+              Yes
+            {% elif ev.value is sameas false %}
+              No
+            {% else %}
+              {{ ev.value }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not evidence_used %}
+        <tr>
+          <td colspan="2" class="small">No evidence recorded</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <h2>Decision Provenance</h2>
+    <div class="provenance break">
+      <div class="kv">
+        <div class="label">Decision Hash (SHA-256)</div>
+        <div class="value mono hash">{{ decision_id }}</div>
+        <div class="label">Input Hash</div>
+        <div class="value mono hash">{{ input_hash }}</div>
+        <div class="label">Policy Hash</div>
+        <div class="value mono hash">{{ policy_hash }}</div>
+        <div class="label">Decision Path</div>
+        <div class="value mono">{{ decision_path_trace or 'N/A' }}</div>
+      </div>
+      <p class="small" style="margin-top:12px;">
+        This decision is cryptographically bound to the exact input and policy evaluated at decision time.
+      </p>
+    </div>
+
+    <div class="statement break">
+      <strong>Determinism & Auditability Statement</strong><br><br>
+      This decision was produced by a deterministic rule engine.
+      Re-evaluation using identical inputs and the same policy version will produce identical results.<br><br>
+      The decision may be independently verified using the <code class="mono">/verify</code> endpoint and the recorded provenance fields.
+    </div>
+
+    {% if str_required %}
+    <div class="regulatory break">
+      <strong>Regulatory Note</strong><br><br>
+      A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.
+      This report must be filed within 30 days of the suspicion being formed.
+    </div>
+    {% endif %}
+
+    <div class="foot">
+      <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
+      Generated {{ timestamp }}
+    </div>
+  </div>
+</body>
+</html>
