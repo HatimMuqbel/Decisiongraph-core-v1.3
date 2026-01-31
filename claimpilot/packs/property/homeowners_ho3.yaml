@@ -1,11 +1,16 @@
-policy:
-  id: "CA-ON-HO3-2024"
-  jurisdiction: "CA-ON"
-  line_of_business: "property"
-  product_code: "HO3"
-  name: "Homeowners Comprehensive Form"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-ON-HO3-2024"
+jurisdiction: "CA-ON"
+line_of_business: "property"
+product_code: "HO3"
+name: "Homeowners Comprehensive Form"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Comprehensive homeowners insurance policy"
+regulatory_body: "FSRA"
+
+authorities: []
+conditions: []
 
 coverage_sections:
   - id: "coverage_a"
@@ -14,33 +19,44 @@ coverage_sections:
     description: "Coverage for the dwelling structure"
     triggers:
       - loss_type: "fire"
+        claimant_types: []
       - loss_type: "lightning"
+        claimant_types: []
       - loss_type: "windstorm"
+        claimant_types: []
       - loss_type: "hail"
+        claimant_types: []
       - loss_type: "explosion"
+        claimant_types: []
       - loss_type: "riot"
+        claimant_types: []
       - loss_type: "aircraft"
+        claimant_types: []
       - loss_type: "vehicles"
+        claimant_types: []
       - loss_type: "smoke"
+        claimant_types: []
       - loss_type: "vandalism"
+        claimant_types: []
       - loss_type: "theft"
+        claimant_types: []
       - loss_type: "falling_objects"
+        claimant_types: []
       - loss_type: "weight_of_ice_snow"
+        claimant_types: []
       - loss_type: "water_damage_sudden"
+        claimant_types: []
       - loss_type: "electrical_damage"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "loss.location"
-              operator: "eq"
-              value: "policy.insured_location"
+            field: "loss.location"
+            value: "policy.insured_location"
 
   - id: "coverage_b"
     code: "Coverage B"
@@ -48,22 +64,22 @@ coverage_sections:
     description: "Coverage for detached structures (garage, shed, fence)"
     triggers:
       - loss_type: "fire"
+        claimant_types: []
       - loss_type: "windstorm"
+        claimant_types: []
       - loss_type: "vandalism"
+        claimant_types: []
       - loss_type: "theft"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
-          - op: "eq"
-            predicate:
-              field: "structure.type"
-              operator: "in"
-              value: ["detached_garage", "shed", "fence", "pool", "guest_house"]
+            field: "policy.status"
+            value: "active"
+          - op: "in"
+            field: "structure.type"
+            value: ["detached_garage", "shed", "fence", "pool", "guest_house"]
 
   - id: "coverage_c"
     code: "Coverage C"
@@ -71,15 +87,17 @@ coverage_sections:
     description: "Coverage for contents and personal belongings"
     triggers:
       - loss_type: "theft"
+        claimant_types: []
       - loss_type: "fire"
+        claimant_types: []
       - loss_type: "water_damage_sudden"
+        claimant_types: []
       - loss_type: "vandalism"
+        claimant_types: []
     preconditions:
       - op: "eq"
-        predicate:
-          field: "policy.status"
-          operator: "eq"
-          value: "active"
+        field: "policy.status"
+        value: "active"
 
   - id: "coverage_d"
     code: "Coverage D"
@@ -87,19 +105,16 @@ coverage_sections:
     description: "Additional living expenses if home is uninhabitable"
     triggers:
       - loss_type: "displacement"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "dwelling.habitable"
-              operator: "eq"
-              value: false
+            field: "dwelling.habitable"
+            value: false
 
   - id: "coverage_e"
     code: "Coverage E"
@@ -107,13 +122,13 @@ coverage_sections:
     description: "Liability for bodily injury or property damage to others"
     triggers:
       - loss_type: "bodily_injury_tp"
+        claimant_types: []
       - loss_type: "property_damage_tp"
+        claimant_types: []
     preconditions:
       - op: "eq"
-        predicate:
-          field: "policy.status"
-          operator: "eq"
-          value: "active"
+        field: "policy.status"
+        value: "active"
 
 exclusions:
   - id: "ex_flood"
@@ -127,11 +142,9 @@ exclusions:
     policy_section_ref: "Exclusions, Section 1.a"
     applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
     trigger_conditions:
-      - op: "eq"
-        predicate:
-          field: "loss.cause"
-          operator: "in"
-          value: ["flood", "surface_water", "storm_surge", "tidal_wave", "overflow"]
+      - op: "in"
+        field: "loss.cause"
+        value: ["flood", "surface_water", "storm_surge", "tidal_wave", "overflow"]
     evaluation_questions:
       - "Was the water damage caused by flood or surface water?"
       - "Did water enter from ground level or below?"
@@ -154,11 +167,9 @@ exclusions:
     policy_section_ref: "Exclusions, Section 1.b"
     applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
     trigger_conditions:
-      - op: "eq"
-        predicate:
-          field: "loss.cause"
-          operator: "in"
-          value: ["earthquake", "earth_movement", "landslide", "mudflow"]
+      - op: "in"
+        field: "loss.cause"
+        value: ["earthquake", "earth_movement", "landslide", "mudflow"]
     evaluation_questions:
       - "Was there seismic activity at the time of loss?"
       - "Is the damage consistent with earth movement?"
@@ -179,10 +190,8 @@ exclusions:
     applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "insured.mitigation_efforts"
-          operator: "eq"
-          value: false
+        field: "insured.mitigation_efforts"
+        value: false
     evaluation_questions:
       - "Did the insured take reasonable steps to prevent further damage?"
       - "Was property left unprotected after the initial loss?"
@@ -204,10 +213,8 @@ exclusions:
     applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c"]
     trigger_conditions:
       - op: "gt"
-        predicate:
-          field: "dwelling.days_vacant"
-          operator: "gt"
-          value: 30
+        field: "dwelling.days_vacant"
+        value: 30
     evaluation_questions:
       - "How long has the property been vacant?"
       - "Was there a vacancy permit in place?"
@@ -231,16 +238,12 @@ exclusions:
     trigger_conditions:
       - op: "or"
         children:
+          - op: "in"
+            field: "loss.cause"
+            value: ["wear_tear", "deterioration", "rust", "rot", "mold_gradual"]
           - op: "eq"
-            predicate:
-              field: "loss.cause"
-              operator: "in"
-              value: ["wear_tear", "deterioration", "rust", "rot", "mold_gradual"]
-          - op: "eq"
-            predicate:
-              field: "damage.gradual"
-              operator: "eq"
-              value: true
+            field: "damage.gradual"
+            value: true
     evaluation_questions:
       - "Is the damage result of gradual deterioration?"
       - "Was this a maintenance issue?"
@@ -262,10 +265,8 @@ exclusions:
     applies_to_coverages: ["coverage_a", "coverage_b", "coverage_c", "coverage_e"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "loss.intentional_act"
-          operator: "eq"
-          value: true
+        field: "loss.intentional_act"
+        value: true
     evaluation_questions:
       - "Was the loss caused intentionally?"
       - "Is there evidence of arson or fraud?"
@@ -279,50 +280,42 @@ exclusions:
 evidence_rules:
   - id: "property_claim_basic"
     name: "Basic Property Claim Evidence"
+    description: "Standard evidence for property claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "claim_form"
         description: "Signed proof of loss"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "damage_photos"
         description: "Photos of damage"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "repair_estimate"
         description: "Contractor estimate"
-        required: true
+        strictness: "blocking_finalization"
     recommended_documents:
       - doc_type: "receipts"
         description: "Receipts for damaged items"
-        required: false
+        strictness: "recommended"
       - doc_type: "police_report"
         description: "If theft or vandalism"
-        required: false
+        strictness: "recommended"
 
 authority_rules:
   - id: "total_loss"
     name: "Total Loss Requires Manager"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.total_loss"
-        operator: "eq"
-        value: true
+    description: "Total loss claims require manager review"
     required_role: "manager"
-    reason: "Total loss claims require manager review"
+    trigger_condition_id: "cond_total_loss"
 
   - id: "arson_suspected"
     name: "Arson Requires SIU"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "loss.arson_suspected"
-        operator: "eq"
-        value: true
+    description: "Suspected arson requires SIU investigation"
     required_role: "siu"
-    reason: "Suspected arson requires SIU investigation"
+    trigger_condition_id: "cond_arson"
 
 timeline_rules:
   - id: "acknowledge"
+    name: "Acknowledge Claim"
     event_type: "acknowledge"
     anchor: "report_date"
     days_from_anchor: 1
@@ -330,6 +323,7 @@ timeline_rules:
     description: "Acknowledge claim within 1 business day"
 
   - id: "adjuster_contact"
+    name: "Adjuster Contact"
     event_type: "request_info"
     anchor: "report_date"
     days_from_anchor: 5

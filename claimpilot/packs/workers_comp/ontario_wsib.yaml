@@ -1,11 +1,16 @@
-policy:
-  id: "CA-ON-WSIB-2024"
-  jurisdiction: "CA-ON"
-  line_of_business: "workers_comp"
-  product_code: "WSIB"
-  name: "Ontario Workers Compensation"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-ON-WSIB-2024"
+jurisdiction: "CA-ON"
+line_of_business: "workers_comp"
+product_code: "WSIB"
+name: "Ontario Workers Compensation"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Workers compensation coverage under WSIB"
+regulatory_body: "WSIB"
+
+authorities: []
+conditions: []
 
 coverage_sections:
   - id: "loss_of_earnings"
@@ -14,25 +19,21 @@ coverage_sections:
     description: "Wage replacement for work-related injury"
     triggers:
       - loss_type: "work_injury"
+        claimant_types: []
       - loss_type: "occupational_disease"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "employer.wsib_registered"
-              operator: "eq"
-              value: true
+            field: "employer.wsib_registered"
+            value: true
           - op: "eq"
-            predicate:
-              field: "injury.work_related"
-              operator: "eq"
-              value: true
+            field: "injury.work_related"
+            value: true
           - op: "gt"
-            predicate:
-              field: "time_loss.days"
-              operator: "gt"
-              value: 0
+            field: "time_loss.days"
+            value: 0
 
   - id: "healthcare"
     code: "HC"
@@ -40,25 +41,21 @@ coverage_sections:
     description: "Medical treatment for work-related injury"
     triggers:
       - loss_type: "work_injury"
+        claimant_types: []
       - loss_type: "occupational_disease"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "employer.wsib_registered"
-              operator: "eq"
-              value: true
+            field: "employer.wsib_registered"
+            value: true
           - op: "eq"
-            predicate:
-              field: "injury.work_related"
-              operator: "eq"
-              value: true
+            field: "injury.work_related"
+            value: true
           - op: "eq"
-            predicate:
-              field: "treatment.related_to_injury"
-              operator: "eq"
-              value: true
+            field: "treatment.related_to_injury"
+            value: true
 
   - id: "permanent_impairment"
     code: "NEL"
@@ -66,24 +63,19 @@ coverage_sections:
     description: "Compensation for permanent physical impairment"
     triggers:
       - loss_type: "permanent_impairment"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "injury.work_related"
-              operator: "eq"
-              value: true
+            field: "injury.work_related"
+            value: true
           - op: "eq"
-            predicate:
-              field: "injury.maximum_medical_recovery"
-              operator: "eq"
-              value: true
+            field: "injury.maximum_medical_recovery"
+            value: true
           - op: "gt"
-            predicate:
-              field: "impairment.rating_percent"
-              operator: "gt"
-              value: 0
+            field: "impairment.rating_percent"
+            value: 0
 
   - id: "survivor_benefits"
     code: "SURV"
@@ -91,19 +83,16 @@ coverage_sections:
     description: "Benefits to dependents of worker who died from work injury"
     triggers:
       - loss_type: "fatality"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "death.work_related"
-              operator: "eq"
-              value: true
+            field: "death.work_related"
+            value: true
           - op: "eq"
-            predicate:
-              field: "claimant.dependent_status"
-              operator: "eq"
-              value: true
+            field: "claimant.dependent_status"
+            value: true
 
 exclusions:
   - id: "ex_self_inflicted"
@@ -118,10 +107,8 @@ exclusions:
     applies_to_coverages: ["loss_of_earnings", "healthcare"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "injury.self_inflicted"
-          operator: "eq"
-          value: true
+        field: "injury.self_inflicted"
+        value: true
     evaluation_questions:
       - "Was the injury intentionally self-inflicted?"
       - "Is there evidence of serious and wilful misconduct?"
@@ -143,10 +130,8 @@ exclusions:
     applies_to_coverages: ["loss_of_earnings", "healthcare", "permanent_impairment"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "injury.work_related"
-          operator: "eq"
-          value: false
+        field: "injury.work_related"
+        value: false
     evaluation_questions:
       - "Did the injury occur at work?"
       - "Was the worker performing job duties?"
@@ -172,15 +157,11 @@ exclusions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "condition.preexisting"
-              operator: "eq"
-              value: true
+            field: "condition.preexisting"
+            value: true
           - op: "eq"
-            predicate:
-              field: "condition.aggravated_by_work"
-              operator: "eq"
-              value: false
+            field: "condition.aggravated_by_work"
+            value: false
     evaluation_questions:
       - "Did the worker have a pre-existing condition?"
       - "Was the condition aggravated by the work injury?"
@@ -203,10 +184,8 @@ exclusions:
     applies_to_coverages: ["loss_of_earnings", "healthcare"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "injury.intoxication_sole_cause"
-          operator: "eq"
-          value: true
+        field: "injury.intoxication_sole_cause"
+        value: true
     evaluation_questions:
       - "Was the worker intoxicated at the time of injury?"
       - "Was intoxication the sole cause of the injury?"
@@ -219,77 +198,61 @@ exclusions:
 evidence_rules:
   - id: "initial_claim"
     name: "Initial Claim Evidence"
+    description: "Evidence for initial WSIB claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "form_7"
         description: "Employer's Report of Injury (Form 7)"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "form_8"
         description: "Health Professional's Report (Form 8)"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "worker_statement"
         description: "Worker's statement of injury"
-        required: true
+        strictness: "blocking_finalization"
 
   - id: "ongoing_benefits"
     name: "Ongoing Benefits Evidence"
+    description: "Evidence for ongoing benefit claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "functional_abilities_form"
         description: "FAF from treating physician"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "treatment_plan"
         description: "Current treatment plan"
-        required: true
+        strictness: "blocking_finalization"
 
 authority_rules:
   - id: "initial_entitlement"
     name: "Initial Entitlement Decision"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.type"
-        operator: "eq"
-        value: "initial"
+    description: "All initial entitlement decisions require adjudicator"
     required_role: "adjudicator"
-    reason: "All initial entitlement decisions require adjudicator"
+    trigger_condition_id: "cond_initial"
 
   - id: "fatality"
     name: "Fatality Claims"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.fatality"
-        operator: "eq"
-        value: true
+    description: "Fatality claims require manager review"
     required_role: "manager"
-    reason: "Fatality claims require manager review"
+    trigger_condition_id: "cond_fatality"
 
   - id: "permanent_impairment"
     name: "NEL Assessment"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.nel_assessment"
-        operator: "eq"
-        value: true
+    description: "Permanent impairment requires specialist assessment"
     required_role: "nel_specialist"
-    reason: "Permanent impairment requires specialist assessment"
+    trigger_condition_id: "cond_nel"
 
 timeline_rules:
   - id: "initial_decision"
+    name: "Initial Decision"
     event_type: "coverage_decision_due"
     anchor: "report_date"
     days_from_anchor: 14
     business_days: true
     description: "Initial entitlement decision within 14 business days"
-    authority_ref:
-      authority_type: "regulation"
-      title: "WSIB Operational Policy"
-      section: "11-01-01"
-      source_name: "WSIB"
 
   - id: "first_payment"
+    name: "First Payment"
     event_type: "payment_due"
     anchor: "report_date"
     days_from_anchor: 14

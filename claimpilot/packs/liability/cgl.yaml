@@ -1,11 +1,16 @@
-policy:
-  id: "CA-CGL-2024"
-  jurisdiction: "CA"
-  line_of_business: "liability"
-  product_code: "CGL"
-  name: "Commercial General Liability"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-CGL-2024"
+jurisdiction: "CA"
+line_of_business: "liability"
+product_code: "CGL"
+name: "Commercial General Liability"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Commercial general liability insurance"
+regulatory_body: "FSRA"
+
+authorities: []
+conditions: []
 
 coverage_sections:
   - id: "coverage_a"
@@ -14,25 +19,21 @@ coverage_sections:
     description: "Third-party liability for BI and PD"
     triggers:
       - loss_type: "bodily_injury_tp"
+        claimant_types: []
       - loss_type: "property_damage_tp"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "occurrence.during_policy_period"
-              operator: "eq"
-              value: true
+            field: "occurrence.during_policy_period"
+            value: true
           - op: "eq"
-            predicate:
-              field: "occurrence.in_coverage_territory"
-              operator: "eq"
-              value: true
+            field: "occurrence.in_coverage_territory"
+            value: true
 
   - id: "coverage_b"
     code: "Coverage B"
@@ -40,22 +41,22 @@ coverage_sections:
     description: "Liability for personal injury offenses"
     triggers:
       - loss_type: "defamation"
+        claimant_types: []
       - loss_type: "false_arrest"
+        claimant_types: []
       - loss_type: "invasion_of_privacy"
+        claimant_types: []
       - loss_type: "copyright_infringement_advertising"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "offense.committed_during_policy"
-              operator: "eq"
-              value: true
+            field: "offense.committed_during_policy"
+            value: true
 
   - id: "coverage_c"
     code: "Coverage C"
@@ -63,19 +64,16 @@ coverage_sections:
     description: "Medical expenses regardless of liability"
     triggers:
       - loss_type: "medical_expense"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "injury.on_premises"
-              operator: "eq"
-              value: true
+            field: "injury.on_premises"
+            value: true
           - op: "eq"
-            predicate:
-              field: "claimant.not_insured"
-              operator: "eq"
-              value: true
+            field: "claimant.not_insured"
+            value: true
     limits:
       per_person: 10000
       currency: "CAD"
@@ -86,27 +84,23 @@ coverage_sections:
     description: "Liability for products and completed work"
     triggers:
       - loss_type: "product_liability"
+        claimant_types: []
       - loss_type: "completed_operations"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "or"
             children:
               - op: "eq"
-                predicate:
-                  field: "loss.from_product"
-                  operator: "eq"
-                  value: true
+                field: "loss.from_product"
+                value: true
               - op: "eq"
-                predicate:
-                  field: "loss.from_completed_work"
-                  operator: "eq"
-                  value: true
+                field: "loss.from_completed_work"
+                value: true
 
 exclusions:
   - id: "ex_expected_intended"
@@ -120,10 +114,8 @@ exclusions:
     applies_to_coverages: ["coverage_a", "products_completed"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "injury.expected_intended"
-          operator: "eq"
-          value: true
+        field: "injury.expected_intended"
+        value: true
     evaluation_questions:
       - "Was the injury/damage expected or intended?"
       - "What was the insured's state of mind?"
@@ -147,15 +139,11 @@ exclusions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "liability.contractual"
-              operator: "eq"
-              value: true
+            field: "liability.contractual"
+            value: true
           - op: "eq"
-            predicate:
-              field: "contract.insured_contract"
-              operator: "eq"
-              value: false
+            field: "contract.insured_contract"
+            value: false
     evaluation_questions:
       - "Is this liability assumed under a contract?"
       - "Does the contract qualify as an 'insured contract'?"
@@ -176,10 +164,8 @@ exclusions:
     applies_to_coverages: ["coverage_a", "products_completed"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "loss.pollution_related"
-          operator: "eq"
-          value: true
+        field: "loss.pollution_related"
+        value: true
     evaluation_questions:
       - "Did the loss involve pollutants?"
       - "Is there a pollution liability endorsement?"
@@ -201,10 +187,8 @@ exclusions:
     applies_to_coverages: ["coverage_a"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "loss.professional_services"
-          operator: "eq"
-          value: true
+        field: "loss.professional_services"
+        value: true
     evaluation_questions:
       - "Did the loss arise from professional services?"
       - "Is there professional liability coverage?"
@@ -227,10 +211,8 @@ exclusions:
     applies_to_coverages: ["coverage_a"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "loss.auto_involved"
-          operator: "eq"
-          value: true
+        field: "loss.auto_involved"
+        value: true
     evaluation_questions:
       - "Did the loss involve an auto?"
       - "Was the auto owned/operated by the insured?"
@@ -253,10 +235,8 @@ exclusions:
     applies_to_coverages: ["products_completed"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "damage.to_insureds_work"
-          operator: "eq"
-          value: true
+        field: "damage.to_insureds_work"
+        value: true
     evaluation_questions:
       - "Is the damage to the insured's own work?"
       - "Is there a subcontractor exception?"
@@ -269,61 +249,48 @@ exclusions:
 evidence_rules:
   - id: "liability_claim"
     name: "Liability Claim Evidence"
+    description: "Evidence for liability claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "claim_notice"
         description: "Notice of claim or suit"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "incident_report"
         description: "Insured's incident report"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "claimant_demand"
         description: "Claimant's demand or complaint"
-        required: true
+        strictness: "blocking_finalization"
     recommended_documents:
       - doc_type: "witness_statements"
         description: "Witness accounts"
-        required: false
+        strictness: "recommended"
       - doc_type: "photos"
         description: "Scene and injury photos"
-        required: false
+        strictness: "recommended"
 
 authority_rules:
   - id: "lawsuit"
     name: "Lawsuit Requires Claims Counsel"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.lawsuit_filed"
-        operator: "eq"
-        value: true
+    description: "All lawsuits require claims counsel involvement"
     required_role: "claims_counsel"
-    reason: "All lawsuits require claims counsel involvement"
+    trigger_condition_id: "cond_lawsuit"
 
   - id: "high_exposure"
     name: "High Exposure Requires Manager"
-    trigger_conditions:
-      op: "gt"
-      predicate:
-        field: "claim.exposure_estimate"
-        operator: "gt"
-        value: 250000
+    description: "High exposure claims require manager oversight"
     required_role: "claims_manager"
-    reason: "High exposure claims require manager oversight"
+    trigger_condition_id: "cond_high_exposure"
 
   - id: "coverage_dispute"
     name: "Coverage Dispute Requires Coverage Counsel"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "coverage.disputed"
-        operator: "eq"
-        value: true
+    description: "Coverage disputes require coverage counsel review"
     required_role: "coverage_counsel"
-    reason: "Coverage disputes require coverage counsel review"
+    trigger_condition_id: "cond_coverage_dispute"
 
 timeline_rules:
   - id: "acknowledge"
+    name: "Acknowledge Claim"
     event_type: "acknowledge"
     anchor: "report_date"
     days_from_anchor: 1
@@ -331,6 +298,7 @@ timeline_rules:
     description: "Acknowledge claim within 1 business day"
 
   - id: "coverage_position"
+    name: "Coverage Position"
     event_type: "coverage_decision_due"
     anchor: "report_date"
     days_from_anchor: 30

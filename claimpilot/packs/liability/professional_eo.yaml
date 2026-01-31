@@ -1,11 +1,16 @@
-policy:
-  id: "CA-EO-2024"
-  jurisdiction: "CA"
-  line_of_business: "liability"
-  product_code: "E&O"
-  name: "Professional Liability - Errors & Omissions"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-EO-2024"
+jurisdiction: "CA"
+line_of_business: "professional"
+product_code: "E&O"
+name: "Professional Liability - Errors & Omissions"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Professional liability errors and omissions insurance"
+regulatory_body: "FSRA"
+
+authorities: []
+conditions: []
 
 coverage_sections:
   - id: "professional_liability"
@@ -14,26 +19,23 @@ coverage_sections:
     description: "Coverage for wrongful acts in professional services"
     triggers:
       - loss_type: "professional_negligence"
+        claimant_types: []
       - loss_type: "errors_omissions"
+        claimant_types: []
       - loss_type: "breach_of_duty"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "claim.first_made_during_policy"
-              operator: "eq"
-              value: true
+            field: "claim.first_made_during_policy"
+            value: true
           - op: "eq"
-            predicate:
-              field: "wrongful_act.in_professional_capacity"
-              operator: "eq"
-              value: true
+            field: "wrongful_act.in_professional_capacity"
+            value: true
 
   - id: "defense_costs"
     code: "Defense"
@@ -41,12 +43,11 @@ coverage_sections:
     description: "Costs to defend claims"
     triggers:
       - loss_type: "defense"
+        claimant_types: []
     preconditions:
       - op: "eq"
-        predicate:
-          field: "claim.potentially_covered"
-          operator: "eq"
-          value: true
+        field: "claim.potentially_covered"
+        value: true
 
 exclusions:
   - id: "ex_prior_acts"
@@ -60,10 +61,8 @@ exclusions:
     applies_to_coverages: ["professional_liability"]
     trigger_conditions:
       - op: "lt"
-        predicate:
-          field: "wrongful_act.date"
-          operator: "lt"
-          value: "policy.retroactive_date"
+        field: "wrongful_act.date"
+        value: "policy.retroactive_date"
     evaluation_questions:
       - "When did the alleged wrongful act occur?"
       - "What is the policy retroactive date?"
@@ -85,10 +84,8 @@ exclusions:
     applies_to_coverages: ["professional_liability"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "circumstances.known_prior"
-          operator: "eq"
-          value: true
+        field: "circumstances.known_prior"
+        value: true
     evaluation_questions:
       - "Did the insured know of these circumstances before policy inception?"
       - "Was this disclosed on the application?"
@@ -112,20 +109,14 @@ exclusions:
       - op: "or"
         children:
           - op: "eq"
-            predicate:
-              field: "act.dishonest"
-              operator: "eq"
-              value: true
+            field: "act.dishonest"
+            value: true
           - op: "eq"
-            predicate:
-              field: "act.fraudulent"
-              operator: "eq"
-              value: true
+            field: "act.fraudulent"
+            value: true
           - op: "eq"
-            predicate:
-              field: "act.criminal"
-              operator: "eq"
-              value: true
+            field: "act.criminal"
+            value: true
     evaluation_questions:
       - "Is there an allegation of intentional or dishonest conduct?"
       - "Has there been a final adjudication?"
@@ -149,15 +140,11 @@ exclusions:
       - op: "or"
         children:
           - op: "eq"
-            predicate:
-              field: "claim.bodily_injury"
-              operator: "eq"
-              value: true
+            field: "claim.bodily_injury"
+            value: true
           - op: "eq"
-            predicate:
-              field: "claim.property_damage"
-              operator: "eq"
-              value: true
+            field: "claim.property_damage"
+            value: true
     evaluation_questions:
       - "Does the claim allege bodily injury or property damage?"
       - "Is there a separate CGL policy?"
@@ -169,39 +156,36 @@ exclusions:
 evidence_rules:
   - id: "eo_claim"
     name: "E&O Claim Evidence"
+    description: "Evidence for E&O claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "claim_notice"
         description: "Written claim or demand"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "engagement_letter"
         description: "Client engagement documentation"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "work_product"
         description: "Relevant work product"
-        required: true
+        strictness: "blocking_finalization"
     recommended_documents:
       - doc_type: "correspondence"
         description: "Client correspondence"
-        required: false
+        strictness: "recommended"
       - doc_type: "expert_report"
         description: "Expert opinion if needed"
-        required: false
+        strictness: "recommended"
 
 authority_rules:
   - id: "all_eo_claims"
     name: "All E&O Claims Require Specialist"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.type"
-        operator: "eq"
-        value: "professional_liability"
+    description: "All E&O claims require specialist adjuster"
     required_role: "eo_specialist"
-    reason: "All E&O claims require specialist adjuster"
+    trigger_condition_id: "cond_eo_claim"
 
 timeline_rules:
   - id: "acknowledge"
+    name: "Acknowledge Claim"
     event_type: "acknowledge"
     anchor: "report_date"
     days_from_anchor: 1
@@ -209,6 +193,7 @@ timeline_rules:
     description: "Acknowledge claim within 1 business day"
 
   - id: "coverage_analysis"
+    name: "Coverage Analysis"
     event_type: "coverage_decision_due"
     anchor: "report_date"
     days_from_anchor: 21

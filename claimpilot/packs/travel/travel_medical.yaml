@@ -1,11 +1,16 @@
-policy:
-  id: "CA-TRAVEL-2024"
-  jurisdiction: "CA"
-  line_of_business: "health"
-  product_code: "TRAVEL"
-  name: "Travel Medical Insurance"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-TRAVEL-2024"
+jurisdiction: "CA"
+line_of_business: "health"
+product_code: "TRAVEL"
+name: "Travel Medical Insurance"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Travel medical and trip protection insurance"
+regulatory_body: "FSRA"
+
+authorities: []
+conditions: []
 
 coverage_sections:
   - id: "emergency_medical"
@@ -14,25 +19,21 @@ coverage_sections:
     description: "Emergency medical expenses while traveling"
     triggers:
       - loss_type: "emergency_medical"
+        claimant_types: []
       - loss_type: "hospitalization"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "treatment.emergency"
-              operator: "eq"
-              value: true
+            field: "treatment.emergency"
+            value: true
           - op: "eq"
-            predicate:
-              field: "insured.outside_home_province"
-              operator: "eq"
-              value: true
+            field: "insured.outside_home_province"
+            value: true
     limits:
       per_occurrence: 5000000
       currency: "CAD"
@@ -43,19 +44,16 @@ coverage_sections:
     description: "Reimbursement for cancelled trips"
     triggers:
       - loss_type: "trip_cancellation"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "cancellation.covered_reason"
-              operator: "eq"
-              value: true
+            field: "cancellation.covered_reason"
+            value: true
           - op: "eq"
-            predicate:
-              field: "cancellation.before_departure"
-              operator: "eq"
-              value: true
+            field: "cancellation.before_departure"
+            value: true
 
   - id: "trip_interruption"
     code: "Section C"
@@ -63,19 +61,16 @@ coverage_sections:
     description: "Coverage for interrupted trips"
     triggers:
       - loss_type: "trip_interruption"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "interruption.covered_reason"
-              operator: "eq"
-              value: true
+            field: "interruption.covered_reason"
+            value: true
           - op: "eq"
-            predicate:
-              field: "interruption.after_departure"
-              operator: "eq"
-              value: true
+            field: "interruption.after_departure"
+            value: true
 
   - id: "baggage"
     code: "Section D"
@@ -83,11 +78,11 @@ coverage_sections:
     description: "Lost, stolen, or damaged baggage"
     triggers:
       - loss_type: "baggage_loss"
+        claimant_types: []
       - loss_type: "baggage_delay"
+        claimant_types: []
     limits:
       per_occurrence: 2000
-      per_item: 500
-      baggage_delay: 500
       currency: "CAD"
 
   - id: "evacuation"
@@ -96,13 +91,13 @@ coverage_sections:
     description: "Medical evacuation and repatriation"
     triggers:
       - loss_type: "medical_evacuation"
+        claimant_types: []
       - loss_type: "repatriation"
+        claimant_types: []
     preconditions:
       - op: "eq"
-        predicate:
-          field: "evacuation.medically_necessary"
-          operator: "eq"
-          value: true
+        field: "evacuation.medically_necessary"
+        value: true
 
 exclusions:
   - id: "ex_preexisting"
@@ -120,15 +115,11 @@ exclusions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "condition.preexisting"
-              operator: "eq"
-              value: true
+            field: "condition.preexisting"
+            value: true
           - op: "eq"
-            predicate:
-              field: "condition.stable"
-              operator: "eq"
-              value: false
+            field: "condition.stable"
+            value: false
     evaluation_questions:
       - "Did the insured have this condition before departure?"
       - "Was the condition stable for the required period?"
@@ -153,15 +144,11 @@ exclusions:
       - op: "or"
         children:
           - op: "eq"
-            predicate:
-              field: "treatment.emergency"
-              operator: "eq"
-              value: false
+            field: "treatment.emergency"
+            value: false
           - op: "eq"
-            predicate:
-              field: "treatment.elective"
-              operator: "eq"
-              value: true
+            field: "treatment.elective"
+            value: true
     evaluation_questions:
       - "Was this treatment emergency or could it wait?"
       - "Did the treating physician confirm emergency?"
@@ -183,10 +170,8 @@ exclusions:
     applies_to_coverages: ["emergency_medical", "evacuation"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "activity.high_risk"
-          operator: "eq"
-          value: true
+        field: "activity.high_risk"
+        value: true
     evaluation_questions:
       - "What activity was the insured doing when injured?"
       - "Is there a sports/adventure endorsement?"
@@ -208,10 +193,8 @@ exclusions:
     applies_to_coverages: ["emergency_medical", "trip_cancellation", "evacuation"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "destination.advisory_level"
-          operator: "eq"
-          value: 4
+        field: "destination.advisory_level"
+        value: 4
     evaluation_questions:
       - "What was the advisory level at departure?"
       - "When did the insured book travel?"
@@ -224,64 +207,57 @@ exclusions:
 evidence_rules:
   - id: "medical_claim"
     name: "Travel Medical Claim Evidence"
+    description: "Evidence for travel medical claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "claim_form"
         description: "Completed claim form"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "medical_records"
         description: "Foreign medical records"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "receipts"
         description: "Original receipts"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "proof_of_travel"
         description: "Travel itinerary/tickets"
-        required: true
+        strictness: "blocking_finalization"
     recommended_documents:
       - doc_type: "provincial_health_eob"
         description: "Provincial health explanation of benefits"
-        required: false
+        strictness: "recommended"
 
   - id: "cancellation_claim"
     name: "Trip Cancellation Evidence"
+    description: "Evidence for trip cancellation claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "booking_confirmation"
         description: "Original booking"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "cancellation_proof"
         description: "Proof of cancellation"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "reason_documentation"
         description: "Documentation of reason (medical, death, etc.)"
-        required: true
+        strictness: "blocking_finalization"
 
 authority_rules:
   - id: "high_value_medical"
     name: "High Value Medical"
-    trigger_conditions:
-      op: "gt"
-      predicate:
-        field: "claim.amount"
-        operator: "gt"
-        value: 50000
+    description: "High value medical claims require medical director review"
     required_role: "medical_director"
-    reason: "High value medical claims require medical director review"
+    trigger_condition_id: "cond_high_value"
 
   - id: "evacuation"
     name: "Evacuation Authorization"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "claim.type"
-        operator: "eq"
-        value: "medical_evacuation"
+    description: "All evacuations require assistance coordinator authorization"
     required_role: "assistance_coordinator"
-    reason: "All evacuations require assistance coordinator authorization"
+    trigger_condition_id: "cond_evacuation"
 
 timeline_rules:
   - id: "acknowledge"
+    name: "Acknowledge Claim"
     event_type: "acknowledge"
     anchor: "report_date"
     days_from_anchor: 1
@@ -289,6 +265,7 @@ timeline_rules:
     description: "Acknowledge claim within 1 business day"
 
   - id: "adjudicate"
+    name: "Adjudicate Claim"
     event_type: "coverage_decision_due"
     anchor: "report_date"
     days_from_anchor: 15

@@ -1,11 +1,30 @@
-policy:
-  id: "CA-ON-OAP1-2024"
-  jurisdiction: "CA-ON"
-  line_of_business: "auto"
-  product_code: "OAP1"
-  name: "Ontario Automobile Policy - Owner's Form"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-ON-OAP1-2024"
+jurisdiction: "CA-ON"
+line_of_business: "auto"
+product_code: "OAP1"
+name: "Ontario Automobile Policy - Owner's Form"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Standard Ontario automobile insurance policy for private passenger vehicles"
+issuer: "Generic Insurer"
+regulatory_body: "FSRA"
+
+authorities:
+  - id: "fsra_claims"
+    type: "regulation"
+    title: "FSRA Claims Handling Guidelines"
+    section: "Section 3.1"
+    source_name: "FSRA"
+    jurisdiction: "CA-ON"
+  - id: "insurance_act_664"
+    type: "regulation"
+    title: "Insurance Act (Ontario)"
+    section: "Regulation 664"
+    source_name: "Government of Ontario"
+    jurisdiction: "CA-ON"
+
+conditions: []
 
 coverage_sections:
   - id: "section_a"
@@ -21,15 +40,11 @@ coverage_sections:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "policy.premiums_current"
-              operator: "eq"
-              value: true
+            field: "policy.premiums_current"
+            value: true
 
   - id: "section_b"
     code: "Section B"
@@ -40,10 +55,8 @@ coverage_sections:
         claimant_types: ["insured", "named_insured"]
     preconditions:
       - op: "eq"
-        predicate:
-          field: "policy.status"
-          operator: "eq"
-          value: "active"
+        field: "policy.status"
+        value: "active"
 
   - id: "section_c_collision"
     code: "Section C - Collision"
@@ -56,15 +69,11 @@ coverage_sections:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
-          - op: "eq"
-            predicate:
-              field: "claim.vehicle_vin"
-              operator: "in"
-              value: "policy.listed_vehicles"
+            field: "policy.status"
+            value: "active"
+          - op: "in"
+            field: "claim.vehicle_vin"
+            value: "policy.listed_vehicles"
 
   - id: "section_c_comprehensive"
     code: "Section C - Comprehensive"
@@ -72,24 +81,26 @@ coverage_sections:
     description: "Direct and accidental loss or damage other than collision"
     triggers:
       - loss_type: "theft"
+        claimant_types: []
       - loss_type: "vandalism"
+        claimant_types: []
       - loss_type: "fire"
+        claimant_types: []
       - loss_type: "flood"
+        claimant_types: []
       - loss_type: "hail"
+        claimant_types: []
       - loss_type: "glass_breakage"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
-          - op: "eq"
-            predicate:
-              field: "claim.vehicle_vin"
-              operator: "in"
-              value: "policy.listed_vehicles"
+            field: "policy.status"
+            value: "active"
+          - op: "in"
+            field: "claim.vehicle_vin"
+            value: "policy.listed_vehicles"
 
 exclusions:
   - id: "ex_commercial_use"
@@ -105,16 +116,12 @@ exclusions:
     trigger_conditions:
       - op: "or"
         children:
+          - op: "in"
+            field: "vehicle.use_at_loss"
+            value: ["rideshare", "delivery", "taxi", "livery", "courier"]
           - op: "eq"
-            predicate:
-              field: "vehicle.use_at_loss"
-              operator: "in"
-              value: ["rideshare", "delivery", "taxi", "livery", "courier"]
-          - op: "eq"
-            predicate:
-              field: "driver.rideshare_app_active"
-              operator: "eq"
-              value: true
+            field: "driver.rideshare_app_active"
+            value: true
     evaluation_questions:
       - "Was the vehicle being used for compensation at the time of loss?"
       - "Was the driver logged into a rideshare or delivery app?"
@@ -141,20 +148,14 @@ exclusions:
       - op: "or"
         children:
           - op: "gt"
-            predicate:
-              field: "driver.bac_level"
-              operator: "gt"
-              value: 0.08
+            field: "driver.bac_level"
+            value: 0.08
           - op: "eq"
-            predicate:
-              field: "driver.impairment_indicated"
-              operator: "eq"
-              value: true
+            field: "driver.impairment_indicated"
+            value: true
           - op: "eq"
-            predicate:
-              field: "police_report.impaired_charges"
-              operator: "eq"
-              value: true
+            field: "police_report.impaired_charges"
+            value: true
     evaluation_questions:
       - "Was the driver impaired at the time of the collision?"
       - "Were impairment charges laid?"
@@ -179,16 +180,12 @@ exclusions:
     trigger_conditions:
       - op: "or"
         children:
+          - op: "in"
+            field: "driver.license_status"
+            value: ["suspended", "revoked", "expired", "none"]
           - op: "eq"
-            predicate:
-              field: "driver.license_status"
-              operator: "in"
-              value: ["suspended", "revoked", "expired", "none"]
-          - op: "eq"
-            predicate:
-              field: "driver.license_class_valid"
-              operator: "eq"
-              value: false
+            field: "driver.license_class_valid"
+            value: false
     evaluation_questions:
       - "Was the driver properly licensed at the time of loss?"
       - "Was the license valid for the class of vehicle?"
@@ -210,10 +207,8 @@ exclusions:
     applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "loss.racing_activity"
-          operator: "eq"
-          value: true
+        field: "loss.racing_activity"
+        value: true
     evaluation_questions:
       - "Was the vehicle being used in a race or speed contest?"
       - "Was this at a track or organized event?"
@@ -234,10 +229,8 @@ exclusions:
     applies_to_coverages: ["section_c_collision", "section_c_comprehensive"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "loss.intentional_indicators"
-          operator: "eq"
-          value: true
+        field: "loss.intentional_indicators"
+        value: true
     evaluation_questions:
       - "Are there indicators the loss was intentional?"
       - "Is there evidence of fraud?"
@@ -250,123 +243,82 @@ exclusions:
 evidence_rules:
   - id: "denial_evidence"
     name: "Denial Evidence Requirements"
+    description: "Evidence required for claim denials"
     disposition_type: "deny"
     required_documents:
       - doc_type: "police_report"
         description: "Official collision report"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "adjuster_notes"
         description: "Investigation summary"
-        required: true
+        strictness: "blocking_finalization"
     recommended_documents:
       - doc_type: "witness_statements"
         description: "Third-party accounts"
-        required: false
+        strictness: "recommended"
       - doc_type: "photos"
         description: "Scene and damage photos"
-        required: false
+        strictness: "recommended"
 
   - id: "approval_evidence"
     name: "Approval Evidence Requirements"
+    description: "Evidence required for claim approvals"
     disposition_type: "pay"
     required_documents:
       - doc_type: "police_report"
         description: "Official collision report"
-        required: true
+        strictness: "blocking_finalization"
         alternatives: ["self_report_form"]
       - doc_type: "damage_estimate"
         description: "Repair estimate"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "proof_of_ownership"
         description: "Registration or title"
-        required: true
+        strictness: "blocking_finalization"
 
 authority_rules:
   - id: "denial_supervisor"
     name: "Denial Requires Supervisor"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "recommendation.disposition_type"
-        operator: "eq"
-        value: "deny"
+    description: "All denial recommendations require supervisor review"
     required_role: "supervisor"
-    reason: "All denial recommendations require supervisor review"
+    trigger_condition_id: "cond_denial"
 
   - id: "high_value"
     name: "High Value Requires Manager"
-    trigger_conditions:
-      op: "gt"
-      predicate:
-        field: "claim.reserve_amount"
-        operator: "gt"
-        value: 50000
+    description: "Claims over $50,000 require manager approval"
     required_role: "manager"
-    reason: "Claims over $50,000 require manager approval"
+    trigger_condition_id: "cond_high_value"
 
   - id: "siu_referral"
     name: "Fraud Indicators Require SIU"
-    trigger_conditions:
-      op: "or"
-      children:
-        - op: "eq"
-          predicate:
-            field: "claim.fraud_score"
-            operator: "gt"
-            value: 0.7
-        - op: "eq"
-          predicate:
-            field: "exclusion.intentional_triggered"
-            operator: "eq"
-            value: true
+    description: "Potential fraud indicators require SIU review"
     required_role: "siu"
-    reason: "Potential fraud indicators require SIU review"
+    trigger_condition_id: "cond_fraud"
 
 timeline_rules:
   - id: "acknowledge"
+    name: "Acknowledge Claim"
     event_type: "acknowledge"
     anchor: "report_date"
     days_from_anchor: 1
     business_days: true
     description: "Acknowledge claim within 1 business day"
-    authority_ref:
-      authority_type: "regulation"
-      title: "FSRA Claims Handling Guidelines"
-      section: "Section 3.1"
-      source_name: "FSRA"
+    authority_ref_id: "fsra_claims"
 
   - id: "decision_due"
+    name: "Coverage Decision Due"
     event_type: "coverage_decision_due"
     anchor: "report_date"
     days_from_anchor: 60
     business_days: false
     description: "Coverage decision within 60 calendar days"
-    authority_ref:
-      authority_type: "regulation"
-      title: "Insurance Act (Ontario)"
-      section: "Regulation 664"
-      source_name: "Government of Ontario"
+    authority_ref_id: "insurance_act_664"
 
   - id: "payment_due"
+    name: "Payment Due"
     event_type: "payment_due"
     anchor: "report_date"
     days_from_anchor: 60
     business_days: false
     description: "Payment within 60 days if approved"
-    authority_ref:
-      authority_type: "regulation"
-      title: "Insurance Act (Ontario)"
-      section: "Regulation 664"
-      source_name: "Government of Ontario"
-
-regulatory:
-  regulator: "FSRA"
-  regulator_full_name: "Financial Services Regulatory Authority of Ontario"
-  jurisdiction: "CA-ON"
-  key_regulations:
-    - name: "Insurance Act (Ontario)"
-      reference: "R.S.O. 1990, c. I.8"
-    - name: "Statutory Accident Benefits Schedule"
-      reference: "O. Reg. 34/10"
-    - name: "Automobile Insurance Regulation"
-      reference: "O. Reg. 664"
+    authority_ref_id: "insurance_act_664"

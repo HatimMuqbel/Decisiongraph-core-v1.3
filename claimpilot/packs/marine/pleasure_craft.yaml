@@ -1,11 +1,16 @@
-policy:
-  id: "CA-ON-MARINE-2024"
-  jurisdiction: "CA-ON"
-  line_of_business: "marine"
-  product_code: "PLEASURE"
-  name: "Pleasure Craft Insurance Policy"
-  version: "2024.1"
-  effective_date: "2024-01-01"
+schema_version: "1.0.0"
+id: "CA-ON-MARINE-2024"
+jurisdiction: "CA-ON"
+line_of_business: "marine"
+product_code: "PLEASURE"
+name: "Pleasure Craft Insurance Policy"
+version: "2024.1"
+effective_date: "2024-01-01"
+description: "Insurance for recreational boats and watercraft"
+regulatory_body: "FSRA"
+
+authorities: []
+conditions: []
 
 coverage_sections:
   - id: "hull_coverage"
@@ -14,26 +19,30 @@ coverage_sections:
     description: "Physical damage to the vessel"
     triggers:
       - loss_type: "collision_water"
+        claimant_types: []
       - loss_type: "grounding"
+        claimant_types: []
       - loss_type: "sinking"
+        claimant_types: []
       - loss_type: "fire"
+        claimant_types: []
       - loss_type: "theft"
+        claimant_types: []
       - loss_type: "vandalism"
+        claimant_types: []
       - loss_type: "storm_damage"
+        claimant_types: []
       - loss_type: "lightning"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.status"
-              operator: "eq"
-              value: "active"
+            field: "policy.status"
+            value: "active"
           - op: "eq"
-            predicate:
-              field: "vessel.within_navigation_limits"
-              operator: "eq"
-              value: true
+            field: "vessel.within_navigation_limits"
+            value: true
 
   - id: "machinery_coverage"
     code: "Section II"
@@ -41,20 +50,18 @@ coverage_sections:
     description: "Engine and mechanical equipment"
     triggers:
       - loss_type: "mechanical_breakdown"
+        claimant_types: []
       - loss_type: "engine_damage"
+        claimant_types: []
     preconditions:
       - op: "and"
         children:
           - op: "eq"
-            predicate:
-              field: "policy.machinery_endorsement"
-              operator: "eq"
-              value: true
+            field: "policy.machinery_endorsement"
+            value: true
           - op: "eq"
-            predicate:
-              field: "vessel.maintenance_current"
-              operator: "eq"
-              value: true
+            field: "vessel.maintenance_current"
+            value: true
 
   - id: "equipment_coverage"
     code: "Section III"
@@ -62,13 +69,13 @@ coverage_sections:
     description: "Navigation equipment, fishing gear, personal property"
     triggers:
       - loss_type: "theft"
+        claimant_types: []
       - loss_type: "damage"
+        claimant_types: []
     preconditions:
       - op: "eq"
-        predicate:
-          field: "policy.status"
-          operator: "eq"
-          value: "active"
+        field: "policy.status"
+        value: "active"
     limits:
       per_occurrence: 10000
       currency: "CAD"
@@ -79,15 +86,17 @@ coverage_sections:
     description: "Liability for bodily injury and property damage"
     triggers:
       - loss_type: "bodily_injury_tp"
+        claimant_types: []
       - loss_type: "property_damage_tp"
+        claimant_types: []
       - loss_type: "wreck_removal"
+        claimant_types: []
       - loss_type: "pollution_liability"
+        claimant_types: []
     preconditions:
       - op: "eq"
-        predicate:
-          field: "policy.status"
-          operator: "eq"
-          value: "active"
+        field: "policy.status"
+        value: "active"
 
   - id: "towing_coverage"
     code: "Section V"
@@ -95,8 +104,11 @@ coverage_sections:
     description: "On-water towing and assistance"
     triggers:
       - loss_type: "breakdown"
+        claimant_types: []
       - loss_type: "fuel_exhaustion"
+        claimant_types: []
       - loss_type: "grounding_minor"
+        claimant_types: []
     limits:
       per_occurrence: 5000
       currency: "CAD"
@@ -114,10 +126,8 @@ exclusions:
     applies_to_coverages: ["hull_coverage", "machinery_coverage", "liability_coverage"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "vessel.within_navigation_limits"
-          operator: "eq"
-          value: false
+        field: "vessel.within_navigation_limits"
+        value: false
     evaluation_questions:
       - "Where did the loss occur?"
       - "What are the policy navigation limits?"
@@ -140,10 +150,8 @@ exclusions:
     applies_to_coverages: ["hull_coverage", "machinery_coverage"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "vessel.racing_activity"
-          operator: "eq"
-          value: true
+        field: "vessel.racing_activity"
+        value: true
     evaluation_questions:
       - "Was the vessel participating in a race or competition?"
       - "Was this an organized event?"
@@ -166,15 +174,11 @@ exclusions:
       - op: "or"
         children:
           - op: "eq"
-            predicate:
-              field: "vessel.commercial_use"
-              operator: "eq"
-              value: true
+            field: "vessel.commercial_use"
+            value: true
           - op: "eq"
-            predicate:
-              field: "vessel.charter_activity"
-              operator: "eq"
-              value: true
+            field: "vessel.charter_activity"
+            value: true
     evaluation_questions:
       - "Was the vessel being used for commercial purposes?"
       - "Were passengers carried for compensation?"
@@ -198,16 +202,12 @@ exclusions:
     trigger_conditions:
       - op: "or"
         children:
+          - op: "in"
+            field: "damage.cause"
+            value: ["wear_tear", "corrosion", "osmosis", "rot"]
           - op: "eq"
-            predicate:
-              field: "damage.cause"
-              operator: "in"
-              value: ["wear_tear", "corrosion", "osmosis", "rot"]
-          - op: "eq"
-            predicate:
-              field: "vessel.maintenance_current"
-              operator: "eq"
-              value: false
+            field: "vessel.maintenance_current"
+            value: false
     evaluation_questions:
       - "Is the damage result of gradual deterioration?"
       - "When was the vessel last surveyed?"
@@ -231,10 +231,8 @@ exclusions:
     applies_to_coverages: ["hull_coverage", "machinery_coverage", "liability_coverage"]
     trigger_conditions:
       - op: "eq"
-        predicate:
-          field: "operator.pcoc_valid"
-          operator: "eq"
-          value: false
+        field: "operator.pcoc_valid"
+        value: false
     evaluation_questions:
       - "Did the operator hold a valid PCOC?"
       - "Was the operator of legal age?"
@@ -256,16 +254,12 @@ exclusions:
     trigger_conditions:
       - op: "and"
         children:
+          - op: "in"
+            field: "damage.cause"
+            value: ["ice", "freezing"]
           - op: "eq"
-            predicate:
-              field: "damage.cause"
-              operator: "in"
-              value: ["ice", "freezing"]
-          - op: "eq"
-            predicate:
-              field: "vessel.in_water"
-              operator: "eq"
-              value: true
+            field: "vessel.in_water"
+            value: true
     evaluation_questions:
       - "Was the vessel in the water when damage occurred?"
       - "Was damage caused by ice or freezing?"
@@ -280,77 +274,57 @@ exclusions:
 evidence_rules:
   - id: "marine_claim_basic"
     name: "Basic Marine Claim Evidence"
+    description: "Standard evidence for marine claims"
     disposition_type: "pay"
     required_documents:
       - doc_type: "claim_form"
         description: "Marine loss notice"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "damage_photos"
         description: "Photos of damage"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "repair_estimate"
         description: "Marine surveyor estimate"
-        required: true
+        strictness: "blocking_finalization"
     recommended_documents:
       - doc_type: "coast_guard_report"
         description: "If applicable"
-        required: false
+        strictness: "recommended"
       - doc_type: "gps_track"
         description: "If navigation relevant"
-        required: false
+        strictness: "recommended"
 
   - id: "sinking_total_loss"
     name: "Sinking/Total Loss Evidence"
+    description: "Evidence for sinking or total loss claims"
     disposition_type: "pay"
-    applies_when:
-      op: "eq"
-      predicate:
-        field: "loss.type"
-        operator: "in"
-        value: ["sinking", "total_loss"]
     required_documents:
       - doc_type: "coast_guard_report"
         description: "Coast Guard incident report"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "marine_survey"
         description: "Surveyor total loss assessment"
-        required: true
+        strictness: "blocking_finalization"
       - doc_type: "salvage_report"
         description: "Salvage assessment"
-        required: true
+        strictness: "blocking_finalization"
 
 authority_rules:
   - id: "total_loss_marine"
     name: "Total Loss Requires Marine Manager"
-    trigger_conditions:
-      op: "or"
-      children:
-        - op: "eq"
-          predicate:
-            field: "loss.type"
-            operator: "eq"
-            value: "sinking"
-        - op: "eq"
-          predicate:
-            field: "claim.total_loss"
-            operator: "eq"
-            value: true
+    description: "Marine total losses require specialist review"
     required_role: "marine_manager"
-    reason: "Marine total losses require specialist review"
+    trigger_condition_id: "cond_total_loss"
 
   - id: "pollution_incident"
     name: "Pollution Requires Environmental Team"
-    trigger_conditions:
-      op: "eq"
-      predicate:
-        field: "loss.pollution_involved"
-        operator: "eq"
-        value: true
+    description: "Pollution incidents require environmental review"
     required_role: "environmental_specialist"
-    reason: "Pollution incidents require environmental review"
+    trigger_condition_id: "cond_pollution"
 
 timeline_rules:
   - id: "acknowledge"
+    name: "Acknowledge Claim"
     event_type: "acknowledge"
     anchor: "report_date"
     days_from_anchor: 1
@@ -358,6 +332,7 @@ timeline_rules:
     description: "Acknowledge claim within 1 business day"
 
   - id: "survey_appointment"
+    name: "Survey Appointment"
     event_type: "request_info"
     anchor: "report_date"
     days_from_anchor: 3
