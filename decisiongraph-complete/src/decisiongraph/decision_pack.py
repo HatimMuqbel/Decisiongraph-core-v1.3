@@ -292,10 +292,28 @@ def build_decision_pack(
         section_key, section_display_name = section_names_g1.get(
             section.section_id, (section.section_id, section.section_name or section.section_id)
         )
+
+        # Section A has inverted display semantics:
+        # - Engine: passed=True means "hard stop present" (escalation permitted immediately)
+        # - Engine: passed=False means "no hard stop" (must check other sections)
+        # - Display: "no hard stop" should show as CLEAR/PASS, not FAIL
+        if section.section_id == "A":
+            if section.passed:
+                # Hard stop found - triggers immediate escalation
+                display_passed = True
+                display_reason = "Hard stop condition detected - immediate escalation required"
+            else:
+                # No hard stop - this is GOOD for PASS cases, show as CLEAR
+                display_passed = True
+                display_reason = "No hard stop conditions detected"
+        else:
+            display_passed = section.passed
+            display_reason = section.gate_message or ("Section passed" if section.passed else "Section failed")
+
         gate1_sections[section_key] = {
             "name": section_display_name,
-            "passed": section.passed,
-            "reason": section.gate_message or ("Section passed" if section.passed else "Section failed"),
+            "passed": display_passed,
+            "reason": display_reason,
         }
 
     # Build Gate 2 sections with full details
