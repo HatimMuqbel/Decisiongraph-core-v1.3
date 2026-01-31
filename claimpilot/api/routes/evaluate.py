@@ -6,8 +6,11 @@ import uuid
 
 from api.schemas.requests import EvaluateRequest
 from api.schemas.responses import (
-    EvaluateResponse, AuthorityCited, ReasoningStep, ExclusionEvaluated
+    EvaluateResponse, AuthorityCited, ReasoningStep, ExclusionEvaluated,
+    EvidenceRequirement
 )
+from api.data.evidence_matrix import get_evidence_requirement
+from api.routes.memo import cache_evaluation
 from claimpilot.packs.loader import PolicyPackLoader
 from claimpilot.engine import ConditionEvaluator, RecommendationBuilder
 from claimpilot.models import (
@@ -235,10 +238,35 @@ async def evaluate_claim(request: EvaluateRequest):
         requires_authority = False
         required_role = None
 
+    # Build structured evidence requirements for uncertain exclusions
+    exclusions_requiring_evidence = []
+    for exc_code in exclusions_uncertain:
+        evidence_req = get_evidence_requirement(exc_code)
+        if evidence_req:
+            exclusions_requiring_evidence.append(EvidenceRequirement(
+                exclusion_code=exc_code,
+                exclusion_name=evidence_req["name"],
+                purpose=evidence_req["purpose"],
+                evidence_items=evidence_req["evidence_items"],
+                resolution_if_applies=evidence_req["resolution_if_applies"],
+                resolution_if_not_applies=evidence_req["resolution_if_not_applies"]
+            ))
+        else:
+            # Fallback for exclusions not in matrix
+            exc_name = next((e.name for e in policy.exclusions if e.code == exc_code), exc_code)
+            exclusions_requiring_evidence.append(EvidenceRequirement(
+                exclusion_code=exc_code,
+                exclusion_name=exc_name,
+                purpose=f"Determine applicability of {exc_name} exclusion.",
+                evidence_items=["Supporting documentation", "Adjuster investigation notes"],
+                resolution_if_applies="Claim Denied",
+                resolution_if_not_applies="Exclusion Ruled Out"
+            ))
+
     # Generate request ID for tracing
     request_id = f"REQ-{uuid.uuid4().hex[:12].upper()}"
 
-    return EvaluateResponse(
+    response = EvaluateResponse(
         request_id=request_id,
         claim_id=claim_id,
         policy_pack_id=policy.id,
@@ -256,6 +284,7 @@ async def evaluate_claim(request: EvaluateRequest):
         exclusions_triggered=exclusions_triggered,
         exclusions_ruled_out=exclusions_ruled_out,
         exclusions_uncertain=exclusions_uncertain,
+        exclusions_requiring_evidence=exclusions_requiring_evidence,
 
         requires_authority=requires_authority,
         required_role=required_role,
@@ -273,3 +302,8 @@ async def evaluate_claim(request: EvaluateRequest):
         evaluated_at=datetime.utcnow().isoformat() + "Z",
         engine_version=claimpilot.__version__
     )
+
+    # Cache for memo generation
+    cache_evaluation(response)
+
+    return response

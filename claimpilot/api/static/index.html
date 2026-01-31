@@ -349,11 +349,24 @@
                         )}
 
                         {/* Exclusions Requiring Additional Evidence */}
-                        {evaluation.exclusions_uncertain?.length > 0 && (
+                        {(evaluation.exclusions_requiring_evidence?.length > 0 || evaluation.exclusions_uncertain?.length > 0) && (
                           <div>
                             <h4 className="text-sm font-medium text-amber-400 mb-2">Exclusions Requiring Additional Evidence</h4>
                             <div className="space-y-2">
-                              {evaluation.exclusions_uncertain.map((code, i) => (
+                              {(evaluation.exclusions_requiring_evidence || []).map((req, i) => (
+                                <div key={i} className="rounded-lg p-3 bg-amber-500/10 border border-amber-500/20">
+                                  <div className="flex items-center gap-2">
+                                    <Icon name="zap" className="w-4 h-4 text-amber-400" />
+                                    <span className="text-sm font-medium text-amber-400">{req.exclusion_code} — {req.exclusion_name}</span>
+                                  </div>
+                                  <p className="text-xs text-amber-300/70 mt-1 ml-6 italic">{req.purpose}</p>
+                                  <p className="text-xs text-amber-300/60 mt-1 ml-6">
+                                    → {req.evidence_items?.slice(0, 2).join(', ')}
+                                  </p>
+                                </div>
+                              ))}
+                              {/* Fallback to old format if new format not available */}
+                              {!evaluation.exclusions_requiring_evidence && evaluation.exclusions_uncertain?.map((code, i) => (
                                 <div key={i} className="rounded-lg p-3 bg-amber-500/10 border border-amber-500/20">
                                   <div className="flex items-center gap-2">
                                     <Icon name="zap" className="w-4 h-4 text-amber-400" />
@@ -419,6 +432,16 @@
                             <p className="text-xs text-red-400 mt-1">{verifyResult.reason}</p>
                           )}
 
+                          {/* View Memo Button */}
+                          <a
+                            href={`${API_URL}/memo/${evaluation.request_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full mt-2 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+                          >
+                            <Icon name="navigation" className="w-4 h-4" /> View Formal Memo
+                          </a>
+
                           {/* Micro-tagline */}
                           <p className="text-[10px] text-slate-500 text-center mt-2">
                             This verification proves which policy rules were applied at evaluation time.
@@ -482,10 +505,11 @@
                 {[
                   { method: 'GET', path: '/policies', desc: 'List all 8 policy packs' },
                   { method: 'POST', path: '/evaluate', desc: 'Evaluate a claim' },
-                  { method: 'GET', path: '/demo/cases', desc: 'Pre-built demo scenarios' },
                   { method: 'POST', path: '/verify', desc: 'Verify recommendation provenance' },
+                  { method: 'GET', path: '/memo/{id}', desc: 'Generate formal evaluation memo (HTML)' },
+                  { method: 'GET', path: '/demo/cases', desc: 'Pre-built demo scenarios' },
                   { method: 'GET', path: '/validate/policies', desc: 'Validate all YAML packs' },
-                  { method: 'GET', path: '/docs', desc: 'Swagger UI documentation' },
+                  { method: 'GET', path: '/docs', desc: 'OpenAPI documentation' },
                 ].map((ep, i) => (
                   <div key={i} className="bg-slate-800/50 rounded-lg p-4 flex items-center gap-4">
                     <span className={`px-2 py-1 rounded text-xs font-mono font-bold ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>

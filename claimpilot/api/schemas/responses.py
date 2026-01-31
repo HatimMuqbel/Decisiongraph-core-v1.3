@@ -24,6 +24,16 @@ class ReasoningStep(BaseModel):
     result_reason: Optional[str] = None
 
 
+class EvidenceRequirement(BaseModel):
+    """Evidence required to resolve an uncertain exclusion."""
+    exclusion_code: str
+    exclusion_name: str
+    purpose: str
+    evidence_items: list[str]
+    resolution_if_applies: str = "Claim Denied"
+    resolution_if_not_applies: str = "Exclusion Ruled Out"
+
+
 class ExclusionEvaluated(BaseModel):
     """Result of evaluating an exclusion."""
     id: str
@@ -32,6 +42,7 @@ class ExclusionEvaluated(BaseModel):
     triggered: bool
     reason: str
     policy_wording: Optional[str] = None
+    policy_section: Optional[str] = None  # e.g., "Section 4.2.1"
 
 
 class EvaluateResponse(BaseModel):
@@ -56,7 +67,8 @@ class EvaluateResponse(BaseModel):
     exclusions_evaluated: list[ExclusionEvaluated]
     exclusions_triggered: list[str]
     exclusions_ruled_out: list[str]
-    exclusions_uncertain: list[str]
+    exclusions_uncertain: list[str]  # Kept for backward compatibility
+    exclusions_requiring_evidence: list[EvidenceRequirement]  # Structured evidence needs
 
     # Authority
     requires_authority: bool
@@ -148,7 +160,7 @@ class VerifyRequest(BaseModel):
     policy_pack_hash: str
     policy_pack_id: str
     policy_pack_version: str
-    claim_id: str
+    claim_id: Optional[str] = None  # Optional for quick verification
     recommended_disposition: str
     exclusions_triggered: list[str] = []
 
@@ -183,3 +195,17 @@ class ValidatePoliciesResponse(BaseModel):
     invalid_count: int
     valid_policies: list[str]
     invalid_policies: list[PolicyValidationResult]
+
+
+class MemoRequest(BaseModel):
+    """Request to generate a claim evaluation memo."""
+    request_id: str
+    format: str = "html"  # html|markdown
+
+
+class MemoResponse(BaseModel):
+    """Generated claim evaluation memo."""
+    request_id: str
+    format: str
+    content: str
+    generated_at: str

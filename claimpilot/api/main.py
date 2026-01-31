@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 from claimpilot.packs.loader import PolicyPackLoader
 from claimpilot.models import Policy
 
-from api.routes import policies, evaluate, demo, verify
+from api.routes import policies, evaluate, demo, verify, memo
 
 
 # Policy loader and cache
@@ -119,6 +119,7 @@ app.include_router(policies.router)
 app.include_router(evaluate.router)
 app.include_router(demo.router)
 app.include_router(verify.router)
+app.include_router(memo.router)
 
 # Mount static files (for CSS, JS, images if needed)
 static_path = Path(__file__).parent / "static"
