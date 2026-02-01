@@ -325,6 +325,16 @@
                             </div>
                           </div>
                           <p className="text-slate-300 text-sm">{evaluation.disposition_reason}</p>
+
+                          {/* View Memo Button - Prominent placement */}
+                          <a
+                            href={`${API_URL}/memo/${evaluation.request_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full mt-3 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white"
+                          >
+                            <Icon name="navigation" className="w-4 h-4" /> View Formal Memo
+                          </a>
                         </div>
 
                         {/* Exclusions */}
@@ -434,16 +444,6 @@
                           {verifyResult && !verifyResult.valid && (
                             <p className="text-xs text-red-400 mt-1">{verifyResult.reason}</p>
                           )}
-
-                          {/* View Memo Button */}
-                          <a
-                            href={`${API_URL}/memo/${evaluation.request_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full mt-2 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
-                          >
-                            <Icon name="navigation" className="w-4 h-4" /> View Formal Memo
-                          </a>
 
                           {/* Micro-tagline */}
                           <p className="text-[10px] text-slate-500 text-center mt-2">
