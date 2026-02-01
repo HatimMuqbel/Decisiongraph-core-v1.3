@@ -1,6 +1,8 @@
 # Build Your Own Case — Schema-Driven Architecture
 
+
 ## Context
+
 
 ClaimPilot (claimpilot.pro) and DecisionGraph (decisiongraph.pro) need a "Build Your Own Case" feature where prospects can test custom scenarios using **dropdowns/toggles only** — no free text.
 

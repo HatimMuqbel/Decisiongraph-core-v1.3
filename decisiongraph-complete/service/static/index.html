@@ -12,15 +12,16 @@
     body { background: #020617; }
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .highlight-new { animation: highlight 2s ease-out; }
+    .highlight-change { animation: highlight 1.5s ease-out; }
     @keyframes highlight { 0% { background: rgba(59, 130, 246, 0.3); } 100% { background: transparent; } }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useCallback, useRef } = React;
+    const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
+    // Icons
     const Icon = ({ name, className = "w-5 h-5" }) => {
       const icons = {
         shield: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
@@ -30,260 +31,265 @@
         refresh: <svg className={className + " animate-spin"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
         chevronDown: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
         lock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
-        alert: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
         bank: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
         zap: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
-        arrowRight: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>,
+        alert: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+        file: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+        ban: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,
       };
       return icons[name] || null;
     };
 
     const API_URL = window.location.origin;
 
-    // Build schema-compliant JSON from facts
-    const buildInputJson = (facts) => {
-      const getValue = (field) => {
-        const fact = facts.find(f => f.field === field);
-        return fact ? fact.value : null;
-      };
+    // Debounce hook
+    function useDebounce(value, delay) {
+      const [debouncedValue, setDebouncedValue] = useState(value);
+      useEffect(() => {
+        const handler = setTimeout(() => setDebouncedValue(value), delay);
+        return () => clearTimeout(handler);
+      }, [value, delay]);
+      return debouncedValue;
+    }
 
-      const isPEP = getValue('customer.pep_flag');
-      const customerType = getValue('customer.type') || 'IND';
-      const residence = getValue('customer.residence') || 'CA';
-      const amountCAD = getValue('transaction.amount_cad') || 10000;
-      const method = getValue('transaction.method') || 'WIRE';
-      const destination = getValue('transaction.destination');
-      const matchScore = getValue('screening.match_score') || 0;
-      const matchCount = getValue('screening.match_count') || (matchScore > 0 ? 1 : 0);
-      const listType = getValue('screening.list_type') || 'PEP';
-      const docsComplete = getValue('docs.complete') ?? true;
-      const sourceVerified = getValue('docs.source_verified') ?? true;
-      const tenure = getValue('relationship.tenure_years') || 5;
-      const structuring = getValue('pattern.structuring') ?? false;
-      const layering = getValue('pattern.layering') ?? false;
-      const velocitySpike = getValue('pattern.velocity_spike') ?? false;
-      const mltfLinked = getValue('screening.mltf_linked') ?? false;
-      const beneficialOwnerPEP = getValue('screening.beneficial_owner_pep') ?? false;
+    // Evaluate visibility rules
+    function evaluateCondition(condition, facts) {
+      if (!condition) return false;
+      if (condition.eq) {
+        const [field, expected] = condition.eq;
+        return facts[field] === expected;
+      }
+      if (condition.ne) {
+        const [field, expected] = condition.ne;
+        return facts[field] !== expected;
+      }
+      if (condition.in) {
+        const [field, values] = condition.in;
+        return values.includes(facts[field]);
+      }
+      if (condition.true) {
+        return condition.true.every(f => facts[f] === true);
+      }
+      if (condition.false) {
+        return condition.false.every(f => facts[f] === false);
+      }
+      if (condition.and) {
+        return condition.and.every(c => evaluateCondition(c, facts));
+      }
+      if (condition.or) {
+        return condition.or.some(c => evaluateCondition(c, facts));
+      }
+      return false;
+    }
 
-      let workItemType = 'TXN_MONITORING';
-      if (listType === 'OFAC_SDN' || listType === 'SANCTIONS') {
-        workItemType = 'SANCTIONS_SCREENING';
-      } else if (isPEP || beneficialOwnerPEP) {
-        workItemType = 'PEP_REVIEW';
-      } else if (velocitySpike) {
-        workItemType = 'ENHANCED_MONITORING';
+    // Get visible fields based on visibility rules
+    function getVisibleFields(template, facts) {
+      if (!template) return new Set();
+      const allFields = new Set(Object.keys(template.fields || {}));
+      const hiddenFields = new Set();
+
+      (template.visibility_rules || []).forEach(rule => {
+        if (evaluateCondition(rule.when, facts)) {
+          (rule.hide_fields || []).forEach(f => hiddenFields.add(f));
+        }
+      });
+
+      return new Set([...allFields].filter(f => !hiddenFields.has(f)));
+    }
+
+    // Format field value for display
+    function formatValue(field, value, template) {
+      const fieldDef = template?.fields?.[field];
+      if (!fieldDef) return String(value);
+
+      if (fieldDef.control_type === 'toggle') {
+        return value ? 'Yes' : 'No';
       }
 
-      return {
-        header: { system_id: "DEMO-UI", export_timestamp: new Date().toISOString(), batch_sequence: 1 },
-        alert_details: {
-          external_id: `DEMO-${Date.now()}`,
-          work_item_type: workItemType,
-          assigned_queue: "FIU_TIER_1",
-          previous_analyst: null,
-          hit_rule_ids: structuring ? ["RULE_STRUCTURING"] : layering ? ["RULE_LAYERING"] : ["RULE_001"]
-        },
-        customer_record: {
-          SRC_SYS_KEY: `DEMO-${customerType}-${residence}`,
-          fullName: customerType === 'CORP' ? "Demo Corporation Ltd" : "Demo Customer",
-          c_type: customerType,
-          residence_iso: residence,
-          onboarding_epoch: Math.floor(Date.now() / 1000) - (tenure * 365 * 24 * 3600),
-          last_kyc_refresh: "2025-01-01",
-          pep_flag: isPEP ? "Y" : "N",
-          pep_category_code: isPEP ? "FOREIGN" : null,
-          disclosure_docs_received: docsComplete
-        },
-        transaction_history_slice: [{
-          tx_id: `TX-${Date.now()}`,
-          amt_native: amountCAD,
-          currency_iso: "CAD",
-          amt_base_cad: amountCAD,
-          flow_direction: "OUT",
-          method: method,
-          target_name: "DEMO COUNTERPARTY",
-          benef_country: destination || undefined,
-          status_code: "COMPLETED"
-        }],
-        screening_payload: {
-          provider: "WORLD_CHECK",
-          match_count: matchCount,
-          top_match: matchCount > 0 ? {
-            match_score: matchScore,
-            list_type: listType,
-            matched_name: "Demo Match",
-            match_reason: listType === 'OFAC_SDN' ? "OFAC SDN Match" : listType === 'PEP' ? "PEP Match" : "Adverse Media Match"
-          } : null,
-          adverse_media: mltfLinked ? { found: true, mltf_linked: true, categories: ["MONEY_LAUNDERING"] } : undefined
-        },
-        mitigating_factors: {
-          relationship_tenure_years: tenure,
-          documentation_complete: docsComplete,
-          source_of_funds_verified: sourceVerified
-        },
-        suspicion_evidence: (structuring || layering) ? { has_intent: true, has_deception: true, has_sustained_pattern: structuring } : undefined,
-        indicators: structuring ? [{ code: "FINTRAC_A1", description: "Transactions below reporting threshold" }] : layering ? [{ code: "FINTRAC_B2", description: "Complex corporate structure" }] : undefined,
-        typology_maturity: (structuring || layering) ? "CONFIRMED" : undefined
-      };
-    };
+      if (fieldDef.options) {
+        const opt = fieldDef.options.find(o =>
+          (typeof o === 'object' ? o.value : o) === value
+        );
+        if (opt && typeof opt === 'object') return opt.label;
+        return String(value);
+      }
 
-    // Format value for display
-    const formatValue = (value) => {
-      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-      if (typeof value === 'number') return value.toLocaleString();
       return String(value);
-    };
+    }
 
+    // Generate case summary from facts
+    function generateSummary(template, facts) {
+      if (!template?.ui?.summary_tokens) return '';
+      return template.ui.summary_tokens
+        .map(token => formatValue(token.field, facts[token.field], template))
+        .filter(Boolean)
+        .join(' • ');
+    }
+
+    // Field renderer component
+    function FieldRenderer({ fieldId, fieldDef, value, onChange, disabled }) {
+      if (fieldDef.control_type === 'toggle') {
+        return (
+          <div className="flex gap-1">
+            <button
+              onClick={() => onChange(true)}
+              disabled={disabled}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                value === true
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >Yes</button>
+            <button
+              onClick={() => onChange(false)}
+              disabled={disabled}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                value === false
+                  ? 'bg-red-500 text-white'
+                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >No</button>
+          </div>
+        );
+      }
+
+      if (fieldDef.control_type === 'select' && fieldDef.options) {
+        return (
+          <select
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+            className={`bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm min-w-[140px] focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? 'opacity-50' : ''}`}
+          >
+            {fieldDef.options.map((opt, i) => {
+              const optValue = typeof opt === 'object' ? opt.value : opt;
+              const optLabel = typeof opt === 'object' ? opt.label : opt;
+              return <option key={i} value={optValue}>{optLabel}</option>;
+            })}
+          </select>
+        );
+      }
+
+      return <span className="text-slate-400">{String(value)}</span>;
+    }
+
+    // Main App Component
     function App() {
-      const [demoCases, setDemoCases] = useState([]);
-      const [selectedCase, setSelectedCase] = useState(null);
-      const [facts, setFacts] = useState([]);
-      const [baselineFacts, setBaselineFacts] = useState([]); // Track original facts
-      const [decision, setDecision] = useState(null);
+      const [templates, setTemplates] = useState([]);
+      const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+      const [template, setTemplate] = useState(null);
+      const [facts, setFacts] = useState({});
+      const [evidence, setEvidence] = useState({});
+      const [result, setResult] = useState(null);
       const [loading, setLoading] = useState(false);
-      const [showDropdown, setShowDropdown] = useState(false);
-      const [verifyResult, setVerifyResult] = useState(null);
-      const [verifying, setVerifying] = useState(false);
-      const [error, setError] = useState(null);
-      const [changedFields, setChangedFields] = useState([]); // Track what changed
-      const [previousRules, setPreviousRules] = useState([]); // Track previous rules for delta
-      const [ruleDelta, setRuleDelta] = useState({ newlyFired: [], noLongerFired: [] }); // Rule changes
+      const [autoEvaluate, setAutoEvaluate] = useState(true);
+      const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+      const [lastEvaluated, setLastEvaluated] = useState(null);
 
+      // Debounced facts for auto-evaluate
+      const debouncedFacts = useDebounce(facts, 300);
+
+      // Load templates list
       useEffect(() => {
-        fetch(`${API_URL}/demo/cases`)
+        fetch(`${API_URL}/templates`)
           .then(r => r.json())
           .then(data => {
             if (data && data.length) {
-              setDemoCases(data);
-              setSelectedCase(data[0]);
-              const initialFacts = data[0].facts.map((f, i) => ({ ...f, id: i }));
-              setFacts(initialFacts);
-              setBaselineFacts(JSON.parse(JSON.stringify(initialFacts))); // Deep copy
+              setTemplates(data);
+              setSelectedTemplateId(data[0].template_id);
             }
           })
-          .catch(e => console.error('Failed to load demo cases:', e));
+          .catch(e => console.error('Failed to load templates:', e));
       }, []);
 
-      const selectCase = (c) => {
-        setSelectedCase(c);
-        const newFacts = c.facts.map((f, i) => ({ ...f, id: i }));
-        setFacts(newFacts);
-        setBaselineFacts(JSON.parse(JSON.stringify(newFacts))); // Deep copy
-        setDecision(null);
-        setVerifyResult(null);
-        setError(null);
-        setChangedFields([]);
-        setPreviousRules([]);
-        setRuleDelta({ newlyFired: [], noLongerFired: [] });
-        setShowDropdown(false);
-      };
-
-      const updateFact = (id, value) => {
-        setFacts(prev => prev.map(f => f.id === id ? { ...f, value } : f));
-      };
-
-      // Calculate diff between baseline and current facts
-      const calculateDiff = useCallback(() => {
-        const changes = [];
-        facts.forEach(fact => {
-          const baseline = baselineFacts.find(b => b.field === fact.field);
-          if (baseline && baseline.value !== fact.value) {
-            changes.push({
-              field: fact.label || fact.field,
-              from: formatValue(baseline.value),
-              to: formatValue(fact.value)
+      // Load selected template
+      useEffect(() => {
+        if (!selectedTemplateId) return;
+        fetch(`${API_URL}/templates/${selectedTemplateId}`)
+          .then(r => r.json())
+          .then(data => {
+            setTemplate(data);
+            const initialFacts = {};
+            Object.entries(data.fields || {}).forEach(([fieldId, fieldDef]) => {
+              initialFacts[fieldId] = fieldDef.default;
             });
-          }
-        });
-        return changes;
-      }, [facts, baselineFacts]);
+            setFacts(initialFacts);
+            const initialEvidence = {};
+            (data.evidence || []).forEach(ev => {
+              initialEvidence[ev.id] = ev.default ? 'provided' : 'missing';
+            });
+            setEvidence(initialEvidence);
+            setResult(null);
+          })
+          .catch(e => console.error('Failed to load template:', e));
+      }, [selectedTemplateId]);
 
-      // Calculate rule delta between previous and current rules
-      const calculateRuleDelta = (prevRules, newRules) => {
-        const getActiveRules = (rules) => rules.filter(r =>
-          r.result === 'TRIGGERED' || r.result === 'ACTIVATED' || r.result === 'HIT' || r.result === 'APPLIED'
-        ).map(r => r.code);
+      // Auto-evaluate when facts change
+      useEffect(() => {
+        if (autoEvaluate && template && Object.keys(debouncedFacts).length > 0) {
+          evaluate();
+        }
+      }, [debouncedFacts, evidence, autoEvaluate, template]);
 
-        const prevActive = getActiveRules(prevRules);
-        const newActive = getActiveRules(newRules);
-
-        const newlyFired = newRules.filter(r =>
-          newActive.includes(r.code) && !prevActive.includes(r.code)
-        );
-        const noLongerFired = prevRules.filter(r =>
-          prevActive.includes(r.code) && !newActive.includes(r.code)
-        );
-
-        return { newlyFired, noLongerFired };
-      };
-
-      const runDecision = async () => {
+      const evaluate = async () => {
+        if (!template) return;
         setLoading(true);
-        setVerifyResult(null);
-        setError(null);
-        setChangedFields(calculateDiff());
-
         try {
-          const inputJson = buildInputJson(facts);
-          const res = await fetch(`${API_URL}/decide`, {
+          const res = await fetch(`${API_URL}/templates/evaluate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(inputJson)
+            body: JSON.stringify({
+              template_id: selectedTemplateId,
+              facts: facts,
+              evidence: evidence
+            })
           });
           const data = await res.json();
-          if (res.ok) {
-            // Calculate rule delta before updating state
-            const newRules = data.evaluation_trace?.rules_fired || [];
-            if (previousRules.length > 0) {
-              setRuleDelta(calculateRuleDelta(previousRules, newRules));
-            }
-            setPreviousRules(newRules);
-            setDecision(data);
-          } else {
-            setError(data.detail || data.error || 'Decision failed');
-          }
+          setResult(data);
+          setLastEvaluated(new Date());
         } catch (e) {
-          setError(e.message);
+          console.error('Evaluation failed:', e);
         }
         setLoading(false);
       };
 
-      const verifyDecision = async () => {
-        if (!decision) return;
-        setVerifying(true);
-        setVerifyResult(null);
-        try {
-          const res = await fetch(`${API_URL}/verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              decision_id: decision.meta?.decision_id || '',
-              input_hash: decision.meta?.input_hash || '',
-              policy_hash: decision.meta?.policy_hash || '',
-              verdict: decision.decision?.verdict || ''
-            })
-          });
-          const data = await res.json();
-          setVerifyResult(data);
-        } catch (e) {
-          setVerifyResult({ valid: false, reason: 'Verification request failed' });
-        }
-        setVerifying(false);
+      const updateFact = (fieldId, value) => {
+        setFacts(prev => ({ ...prev, [fieldId]: value }));
       };
 
-      const getVerdictStyle = (verdict) => {
-        if (['PASS', 'PASS_WITH_EDD'].includes(verdict)) {
+      const toggleEvidence = (docId) => {
+        setEvidence(prev => ({
+          ...prev,
+          [docId]: prev[docId] === 'provided' ? 'missing' : 'provided'
+        }));
+      };
+
+      const selectTemplate = (tid) => {
+        setSelectedTemplateId(tid);
+        setShowTemplateDropdown(false);
+      };
+
+      const visibleFields = useMemo(() =>
+        getVisibleFields(template, facts),
+        [template, facts]
+      );
+
+      const summary = useMemo(() =>
+        generateSummary(template, facts),
+        [template, facts]
+      );
+
+      const getDecisionStyle = (decision) => {
+        if (['approve'].includes(decision)) {
           return { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', icon: 'check' };
-        } else if (['HARD_STOP', 'STR', 'ESCALATE'].includes(verdict)) {
-          return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', icon: 'alert' };
         }
-        return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: 'alert' };
-      };
-
-      const getRuleStyle = (result) => {
-        if (result === 'CLEAR' || result === 'NOT_APPLICABLE') return 'bg-emerald-500/20 text-emerald-400';
-        if (result === 'TRIGGERED' || result === 'ACTIVATED' || result === 'APPLIED') return 'bg-red-500/20 text-red-400';
-        return 'bg-slate-700 text-slate-300';
+        if (['block', 'decline'].includes(decision)) {
+          return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', icon: 'ban' };
+        }
+        if (['investigate', 'escalate', 'hold'].includes(decision)) {
+          return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: 'alert' };
+        }
+        return { bg: 'bg-slate-500/10', border: 'border-slate-500/30', text: 'text-slate-400', icon: 'zap' };
       };
 
       return (
@@ -302,254 +308,281 @@
           </nav>
 
           {/* Hero */}
-          <section className="pt-28 pb-8 px-6">
+          <section className="pt-28 pb-6 px-6">
             <div className="max-w-4xl mx-auto text-center">
               <div className="flex flex-wrap justify-center gap-2 mb-4">
                 <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm">Dual-Gate</span>
                 <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm">Zero-False-Escalation</span>
                 <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm">Bank-Grade</span>
               </div>
-              <h1 className="text-4xl font-bold mb-2">DecisionGraph</h1>
-              <p className="text-xl text-slate-300 mb-2">Bank-Grade AML/KYC Decision Engine</p>
-              <p className="text-sm text-slate-400 max-w-2xl mx-auto">
-                Toggle facts below and watch the decision change in real-time.
+              <h1 className="text-4xl font-bold mb-2">Build Your Own Case</h1>
+              <p className="text-lg text-slate-400">
+                Configure AML/KYC scenarios using dropdowns and toggles. See the decision change in real-time.
               </p>
             </div>
           </section>
 
-          {/* Interactive Demo */}
-          <section className="py-4 px-6">
+          {/* Case Summary Bar */}
+          {summary && (
+            <div className="sticky top-[73px] z-40 bg-slate-900/95 backdrop-blur border-b border-slate-700 px-6 py-3">
+              <div className="max-w-6xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 uppercase tracking-wider">Case:</span>
+                  <span className="text-sm font-medium text-slate-200">{summary}</span>
+                </div>
+                {result && (
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDecisionStyle(result.decision).bg} ${getDecisionStyle(result.decision).text}`}>
+                    {result.decision_label}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Main Content */}
+          <section className="py-6 px-6">
             <div className="max-w-6xl mx-auto">
               <div className="grid lg:grid-cols-2 gap-6">
-                {/* Facts Panel */}
+                {/* Left: Facts Panel */}
                 <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-                    <span className="font-medium">Case Facts</span>
-                    <div className="relative">
-                      <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm">
-                        <span className="truncate max-w-[140px]">{selectedCase?.name || 'Select'}</span>
-                        <Icon name="chevronDown" className="w-4 h-4" />
-                      </button>
-                      {showDropdown && (
-                        <div className="absolute right-0 mt-2 w-80 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
-                          {demoCases.map(c => (
-                            <button key={c.id} onClick={() => selectCase(c)}
-                              className={`w-full text-left px-4 py-3 hover:bg-slate-700 text-sm border-b border-slate-700/50 last:border-0 ${
-                                c.category === 'PASS' ? 'text-emerald-300' : c.category === 'ESCALATE' ? 'text-red-300' : 'text-amber-300'
-                              }`}>
-                              <div className="font-medium">{c.name}</div>
-                              <div className="text-xs text-slate-400 mt-1">{c.description}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                  {/* Template Selector */}
+                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Scenario Type</span>
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                          className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm"
+                        >
+                          <span className="truncate max-w-[200px]">{template?.ui?.title || 'Select...'}</span>
+                          <Icon name="chevronDown" className="w-4 h-4" />
+                        </button>
+                        {showTemplateDropdown && (
+                          <div className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                            {templates.map(t => (
+                              <button
+                                key={t.template_id}
+                                onClick={() => selectTemplate(t.template_id)}
+                                className={`w-full text-left px-4 py-3 hover:bg-slate-700 text-sm border-b border-slate-700/50 last:border-0 ${
+                                  t.template_id === selectedTemplateId ? 'bg-slate-700 text-blue-400' : 'text-slate-200'
+                                }`}
+                              >
+                                <div className="font-medium">{t.title}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">{t.policy_pack_id}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-3 space-y-1.5 max-h-[380px] overflow-y-auto">
-                    {facts.map(f => {
-                      const baseline = baselineFacts.find(b => b.field === f.field);
-                      const isChanged = baseline && baseline.value !== f.value;
-                      return (
-                        <div key={f.id} className={`flex items-center gap-2 rounded-lg p-2.5 ${isChanged ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-slate-800'}`}>
-                          <span className="flex-1 text-sm text-slate-300">{f.label || f.field}</span>
-                          {isChanged && <span className="text-[10px] text-blue-400 font-medium">CHANGED</span>}
-                          {typeof f.value === 'boolean' ? (
-                            <div className="flex gap-1">
-                              <button onClick={() => updateFact(f.id, true)}
-                                className={`px-2.5 py-1 rounded text-xs font-medium ${f.value === true ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>Yes</button>
-                              <button onClick={() => updateFact(f.id, false)}
-                                className={`px-2.5 py-1 rounded text-xs font-medium ${f.value === false ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>No</button>
-                            </div>
-                          ) : typeof f.value === 'number' ? (
-                            <input type="number" value={f.value} onChange={(e) => updateFact(f.id, parseFloat(e.target.value) || 0)}
-                              className="w-24 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                          ) : (
-                            <select value={f.value} onChange={(e) => updateFact(f.id, e.target.value)}
-                              className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                              {f.field.includes('type') && <><option value="IND">Individual</option><option value="CORP">Corporate</option></>}
-                              {f.field.includes('method') && <><option value="WIRE">Wire</option><option value="CASH">Cash</option><option value="CRYPTO">Crypto</option><option value="ACH">ACH</option></>}
-                              {f.field.includes('list_type') && <><option value="PEP">PEP</option><option value="OFAC_SDN">OFAC SDN</option><option value="ADVERSE_MEDIA">Adverse Media</option></>}
-                              {(f.field.includes('residence') || f.field.includes('destination')) && <>
-                                <option value="CA">Canada</option><option value="US">USA</option><option value="IT">Italy</option><option value="BR">Brazil</option>
-                                <option value="RU">Russia</option><option value="CN">China</option><option value="HK">Hong Kong</option><option value="AE">UAE</option>
-                                <option value="CH">Switzerland</option><option value="CY">Cyprus</option><option value="VG">BVI</option><option value="SG">Singapore</option>
-                              </>}
-                            </select>
-                          )}
+                  {/* Field Groups */}
+                  <div className="p-4 space-y-4 max-h-[500px] overflow-y-auto">
+                    {template?.field_groups?.map((group, gi) => (
+                      <div key={gi}>
+                        <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">{group.name}</h4>
+                        <div className="space-y-2">
+                          {group.fields.filter(fid => visibleFields.has(fid)).map(fieldId => {
+                            const fieldDef = template.fields[fieldId];
+                            if (!fieldDef) return null;
+                            return (
+                              <div key={fieldId} className="flex items-center justify-between gap-3 bg-slate-800 rounded-lg p-3">
+                                <span className="text-sm text-slate-300">{fieldDef.label}</span>
+                                <FieldRenderer
+                                  fieldId={fieldId}
+                                  fieldDef={fieldDef}
+                                  value={facts[fieldId]}
+                                  onChange={(v) => updateFact(fieldId, v)}
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
+
+                    {/* Evidence Section */}
+                    {template?.evidence?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Documents</h4>
+                        <div className="space-y-1">
+                          {template.evidence.map(ev => (
+                            <label
+                              key={ev.id}
+                              className="flex items-center gap-3 bg-slate-800 rounded-lg p-2.5 cursor-pointer hover:bg-slate-750"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={evidence[ev.id] === 'provided'}
+                                onChange={() => toggleEvidence(ev.id)}
+                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-slate-300">{ev.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {error && <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20 text-red-400 text-sm">{error}</div>}
-
-                  <div className="px-4 py-3 bg-slate-800 border-t border-slate-700">
-                    <button onClick={runDecision} disabled={loading}
-                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white py-2.5 rounded-lg font-medium flex items-center justify-center gap-2">
-                      {loading ? <><Icon name="refresh" className="w-4 h-4" /> Running...</> : <><Icon name="play" className="w-4 h-4" /> Run Decision</>}
-                    </button>
+                  {/* Controls */}
+                  <div className="px-4 py-3 bg-slate-800 border-t border-slate-700 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoEvaluate}
+                        onChange={(e) => setAutoEvaluate(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500"
+                      />
+                      Auto-evaluate
+                    </label>
+                    {!autoEvaluate && (
+                      <button
+                        onClick={evaluate}
+                        disabled={loading}
+                        className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                      >
+                        {loading ? <Icon name="refresh" className="w-4 h-4" /> : <Icon name="play" className="w-4 h-4" />}
+                        Evaluate
+                      </button>
+                    )}
+                    {autoEvaluate && lastEvaluated && (
+                      <span className="text-xs text-slate-500">
+                        {loading ? 'Evaluating...' : `Updated ${Math.round((Date.now() - lastEvaluated) / 1000)}s ago`}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Result Panel */}
+                {/* Right: Result Panel */}
                 <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                  <div className="bg-slate-800 px-4 py-3 border-b border-slate-700">
                     <span className="font-medium">Decision Output</span>
-                    {decision && <span className="text-xs text-slate-500 font-mono">{decision.meta?.decision_id?.substring(0, 12)}...</span>}
                   </div>
 
-                  <div className="p-4 max-h-[500px] overflow-y-auto">
-                    {!decision ? (
-                      <div className="text-center py-12 text-slate-500">
-                        <Icon name="bank" className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                        <p className="text-sm">Click "Run Decision" to see the result</p>
+                  <div className="p-4 max-h-[550px] overflow-y-auto">
+                    {!result ? (
+                      <div className="text-center py-16 text-slate-500">
+                        <Icon name="bank" className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p>Configure your case to see the decision</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {/* Verdict */}
+                        {/* Decision */}
                         {(() => {
-                          const style = getVerdictStyle(decision.decision?.verdict);
+                          const style = getDecisionStyle(result.decision);
                           return (
-                            <div className={`rounded-xl p-4 ${style.bg} border ${style.border}`}>
+                            <div className={`rounded-xl p-5 ${style.bg} border ${style.border}`}>
                               <div className="flex items-center gap-3 mb-2">
-                                <Icon name={style.icon} className={`w-7 h-7 ${style.text}`} />
-                                <div className={`text-xl font-bold ${style.text}`}>{decision.decision?.verdict}</div>
+                                <Icon name={style.icon} className={`w-8 h-8 ${style.text}`} />
+                                <div className={`text-2xl font-bold ${style.text}`}>{result.decision_label}</div>
                               </div>
-                              <p className="text-slate-300 text-sm mb-2">{decision.rationale?.summary}</p>
-                              <div className="flex gap-2 flex-wrap">
-                                <span className="px-2 py-0.5 bg-slate-800 rounded text-xs">Action: {decision.decision?.action}</span>
-                                <span className="px-2 py-0.5 bg-slate-800 rounded text-xs">STR: {decision.decision?.str_required}</span>
-                                {decision.decision?.path && <span className="px-2 py-0.5 bg-slate-800 rounded text-xs">Path: {decision.decision?.path}</span>}
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <span className="px-2 py-0.5 bg-slate-800/50 rounded text-xs text-slate-300">
+                                  Code: {result.decision_code}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  result.certainty === 'high' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  result.certainty === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                  'bg-red-500/20 text-red-400'
+                                }`}>
+                                  Certainty: {result.certainty}
+                                </span>
                               </div>
 
-                              {/* Full Report Button - Prominent placement */}
-                              <a href={`${API_URL}/report/${decision.meta?.decision_id}`} target="_blank" rel="noopener noreferrer"
-                                className="w-full mt-3 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white">
-                                <Icon name="bank" className="w-4 h-4" /> View Full Report
+                              {/* View Report Button */}
+                              <a
+                                href={`${API_URL}/report/${result.version_pins?.template_id || 'demo'}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full mt-4 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white"
+                              >
+                                <Icon name="file" className="w-4 h-4" /> View Full Report
                               </a>
                             </div>
                           );
                         })()}
 
-                        {/* What Changed (Diff) */}
-                        {changedFields.length > 0 && (
+                        {/* Warnings */}
+                        {result.warnings?.length > 0 && (
                           <div>
-                            <h4 className="text-sm font-medium text-blue-400 mb-2">What Changed</h4>
+                            <h4 className="text-sm font-medium text-amber-400 mb-2">Document Warnings</h4>
                             <div className="space-y-1">
-                              {changedFields.map((change, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm bg-blue-500/10 rounded-lg px-3 py-2 border border-blue-500/20">
-                                  <span className="text-slate-300">{change.field}:</span>
-                                  <span className="text-red-400 line-through">{change.from}</span>
-                                  <Icon name="arrowRight" className="w-3 h-3 text-slate-500" />
-                                  <span className="text-emerald-400 font-medium">{change.to}</span>
+                              {result.warnings.map((w, i) => (
+                                <div key={i} className="flex items-center gap-2 text-sm bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                                  <Icon name="alert" className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                                  <span className="text-amber-300">{w.text}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* Rule Delta (Newly Fired / No Longer Fired) */}
-                        {(ruleDelta.newlyFired.length > 0 || ruleDelta.noLongerFired.length > 0) && (
+                        {/* Reasoning Chain */}
+                        {result.reasoning_chain?.length > 0 && (
                           <div>
-                            <h4 className="text-sm font-medium text-amber-400 mb-2">Rule Changes</h4>
+                            <h4 className="text-sm font-medium text-slate-400 mb-2">Reasoning Chain</h4>
                             <div className="space-y-1">
-                              {ruleDelta.newlyFired.map((rule, i) => (
-                                <div key={`new-${i}`} className="flex items-center gap-2 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 highlight-new">
-                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/30 text-red-300">NEW</span>
-                                  <code className="text-red-300 text-xs font-medium">{rule.code}</code>
-                                  <span className="text-slate-300 text-xs">{rule.reason}</span>
-                                </div>
-                              ))}
-                              {ruleDelta.noLongerFired.map((rule, i) => (
-                                <div key={`gone-${i}`} className="flex items-center gap-2 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/30 text-emerald-300">CLEARED</span>
-                                  <code className="text-emerald-300 text-xs line-through">{rule.code}</code>
-                                  <span className="text-slate-400 text-xs">No longer triggered</span>
+                              {result.reasoning_chain.map((step, i) => (
+                                <div key={i} className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 ${
+                                  step.status === 'pass' ? 'bg-emerald-500/10' :
+                                  step.status === 'fail' ? 'bg-red-500/10' : 'bg-amber-500/10'
+                                }`}>
+                                  {step.status === 'pass' ? (
+                                    <Icon name="check" className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                  ) : step.status === 'fail' ? (
+                                    <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                  ) : (
+                                    <Icon name="alert" className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                  )}
+                                  <span className={
+                                    step.status === 'pass' ? 'text-emerald-300' :
+                                    step.status === 'fail' ? 'text-red-300' : 'text-amber-300'
+                                  }>
+                                    {step.text}
+                                  </span>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* Why (Rules Fired) */}
-                        {decision.evaluation_trace?.rules_fired?.length > 0 && (
+                        {/* Citations */}
+                        {result.citations?.length > 0 && (
                           <div>
-                            <h4 className="text-sm font-medium text-slate-400 mb-2">All Rules Evaluated</h4>
-                            <div className="space-y-1">
-                              {decision.evaluation_trace.rules_fired.map((rule, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm bg-slate-800 rounded-lg px-3 py-2">
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRuleStyle(rule.result)}`}>{rule.result}</span>
-                                  <code className="text-slate-400 text-xs">{rule.code}</code>
-                                  <span className="text-slate-500">-</span>
-                                  <span className="text-slate-300 text-xs">{rule.reason}</span>
+                            <h4 className="text-sm font-medium text-slate-400 mb-2">Regulatory Citations</h4>
+                            <div className="bg-slate-800 rounded-lg p-3 space-y-1">
+                              {result.citations.map((c, i) => (
+                                <div key={i} className="text-sm">
+                                  <code className="text-blue-400">{c.ref}</code>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* Gate Results */}
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-400 mb-2">Dual-Gate Results</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className={`rounded-lg p-2.5 ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                              <div className="text-[10px] text-slate-400 mb-0.5">Gate 1: Escalation Gate</div>
-                              <div className={`text-sm font-bold ${decision.gates?.gate1?.decision === 'PROHIBITED' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'ESC. BLOCKED' : 'ESC. PERMITTED'}
-                              </div>
-                              <div className="text-[9px] text-slate-500 mt-0.5">
-                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'No lawful basis → Txn proceeds' : 'May escalate if warranted'}
-                              </div>
-                            </div>
-                            <div className={`rounded-lg p-2.5 ${
-                              decision.gates?.gate1?.decision === 'PROHIBITED'
-                                ? 'bg-slate-800/50 border border-slate-700 opacity-60'
-                                : decision.decision?.str_required === 'YES'
-                                  ? 'bg-red-500/10 border border-red-500/20'
-                                  : 'bg-emerald-500/10 border border-emerald-500/20'
-                            }`}>
-                              <div className="text-[10px] text-slate-400 mb-0.5">Gate 2: STR Threshold</div>
-                              <div className={`text-sm font-bold ${
-                                decision.gates?.gate1?.decision === 'PROHIBITED'
-                                  ? 'text-slate-500'
-                                  : decision.decision?.str_required === 'YES'
-                                    ? 'text-red-400'
-                                    : 'text-emerald-400'
-                              }`}>
-                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'SKIPPED' : (decision.decision?.str_required === 'YES' ? 'STR REQUIRED' : 'NOT REQUIRED')}
-                              </div>
-                              <div className="text-[9px] text-slate-500 mt-0.5">
-                                {decision.gates?.gate1?.decision === 'PROHIBITED' ? 'Escalation forbidden by Gate 1' : (decision.decision?.str_required === 'YES' ? 'File STR within 30 days' : 'No STR obligation')}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Provenance + Actions */}
+                        {/* Version Pins */}
                         <div className="pt-3 border-t border-slate-700">
-                          <div className="bg-slate-800/50 rounded-lg p-2.5 mb-3 space-y-1">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-500">Decision Hash</span>
-                              <span className="font-mono text-slate-300">{decision.meta?.decision_id?.substring(0, 12)}...</span>
+                          <h4 className="text-sm font-medium text-slate-400 mb-2">Provenance</h4>
+                          <div className="bg-slate-800/50 rounded-lg p-3 space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Template</span>
+                              <span className="font-mono text-slate-300">{result.version_pins?.template_id}</span>
                             </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-500">Input Hash</span>
-                              <span className="font-mono text-slate-300">{decision.meta?.input_hash?.substring(0, 12)}...</span>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Version</span>
+                              <span className="font-mono text-slate-300">{result.version_pins?.template_version}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Reg Pack</span>
+                              <span className="font-mono text-slate-300">{result.version_pins?.policy_pack_id}</span>
                             </div>
                           </div>
-
-                          <button onClick={verifyDecision} disabled={verifying}
-                            className={`w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
-                              verifyResult?.valid === true ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                              verifyResult?.valid === false ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                              'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                            }`}>
-                            {verifying ? <><Icon name="refresh" className="w-3 h-3" /> Verifying</> :
-                             verifyResult?.valid === true ? <><Icon name="check" className="w-3 h-3" /> Verified</> :
-                             verifyResult?.valid === false ? <><Icon name="x" className="w-3 h-3" /> Failed</> :
-                             <><Icon name="shield" className="w-3 h-3" /> Verify Provenance</>}
-                          </button>
+                          <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-500">
+                            <Icon name="lock" className="w-3 h-3" />
+                            <span>Deterministic • Reproducible • Auditable</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -557,76 +590,51 @@
                 </div>
               </div>
 
-              {/* Hint - Deterministic experiment */}
-              <div className="mt-4 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 max-w-xl mx-auto">
-                <div className="flex items-start gap-3">
-                  <Icon name="zap" className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-slate-300 font-medium mb-2">Try This Experiment:</p>
-                    <ol className="text-xs text-slate-400 space-y-1 list-decimal list-inside">
-                      <li>Select <span className="text-white">"High Value Wire - Documented (PASS)"</span></li>
-                      <li>Click <span className="text-blue-400">Run Decision</span> → Result: <span className="text-emerald-400">PASS</span></li>
-                      <li>Toggle <code className="bg-slate-800 px-1 rounded">Documentation Complete</code> → <span className="text-red-400">No</span></li>
-                      <li>Toggle <code className="bg-slate-800 px-1 rounded">Source of Funds Verified</code> → <span className="text-red-400">No</span></li>
-                      <li>Click <span className="text-blue-400">Run Decision</span> again</li>
-                    </ol>
-                    <p className="text-xs text-amber-400 mt-2">
-                      Watch the <span className="font-medium">Rule Changes</span> section show NEW rules firing.
-                    </p>
+              {/* Expected Outcomes */}
+              {template?.expected_outcomes?.length > 0 && (
+                <div className="mt-6 bg-slate-900/50 rounded-xl border border-slate-700 p-4">
+                  <h3 className="text-sm font-medium text-slate-400 mb-3">Expected Outcomes for {template.ui?.title}</h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {template.expected_outcomes.map((eo, i) => (
+                      <div key={i} className="bg-slate-800/50 rounded-lg px-3 py-2 text-sm">
+                        <span className="text-slate-400">{eo.scenario}</span>
+                        <span className="mx-2 text-slate-600">→</span>
+                        <span className={
+                          eo.outcome.includes('APPROVE') ? 'text-emerald-400' :
+                          eo.outcome.includes('BLOCK') || eo.outcome.includes('DECLINE') ? 'text-red-400' :
+                          'text-amber-400'
+                        }>{eo.outcome}</span>
+                      </div>
+                    ))}
                   </div>
+                </div>
+              )}
+
+              {/* Absolute Rules */}
+              <div className="mt-6 bg-red-500/5 rounded-xl border border-red-500/20 p-4">
+                <h3 className="text-sm font-medium text-red-400 mb-3">Absolute Rules (No Exceptions)</h3>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {['PEP status alone can NEVER escalate', 'Cross-border alone can NEVER escalate',
+                    'Risk score alone can NEVER escalate', '"High confidence" can NEVER override facts'].map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-slate-900/50 rounded-lg p-3">
+                      <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      <span className="text-slate-300 text-sm">{item}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Absolute Rules */}
-          <section className="py-8 px-6">
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-xl font-bold text-center mb-6">Absolute Rules (No Exceptions)</h2>
-              <div className="grid md:grid-cols-2 gap-3">
-                {['PEP status alone can NEVER escalate', 'Cross-border alone can NEVER escalate',
-                  'Risk score alone can NEVER escalate', '"High confidence" can NEVER override facts'].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
-                    <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-slate-300 text-sm">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* API Endpoints */}
-          <section className="py-8 px-6 bg-slate-900/50">
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-xl font-bold text-center mb-6">API Endpoints</h2>
-              <div className="grid md:grid-cols-2 gap-3">
-                {[
-                  { method: 'POST', path: '/decide', desc: 'Run dual-gate decision' },
-                  { method: 'GET', path: '/demo/cases', desc: 'List demo scenarios' },
-                  { method: 'GET', path: '/report/{id}', desc: 'Decision report' },
-                  { method: 'POST', path: '/verify', desc: 'Verify provenance' },
-                ].map((ep, i) => (
-                  <div key={i} className="bg-slate-800/50 rounded-lg p-3 flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>{ep.method}</span>
-                    <div>
-                      <code className="text-slate-200 text-sm">{ep.path}</code>
-                      <p className="text-slate-500 text-xs">{ep.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
           {/* Footer */}
-          <footer className="py-6 px-6 border-t border-slate-800">
+          <footer className="py-8 px-6 border-t border-slate-800 mt-8">
             <div className="max-w-6xl mx-auto flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Icon name="bank" className="w-4 h-4 text-blue-400" />
-                <span className="font-semibold text-sm">DecisionGraph</span>
-                <span className="text-slate-500 text-xs">v2.1.1</span>
+                <Icon name="bank" className="w-5 h-5 text-blue-400" />
+                <span className="font-semibold">DecisionGraph</span>
+                <span className="text-slate-500 text-sm">v2.1.1</span>
               </div>
-              <a href="/docs" className="text-slate-500 hover:text-white text-xs">API Docs</a>
+              <a href="/docs" className="text-slate-500 hover:text-white text-sm">API Documentation</a>
             </div>
           </footer>
         </div>
