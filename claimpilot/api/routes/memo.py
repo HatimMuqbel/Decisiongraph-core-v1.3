@@ -518,19 +518,21 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
     context = {
         "request": request,
         "request_id": decision_id,
-        "request_id_short": decision_id[:8].upper(),
+        "claim_id": f"BYOC-{decision_id[:8].upper()}",
         "evaluated_at": data.get("timestamp", datetime.utcnow().isoformat()),
+        "engine_version": "2.1.1",
+        "certainty_level": result.get("certainty", "high").upper(),
         "claim_facts": facts_list,
         "decision_status": decision_status,
         "decision_note": None,
         "decision_explainer": decision_explainer,
         "unresolved_exclusions": [],
         "exclusions": exclusions,
-        "evidence_table": [],
+        "evidence_requirements": [],
         "reasoning_steps": reasoning_steps,
         "policy_pack_id": result.get("version_pins", {}).get("policy_pack_id", "N/A"),
         "policy_pack_version": result.get("version_pins", {}).get("policy_pack_version", "N/A"),
         "policy_pack_hash": f"byoc-{decision_id[:16]}",
     }
 
-    return templates.TemplateResponse("memo.html", context)
+    return templates.TemplateResponse("claim_memo.html", context)
