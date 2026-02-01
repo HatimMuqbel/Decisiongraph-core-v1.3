@@ -1,0 +1,301 @@
+template_id: dg.txn.monitoring
+template_version: "2026.02.01"
+domain: banking_aml
+reg_pack_id: "CA-FINTRAC-AML"
+reg_pack_version: "2025.1"
+
+ui:
+  title: "Transaction Monitoring"
+  summary_tokens:
+    - { field: customer.type }
+    - { field: txn.type }
+    - { field: txn.amount_band }
+    - { field: txn.cross_border }
+    - { field: screen.sanctions_match }
+
+fields:
+  customer.type:
+    label: "Customer Type"
+    control_type: select
+    options:
+      - { value: individual, label: "Individual" }
+      - { value: sole_prop, label: "Sole Proprietor" }
+      - { value: corporation, label: "Corporation" }
+      - { value: partnership, label: "Partnership" }
+      - { value: trust, label: "Trust" }
+      - { value: non_profit, label: "Non-Profit" }
+    default: individual
+
+  customer.relationship_length:
+    label: "Relationship Length"
+    control_type: select
+    options:
+      - { value: new_lt_6mo, label: "New (< 6 months)" }
+      - { value: established_6mo_2yr, label: "Established (6mo - 2yr)" }
+      - { value: long_term_2yr_plus, label: "Long-term (2yr+)" }
+    default: established_6mo_2yr
+
+  risk.pep:
+    label: "PEP (Politically Exposed)"
+    control_type: toggle
+    default: false
+
+  risk.high_risk_jurisdiction:
+    label: "High-Risk Jurisdiction"
+    control_type: toggle
+    default: false
+
+  risk.high_risk_industry:
+    label: "High-Risk Industry"
+    control_type: toggle
+    default: false
+
+  risk.high_risk_industry_type:
+    label: "High-Risk Industry Type"
+    control_type: select
+    options:
+      - { value: money_services, label: "Money Services" }
+      - { value: crypto_virtual_assets, label: "Crypto/Virtual Assets" }
+      - { value: gaming_gambling, label: "Gaming/Gambling" }
+      - { value: real_estate, label: "Real Estate" }
+      - { value: precious_metals, label: "Precious Metals" }
+      - { value: arms_defense, label: "Arms/Defense" }
+      - { value: adult_entertainment, label: "Adult Entertainment" }
+    default: money_services
+
+  risk.cash_intensive_business:
+    label: "Cash-Intensive Business"
+    control_type: toggle
+    default: false
+
+  txn.type:
+    label: "Transaction Type"
+    control_type: select
+    options:
+      - { value: wire_transfer, label: "Wire Transfer" }
+      - { value: cash_deposit, label: "Cash Deposit" }
+      - { value: cash_withdrawal, label: "Cash Withdrawal" }
+      - { value: check, label: "Check" }
+      - { value: ach_eft, label: "ACH/EFT" }
+      - { value: crypto_purchase, label: "Crypto Purchase" }
+      - { value: crypto_sale, label: "Crypto Sale" }
+      - { value: international_transfer, label: "International Transfer" }
+    default: wire_transfer
+
+  txn.amount_band:
+    label: "Amount (CAD)"
+    control_type: select
+    options:
+      - { value: under_3k, label: "Under $3K" }
+      - { value: 3k_10k, label: "$3K - $10K" }
+      - { value: 10k_25k, label: "$10K - $25K" }
+      - { value: 25k_100k, label: "$25K - $100K" }
+      - { value: 100k_plus, label: "$100K+" }
+    default: 3k_10k
+
+  txn.cross_border:
+    label: "Cross-Border"
+    control_type: toggle
+    default: false
+
+  txn.destination_country:
+    label: "Destination Country"
+    control_type: select
+    options:
+      - { value: canada, label: "Canada" }
+      - { value: usa, label: "USA" }
+      - { value: uk, label: "UK" }
+      - { value: high_risk_country, label: "High-Risk Country" }
+    default: canada
+
+  txn.round_amount:
+    label: "Round Amount"
+    control_type: toggle
+    default: false
+
+  txn.just_below_10k:
+    label: "Just Below $10K"
+    control_type: toggle
+    default: false
+
+  txn.multiple_same_day_txns:
+    label: "Multiple Same-Day Txns"
+    control_type: toggle
+    default: false
+
+  txn.pattern_matches_profile:
+    label: "Pattern Matches Profile"
+    control_type: toggle
+    default: true
+
+  txn.source_of_funds_clear:
+    label: "Source of Funds Clear"
+    control_type: toggle
+    default: true
+
+  txn.stated_purpose:
+    label: "Stated Purpose"
+    control_type: select
+    options:
+      - { value: personal, label: "Personal" }
+      - { value: business, label: "Business" }
+      - { value: investment, label: "Investment" }
+      - { value: gift, label: "Gift" }
+      - { value: unclear, label: "Unclear" }
+    default: personal
+
+  flag.structuring_suspected:
+    label: "Structuring Suspected"
+    control_type: toggle
+    default: false
+
+  flag.rapid_movement:
+    label: "Rapid Movement (in/out)"
+    control_type: toggle
+    default: false
+
+  flag.layering_indicators:
+    label: "Layering Indicators"
+    control_type: toggle
+    default: false
+
+  flag.unusual_for_profile:
+    label: "Unusual for Customer Profile"
+    control_type: toggle
+    default: false
+
+  flag.third_party_payment:
+    label: "Third-Party Payment"
+    control_type: toggle
+    default: false
+
+  flag.shell_company_indicators:
+    label: "Shell Company Indicators"
+    control_type: toggle
+    default: false
+
+  screen.sanctions_match:
+    label: "Sanctions Match"
+    control_type: toggle
+    default: false
+
+  screen.pep_match:
+    label: "PEP Match"
+    control_type: toggle
+    default: false
+
+  screen.adverse_media:
+    label: "Adverse Media"
+    control_type: toggle
+    default: false
+
+  screen.prior_sars_filed:
+    label: "Prior SARs Filed"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2_plus", label: "2+" }
+    default: "0"
+
+  screen.previous_account_closures:
+    label: "Previous Account Closures"
+    control_type: toggle
+    default: false
+
+field_groups:
+  - name: "Customer"
+    fields: [customer.type, customer.relationship_length]
+  - name: "Risk Profile"
+    fields: [risk.pep, risk.high_risk_jurisdiction, risk.high_risk_industry, risk.high_risk_industry_type, risk.cash_intensive_business]
+  - name: "Transaction"
+    fields: [txn.type, txn.amount_band, txn.cross_border, txn.destination_country, txn.round_amount, txn.just_below_10k, txn.multiple_same_day_txns, txn.pattern_matches_profile, txn.source_of_funds_clear, txn.stated_purpose]
+  - name: "Red Flags"
+    fields: [flag.structuring_suspected, flag.rapid_movement, flag.layering_indicators, flag.unusual_for_profile, flag.third_party_payment, flag.shell_company_indicators]
+  - name: "Screening"
+    fields: [screen.sanctions_match, screen.pep_match, screen.adverse_media, screen.prior_sars_filed, screen.previous_account_closures]
+
+evidence:
+  - { id: gov_photo_id, label: "Government Photo ID", default: true }
+  - { id: proof_of_address_lt_3mo, label: "Proof of Address (< 3mo)", default: false }
+  - { id: source_of_funds_declaration, label: "Source of Funds Declaration", default: false }
+  - { id: wire_instructions, label: "Wire Instructions", default: false }
+  - { id: invoice_contract, label: "Invoice/Contract", default: false }
+  - { id: gift_letter, label: "Gift Letter", default: false }
+  - { id: loan_agreement, label: "Loan Agreement", default: false }
+  - { id: sale_agreement, label: "Sale Agreement", default: false }
+
+visibility_rules:
+  - when: { true: [risk.high_risk_industry] }
+    show_fields: [risk.high_risk_industry_type]
+  - when: { false: [risk.high_risk_industry] }
+    hide_fields: [risk.high_risk_industry_type]
+  - when: { true: [txn.cross_border] }
+    show_fields: [txn.destination_country]
+  - when: { false: [txn.cross_border] }
+    hide_fields: [txn.destination_country]
+
+decision_rules:
+  - when: { true: [screen.sanctions_match] }
+    outcome:
+      decision: block
+      code: AML_BLOCK_SANCTIONS
+      label: "BLOCK + Report"
+      severity: critical
+      citations: ["Sanctions:Block"]
+
+  - when: { or: [{ true: [txn.just_below_10k] }, { true: [txn.multiple_same_day_txns] }, { true: [flag.structuring_suspected] }] }
+    outcome:
+      decision: investigate
+      code: AML_INV_STRUCT
+      label: "INVESTIGATE (Structuring)"
+      severity: warning
+      citations: ["FINTRAC:StructuringIndicators"]
+
+  - when: { and: [{ true: [txn.cross_border] }, { eq: [txn.destination_country, high_risk_country] }] }
+    outcome:
+      decision: escalate
+      code: AML_ESC_HR_COUNTRY
+      label: "ESCALATE (Compliance)"
+      severity: warning
+      citations: ["FINTRAC:HighRiskJurisdiction"]
+
+  - when: { and: [{ true: [risk.pep] }, { in: [txn.amount_band, ["25k_100k", "100k_plus"]] }] }
+    outcome:
+      decision: escalate
+      code: AML_ESC_PEP
+      label: "ESCALATE (Senior Management)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  - when: { or: [{ true: [flag.layering_indicators] }, { true: [flag.shell_company_indicators] }] }
+    outcome:
+      decision: investigate
+      code: AML_INV_LAYERING
+      label: "INVESTIGATE (Layering)"
+      severity: warning
+      citations: ["FINTRAC:LayeringIndicators"]
+
+  - when: { and: [{ eq: [customer.relationship_length, new_lt_6mo] }, { in: [txn.amount_band, ["10k_25k", "25k_100k", "100k_plus"]] }, { true: [txn.source_of_funds_clear] }] }
+    outcome:
+      decision: approve
+      code: AML_APPROVE_REPORT
+      label: "APPROVE + Report"
+      severity: warning
+      citations: ["FINTRAC:Reporting"]
+
+  - when: { default: true }
+    outcome:
+      decision: approve
+      code: AML_APPROVE_LOW
+      label: "APPROVE"
+      severity: normal
+      citations: ["FINTRAC:RiskBased"]
+
+expected_outcomes:
+  - { scenario: "Known customer, normal pattern, under $10K", outcome: "APPROVE" }
+  - { scenario: "New customer, >$10K, source clear", outcome: "APPROVE + Report" }
+  - { scenario: "Just below $10K, multiple same day", outcome: "INVESTIGATE (Structuring)" }
+  - { scenario: "High-risk country destination", outcome: "ESCALATE (Compliance)" }
+  - { scenario: "Sanctions match", outcome: "BLOCK + Report" }
+  - { scenario: "PEP, large amount", outcome: "ESCALATE (Senior Management)" }

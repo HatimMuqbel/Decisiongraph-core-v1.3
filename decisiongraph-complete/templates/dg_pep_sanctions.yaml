@@ -1,0 +1,132 @@
+template_id: dg.screening.pep_sanctions
+template_version: "2026.02.01"
+domain: banking_aml
+reg_pack_id: "CA-SANCTIONS-SCREEN"
+reg_pack_version: "2025.1"
+
+ui:
+  title: "PEP / Sanctions Screening"
+  summary_tokens:
+    - { field: screen.sanctions_match }
+    - { field: screen.pep_match }
+    - { field: screen.adverse_media }
+    - { field: edd.completed }
+
+fields:
+  screen.sanctions_match:
+    label: "Sanctions Match"
+    control_type: toggle
+    default: false
+
+  screen.pep_match:
+    label: "PEP Match"
+    control_type: toggle
+    default: false
+
+  screen.adverse_media:
+    label: "Adverse Media"
+    control_type: toggle
+    default: false
+
+  screen.previous_account_closures:
+    label: "Previous Account Closures"
+    control_type: toggle
+    default: false
+
+  screen.prior_sars_filed:
+    label: "Prior SARs Filed"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2_plus", label: "2+" }
+    default: "0"
+
+  edd.required:
+    label: "EDD Required"
+    control_type: toggle
+    default: false
+
+  edd.completed:
+    label: "EDD Completed"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  edd.senior_management_approval:
+    label: "Senior Management Approval"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+field_groups:
+  - name: "Screening Results"
+    fields: [screen.sanctions_match, screen.pep_match, screen.adverse_media, screen.previous_account_closures, screen.prior_sars_filed]
+  - name: "Enhanced Due Diligence"
+    fields: [edd.required, edd.completed, edd.senior_management_approval]
+
+evidence:
+  - { id: gov_photo_id, label: "Government Photo ID", default: true }
+  - { id: proof_of_address_lt_3mo, label: "Proof of Address (< 3mo)", default: false }
+  - { id: source_of_wealth_documented, label: "Source of Wealth Documentation", default: false }
+  - { id: beneficial_ownership_declaration, label: "Beneficial Ownership Declaration", default: false }
+
+visibility_rules:
+  - when: { or: [{ true: [screen.pep_match] }, { true: [screen.sanctions_match] }] }
+    show_fields: [edd.required, edd.completed, edd.senior_management_approval]
+  - when: { and: [{ false: [screen.pep_match] }, { false: [screen.sanctions_match] }] }
+    hide_fields: [edd.required, edd.completed, edd.senior_management_approval]
+
+decision_rules:
+  - when: { true: [screen.sanctions_match] }
+    outcome:
+      decision: block
+      code: SCR_BLOCK_SANCTIONS
+      label: "BLOCK + Report"
+      severity: critical
+      citations: ["Sanctions:Block"]
+
+  - when: { and: [{ true: [screen.pep_match] }, { eq: [edd.completed, "yes"] }, { eq: [edd.senior_management_approval, "yes"] }] }
+    outcome:
+      decision: approve
+      code: SCR_APPROVE_PEP_EDD
+      label: "APPROVE (EDD Complete)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  - when: { and: [{ true: [screen.pep_match] }, { or: [{ eq: [edd.completed, "no"] }, { eq: [edd.completed, "na"] }] }] }
+    outcome:
+      decision: hold
+      code: SCR_HOLD_PEP
+      label: "HOLD (Pending EDD)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  - when: { and: [{ true: [screen.adverse_media] }, { true: [screen.previous_account_closures] }] }
+    outcome:
+      decision: escalate
+      code: SCR_ESC_ADVERSE
+      label: "ESCALATE (Compliance)"
+      severity: warning
+      citations: ["Policy:AdverseMedia"]
+
+  - when: { default: true }
+    outcome:
+      decision: approve
+      code: SCR_APPROVE_CLEAR
+      label: "APPROVE"
+      severity: normal
+      citations: ["Policy:ScreeningClear"]
+
+expected_outcomes:
+  - { scenario: "No matches, clear screening", outcome: "APPROVE" }
+  - { scenario: "PEP match, EDD complete, approved", outcome: "APPROVE (EDD Complete)" }
+  - { scenario: "PEP match, EDD pending", outcome: "HOLD (Pending EDD)" }
+  - { scenario: "Adverse media + previous closures", outcome: "ESCALATE (Compliance)" }
+  - { scenario: "Sanctions match", outcome: "BLOCK + Report" }

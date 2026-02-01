@@ -1,0 +1,217 @@
+template_id: cp.property.ho3
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "CA-ON-HO3"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Homeowners (HO-3)"
+  summary_tokens:
+    - { field: policy.status }
+    - { field: claim.amount_band }
+    - { field: prop.loss_type }
+    - { field: prop.loss_cause }
+    - { field: prop.damage_type }
+    - { field: prop.days_vacant }
+
+fields:
+  policy.status:
+    label: "Policy Status"
+    control_type: select
+    options: [active, lapsed, cancelled]
+    default: active
+
+  claim.amount_band:
+    label: "Claim Amount"
+    control_type: select
+    options:
+      - { value: "0_10k", label: "$0 - $10K" }
+      - { value: "10k_25k", label: "$10K - $25K" }
+      - { value: "25k_50k", label: "$25K - $50K" }
+      - { value: "50k_100k", label: "$50K - $100K" }
+      - { value: "100k_plus", label: "$100K+" }
+    default: "0_10k"
+
+  prop.loss_type:
+    label: "Loss Type"
+    control_type: select
+    options:
+      - { value: fire, label: "Fire" }
+      - { value: water_damage, label: "Water Damage" }
+      - { value: theft, label: "Theft" }
+      - { value: wind_hail, label: "Wind/Hail" }
+      - { value: vandalism, label: "Vandalism" }
+      - { value: liability, label: "Liability" }
+    default: fire
+
+  prop.loss_cause:
+    label: "Loss Cause"
+    control_type: select
+    options:
+      - { value: fire, label: "Fire" }
+      - { value: flood_surface_water, label: "Flood/Surface Water" }
+      - { value: pipe_burst, label: "Pipe Burst" }
+      - { value: sewer_backup, label: "Sewer Backup" }
+      - { value: roof_leak, label: "Roof Leak" }
+      - { value: earthquake, label: "Earthquake" }
+      - { value: theft, label: "Theft" }
+      - { value: wind, label: "Wind" }
+    default: fire
+
+  prop.water_source:
+    label: "Water Source"
+    control_type: select
+    options:
+      - { value: internal_plumbing, label: "Internal Plumbing" }
+      - { value: surface_water, label: "Surface Water" }
+      - { value: sewer, label: "Sewer" }
+      - { value: roof, label: "Roof" }
+      - { value: na, label: "N/A" }
+    default: na
+
+  prop.damage_type:
+    label: "Damage Type"
+    control_type: select
+    options:
+      - { value: sudden, label: "Sudden" }
+      - { value: gradual, label: "Gradual" }
+    default: sudden
+
+  prop.days_vacant:
+    label: "Days Vacant"
+    control_type: select
+    options:
+      - { value: "0", label: "0 (Occupied)" }
+      - { value: "1_15", label: "1-15 days" }
+      - { value: "16_30", label: "16-30 days" }
+      - { value: "31_45", label: "31-45 days" }
+      - { value: "46_60", label: "46-60 days" }
+      - { value: "60_plus", label: "60+ days" }
+    default: "0"
+
+  prop.dwelling_occupied:
+    label: "Dwelling Occupied"
+    control_type: toggle
+    default: true
+
+  prop.arson_suspected:
+    label: "Arson Suspected"
+    control_type: toggle
+    default: false
+
+  prop.maintenance_issue:
+    label: "Maintenance Issue"
+    control_type: toggle
+    default: false
+
+  prop.prior_claims_3yr:
+    label: "Prior Claims (3 yrs)"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2", label: "2" }
+      - { value: "3_plus", label: "3+" }
+    default: "0"
+
+field_groups:
+  - name: "Policy"
+    fields: [policy.status, claim.amount_band]
+  - name: "Loss Details"
+    fields: [prop.loss_type, prop.loss_cause, prop.water_source, prop.damage_type]
+  - name: "Property Status"
+    fields: [prop.days_vacant, prop.dwelling_occupied]
+  - name: "Risk Factors"
+    fields: [prop.arson_suspected, prop.maintenance_issue, prop.prior_claims_3yr]
+
+evidence:
+  - { id: proof_of_loss, label: "Proof of Loss", default: true }
+  - { id: damage_photos, label: "Damage Photos", default: true }
+  - { id: fire_department_report, label: "Fire Department Report", default: false }
+  - { id: police_report, label: "Police Report", default: false }
+  - { id: contractor_estimate, label: "Contractor Estimate", default: false }
+  - { id: adjuster_inspection, label: "Adjuster Inspection", default: false }
+  - { id: weather_report, label: "Weather Report", default: false }
+  - { id: maintenance_records, label: "Maintenance Records", default: false }
+
+visibility_rules:
+  - when: { eq: [prop.loss_type, water_damage] }
+    show_fields: [prop.water_source, prop.damage_type]
+  - when: { ne: [prop.loss_type, water_damage] }
+    hide_fields: [prop.water_source, prop.damage_type]
+
+disable_rules:
+  - when: { eq: [prop.loss_type, fire] }
+    disable_options:
+      prop.loss_cause: [flood_surface_water, pipe_burst, sewer_backup, roof_leak]
+  - when: { eq: [prop.loss_type, theft] }
+    disable_options:
+      prop.loss_cause: [fire, flood_surface_water, pipe_burst, sewer_backup, roof_leak, earthquake, wind]
+
+evidence_rules:
+  - when: { eq: [prop.loss_type, fire] }
+    require_evidence: [fire_department_report]
+    missing_behavior: downgrade_certainty
+  - when: { eq: [prop.loss_type, theft] }
+    require_evidence: [police_report]
+    missing_behavior: warn
+  - when: { true: [prop.maintenance_issue] }
+    require_evidence: [maintenance_records]
+    missing_behavior: warn
+
+decision_rules:
+  - when: { eq: [prop.loss_cause, flood_surface_water] }
+    outcome:
+      decision: deny
+      code: HO_DENY_FLOOD
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Flood Exclusion"]
+
+  - when: { eq: [prop.loss_cause, earthquake] }
+    outcome:
+      decision: deny
+      code: HO_DENY_EARTH
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Earth Movement"]
+
+  - when: { eq: [prop.damage_type, gradual] }
+    outcome:
+      decision: deny
+      code: HO_DENY_GRADUAL
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Wear & Tear"]
+
+  - when: { in: [prop.days_vacant, ["31_45", "46_60", "60_plus"]] }
+    outcome:
+      decision: deny
+      code: HO_DENY_VACANCY
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Vacancy"]
+
+  - when: { true: [prop.arson_suspected] }
+    outcome:
+      decision: refer_siu
+      code: HO_REFER_SIU_ARSON
+      label: "REFER SIU"
+      severity: warning
+      citations: ["HO3:Fraud/Arson Handling"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: HO_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["HO3:Coverage"]
+
+expected_outcomes:
+  - { scenario: "Fire, occupied, no issues", outcome: "PAY" }
+  - { scenario: "Flood/surface water", outcome: "DENY (Flood Exclusion)" }
+  - { scenario: "Earthquake", outcome: "DENY (Earth Movement)" }
+  - { scenario: "Gradual water damage", outcome: "DENY (Wear & Tear)" }
+  - { scenario: "Vacant > 30 days", outcome: "DENY (Vacancy)" }
+  - { scenario: "Arson suspected", outcome: "REFER SIU" }

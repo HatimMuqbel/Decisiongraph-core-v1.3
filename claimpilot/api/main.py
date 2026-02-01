@@ -21,12 +21,17 @@ from contextlib import asynccontextmanager
 from claimpilot.packs.loader import PolicyPackLoader
 from claimpilot.models import Policy
 
-from api.routes import policies, evaluate, demo, verify, memo
+from api.routes import policies, evaluate, demo, verify, memo, templates
+from api.template_loader import TemplateLoader
 
 
 # Policy loader and cache
 loader = PolicyPackLoader(strict_version=False)
 policies_cache: dict[str, Policy] = {}
+
+# Template loader
+templates_dir = Path(__file__).parent.parent / "templates"
+template_loader = TemplateLoader(templates_dir)
 
 
 @asynccontextmanager
@@ -63,10 +68,16 @@ async def lifespan(app: FastAPI):
 
     print(f"Loaded {loaded} policy packs")
 
+    # Load templates
+    print("Loading case templates...")
+    templates_loaded = template_loader.load_all()
+    print(f"Loaded {templates_loaded} case templates")
+
     # Share loader with routes
     policies.set_loader(loader, policies_cache)
     evaluate.set_loader(loader, policies_cache)
     verify.set_loader(loader, policies_cache)
+    templates.set_loader(template_loader)
 
     yield
 
@@ -120,6 +131,7 @@ app.include_router(evaluate.router)
 app.include_router(demo.router)
 app.include_router(verify.router)
 app.include_router(memo.router)
+app.include_router(templates.router)
 
 # Mount static files (for CSS, JS, images if needed)
 static_path = Path(__file__).parent / "static"

@@ -1,0 +1,207 @@
+template_id: cp.auto.oap1
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "CA-ON-OAP1"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Ontario Auto (OAP 1)"
+  summary_tokens:
+    - { field: policy.status }
+    - { field: claim.amount_band }
+    - { field: auto.loss_type }
+    - { field: auto.vehicle_use }
+    - { field: driver.license_status }
+    - { field: driver.bac_level }
+
+fields:
+  policy.status:
+    label: "Policy Status"
+    control_type: select
+    options: [active, lapsed, cancelled]
+    default: active
+
+  claim.amount_band:
+    label: "Claim Amount"
+    control_type: select
+    options:
+      - { value: "0_10k", label: "$0 - $10K" }
+      - { value: "10k_25k", label: "$10K - $25K" }
+      - { value: "25k_50k", label: "$25K - $50K" }
+      - { value: "50k_100k", label: "$50K - $100K" }
+      - { value: "100k_plus", label: "$100K+" }
+    default: "0_10k"
+
+  auto.loss_type:
+    label: "Loss Type"
+    control_type: select
+    options:
+      - { value: collision, label: "Collision" }
+      - { value: comprehensive, label: "Comprehensive" }
+      - { value: accident_benefits, label: "Accident Benefits" }
+      - { value: liability, label: "Liability" }
+    default: collision
+
+  auto.vehicle_use:
+    label: "Vehicle Use at Loss"
+    control_type: select
+    options:
+      - { value: personal, label: "Personal" }
+      - { value: commute, label: "Commute" }
+      - { value: business, label: "Business" }
+      - { value: rideshare_delivery, label: "Rideshare/Delivery" }
+    default: personal
+
+  auto.rideshare_app_active:
+    label: "Rideshare App Active"
+    control_type: toggle
+    default: false
+
+  driver.license_status:
+    label: "License Status"
+    control_type: select
+    options:
+      - { value: valid, label: "Valid" }
+      - { value: suspended, label: "Suspended" }
+      - { value: expired, label: "Expired" }
+      - { value: never_licensed, label: "Never Licensed" }
+    default: valid
+
+  driver.bac_level:
+    label: "BAC Level"
+    control_type: select
+    options:
+      - { value: "0_00", label: "0.00" }
+      - { value: "0_05", label: "0.05" }
+      - { value: "0_08", label: "0.08" }
+      - { value: "0_10", label: "0.10" }
+      - { value: "0_12_plus", label: "0.12+" }
+    default: "0_00"
+
+  driver.impairment_indicated:
+    label: "Impairment Indicated"
+    control_type: toggle
+    default: false
+
+  auto.racing:
+    label: "Racing/Speed Contest"
+    control_type: toggle
+    default: false
+
+  auto.intentional_damage:
+    label: "Intentional Damage"
+    control_type: toggle
+    default: false
+
+  auto.vehicle_listed_on_policy:
+    label: "Vehicle Listed on Policy"
+    control_type: toggle
+    default: true
+
+  auto.named_driver_permitted:
+    label: "Named Driver/Permitted"
+    control_type: toggle
+    default: true
+
+field_groups:
+  - name: "Policy"
+    fields: [policy.status, claim.amount_band]
+  - name: "Loss Details"
+    fields: [auto.loss_type, auto.vehicle_use, auto.rideshare_app_active]
+  - name: "Driver"
+    fields: [driver.license_status, driver.bac_level, driver.impairment_indicated]
+  - name: "Circumstances"
+    fields: [auto.racing, auto.intentional_damage, auto.vehicle_listed_on_policy, auto.named_driver_permitted]
+
+evidence:
+  - { id: police_report, label: "Police Report", default: true }
+  - { id: damage_estimate, label: "Damage Estimate", default: true }
+  - { id: driver_statement, label: "Driver Statement", default: false }
+  - { id: witness_statement, label: "Witness Statement", default: false }
+  - { id: photos, label: "Photos", default: false }
+  - { id: toxicology_report, label: "Toxicology Report", default: false }
+  - { id: rideshare_app_activity, label: "App Activity Records", default: false }
+  - { id: mto_driver_abstract, label: "MTO Driver Abstract", default: false }
+
+visibility_rules:
+  - when: { eq: [auto.vehicle_use, rideshare_delivery] }
+    show_fields: [auto.rideshare_app_active]
+  - when: { ne: [auto.vehicle_use, rideshare_delivery] }
+    hide_fields: [auto.rideshare_app_active]
+
+evidence_rules:
+  - when: { true: [driver.impairment_indicated] }
+    require_evidence: [toxicology_report]
+    missing_behavior: downgrade_certainty
+  - when: { eq: [auto.vehicle_use, rideshare_delivery] }
+    require_evidence: [rideshare_app_activity]
+    missing_behavior: warn
+  - when: { in: [driver.license_status, [suspended, expired, never_licensed]] }
+    require_evidence: [mto_driver_abstract]
+    missing_behavior: warn
+
+decision_rules:
+  - when: { true: [auto.rideshare_app_active] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_COMMERCIAL
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:4.2.1 Commercial Use"]
+
+  - when: { in: [driver.bac_level, ["0_08", "0_10", "0_12_plus"]] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_IMPAIRED
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:4.3.3 Impaired"]
+
+  - when: { in: [driver.license_status, [suspended, expired, never_licensed]] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_UNLICENSED
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:4.1.2 Unlicensed"]
+
+  - when: { true: [auto.racing] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_RACING
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:4.5.1 Racing"]
+
+  - when: { true: [auto.intentional_damage] }
+    outcome:
+      decision: refer_siu
+      code: AUTO_REFER_SIU_INTENT
+      label: "REFER SIU"
+      severity: warning
+      citations: ["OAP1:Intentional Acts"]
+
+  - when: { in: [claim.amount_band, ["50k_100k", "100k_plus"]] }
+    outcome:
+      decision: escalate
+      code: AUTO_ESCALATE_HIGH_VALUE
+      label: "ESCALATE (Manager)"
+      severity: warning
+      citations: ["Internal:HighValue"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: AUTO_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["OAP1:Coverage"]
+
+expected_outcomes:
+  - { scenario: "Personal use, licensed, no impairment", outcome: "PAY" }
+  - { scenario: "Rideshare app active", outcome: "DENY (4.2.1 Commercial)" }
+  - { scenario: "BAC >= 0.08", outcome: "DENY (4.3.3 Impaired)" }
+  - { scenario: "License suspended", outcome: "DENY (4.1.2 Unlicensed)" }
+  - { scenario: "Racing activity", outcome: "DENY (4.5.1 Racing)" }
+  - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }
+  - { scenario: "Intentional damage", outcome: "REFER SIU" }

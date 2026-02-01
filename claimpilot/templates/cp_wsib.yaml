@@ -1,0 +1,170 @@
+template_id: cp.wsib.ontario
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "CA-ON-WSIB"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Workers Comp (WSIB Ontario)"
+  summary_tokens:
+    - { field: wsib.injury_type }
+    - { field: wsib.injury_work_related }
+    - { field: wsib.during_work_hours }
+    - { field: wsib.at_workplace }
+
+fields:
+  wsib.injury_type:
+    label: "Injury Type"
+    control_type: select
+    options:
+      - { value: strain_sprain, label: "Strain/Sprain" }
+      - { value: fracture, label: "Fracture" }
+      - { value: laceration, label: "Laceration" }
+      - { value: repetitive_strain, label: "Repetitive Strain" }
+      - { value: mental_health, label: "Mental Health" }
+      - { value: fatality, label: "Fatality" }
+    default: strain_sprain
+
+  wsib.employer_registered:
+    label: "Employer WSIB Registered"
+    control_type: toggle
+    default: true
+
+  wsib.injury_work_related:
+    label: "Injury Work Related"
+    control_type: toggle
+    default: true
+
+  wsib.arose_out_of_employment:
+    label: "Arose Out of Employment"
+    control_type: toggle
+    default: true
+
+  wsib.in_course_of_employment:
+    label: "In Course of Employment"
+    control_type: toggle
+    default: true
+
+  wsib.during_work_hours:
+    label: "During Work Hours"
+    control_type: toggle
+    default: true
+
+  wsib.at_workplace:
+    label: "At Workplace"
+    control_type: toggle
+    default: true
+
+  wsib.self_inflicted:
+    label: "Self-Inflicted"
+    control_type: toggle
+    default: false
+
+  wsib.intoxication_sole_cause:
+    label: "Intoxication Sole Cause"
+    control_type: toggle
+    default: false
+
+  wsib.pre_existing_condition:
+    label: "Pre-existing Condition"
+    control_type: toggle
+    default: false
+
+  wsib.pre_existing_aggravated:
+    label: "Pre-existing Aggravated"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  wsib.fatality:
+    label: "Fatality"
+    control_type: toggle
+    default: false
+
+field_groups:
+  - name: "Injury"
+    fields: [wsib.injury_type, wsib.fatality]
+  - name: "Employment Connection"
+    fields: [wsib.employer_registered, wsib.injury_work_related, wsib.arose_out_of_employment, wsib.in_course_of_employment, wsib.during_work_hours, wsib.at_workplace]
+  - name: "Exclusion Factors"
+    fields: [wsib.self_inflicted, wsib.intoxication_sole_cause, wsib.pre_existing_condition, wsib.pre_existing_aggravated]
+
+evidence:
+  - { id: form_7_employer, label: "Form 7 (Employer Report)", default: true }
+  - { id: form_8_physician, label: "Form 8 (Physician Report)", default: true }
+  - { id: worker_statement, label: "Worker Statement", default: true }
+  - { id: witness_statement, label: "Witness Statement", default: false }
+  - { id: incident_report, label: "Incident Report", default: false }
+  - { id: medical_records, label: "Medical Records", default: false }
+  - { id: toxicology_report, label: "Toxicology Report", default: false }
+
+visibility_rules:
+  - when: { true: [wsib.pre_existing_condition] }
+    show_fields: [wsib.pre_existing_aggravated]
+  - when: { false: [wsib.pre_existing_condition] }
+    hide_fields: [wsib.pre_existing_aggravated]
+
+evidence_rules:
+  - when: { true: [wsib.intoxication_sole_cause] }
+    require_evidence: [toxicology_report]
+    missing_behavior: downgrade_certainty
+
+decision_rules:
+  - when: { false: [wsib.injury_work_related] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_NOT_WORK
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Not Work Related"]
+
+  - when: { and: [{ true: [wsib.pre_existing_condition] }, { eq: [wsib.pre_existing_aggravated, "no"] }] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_PREEX
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Pre-existing"]
+
+  - when: { true: [wsib.intoxication_sole_cause] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_INTOX
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Intoxication"]
+
+  - when: { true: [wsib.self_inflicted] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_SELF
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Self-Inflicted"]
+
+  - when: { true: [wsib.fatality] }
+    outcome:
+      decision: escalate
+      code: WSIB_ESCALATE_FATAL
+      label: "ESCALATE (Manager)"
+      severity: warning
+      citations: ["Internal:FatalityHandling"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: WSIB_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["WSIB:Coverage"]
+
+expected_outcomes:
+  - { scenario: "Work injury, during work, at workplace", outcome: "PAY" }
+  - { scenario: "Not work related", outcome: "DENY (Not Work Related)" }
+  - { scenario: "Pre-existing, not aggravated", outcome: "DENY (Pre-existing)" }
+  - { scenario: "Intoxication sole cause", outcome: "DENY (Intoxication)" }
+  - { scenario: "Self-inflicted", outcome: "DENY (Self-Inflicted)" }
+  - { scenario: "Fatality", outcome: "ESCALATE (Manager)" }

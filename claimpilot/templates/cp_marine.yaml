@@ -1,0 +1,179 @@
+template_id: cp.marine.pleasure_craft
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "CA-ON-MARINE"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Marine (Pleasure Craft)"
+  summary_tokens:
+    - { field: policy.status }
+    - { field: claim.amount_band }
+    - { field: marine.loss_type }
+    - { field: marine.within_navigation_limits }
+    - { field: marine.operator_pcoc_valid }
+
+fields:
+  policy.status:
+    label: "Policy Status"
+    control_type: select
+    options: [active, lapsed, cancelled]
+    default: active
+
+  claim.amount_band:
+    label: "Claim Amount"
+    control_type: select
+    options:
+      - { value: "0_10k", label: "$0 - $10K" }
+      - { value: "10k_25k", label: "$10K - $25K" }
+      - { value: "25k_50k", label: "$25K - $50K" }
+      - { value: "50k_100k", label: "$50K - $100K" }
+      - { value: "100k_plus", label: "$100K+" }
+    default: "0_10k"
+
+  marine.loss_type:
+    label: "Loss Type"
+    control_type: select
+    options:
+      - { value: storm_damage, label: "Storm Damage" }
+      - { value: collision, label: "Collision" }
+      - { value: sinking, label: "Sinking" }
+      - { value: grounding, label: "Grounding" }
+      - { value: fire, label: "Fire" }
+      - { value: theft, label: "Theft" }
+      - { value: vandalism, label: "Vandalism" }
+    default: storm_damage
+
+  marine.within_navigation_limits:
+    label: "Within Navigation Limits"
+    control_type: toggle
+    default: true
+
+  marine.operator_pcoc_valid:
+    label: "Operator PCOC Valid"
+    control_type: toggle
+    default: true
+
+  marine.vessel_in_water:
+    label: "Vessel in Water"
+    control_type: toggle
+    default: true
+
+  marine.commercial_use:
+    label: "Commercial Use"
+    control_type: toggle
+    default: false
+
+  marine.racing_activity:
+    label: "Racing Activity"
+    control_type: toggle
+    default: false
+
+  marine.maintenance_current:
+    label: "Maintenance Current"
+    control_type: toggle
+    default: true
+
+  marine.ice_damage:
+    label: "Ice Damage"
+    control_type: toggle
+    default: false
+
+  marine.total_loss:
+    label: "Total Loss"
+    control_type: toggle
+    default: false
+
+field_groups:
+  - name: "Policy"
+    fields: [policy.status, claim.amount_band]
+  - name: "Loss Details"
+    fields: [marine.loss_type, marine.total_loss]
+  - name: "Vessel/Operator"
+    fields: [marine.within_navigation_limits, marine.operator_pcoc_valid, marine.vessel_in_water, marine.maintenance_current]
+  - name: "Exclusion Factors"
+    fields: [marine.commercial_use, marine.racing_activity, marine.ice_damage]
+
+evidence:
+  - { id: claim_form, label: "Claim Form", default: true }
+  - { id: damage_photos, label: "Damage Photos", default: true }
+  - { id: coast_guard_report, label: "Coast Guard Report", default: false }
+  - { id: marine_survey, label: "Marine Survey", default: false }
+  - { id: gps_ais_records, label: "GPS/AIS Records", default: false }
+  - { id: weather_report, label: "Weather Report", default: false }
+  - { id: maintenance_logs, label: "Maintenance Logs", default: false }
+  - { id: operator_credentials, label: "Operator Credentials", default: false }
+
+evidence_rules:
+  - when: { true: [marine.total_loss] }
+    require_evidence: [marine_survey]
+    missing_behavior: downgrade_certainty
+  - when: { false: [marine.operator_pcoc_valid] }
+    require_evidence: [operator_credentials]
+    missing_behavior: warn
+
+decision_rules:
+  - when: { false: [marine.within_navigation_limits] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_NAV
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Navigation Limits"]
+
+  - when: { false: [marine.operator_pcoc_valid] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_OPERATOR
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Operator Warranty"]
+
+  - when: { true: [marine.commercial_use] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_COMMERCIAL
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Commercial Use Exclusion"]
+
+  - when: { and: [{ true: [marine.ice_damage] }, { true: [marine.vessel_in_water] }] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_ICE
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Ice Exclusion"]
+
+  - when: { true: [marine.racing_activity] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_RACING
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Racing Exclusion"]
+
+  - when: { or: [{ true: [marine.total_loss] }, { eq: [marine.loss_type, sinking] }] }
+    outcome:
+      decision: escalate
+      code: MAR_ESCALATE_TOTAL
+      label: "ESCALATE (Marine Manager)"
+      severity: warning
+      citations: ["Internal:MarineManager"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: MAR_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["Marine:Coverage"]
+
+expected_outcomes:
+  - { scenario: "Storm, within limits, PCOC valid", outcome: "PAY" }
+  - { scenario: "Outside navigation limits", outcome: "DENY (Navigation)" }
+  - { scenario: "No PCOC", outcome: "DENY (Operator)" }
+  - { scenario: "Commercial use", outcome: "DENY (Commercial)" }
+  - { scenario: "Ice damage, in water", outcome: "DENY (Ice)" }
+  - { scenario: "Racing", outcome: "DENY (Racing)" }
+  - { scenario: "Sinking/Total loss", outcome: "ESCALATE (Marine Manager)" }

@@ -57,7 +57,8 @@ from decisiongraph.escalation_gate import run_escalation_gate, EscalationDecisio
 from decisiongraph.str_gate import run_str_gate, dual_gate_decision
 
 # Import routers
-from service.routers import demo, report, verify
+from service.routers import demo, report, verify, templates
+from service.template_loader import TemplateLoader
 
 # =============================================================================
 # Configuration
@@ -184,10 +185,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Template loader
+templates_dir = Path(__file__).parent.parent / "templates"
+template_loader = TemplateLoader(templates_dir)
+
 # Include routers
 app.include_router(demo.router)
 app.include_router(report.router)
 app.include_router(verify.router)
+app.include_router(templates.router)
 
 # Static files for landing page
 STATIC_DIR = Path(__file__).parent / "static"
@@ -733,6 +739,11 @@ async def startup_event():
     logger.info(f"Policy: v{DG_POLICY_VERSION} ({POLICY_HASH_SHORT})")
     logger.info(f"Schemas loaded: {SCHEMAS_LOADED}")
     logger.info(f"Docs enabled: {DG_DOCS_ENABLED}")
+
+    # Load case templates
+    templates_loaded = template_loader.load_all()
+    logger.info(f"Templates loaded: {templates_loaded}")
+    templates.set_loader(template_loader)
 
 @app.on_event("shutdown")
 async def shutdown_event():

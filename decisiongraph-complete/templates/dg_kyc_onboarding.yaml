@@ -1,0 +1,263 @@
+template_id: dg.kyc.onboarding
+template_version: "2026.02.01"
+domain: banking_aml
+reg_pack_id: "CA-FINTRAC-KYC"
+reg_pack_version: "2025.1"
+
+ui:
+  title: "Customer Onboarding (KYC)"
+  summary_tokens:
+    - { field: customer.type }
+    - { field: kyc.id_verified }
+    - { field: risk.pep }
+    - { field: screen.sanctions_match }
+
+fields:
+  customer.type:
+    label: "Customer Type"
+    control_type: select
+    options:
+      - { value: individual, label: "Individual" }
+      - { value: sole_prop, label: "Sole Proprietor" }
+      - { value: corporation, label: "Corporation" }
+      - { value: partnership, label: "Partnership" }
+      - { value: trust, label: "Trust" }
+      - { value: non_profit, label: "Non-Profit" }
+    default: individual
+
+  customer.relationship_length:
+    label: "Relationship Length"
+    control_type: select
+    options:
+      - { value: new_lt_6mo, label: "New (< 6 months)" }
+      - { value: established_6mo_2yr, label: "Established (6mo - 2yr)" }
+      - { value: long_term_2yr_plus, label: "Long-term (2yr+)" }
+    default: new_lt_6mo
+
+  risk.pep:
+    label: "PEP (Politically Exposed)"
+    control_type: toggle
+    default: false
+
+  risk.high_risk_jurisdiction:
+    label: "High-Risk Jurisdiction"
+    control_type: toggle
+    default: false
+
+  risk.high_risk_industry:
+    label: "High-Risk Industry"
+    control_type: toggle
+    default: false
+
+  risk.high_risk_industry_type:
+    label: "High-Risk Industry Type"
+    control_type: select
+    options:
+      - { value: money_services, label: "Money Services" }
+      - { value: crypto_virtual_assets, label: "Crypto/Virtual Assets" }
+      - { value: gaming_gambling, label: "Gaming/Gambling" }
+      - { value: real_estate, label: "Real Estate" }
+      - { value: precious_metals, label: "Precious Metals" }
+      - { value: arms_defense, label: "Arms/Defense" }
+      - { value: adult_entertainment, label: "Adult Entertainment" }
+    default: money_services
+
+  kyc.id_verified:
+    label: "ID Verified"
+    control_type: toggle
+    default: true
+
+  kyc.id_document_type:
+    label: "ID Document Type"
+    control_type: select
+    options:
+      - { value: passport, label: "Passport" }
+      - { value: drivers_license, label: "Driver's License" }
+      - { value: government_id, label: "Government ID" }
+      - { value: none, label: "None" }
+    default: passport
+
+  kyc.id_expired:
+    label: "ID Expired"
+    control_type: toggle
+    default: false
+
+  kyc.address_verified:
+    label: "Address Verified"
+    control_type: toggle
+    default: true
+
+  kyc.address_proof_type:
+    label: "Address Proof Type"
+    control_type: select
+    options:
+      - { value: utility_bill, label: "Utility Bill" }
+      - { value: bank_statement, label: "Bank Statement" }
+      - { value: government_letter, label: "Government Letter" }
+      - { value: none, label: "None" }
+    default: utility_bill
+
+  biz.registered:
+    label: "Business Registered"
+    control_type: toggle
+    default: true
+
+  biz.beneficial_owners_identified:
+    label: "Beneficial Owners Identified"
+    control_type: toggle
+    default: true
+
+  biz.ubo_above_25:
+    label: "UBO Above 25%"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  biz.source_of_wealth_documented:
+    label: "Source of Wealth Documented"
+    control_type: toggle
+    default: true
+
+  biz.activity_verified:
+    label: "Business Activity Verified"
+    control_type: toggle
+    default: true
+
+  edd.required:
+    label: "EDD Required"
+    control_type: toggle
+    default: false
+
+  edd.completed:
+    label: "EDD Completed"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  edd.senior_management_approval:
+    label: "Senior Management Approval"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  screen.sanctions_match:
+    label: "Sanctions Match"
+    control_type: toggle
+    default: false
+
+  screen.adverse_media:
+    label: "Adverse Media"
+    control_type: toggle
+    default: false
+
+  screen.prior_sars_filed:
+    label: "Prior SARs Filed"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2_plus", label: "2+" }
+    default: "0"
+
+field_groups:
+  - name: "Customer"
+    fields: [customer.type, customer.relationship_length]
+  - name: "Risk Profile"
+    fields: [risk.pep, risk.high_risk_jurisdiction, risk.high_risk_industry, risk.high_risk_industry_type]
+  - name: "Identity Verification"
+    fields: [kyc.id_verified, kyc.id_document_type, kyc.id_expired, kyc.address_verified, kyc.address_proof_type]
+  - name: "Business Verification"
+    fields: [biz.registered, biz.beneficial_owners_identified, biz.ubo_above_25, biz.source_of_wealth_documented, biz.activity_verified]
+  - name: "Enhanced Due Diligence"
+    fields: [edd.required, edd.completed, edd.senior_management_approval]
+  - name: "Screening"
+    fields: [screen.sanctions_match, screen.adverse_media, screen.prior_sars_filed]
+
+evidence:
+  - { id: gov_photo_id, label: "Government Photo ID", default: true }
+  - { id: proof_of_address_lt_3mo, label: "Proof of Address (< 3mo)", default: true }
+  - { id: articles_of_incorp, label: "Articles of Incorporation", default: false }
+  - { id: beneficial_ownership_declaration, label: "Beneficial Ownership Declaration", default: false }
+  - { id: business_license, label: "Business License", default: false }
+  - { id: board_resolution, label: "Board Resolution", default: false }
+  - { id: financial_statements, label: "Financial Statements", default: false }
+
+visibility_rules:
+  - when: { in: [customer.type, [corporation, partnership, trust, non_profit]] }
+    show_fields: [biz.registered, biz.beneficial_owners_identified, biz.ubo_above_25, biz.source_of_wealth_documented, biz.activity_verified]
+  - when: { in: [customer.type, [individual, sole_prop]] }
+    hide_fields: [biz.registered, biz.beneficial_owners_identified, biz.ubo_above_25, biz.source_of_wealth_documented, biz.activity_verified]
+  - when: { true: [risk.high_risk_industry] }
+    show_fields: [risk.high_risk_industry_type]
+  - when: { false: [risk.high_risk_industry] }
+    hide_fields: [risk.high_risk_industry_type]
+  - when: { true: [edd.required] }
+    show_fields: [edd.completed, edd.senior_management_approval]
+  - when: { false: [edd.required] }
+    hide_fields: [edd.completed, edd.senior_management_approval]
+
+decision_rules:
+  - when: { true: [screen.sanctions_match] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_SANCTIONS
+      label: "DECLINE + Report"
+      severity: critical
+      citations: ["Sanctions:Block"]
+
+  - when: { false: [kyc.id_verified] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_NO_ID
+      label: "DECLINE (Incomplete KYC)"
+      severity: critical
+      citations: ["FINTRAC:IDV Required"]
+
+  - when: { and: [{ true: [risk.pep] }, { or: [{ eq: [edd.completed, "no"] }, { eq: [edd.completed, "na"] }] }] }
+    outcome:
+      decision: hold
+      code: KYC_HOLD_PEP_EDD
+      label: "HOLD (Pending EDD)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  - when: { and: [{ true: [risk.high_risk_industry] }, { or: [{ eq: [edd.senior_management_approval, "no"] }, { eq: [edd.senior_management_approval, "na"] }] }] }
+    outcome:
+      decision: escalate
+      code: KYC_ESC_HR_INDUSTRY
+      label: "ESCALATE"
+      severity: warning
+      citations: ["FINTRAC:SeniorApproval"]
+
+  - when: { and: [{ true: [screen.adverse_media] }, { in: [screen.prior_sars_filed, ["1", "2_plus"]] }] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_ADVERSE
+      label: "DECLINE"
+      severity: critical
+      citations: ["Policy:AdverseMedia"]
+
+  - when: { default: true }
+    outcome:
+      decision: approve
+      code: KYC_APPROVE_LOW
+      label: "APPROVE"
+      severity: normal
+      citations: ["FINTRAC:KYC"]
+
+expected_outcomes:
+  - { scenario: "Full KYC complete, low risk", outcome: "APPROVE" }
+  - { scenario: "Missing ID verification", outcome: "DECLINE (Incomplete KYC)" }
+  - { scenario: "PEP, EDD not complete", outcome: "HOLD (Pending EDD)" }
+  - { scenario: "High-risk industry, no senior approval", outcome: "ESCALATE" }
+  - { scenario: "Sanctions match", outcome: "DECLINE + Report" }
+  - { scenario: "Adverse media, serious", outcome: "DECLINE" }

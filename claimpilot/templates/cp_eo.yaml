@@ -1,0 +1,147 @@
+template_id: cp.eo.professional_liability
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "EO-STD"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "E&O (Professional Liability)"
+  summary_tokens:
+    - { field: eo.claim_type }
+    - { field: eo.wrongful_act_date }
+    - { field: eo.in_professional_capacity }
+    - { field: eo.prior_similar_claims }
+
+fields:
+  eo.claim_type:
+    label: "Claim Type"
+    control_type: select
+    options:
+      - { value: negligence, label: "Negligence" }
+      - { value: error, label: "Error" }
+      - { value: omission, label: "Omission" }
+      - { value: misrepresentation, label: "Misrepresentation" }
+      - { value: breach_of_duty, label: "Breach of Duty" }
+    default: negligence
+
+  eo.claim_first_made_during_policy:
+    label: "Claim First Made During Policy"
+    control_type: toggle
+    default: true
+
+  eo.wrongful_act_date:
+    label: "Wrongful Act Date"
+    control_type: select
+    options:
+      - { value: before_retro_date, label: "Before Retro Date" }
+      - { value: after_retro_date, label: "After Retro Date" }
+    default: after_retro_date
+
+  eo.in_professional_capacity:
+    label: "In Professional Capacity"
+    control_type: toggle
+    default: true
+
+  eo.known_before_policy:
+    label: "Known Before Policy"
+    control_type: toggle
+    default: false
+
+  eo.fraud_dishonest_act:
+    label: "Fraudulent/Dishonest Act"
+    control_type: toggle
+    default: false
+
+  eo.bodily_injury_involved:
+    label: "Bodily Injury Involved"
+    control_type: toggle
+    default: false
+
+  eo.defense_costs_incurred:
+    label: "Defense Costs Incurred"
+    control_type: toggle
+    default: false
+
+  eo.prior_similar_claims:
+    label: "Prior Similar Claims"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2_plus", label: "2+" }
+    default: "0"
+
+field_groups:
+  - name: "Claim Details"
+    fields: [eo.claim_type, eo.claim_first_made_during_policy, eo.wrongful_act_date]
+  - name: "Coverage Criteria"
+    fields: [eo.in_professional_capacity, eo.defense_costs_incurred]
+  - name: "Exclusion Factors"
+    fields: [eo.known_before_policy, eo.fraud_dishonest_act, eo.bodily_injury_involved]
+  - name: "History"
+    fields: [eo.prior_similar_claims]
+
+evidence:
+  - { id: claim_notice, label: "Claim Notice", default: true }
+  - { id: engagement_letter, label: "Engagement Letter/Contract", default: true }
+  - { id: work_product_at_issue, label: "Work Product at Issue", default: false }
+  - { id: client_correspondence, label: "Client Correspondence", default: false }
+  - { id: expert_opinion, label: "Expert Opinion", default: false }
+  - { id: demand_letter, label: "Demand Letter", default: false }
+  - { id: lawsuit_documents, label: "Lawsuit Documents", default: false }
+
+decision_rules:
+  - when: { eq: [eo.wrongful_act_date, before_retro_date] }
+    outcome:
+      decision: deny
+      code: EO_DENY_PRIOR_ACTS
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Prior Acts"]
+
+  - when: { true: [eo.known_before_policy] }
+    outcome:
+      decision: deny
+      code: EO_DENY_KNOWN
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Known Circumstances"]
+
+  - when: { true: [eo.fraud_dishonest_act] }
+    outcome:
+      decision: deny
+      code: EO_DENY_FRAUD
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Fraud/Dishonesty"]
+
+  - when: { true: [eo.bodily_injury_involved] }
+    outcome:
+      decision: deny
+      code: EO_DENY_BI
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Bodily Injury Exclusion"]
+
+  - when: { false: [eo.in_professional_capacity] }
+    outcome:
+      decision: deny
+      code: EO_DENY_NOT_PROF
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Professional Capacity Required"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: EO_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["EO:Insuring Agreement"]
+
+expected_outcomes:
+  - { scenario: "Error in professional work, after retro", outcome: "PAY" }
+  - { scenario: "Wrongful act before retro date", outcome: "DENY (Prior Acts)" }
+  - { scenario: "Known before policy", outcome: "DENY (Known Circumstances)" }
+  - { scenario: "Fraudulent act", outcome: "DENY (Fraud/Dishonesty)" }
+  - { scenario: "Bodily injury", outcome: "DENY (BI Exclusion - need CGL)" }

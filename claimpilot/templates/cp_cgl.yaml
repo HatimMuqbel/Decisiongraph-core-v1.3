@@ -1,0 +1,171 @@
+template_id: cp.cgl.standard
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "CGL-STD"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Commercial General Liability (CGL)"
+  summary_tokens:
+    - { field: policy.status }
+    - { field: cgl.loss_type }
+    - { field: cgl.amount_band }
+    - { field: cgl.lawsuit_filed }
+
+fields:
+  policy.status:
+    label: "Policy Status"
+    control_type: select
+    options: [active, lapsed, cancelled]
+    default: active
+
+  cgl.loss_type:
+    label: "Loss Type"
+    control_type: select
+    options:
+      - { value: bodily_injury, label: "Bodily Injury" }
+      - { value: property_damage, label: "Property Damage" }
+      - { value: personal_injury, label: "Personal Injury" }
+      - { value: advertising_injury, label: "Advertising Injury" }
+      - { value: products_liability, label: "Products Liability" }
+    default: bodily_injury
+
+  cgl.occurrence_during_policy:
+    label: "Occurrence During Policy"
+    control_type: toggle
+    default: true
+
+  cgl.in_coverage_territory:
+    label: "In Coverage Territory"
+    control_type: toggle
+    default: true
+
+  cgl.expected_intended:
+    label: "Expected/Intended"
+    control_type: toggle
+    default: false
+
+  cgl.pollution_related:
+    label: "Pollution Related"
+    control_type: toggle
+    default: false
+
+  cgl.auto_involved:
+    label: "Auto Involved"
+    control_type: toggle
+    default: false
+
+  cgl.contractual_liability:
+    label: "Contractual Liability"
+    control_type: toggle
+    default: false
+
+  cgl.professional_services:
+    label: "Professional Services"
+    control_type: toggle
+    default: false
+
+  cgl.your_work_product:
+    label: "Your Work/Product"
+    control_type: toggle
+    default: false
+
+  cgl.lawsuit_filed:
+    label: "Lawsuit Filed"
+    control_type: toggle
+    default: false
+
+  cgl.amount_band:
+    label: "Claim Amount"
+    control_type: select
+    options:
+      - { value: "under_25k", label: "Under $25K" }
+      - { value: "25k_100k", label: "$25K - $100K" }
+      - { value: "100k_500k", label: "$100K - $500K" }
+      - { value: "500k_plus", label: "$500K+" }
+    default: "under_25k"
+
+field_groups:
+  - name: "Policy"
+    fields: [policy.status, cgl.amount_band]
+  - name: "Loss Details"
+    fields: [cgl.loss_type, cgl.occurrence_during_policy, cgl.in_coverage_territory]
+  - name: "Exclusion Factors"
+    fields: [cgl.expected_intended, cgl.pollution_related, cgl.auto_involved, cgl.contractual_liability, cgl.professional_services, cgl.your_work_product]
+  - name: "Legal Status"
+    fields: [cgl.lawsuit_filed]
+
+evidence:
+  - { id: claim_notice, label: "Claim Notice", default: true }
+  - { id: incident_report, label: "Incident Report", default: true }
+  - { id: police_report, label: "Police Report", default: false }
+  - { id: medical_records, label: "Medical Records (BI)", default: false }
+  - { id: repair_estimates, label: "Repair Estimates (PD)", default: false }
+  - { id: witness_statements, label: "Witness Statements", default: false }
+  - { id: contract_agreement, label: "Contract/Agreement", default: false }
+  - { id: lawsuit_documents, label: "Lawsuit Documents", default: false }
+
+evidence_rules:
+  - when: { true: [cgl.lawsuit_filed] }
+    require_evidence: [lawsuit_documents]
+    missing_behavior: warn
+  - when: { eq: [cgl.loss_type, bodily_injury] }
+    require_evidence: [medical_records]
+    missing_behavior: warn
+
+decision_rules:
+  - when: { true: [cgl.expected_intended] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_INTENT
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Intended Injury"]
+
+  - when: { true: [cgl.pollution_related] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_POLLUTION
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Pollution Exclusion"]
+
+  - when: { true: [cgl.auto_involved] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_AUTO
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Auto Exclusion"]
+
+  - when: { true: [cgl.professional_services] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_PROF
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Professional Services Exclusion"]
+
+  - when: { true: [cgl.lawsuit_filed] }
+    outcome:
+      decision: escalate
+      code: CGL_ESCALATE_COUNSEL
+      label: "ESCALATE (Claims Counsel)"
+      severity: warning
+      citations: ["Internal:CounselReferral"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: CGL_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["CGL:Insuring Agreement"]
+
+expected_outcomes:
+  - { scenario: "Slip & fall on premises", outcome: "PAY" }
+  - { scenario: "Expected/intended injury", outcome: "DENY (Intentional)" }
+  - { scenario: "Pollution event", outcome: "DENY (Pollution)" }
+  - { scenario: "Auto involved", outcome: "DENY (Auto Exclusion)" }
+  - { scenario: "Professional services", outcome: "DENY (Professional - need E&O)" }
+  - { scenario: "Lawsuit filed", outcome: "ESCALATE (Claims Counsel)" }

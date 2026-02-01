@@ -1,0 +1,177 @@
+template_id: cp.travel.medical
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "TRAVEL-MED"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Travel (Medical)"
+  summary_tokens:
+    - { field: travel.claim_type }
+    - { field: travel.outside_home_province }
+    - { field: travel.emergency_treatment }
+    - { field: travel.treatment_cost_band }
+
+fields:
+  travel.claim_type:
+    label: "Claim Type"
+    control_type: select
+    options:
+      - { value: emergency_medical, label: "Emergency Medical" }
+      - { value: trip_cancellation, label: "Trip Cancellation" }
+      - { value: trip_interruption, label: "Trip Interruption" }
+      - { value: baggage, label: "Baggage" }
+      - { value: evacuation, label: "Evacuation" }
+    default: emergency_medical
+
+  travel.outside_home_province:
+    label: "Outside Home Province"
+    control_type: toggle
+    default: true
+
+  travel.emergency_treatment:
+    label: "Emergency Treatment"
+    control_type: toggle
+    default: true
+
+  travel.pre_existing_condition:
+    label: "Pre-existing Condition"
+    control_type: toggle
+    default: false
+
+  travel.condition_stable_90_days:
+    label: "Condition Stable (90 days)"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  travel.high_risk_activity:
+    label: "High-Risk Activity"
+    control_type: toggle
+    default: false
+
+  travel.high_risk_activity_type:
+    label: "High-Risk Activity Type"
+    control_type: select
+    options:
+      - { value: skydiving, label: "Skydiving" }
+      - { value: bungee, label: "Bungee" }
+      - { value: mountaineering, label: "Mountaineering" }
+      - { value: scuba_uncertified, label: "Scuba (uncertified)" }
+      - { value: racing, label: "Racing" }
+      - { value: other, label: "Other" }
+    default: other
+
+  travel.travel_advisory_in_effect:
+    label: "Travel Advisory in Effect"
+    control_type: toggle
+    default: false
+
+  travel.elective_treatment:
+    label: "Elective Treatment"
+    control_type: toggle
+    default: false
+
+  travel.hospital_admission:
+    label: "Hospital Admission"
+    control_type: toggle
+    default: false
+
+  travel.treatment_cost_band:
+    label: "Treatment Cost"
+    control_type: select
+    options:
+      - { value: "under_1k", label: "Under $1K" }
+      - { value: "1k_10k", label: "$1K - $10K" }
+      - { value: "10k_50k", label: "$10K - $50K" }
+      - { value: "50k_plus", label: "$50K+" }
+    default: "under_1k"
+
+field_groups:
+  - name: "Claim Details"
+    fields: [travel.claim_type, travel.treatment_cost_band]
+  - name: "Coverage Criteria"
+    fields: [travel.outside_home_province, travel.emergency_treatment, travel.hospital_admission]
+  - name: "Pre-existing"
+    fields: [travel.pre_existing_condition, travel.condition_stable_90_days]
+  - name: "Exclusion Factors"
+    fields: [travel.high_risk_activity, travel.high_risk_activity_type, travel.travel_advisory_in_effect, travel.elective_treatment]
+
+evidence:
+  - { id: claim_form, label: "Claim Form", default: true }
+  - { id: medical_bills_receipts, label: "Medical Bills/Receipts", default: true }
+  - { id: physician_report, label: "Physician Report", default: false }
+  - { id: hospital_records, label: "Hospital Records", default: false }
+  - { id: travel_itinerary, label: "Travel Itinerary", default: false }
+  - { id: proof_of_trip_cost, label: "Proof of Trip Cost", default: false }
+  - { id: cancellation_notice, label: "Cancellation Notice", default: false }
+
+visibility_rules:
+  - when: { true: [travel.pre_existing_condition] }
+    show_fields: [travel.condition_stable_90_days]
+  - when: { false: [travel.pre_existing_condition] }
+    hide_fields: [travel.condition_stable_90_days]
+  - when: { true: [travel.high_risk_activity] }
+    show_fields: [travel.high_risk_activity_type]
+  - when: { false: [travel.high_risk_activity] }
+    hide_fields: [travel.high_risk_activity_type]
+
+decision_rules:
+  - when: { and: [{ true: [travel.pre_existing_condition] }, { eq: [travel.condition_stable_90_days, "no"] }] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_PREEX
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Pre-existing Stability"]
+
+  - when: { true: [travel.elective_treatment] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_ELECTIVE
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Not Emergency"]
+
+  - when: { true: [travel.high_risk_activity] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_HIGHRISK
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:High-Risk Exclusion"]
+
+  - when: { true: [travel.travel_advisory_in_effect] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_ADVISORY
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Advisory Exclusion"]
+
+  - when: { eq: [travel.treatment_cost_band, "50k_plus"] }
+    outcome:
+      decision: escalate
+      code: TRV_ESCALATE_MEDDIR
+      label: "ESCALATE (Medical Director)"
+      severity: warning
+      citations: ["Internal:MedicalDirector"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: TRV_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["Travel:Emergency Coverage"]
+
+expected_outcomes:
+  - { scenario: "Emergency abroad, no pre-existing", outcome: "PAY" }
+  - { scenario: "Pre-existing, not stable", outcome: "DENY (Pre-existing)" }
+  - { scenario: "Elective treatment", outcome: "DENY (Not Emergency)" }
+  - { scenario: "High-risk activity", outcome: "DENY (High-Risk)" }
+  - { scenario: "Travel advisory", outcome: "DENY (Travel Advisory)" }
+  - { scenario: "Cost > $50K", outcome: "ESCALATE (Medical Director)" }

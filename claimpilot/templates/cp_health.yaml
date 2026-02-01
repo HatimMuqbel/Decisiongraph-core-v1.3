@@ -1,0 +1,182 @@
+template_id: cp.health.group_benefits
+template_version: "2026.02.01"
+domain: insurance
+policy_pack_id: "CA-ON-HEALTH"
+policy_pack_version: "2024.1"
+
+ui:
+  title: "Health (Group Benefits)"
+  summary_tokens:
+    - { field: health.claim_type }
+    - { field: health.member_status }
+    - { field: health.coverage_months }
+    - { field: health.monthly_drug_cost }
+
+fields:
+  health.claim_type:
+    label: "Claim Type"
+    control_type: select
+    options:
+      - { value: prescription_drug, label: "Prescription Drug" }
+      - { value: dental, label: "Dental" }
+      - { value: paramedical, label: "Paramedical" }
+      - { value: vision, label: "Vision" }
+      - { value: hospital, label: "Hospital" }
+    default: prescription_drug
+
+  health.member_status:
+    label: "Member Status"
+    control_type: select
+    options:
+      - { value: active, label: "Active" }
+      - { value: terminated, label: "Terminated" }
+      - { value: cobra, label: "COBRA" }
+    default: active
+
+  health.coverage_months:
+    label: "Coverage Months"
+    control_type: select
+    options:
+      - { value: "0_3", label: "0-3 months" }
+      - { value: "3_6", label: "3-6 months" }
+      - { value: "6_12", label: "6-12 months" }
+      - { value: "12_plus", label: "12+ months" }
+    default: "12_plus"
+
+  health.drug_on_formulary:
+    label: "Drug on Formulary"
+    control_type: toggle
+    default: true
+
+  health.prior_auth_required:
+    label: "Prior Auth Required"
+    control_type: toggle
+    default: false
+
+  health.prior_auth_approved:
+    label: "Prior Auth Approved"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  health.pre_existing_condition:
+    label: "Pre-existing Condition"
+    control_type: toggle
+    default: false
+
+  health.work_related_injury:
+    label: "Work Related Injury"
+    control_type: toggle
+    default: false
+
+  health.cosmetic_procedure:
+    label: "Cosmetic Procedure"
+    control_type: toggle
+    default: false
+
+  health.experimental_treatment:
+    label: "Experimental Treatment"
+    control_type: toggle
+    default: false
+
+  health.monthly_drug_cost:
+    label: "Monthly Drug Cost"
+    control_type: select
+    options:
+      - { value: "under_100", label: "Under $100" }
+      - { value: "100_500", label: "$100 - $500" }
+      - { value: "500_1000", label: "$500 - $1,000" }
+      - { value: "1000_plus", label: "$1,000+" }
+    default: "under_100"
+
+field_groups:
+  - name: "Member"
+    fields: [health.member_status, health.coverage_months]
+  - name: "Claim Details"
+    fields: [health.claim_type, health.monthly_drug_cost]
+  - name: "Drug Coverage"
+    fields: [health.drug_on_formulary, health.prior_auth_required, health.prior_auth_approved]
+  - name: "Exclusion Factors"
+    fields: [health.pre_existing_condition, health.work_related_injury, health.cosmetic_procedure, health.experimental_treatment]
+
+evidence:
+  - { id: claim_form, label: "Claim Form", default: true }
+  - { id: prescription_receipt, label: "Prescription/Receipt", default: true }
+  - { id: physician_letter, label: "Physician Letter", default: false }
+  - { id: prior_auth_form, label: "Prior Auth Form", default: false }
+  - { id: medical_records, label: "Medical Records", default: false }
+  - { id: formulary_exception_request, label: "Formulary Exception Request", default: false }
+
+visibility_rules:
+  - when: { true: [health.prior_auth_required] }
+    show_fields: [health.prior_auth_approved]
+  - when: { false: [health.prior_auth_required] }
+    hide_fields: [health.prior_auth_approved]
+
+decision_rules:
+  - when: { and: [{ false: [health.drug_on_formulary] }, { false: [health.prior_auth_required] }] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_NON_FORM
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Non-Formulary"]
+
+  - when: { and: [{ true: [health.pre_existing_condition] }, { in: [health.coverage_months, ["0_3", "3_6", "6_12"]] }] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_PREEX
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Pre-existing"]
+
+  - when: { true: [health.work_related_injury] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_WSIB
+      label: "DENY"
+      severity: critical
+      citations: ["Health:WSIB Primary"]
+
+  - when: { true: [health.cosmetic_procedure] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_COSMETIC
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Cosmetic Exclusion"]
+
+  - when: { true: [health.experimental_treatment] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_EXPERIMENTAL
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Experimental Exclusion"]
+
+  - when: { in: [health.monthly_drug_cost, ["500_1000", "1000_plus"]] }
+    outcome:
+      decision: escalate
+      code: HLT_ESCALATE_CLINICAL
+      label: "ESCALATE (Clinical Review)"
+      severity: warning
+      citations: ["Internal:ClinicalReview"]
+
+  - when: { default: true }
+    outcome:
+      decision: pay
+      code: HLT_PAY_BASE
+      label: "PAY"
+      severity: normal
+      citations: ["Health:Coverage"]
+
+expected_outcomes:
+  - { scenario: "Formulary drug, active member", outcome: "PAY" }
+  - { scenario: "Non-formulary, no prior auth", outcome: "DENY (Non-Formulary)" }
+  - { scenario: "Pre-existing, < 12 months coverage", outcome: "DENY (Pre-existing)" }
+  - { scenario: "Work-related", outcome: "DENY (WSIB covers)" }
+  - { scenario: "Cosmetic", outcome: "DENY (Cosmetic)" }
+  - { scenario: "Drug cost > $500/month", outcome: "ESCALATE (Clinical Review)" }
