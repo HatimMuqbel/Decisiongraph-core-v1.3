@@ -226,10 +226,36 @@
 
       // Auto-evaluate when facts change
       useEffect(() => {
-        if (autoEvaluate && template && Object.keys(debouncedFacts).length > 0) {
-          evaluate();
+        if (!autoEvaluate || !template || Object.keys(debouncedFacts).length === 0) {
+          return;
         }
-      }, [debouncedFacts, evidence, autoEvaluate, template]);
+
+        let cancelled = false;
+        setLoading(true);
+
+        fetch(`${API_URL}/templates/evaluate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template_id: selectedTemplateId,
+            facts: debouncedFacts,
+            evidence: evidence
+          })
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (!cancelled) {
+              setResult(data);
+              setLastEvaluated(new Date());
+            }
+          })
+          .catch(e => console.error('Evaluation failed:', e))
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
+
+        return () => { cancelled = true; };
+      }, [debouncedFacts, evidence, autoEvaluate, template, selectedTemplateId]);
 
       const evaluate = async () => {
         if (!template) return;
