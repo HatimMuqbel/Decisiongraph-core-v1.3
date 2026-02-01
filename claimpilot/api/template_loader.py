@@ -209,12 +209,13 @@ class TemplateLoader:
             actual = facts.get(field)
             return actual in values
 
-        if "true" in condition:
-            fields = condition["true"]
+        # YAML parses 'true:' as boolean True key, not string "true"
+        if True in condition or "true" in condition:
+            fields = condition.get(True) or condition.get("true")
             return all(facts.get(f) is True for f in fields)
 
-        if "false" in condition:
-            fields = condition["false"]
+        if False in condition or "false" in condition:
+            fields = condition.get(False) or condition.get("false")
             return all(facts.get(f) is False for f in fields)
 
         if "and" in condition:
