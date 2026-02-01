@@ -5,8 +5,18 @@ Loads and manages case templates from YAML files.
 """
 
 import yaml
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# Import report cache function (will be set by main.py)
+_cache_decision = None
+
+def set_cache_decision(cache_fn):
+    """Set the cache function from report module."""
+    global _cache_decision
+    _cache_decision = cache_fn
 
 
 class TemplateLoader:
@@ -171,7 +181,12 @@ class TemplateLoader:
         if any(w.get("behavior") == "block" for w in warnings):
             certainty = "low"
 
-        return {
+        # Generate decision_id for report caching
+        decision_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat() + "Z"
+
+        result = {
+            "decision_id": decision_id,
             "decision": matched_outcome.get("decision"),
             "decision_label": matched_outcome.get("label"),
             "decision_code": matched_outcome.get("code"),
@@ -187,6 +202,51 @@ class TemplateLoader:
                 "policy_pack_version": template.get("policy_pack_version") or template.get("reg_pack_version"),
             }
         }
+
+        # Cache for report generation
+        if _cache_decision:
+            report_pack = {
+                "meta": {
+                    "decision_id": decision_id,
+                    "case_id": f"BYOC-{decision_id[:8].upper()}",
+                    "timestamp": timestamp,
+                    "jurisdiction": "CA",
+                    "engine_version": "2.1.1",
+                    "policy_version": template.get("template_version"),
+                },
+                "decision": {
+                    "verdict": matched_outcome.get("label"),
+                    "action": matched_outcome.get("code"),
+                    "str_required": matched_outcome.get("decision") in ["block", "escalate", "investigate"],
+                },
+                "gates": {
+                    "gate1": {
+                        "decision": "ALLOWED" if matched_outcome.get("decision") != "block" else "PROHIBITED",
+                        "sections": {}
+                    },
+                    "gate2": {
+                        "decision": matched_outcome.get("label"),
+                        "status": matched_outcome.get("severity"),
+                        "sections": {}
+                    }
+                },
+                "layers": {
+                    "layer1_facts": {"facts": facts}
+                },
+                "rationale": {
+                    "summary": f"Build Your Own Case evaluation: {matched_outcome.get('label')}",
+                    "absolute_rules_validated": []
+                },
+                "evaluation_trace": {
+                    "rules_fired": [{"code": step.get("text", ""), "result": step.get("status", "")} for step in reasoning_chain],
+                    "evidence_used": [{"field": k, "value": v} for k, v in facts.items()],
+                    "decision_path": matched_outcome.get("code")
+                },
+                "compliance": {}
+            }
+            _cache_decision(decision_id, report_pack)
+
+        return result
 
     def _evaluate_condition(self, condition: dict, facts: dict) -> bool:
         """Evaluate a condition against facts."""

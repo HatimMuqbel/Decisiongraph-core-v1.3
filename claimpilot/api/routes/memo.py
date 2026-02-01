@@ -448,3 +448,89 @@ The recommendation may be independently verified using the `/verify` endpoint an
         "content": md,
         "generated_at": datetime.utcnow().isoformat() + "Z"
     }
+
+
+# =============================================================================
+# Build Your Own Case Memo Endpoints
+# =============================================================================
+
+from api.template_loader import get_byoc_evaluation
+
+
+@router.get("/byoc/{decision_id}", response_class=HTMLResponse)
+async def get_byoc_memo_html(request: Request, decision_id: str):
+    """Generate HTML memo for Build Your Own Case evaluation."""
+    data = get_byoc_evaluation(decision_id)
+    if not data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"BYOC evaluation '{decision_id}' not found. Evaluations are cached briefly."
+        )
+
+    result = data.get("result", {})
+    template_data = data.get("template", {})
+    facts = data.get("facts", {})
+    reasoning = data.get("reasoning_chain", [])
+    warnings = data.get("warnings", [])
+
+    # Build reasoning steps for template
+    reasoning_steps = []
+    for step in reasoning:
+        reasoning_steps.append({
+            "step": step.get("step", ""),
+            "action": step.get("text", ""),
+            "outcome": "PASS" if step.get("status") == "pass" else "FAIL" if step.get("status") == "fail" else "WARN"
+        })
+
+    # Build facts list
+    facts_list = []
+    for field_id, value in facts.items():
+        field_def = template_data.get("fields", {}).get(field_id, {})
+        label = field_def.get("label", field_id)
+        if isinstance(value, bool):
+            display_value = "Yes" if value else "No"
+        else:
+            display_value = str(value)
+        facts_list.append({"field": label, "value": display_value})
+
+    # Build exclusions from reasoning
+    exclusions = []
+    for step in reasoning:
+        exclusions.append({
+            "code": step.get("text", "").split(":")[0] if ":" in step.get("text", "") else "CHECK",
+            "description": step.get("text", ""),
+            "evaluation_result": "PASS" if step.get("status") == "pass" else "TRIGGERED",
+            "notes": ""
+        })
+
+    # Determine decision status
+    decision = result.get("decision", "unknown")
+    if decision in ["approve", "pay"]:
+        decision_status = "approve"
+        decision_explainer = "Coverage applies. No exclusions triggered."
+    elif decision in ["deny", "block", "decline"]:
+        decision_status = "deny"
+        decision_explainer = f"Coverage excluded: {result.get('decision_code', 'N/A')}"
+    else:
+        decision_status = "review"
+        decision_explainer = f"Requires review: {result.get('decision_code', 'N/A')}"
+
+    context = {
+        "request": request,
+        "request_id": decision_id,
+        "request_id_short": decision_id[:8].upper(),
+        "evaluated_at": data.get("timestamp", datetime.utcnow().isoformat()),
+        "claim_facts": facts_list,
+        "decision_status": decision_status,
+        "decision_note": None,
+        "decision_explainer": decision_explainer,
+        "unresolved_exclusions": [],
+        "exclusions": exclusions,
+        "evidence_table": [],
+        "reasoning_steps": reasoning_steps,
+        "policy_pack_id": result.get("version_pins", {}).get("policy_pack_id", "N/A"),
+        "policy_pack_version": result.get("version_pins", {}).get("policy_pack_version", "N/A"),
+        "policy_pack_hash": f"byoc-{decision_id[:16]}",
+    }
+
+    return templates.TemplateResponse("memo.html", context)

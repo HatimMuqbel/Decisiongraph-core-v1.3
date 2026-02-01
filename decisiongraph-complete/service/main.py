@@ -58,7 +58,7 @@ from decisiongraph.str_gate import run_str_gate, dual_gate_decision
 
 # Import routers
 from service.routers import demo, report, verify, templates
-from service.template_loader import TemplateLoader
+from service.template_loader import TemplateLoader, set_cache_decision
 
 # =============================================================================
 # Configuration
@@ -744,6 +744,9 @@ async def startup_event():
     templates_loaded = template_loader.load_all()
     logger.info(f"Templates loaded: {templates_loaded}")
     templates.set_loader(template_loader)
+
+    # Wire up report caching for Build Your Own Case
+    set_cache_decision(report.cache_decision)
 
 @app.on_event("shutdown")
 async def shutdown_event():

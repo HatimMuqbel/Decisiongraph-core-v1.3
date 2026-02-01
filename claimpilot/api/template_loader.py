@@ -5,8 +5,26 @@ Loads and manages case templates from YAML files.
 """
 
 import yaml
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# In-memory cache for BYOC evaluations (for memo generation)
+_byoc_cache: dict[str, dict] = {}
+
+
+def cache_byoc_evaluation(eval_id: str, data: dict):
+    """Cache a BYOC evaluation for memo generation."""
+    _byoc_cache[eval_id] = data
+    if len(_byoc_cache) > 100:
+        oldest = next(iter(_byoc_cache))
+        del _byoc_cache[oldest]
+
+
+def get_byoc_evaluation(eval_id: str) -> dict | None:
+    """Get cached BYOC evaluation."""
+    return _byoc_cache.get(eval_id)
 
 
 class TemplateLoader:
@@ -171,7 +189,12 @@ class TemplateLoader:
         if any(w.get("behavior") == "block" for w in warnings):
             certainty = "low"
 
-        return {
+        # Generate decision_id for memo caching
+        decision_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat() + "Z"
+
+        result = {
+            "decision_id": decision_id,
             "decision": matched_outcome.get("decision"),
             "decision_label": matched_outcome.get("label"),
             "decision_code": matched_outcome.get("code"),
@@ -187,6 +210,20 @@ class TemplateLoader:
                 "policy_pack_version": template.get("policy_pack_version") or template.get("reg_pack_version"),
             }
         }
+
+        # Cache for memo generation
+        cache_byoc_evaluation(decision_id, {
+            "decision_id": decision_id,
+            "timestamp": timestamp,
+            "template": template,
+            "facts": facts,
+            "evidence": evidence,
+            "result": result,
+            "reasoning_chain": reasoning_chain,
+            "warnings": warnings,
+        })
+
+        return result
 
     def _evaluate_condition(self, condition: dict, facts: dict) -> bool:
         """Evaluate a condition against facts."""
