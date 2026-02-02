@@ -21,7 +21,7 @@ DecisionGraph is a **Universal Operating System for Deterministic Reasoning**. I
 │           Domain-specific rules (Banking, HR, Sales, etc.)   │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 6: PRODUCT FEATURES                                  │
-│           Logic Pack Manager, ZKP Generator, Simulation      │
+│           Precedent System, Logic Pack Manager, Simulation   │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 5: RESOLVER (The Scholar)                            │
 │           Query, Traverse, Infer, Resolve conflicts          │
@@ -43,6 +43,20 @@ DecisionGraph is a **Universal Operating System for Deterministic Reasoning**. I
 ## Layer 1: Decision-Cell
 
 The atomic unit of DecisionGraph. A cryptographically sealed packet.
+
+### Cell Types
+
+| Type | Purpose |
+|------|---------|
+| `GENESIS` | First cell, establishes graph identity |
+| `FACT` | Records a single fact (subject-predicate-object) |
+| `RULE` | Defines logic/policy rules |
+| `INFERENCE` | Derived fact from rule application |
+| `ACCESS_RULE` | Namespace access permissions |
+| `BRIDGE_RULE` | Cross-namespace access authorization |
+| `RETRACTION` | Invalidates a previous cell |
+| `JUDGMENT` | Sealed decision for precedent matching |
+| `WITNESS_SET` | Immutable collection of related cells |
 
 ### Structure
 
@@ -236,6 +250,107 @@ def resolve(
 4. **Resolve**: Handle conflicts (confidence, recency)
 5. **Time-Travel**: Query as of any timestamp
 6. **Verify**: Trace inference path with citations
+
+## Layer 6: Precedent System
+
+The precedent system enables decision consistency tracking across the graph.
+
+### JUDGMENT Cells
+
+When a decision is finalized (disposition sealed), a JUDGMENT cell is created:
+
+```
+JudgmentPayload
+├── Identity (privacy-preserving)
+│   ├── precedent_id: UUID           # Random, NOT case_id
+│   ├── case_id_hash: SHA256         # SHA256(salt + case_id)
+│   └── jurisdiction_code: "CA-ON"
+├── Fingerprint
+│   ├── fingerprint_hash: SHA256     # SHA256(salt + banded_facts)
+│   ├── fingerprint_schema_id        # e.g., "claimpilot:oap1:auto:v1"
+│   └── anchor_facts: []             # Banded facts for matching
+├── Decision
+│   ├── exclusion_codes: []          # ["4.2.1", "4.3.3"]
+│   ├── reason_codes: []             # ["RC-COMMERCIAL-USE"]
+│   ├── outcome_code                 # pay, deny, partial, escalate
+│   └── certainty                    # high, medium, low
+├── Appeals
+│   ├── appealed: bool
+│   ├── appeal_outcome               # upheld, overturned, settled
+│   └── appeal_level                 # internal, tribunal, court
+└── Provenance
+    └── authority_hashes: []         # Policy wording cited
+```
+
+### PrecedentRegistry
+
+Chain-sourced, stateless registry (follows WitnessRegistry pattern):
+
+```python
+registry = PrecedentRegistry(chain)
+
+# Find by exact fingerprint
+matches = registry.find_by_fingerprint(
+    fingerprint_hash="abc...",
+    namespace_prefix="/precedents/auto/",
+    as_of="2026-01-01T00:00:00Z"  # Bitemporal
+)
+
+# Find by exclusion codes
+matches = registry.find_by_exclusion_codes(
+    codes=["4.2.1"],
+    namespace_prefix="/precedents/",
+    outcome="deny",
+    min_overlap=1
+)
+
+# Get statistics
+stats = registry.get_statistics(fingerprint_hash, namespace_prefix)
+# → total_count, outcome_counts, appeal_stats
+```
+
+### Query Tiers
+
+Three-tier matching for flexibility:
+
+| Tier | Name | Matching Criteria |
+|------|------|-------------------|
+| 0 | Exact Fingerprint | Identical banded facts |
+| 0.5 | Same Codes | Same exclusion codes + outcome |
+| 1 | Code Overlap | Overlapping exclusion codes |
+
+### Confidence Scoring (pc_v1)
+
+```python
+base_confidence = weighted_average(
+    majority_pct * 0.30,      # Same outcome rate
+    upheld_rate * 0.25,       # Appeal success
+    recency_score * 0.20,     # Recent decisions weighted
+    policy_match_score * 0.15,# Policy version match
+    decision_level_score * 0.10
+)
+
+# Overturned precedents apply penalty
+precedent_confidence = base_confidence - overturn_penalty
+```
+
+### Fingerprint Banding
+
+Continuous values are banded for stable matching:
+
+```python
+# BAC level bands
+banding_rules = {
+    "driver.bac_level": [
+        (0.0, 0.05, "under_limit"),
+        (0.05, 0.08, "warn_level"),
+        (0.08, float("inf"), "over_limit"),
+    ]
+}
+
+# Facts with bac=0.12 → banded to "over_limit"
+# All bac>0.08 cases match each other
+```
 
 ## Bitemporal Model
 
