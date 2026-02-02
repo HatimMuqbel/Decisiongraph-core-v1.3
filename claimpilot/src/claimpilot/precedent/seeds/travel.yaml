@@ -1,0 +1,78 @@
+# Travel Insurance Seed Configuration
+# Generates 150 precedents for Ontario travel insurance
+
+schema_id: claimpilot:travel:v1
+registry_id: claimpilot:travel:v1
+jurisdiction: CA-ON
+policy_pack_id: CA-ON-TRAVEL-2024
+policy_version: "1.0"
+
+exclusions:
+  - code: "RC-PRE"
+    name: Pre-existing Condition
+    count: 40
+    deny_rate: 0.85
+    appeal_rate: 0.30
+    upheld_rate: 0.68
+    base_facts:
+      condition.stable_90_days: false
+    variable_facts:
+      location.outside_home_province: [true]
+      treatment.emergency: [true, false]
+
+  - code: "RC-RISK"
+    name: High-Risk Activity
+    count: 25
+    deny_rate: 0.93
+    appeal_rate: 0.18
+    upheld_rate: 0.85
+    base_facts:
+      location.outside_home_province: true
+      treatment.emergency: true
+    variable_facts:
+      condition.stable_90_days: [true]
+
+  - code: "RC-ADVISORY"
+    name: Travel Advisory
+    count: 20
+    deny_rate: 0.95
+    appeal_rate: 0.15
+    upheld_rate: 0.90
+    base_facts:
+      location.outside_home_province: true
+    variable_facts:
+      treatment.emergency: [true, false]
+      condition.stable_90_days: [true]
+
+  - code: "RC-ELECT"
+    name: Elective Treatment
+    count: 20
+    deny_rate: 0.94
+    appeal_rate: 0.20
+    upheld_rate: 0.82
+    base_facts:
+      location.outside_home_province: true
+      treatment.emergency: false
+    variable_facts:
+      condition.stable_90_days: [true, false]
+
+  - code: "RC-EMERG"
+    name: Non-Emergency
+    count: 15
+    deny_rate: 0.92
+    appeal_rate: 0.22
+    upheld_rate: 0.78
+    base_facts:
+      location.outside_home_province: true
+      treatment.emergency: false
+    variable_facts:
+      condition.stable_90_days: [true]
+
+clean_approvals:
+  count: 30
+  appeal_rate: 0.04
+  base_facts:
+    location.outside_home_province: true
+    treatment.emergency: true
+    condition.stable_90_days: true
+  variable_facts: {}

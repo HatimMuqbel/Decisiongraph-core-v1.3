@@ -197,6 +197,27 @@ class FingerprintSchemaRegistry:
         # Ontario Auto (OAP 1) v1
         self.register_schema(create_ontario_auto_schema_v1())
 
+        # Property (HO-3) v1
+        self.register_schema(create_property_ho3_schema_v1())
+
+        # Marine v1
+        self.register_schema(create_marine_schema_v1())
+
+        # Health v1
+        self.register_schema(create_health_schema_v1())
+
+        # WSIB v1
+        self.register_schema(create_wsib_schema_v1())
+
+        # CGL v1
+        self.register_schema(create_cgl_schema_v1())
+
+        # E&O v1
+        self.register_schema(create_eo_schema_v1())
+
+        # Travel v1
+        self.register_schema(create_travel_schema_v1())
+
     def register_schema(self, schema: FingerprintSchema) -> None:
         """
         Register a schema in the registry.
@@ -354,6 +375,92 @@ def apply_banding(
 
 
 # =============================================================================
+# Common Banding Rules
+# =============================================================================
+
+def create_days_vacant_banding() -> BandingRule:
+    """
+    Banding rule for dwelling vacancy days.
+
+    Bands:
+    - 0: "occupied"
+    - 1-30: "short"
+    - 31-60: "medium"
+    - 61+: "long"
+    """
+    return BandingRule(
+        field_id="dwelling.days_vacant",
+        bands=[
+            (0, "occupied"),
+            (30, "short"),
+            (60, "medium"),
+            (None, "long"),
+        ],
+    )
+
+
+def create_coverage_months_banding() -> BandingRule:
+    """
+    Banding rule for member coverage duration in months.
+
+    Bands:
+    - 0-3: "new"
+    - 4-11: "waiting"
+    - 12+: "established"
+    """
+    return BandingRule(
+        field_id="member.coverage_months",
+        bands=[
+            (3, "new"),
+            (11, "waiting"),
+            (None, "established"),
+        ],
+    )
+
+
+def create_claim_amount_banding() -> BandingRule:
+    """
+    Banding rule for claim amounts.
+
+    Bands:
+    - 0-25k: "small"
+    - 25k-100k: "medium"
+    - 100k-500k: "large"
+    - 500k+: "major"
+    """
+    return BandingRule(
+        field_id="claim.amount",
+        bands=[
+            (25000, "small"),
+            (100000, "medium"),
+            (500000, "large"),
+            (None, "major"),
+        ],
+    )
+
+
+def create_treatment_cost_banding() -> BandingRule:
+    """
+    Banding rule for treatment costs.
+
+    Bands:
+    - 0-1k: "low"
+    - 1k-10k: "medium"
+    - 10k-50k: "high"
+    - 50k+: "critical"
+    """
+    return BandingRule(
+        field_id="treatment.cost",
+        bands=[
+            (1000, "low"),
+            (10000, "medium"),
+            (50000, "high"),
+            (None, "critical"),
+        ],
+    )
+
+
+# =============================================================================
 # Built-in Schemas
 # =============================================================================
 
@@ -403,6 +510,192 @@ def create_ontario_auto_schema_v1() -> FingerprintSchema:
     )
 
 
+def create_property_ho3_schema_v1() -> FingerprintSchema:
+    """
+    Create the Property (HO-3) v1 fingerprint schema for Ontario.
+
+    This schema defines facts relevant for property insurance exclusion
+    matching in Ontario, Canada.
+
+    Relevant facts:
+    - loss.cause: Primary cause of loss (fire, water, wind, etc.)
+    - water.source: Source of water damage if applicable
+    - dwelling.days_vacant: Days property was vacant
+    - arson.suspected: Whether arson is suspected
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:ho3:property:v1",
+        policy_type="property",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "loss.cause",
+            "water.source",
+            "dwelling.days_vacant",
+            "arson.suspected",
+        ],
+        banding_rules={
+            "dwelling.days_vacant": create_days_vacant_banding(),
+        },
+        compatible_with=[],
+    )
+
+
+def create_marine_schema_v1() -> FingerprintSchema:
+    """
+    Create the Marine v1 fingerprint schema for Ontario.
+
+    This schema defines facts relevant for marine insurance exclusion
+    matching in Ontario, Canada.
+
+    Relevant facts:
+    - vessel.within_navigation_limits: Whether vessel was within covered area
+    - operator.pcoc_valid: Whether operator had valid PCOC
+    - vessel.commercial_use: Whether vessel was used commercially
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:marine:v1",
+        policy_type="marine",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "vessel.within_navigation_limits",
+            "operator.pcoc_valid",
+            "vessel.commercial_use",
+        ],
+        banding_rules={},
+        compatible_with=[],
+    )
+
+
+def create_health_schema_v1() -> FingerprintSchema:
+    """
+    Create the Health v1 fingerprint schema for Ontario.
+
+    This schema defines facts relevant for health insurance exclusion
+    matching in Ontario, Canada.
+
+    Relevant facts:
+    - drug.on_formulary: Whether drug is on formulary
+    - condition.preexisting: Whether condition is pre-existing
+    - member.coverage_months: Duration of coverage in months
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:health:v1",
+        policy_type="health",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "drug.on_formulary",
+            "condition.preexisting",
+            "member.coverage_months",
+        ],
+        banding_rules={
+            "member.coverage_months": create_coverage_months_banding(),
+        },
+        compatible_with=[],
+    )
+
+
+def create_wsib_schema_v1() -> FingerprintSchema:
+    """
+    Create the WSIB v1 fingerprint schema for Ontario.
+
+    This schema defines facts relevant for WSIB (workers' compensation)
+    exclusion matching in Ontario, Canada.
+
+    Relevant facts:
+    - injury.work_related: Whether injury occurred at work
+    - injury.arose_out_of_employment: Whether injury arose from employment
+    - injury.intoxication_sole_cause: Whether intoxication was sole cause
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:wsib:v1",
+        policy_type="wsib",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "injury.work_related",
+            "injury.arose_out_of_employment",
+            "injury.intoxication_sole_cause",
+        ],
+        banding_rules={},
+        compatible_with=[],
+    )
+
+
+def create_cgl_schema_v1() -> FingerprintSchema:
+    """
+    Create the CGL (Commercial General Liability) v1 fingerprint schema.
+
+    This schema defines facts relevant for CGL insurance exclusion
+    matching in Ontario, Canada.
+
+    Relevant facts:
+    - injury.expected_intended: Whether injury was expected/intended
+    - loss.pollution_related: Whether loss involved pollution
+    - loss.auto_involved: Whether an automobile was involved
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:cgl:v1",
+        policy_type="cgl",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "injury.expected_intended",
+            "loss.pollution_related",
+            "loss.auto_involved",
+        ],
+        banding_rules={},
+        compatible_with=[],
+    )
+
+
+def create_eo_schema_v1() -> FingerprintSchema:
+    """
+    Create the E&O (Errors & Omissions) v1 fingerprint schema.
+
+    This schema defines facts relevant for E&O insurance exclusion
+    matching in Ontario, Canada.
+
+    Relevant facts:
+    - claim.first_made_during_policy: Whether claim was first made during policy
+    - wrongful_act.before_retro_date: Whether wrongful act was before retro date
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:eo:v1",
+        policy_type="eo",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "claim.first_made_during_policy",
+            "wrongful_act.before_retro_date",
+        ],
+        banding_rules={},
+        compatible_with=[],
+    )
+
+
+def create_travel_schema_v1() -> FingerprintSchema:
+    """
+    Create the Travel v1 fingerprint schema for Ontario.
+
+    This schema defines facts relevant for travel insurance exclusion
+    matching in Ontario, Canada.
+
+    Relevant facts:
+    - location.outside_home_province: Whether treatment was outside home province
+    - treatment.emergency: Whether treatment was emergency
+    - condition.stable_90_days: Whether condition was stable for 90 days
+    """
+    return FingerprintSchema(
+        schema_id="claimpilot:travel:v1",
+        policy_type="travel",
+        jurisdiction="CA-ON",
+        exclusion_relevant_facts=[
+            "location.outside_home_province",
+            "treatment.emergency",
+            "condition.stable_90_days",
+        ],
+        banding_rules={},
+        compatible_with=[],
+    )
+
+
 # =============================================================================
 # Exports
 # =============================================================================
@@ -422,5 +715,20 @@ __all__ = [
 
     # Functions
     "apply_banding",
+
+    # Banding rule factories
+    "create_days_vacant_banding",
+    "create_coverage_months_banding",
+    "create_claim_amount_banding",
+    "create_treatment_cost_banding",
+
+    # Schema factories
     "create_ontario_auto_schema_v1",
+    "create_property_ho3_schema_v1",
+    "create_marine_schema_v1",
+    "create_health_schema_v1",
+    "create_wsib_schema_v1",
+    "create_cgl_schema_v1",
+    "create_eo_schema_v1",
+    "create_travel_schema_v1",
 ]

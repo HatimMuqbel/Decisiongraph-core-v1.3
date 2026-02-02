@@ -1,0 +1,78 @@
+# Health Insurance Seed Configuration
+# Generates 300 precedents for Ontario health insurance
+
+schema_id: claimpilot:health:v1
+registry_id: claimpilot:health:v1
+jurisdiction: CA-ON
+policy_pack_id: CA-ON-HEALTH-2024
+policy_version: "1.0"
+
+exclusions:
+  - code: "RC-FORM"
+    name: Non-Formulary Drug
+    count: 55
+    deny_rate: 0.88
+    appeal_rate: 0.25
+    upheld_rate: 0.70
+    base_facts:
+      drug.on_formulary: false
+    variable_facts:
+      condition.preexisting: [true, false]
+      member.coverage_months: [1, 3, 6, 12, 24, 36]
+
+  - code: "RC-PRE"
+    name: Pre-existing Condition
+    count: 60
+    deny_rate: 0.85
+    appeal_rate: 0.28
+    upheld_rate: 0.68
+    base_facts:
+      condition.preexisting: true
+    variable_facts:
+      drug.on_formulary: [true, false]
+      member.coverage_months: [1, 2, 3, 6, 9]
+
+  - code: "RC-WORK"
+    name: Work-Related Condition
+    count: 35
+    deny_rate: 0.92
+    appeal_rate: 0.15
+    upheld_rate: 0.88
+    base_facts: {}
+    variable_facts:
+      drug.on_formulary: [true]
+      condition.preexisting: [false]
+      member.coverage_months: [6, 12, 24, 36]
+
+  - code: "RC-COSM"
+    name: Cosmetic Procedure
+    count: 40
+    deny_rate: 0.96
+    appeal_rate: 0.18
+    upheld_rate: 0.90
+    base_facts:
+      drug.on_formulary: true
+      condition.preexisting: false
+    variable_facts:
+      member.coverage_months: [3, 6, 12, 24]
+
+  - code: "RC-EXP"
+    name: Experimental Treatment
+    count: 30
+    deny_rate: 0.94
+    appeal_rate: 0.32
+    upheld_rate: 0.72
+    base_facts:
+      condition.preexisting: false
+    variable_facts:
+      drug.on_formulary: [false]
+      member.coverage_months: [6, 12, 24, 36, 48]
+
+clean_approvals:
+  count: 80
+  appeal_rate: 0.02
+  base_facts:
+    drug.on_formulary: true
+    condition.preexisting: false
+  variable_facts:
+    member.coverage_months: [6, 12, 18, 24, 36, 48, 60]

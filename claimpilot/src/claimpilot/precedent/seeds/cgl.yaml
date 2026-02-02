@@ -1,0 +1,78 @@
+# CGL (Commercial General Liability) Seed Configuration
+# Generates 250 precedents for Ontario CGL
+
+schema_id: claimpilot:cgl:v1
+registry_id: claimpilot:cgl:v1
+jurisdiction: CA-ON
+policy_pack_id: CA-ON-CGL-2024
+policy_version: "1.0"
+
+exclusions:
+  - code: "RC-INTENT"
+    name: Expected/Intended Injury
+    count: 50
+    deny_rate: 0.96
+    appeal_rate: 0.18
+    upheld_rate: 0.88
+    base_facts:
+      injury.expected_intended: true
+    variable_facts:
+      loss.pollution_related: [false]
+      loss.auto_involved: [false]
+
+  - code: "RC-POLL"
+    name: Pollution Exclusion
+    count: 45
+    deny_rate: 0.94
+    appeal_rate: 0.22
+    upheld_rate: 0.82
+    base_facts:
+      loss.pollution_related: true
+    variable_facts:
+      injury.expected_intended: [false]
+      loss.auto_involved: [false]
+
+  - code: "RC-AUTO"
+    name: Automobile Exclusion
+    count: 40
+    deny_rate: 0.95
+    appeal_rate: 0.15
+    upheld_rate: 0.90
+    base_facts:
+      loss.auto_involved: true
+    variable_facts:
+      injury.expected_intended: [false]
+      loss.pollution_related: [false]
+
+  - code: "RC-PROF"
+    name: Professional Services Exclusion
+    count: 35
+    deny_rate: 0.92
+    appeal_rate: 0.20
+    upheld_rate: 0.78
+    base_facts:
+      injury.expected_intended: false
+      loss.pollution_related: false
+      loss.auto_involved: false
+    variable_facts: {}
+
+  - code: "RC-CONTRACT"
+    name: Contractual Liability
+    count: 30
+    deny_rate: 0.90
+    appeal_rate: 0.25
+    upheld_rate: 0.72
+    base_facts:
+      injury.expected_intended: false
+      loss.pollution_related: false
+      loss.auto_involved: false
+    variable_facts: {}
+
+clean_approvals:
+  count: 50
+  appeal_rate: 0.03
+  base_facts:
+    injury.expected_intended: false
+    loss.pollution_related: false
+    loss.auto_involved: false
+  variable_facts: {}

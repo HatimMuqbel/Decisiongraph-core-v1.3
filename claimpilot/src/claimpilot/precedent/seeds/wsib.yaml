@@ -1,0 +1,78 @@
+# WSIB (Workers' Compensation) Seed Configuration
+# Generates 300 precedents for Ontario WSIB
+
+schema_id: claimpilot:wsib:v1
+registry_id: claimpilot:wsib:v1
+jurisdiction: CA-ON
+policy_pack_id: CA-ON-WSIB-2024
+policy_version: "1.0"
+
+exclusions:
+  - code: "RC-NWR"
+    name: Not Work Related
+    count: 70
+    deny_rate: 0.82
+    appeal_rate: 0.35
+    upheld_rate: 0.65
+    base_facts:
+      injury.work_related: false
+    variable_facts:
+      injury.arose_out_of_employment: [false]
+      injury.intoxication_sole_cause: [false]
+
+  - code: "RC-PRE"
+    name: Pre-existing Condition
+    count: 55
+    deny_rate: 0.78
+    appeal_rate: 0.38
+    upheld_rate: 0.62
+    base_facts:
+      injury.work_related: true
+    variable_facts:
+      injury.arose_out_of_employment: [true, false]
+      injury.intoxication_sole_cause: [false]
+
+  - code: "RC-INTOX"
+    name: Intoxication Sole Cause
+    count: 45
+    deny_rate: 0.95
+    appeal_rate: 0.20
+    upheld_rate: 0.88
+    base_facts:
+      injury.intoxication_sole_cause: true
+    variable_facts:
+      injury.work_related: [true]
+      injury.arose_out_of_employment: [true, false]
+
+  - code: "RC-SELF"
+    name: Self-Inflicted Injury
+    count: 30
+    deny_rate: 0.97
+    appeal_rate: 0.15
+    upheld_rate: 0.92
+    base_facts:
+      injury.work_related: false
+    variable_facts:
+      injury.arose_out_of_employment: [false]
+      injury.intoxication_sole_cause: [false, true]
+
+  - code: "RC-MISC"
+    name: Serious Misconduct
+    count: 30
+    deny_rate: 0.93
+    appeal_rate: 0.22
+    upheld_rate: 0.82
+    base_facts:
+      injury.work_related: true
+    variable_facts:
+      injury.arose_out_of_employment: [true]
+      injury.intoxication_sole_cause: [false]
+
+clean_approvals:
+  count: 70
+  appeal_rate: 0.05
+  base_facts:
+    injury.work_related: true
+    injury.arose_out_of_employment: true
+    injury.intoxication_sole_cause: false
+  variable_facts: {}

@@ -1,0 +1,84 @@
+# Property Insurance (HO-3) Seed Configuration
+# Generates 300 precedents for Ontario property insurance
+
+schema_id: claimpilot:ho3:property:v1
+registry_id: claimpilot:property:v1
+jurisdiction: CA-ON
+policy_pack_id: CA-ON-HO3-2024
+policy_version: "1.0"
+
+exclusions:
+  - code: "RC-FLOOD"
+    name: Flood Damage
+    count: 50
+    deny_rate: 0.94
+    appeal_rate: 0.22
+    upheld_rate: 0.80
+    base_facts:
+      loss.cause: water
+    variable_facts:
+      water.source: [overland_flood, rising_water, surface_water]
+      dwelling.days_vacant: [0, 5, 15, 45]
+      arson.suspected: [false]
+
+  - code: "RC-EARTH"
+    name: Earth Movement
+    count: 35
+    deny_rate: 0.96
+    appeal_rate: 0.18
+    upheld_rate: 0.85
+    base_facts:
+      loss.cause: earth_movement
+    variable_facts:
+      water.source: [none, groundwater]
+      dwelling.days_vacant: [0, 10, 30]
+      arson.suspected: [false]
+
+  - code: "RC-VACANT"
+    name: Vacancy Exclusion
+    count: 45
+    deny_rate: 0.88
+    appeal_rate: 0.25
+    upheld_rate: 0.72
+    base_facts:
+      loss.cause: vandalism
+    variable_facts:
+      water.source: [none, pipe_burst]
+      dwelling.days_vacant: [35, 45, 60, 75, 90, 120]
+      arson.suspected: [false]
+
+  - code: "RC-GRADUAL"
+    name: Gradual Deterioration
+    count: 40
+    deny_rate: 0.90
+    appeal_rate: 0.20
+    upheld_rate: 0.78
+    base_facts: {}
+    variable_facts:
+      loss.cause: [water_damage, mold, rot, wear]
+      water.source: [slow_leak, seepage, condensation]
+      dwelling.days_vacant: [0, 10, 20]
+      arson.suspected: [false]
+
+  - code: "RC-INTENT"
+    name: Intentional Damage/Arson
+    count: 30
+    deny_rate: 0.99
+    appeal_rate: 0.30
+    upheld_rate: 0.95
+    base_facts:
+      arson.suspected: true
+    variable_facts:
+      loss.cause: [fire, explosion]
+      water.source: [none]
+      dwelling.days_vacant: [0, 15, 30, 60]
+
+clean_approvals:
+  count: 100
+  appeal_rate: 0.02
+  base_facts:
+    arson.suspected: false
+  variable_facts:
+    loss.cause: [fire, wind, hail, lightning, theft]
+    water.source: [none, sudden_pipe_burst]
+    dwelling.days_vacant: [0, 5, 10, 15, 20, 25]

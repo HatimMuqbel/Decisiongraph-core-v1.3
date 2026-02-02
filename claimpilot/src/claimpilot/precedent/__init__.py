@@ -8,6 +8,7 @@ This package provides:
 - Reason code registry for standardized decision rationales
 - Tiered precedent query engine (Tier 0, 0.5, 1)
 - Finalization gate for creating JUDGMENT cells on disposition seal
+- Seed generation and loading for initial precedent data
 
 Key Components:
 - FingerprintSchema: Defines which facts matter for matching
@@ -15,17 +16,21 @@ Key Components:
 - ReasonCodeRegistry: Standardized reason code definitions
 - PrecedentQueryEngine: High-level query interface
 - FinalizationGate: Creates JUDGMENT cells on seal
+- SeedGenerator: Generates seed precedents from configuration
+- SeedLoader: Loads seed precedents into a chain
 
 Design Principles:
 - Deterministic: Precedent retrieval and scoring are auditable
 - Privacy-preserving: Case IDs are hashed, never stored raw
 - LLMs as rendering layer only: Core logic is deterministic
+- Transparent seeding: All seeds marked with source_type="seeded"
 
 Example Usage:
     >>> from claimpilot.precedent import (
     ...     FingerprintSchemaRegistry,
     ...     PrecedentQueryEngine,
     ...     FinalizationGate,
+    ...     SeedLoader,
     ... )
     >>>
     >>> # Query precedents
@@ -39,6 +44,11 @@ Example Usage:
     ... )
     >>> print(f"Matched {result.summary.total_matched} precedents")
     >>> print(f"Confidence: {result.summary.precedent_confidence}")
+    >>>
+    >>> # Load seed precedents
+    >>> loader = SeedLoader(chain, salt="secret")
+    >>> stats = loader.load_all()
+    >>> print(f"Loaded seeds: {sum(s.total_loaded for s in stats.values())}")
 """
 
 # Fingerprint Schema
@@ -50,7 +60,20 @@ from .fingerprint_schema import (
     FingerprintSchema,
     FingerprintSchemaRegistry,
     apply_banding,
+    # Banding rule factories
+    create_days_vacant_banding,
+    create_coverage_months_banding,
+    create_claim_amount_banding,
+    create_treatment_cost_banding,
+    # Schema factories
     create_ontario_auto_schema_v1,
+    create_property_ho3_schema_v1,
+    create_marine_schema_v1,
+    create_health_schema_v1,
+    create_wsib_schema_v1,
+    create_cgl_schema_v1,
+    create_eo_schema_v1,
+    create_travel_schema_v1,
 )
 
 # Reason Code Registry
@@ -63,6 +86,13 @@ from .reason_code_registry import (
     ReasonCodeRegistryDefinition,
     ReasonCodeRegistry,
     create_ontario_auto_registry_v1,
+    create_property_registry_v1,
+    create_marine_registry_v1,
+    create_health_registry_v1,
+    create_wsib_registry_v1,
+    create_cgl_registry_v1,
+    create_eo_registry_v1,
+    create_travel_registry_v1,
 )
 
 # Precedent Query Engine
@@ -84,6 +114,37 @@ from .finalization_gate import (
     FinalizationGate,
 )
 
+# Seed Generator
+from .seed_generator import (
+    SeedGeneratorError,
+    SeedConfigError,
+    SeedConfig,
+    CleanApprovalConfig,
+    SeedGenerator,
+    DECISION_LEVEL_WEIGHTS,
+    CERTAINTY_WEIGHTS,
+)
+
+# Seed Loader
+from .seed_loader import (
+    SeedLoaderError,
+    SeedLoadError,
+    SeedVerificationError,
+    SeedVerificationResult,
+    SeedLoadStats,
+    SeedLoader,
+)
+
+# Seed Configuration Utilities
+from .seeds import (
+    SeedConfigLoadError,
+    list_seed_configs,
+    load_seed_config,
+    load_all_seed_configs,
+    get_seed_config_path,
+    SEEDS_DIR,
+)
+
 
 __all__ = [
     # Fingerprint Schema
@@ -94,7 +155,20 @@ __all__ = [
     "FingerprintSchema",
     "FingerprintSchemaRegistry",
     "apply_banding",
+    # Banding rule factories
+    "create_days_vacant_banding",
+    "create_coverage_months_banding",
+    "create_claim_amount_banding",
+    "create_treatment_cost_banding",
+    # Schema factories
     "create_ontario_auto_schema_v1",
+    "create_property_ho3_schema_v1",
+    "create_marine_schema_v1",
+    "create_health_schema_v1",
+    "create_wsib_schema_v1",
+    "create_cgl_schema_v1",
+    "create_eo_schema_v1",
+    "create_travel_schema_v1",
 
     # Reason Code Registry
     "ReasonCodeError",
@@ -105,6 +179,13 @@ __all__ = [
     "ReasonCodeRegistryDefinition",
     "ReasonCodeRegistry",
     "create_ontario_auto_registry_v1",
+    "create_property_registry_v1",
+    "create_marine_registry_v1",
+    "create_health_registry_v1",
+    "create_wsib_registry_v1",
+    "create_cgl_registry_v1",
+    "create_eo_registry_v1",
+    "create_travel_registry_v1",
 
     # Precedent Query Engine
     "PrecedentQueryTier",
@@ -120,4 +201,29 @@ __all__ = [
     "FinalizationDataError",
     "FinalizationResult",
     "FinalizationGate",
+
+    # Seed Generator
+    "SeedGeneratorError",
+    "SeedConfigError",
+    "SeedConfig",
+    "CleanApprovalConfig",
+    "SeedGenerator",
+    "DECISION_LEVEL_WEIGHTS",
+    "CERTAINTY_WEIGHTS",
+
+    # Seed Loader
+    "SeedLoaderError",
+    "SeedLoadError",
+    "SeedVerificationError",
+    "SeedVerificationResult",
+    "SeedLoadStats",
+    "SeedLoader",
+
+    # Seed Configuration Utilities
+    "SeedConfigLoadError",
+    "list_seed_configs",
+    "load_seed_config",
+    "load_all_seed_configs",
+    "get_seed_config_path",
+    "SEEDS_DIR",
 ]

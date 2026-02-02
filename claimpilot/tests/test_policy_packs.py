@@ -59,18 +59,18 @@ class TestPolicyPackLoading:
         """Each policy pack should load without YAML errors."""
         data = load_yaml(pack_path)
         assert data is not None
-        assert "policy" in data
+        # Policy packs have fields at root level (flat structure)
+        assert "id" in data
         assert "coverage_sections" in data or "exclusions" in data
 
     @pytest.mark.parametrize("pack_path", get_all_pack_paths())
     def test_pack_has_required_policy_fields(self, pack_path: Path) -> None:
         """Each policy should have required fields."""
         data = load_yaml(pack_path)
-        policy = data["policy"]
 
         required_fields = ["id", "jurisdiction", "line_of_business", "name", "version"]
         for field in required_fields:
-            assert field in policy, f"Missing {field} in {pack_path.name}"
+            assert field in data, f"Missing {field} in {pack_path.name}"
 
     @pytest.mark.parametrize("pack_path", get_all_pack_paths())
     def test_coverage_sections_have_ids(self, pack_path: Path) -> None:
@@ -106,49 +106,49 @@ class TestLineOfBusinessCoverage:
         path = PACKS_DIR / "auto" / "ontario_oap1.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "auto"
+        assert data["line_of_business"] == "auto"
 
     def test_property_pack_exists(self) -> None:
         """Homeowners property pack should exist."""
         path = PACKS_DIR / "property" / "homeowners_ho3.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "property"
+        assert data["line_of_business"] == "property"
 
     def test_marine_pack_exists(self) -> None:
         """Marine pleasure craft pack should exist."""
         path = PACKS_DIR / "marine" / "pleasure_craft.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "marine"
+        assert data["line_of_business"] == "marine"
 
     def test_health_pack_exists(self) -> None:
         """Group health pack should exist."""
         path = PACKS_DIR / "health" / "group_health.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "health"
+        assert data["line_of_business"] == "health"
 
     def test_workers_comp_pack_exists(self) -> None:
         """Workers compensation pack should exist."""
         path = PACKS_DIR / "workers_comp" / "ontario_wsib.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "workers_comp"
+        assert data["line_of_business"] == "workers_comp"
 
     def test_cgl_pack_exists(self) -> None:
         """Commercial general liability pack should exist."""
         path = PACKS_DIR / "liability" / "cgl.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "liability"
+        assert data["line_of_business"] == "liability"
 
     def test_eo_pack_exists(self) -> None:
         """Professional E&O pack should exist."""
         path = PACKS_DIR / "liability" / "professional_eo.yaml"
         assert path.exists()
         data = load_yaml(path)
-        assert data["policy"]["line_of_business"] == "liability"
+        assert data["line_of_business"] == "professional"
 
     def test_travel_pack_exists(self) -> None:
         """Travel medical pack should exist."""
@@ -156,7 +156,7 @@ class TestLineOfBusinessCoverage:
         assert path.exists()
         data = load_yaml(path)
         # Travel is categorized under health in this case
-        assert data["policy"]["line_of_business"] == "health"
+        assert data["line_of_business"] == "health"
 
 
 class TestConditionComplexity:
@@ -413,25 +413,25 @@ class TestDeterminism:
         data1 = load_yaml(path)
         data2 = load_yaml(path)
 
-        # Create Policy objects
+        # Create Policy objects (flat YAML structure - fields at root level)
         policy1 = Policy(
-            id=data1["policy"]["id"],
-            jurisdiction=data1["policy"]["jurisdiction"],
+            id=data1["id"],
+            jurisdiction=data1["jurisdiction"],
             line_of_business=LineOfBusiness.AUTO,
-            product_code=data1["policy"]["product_code"],
-            name=data1["policy"]["name"],
-            version=data1["policy"]["version"],
-            effective_date=date.fromisoformat(data1["policy"]["effective_date"]),
+            product_code=data1["product_code"],
+            name=data1["name"],
+            version=data1["version"],
+            effective_date=date.fromisoformat(data1["effective_date"]),
         )
 
         policy2 = Policy(
-            id=data2["policy"]["id"],
-            jurisdiction=data2["policy"]["jurisdiction"],
+            id=data2["id"],
+            jurisdiction=data2["jurisdiction"],
             line_of_business=LineOfBusiness.AUTO,
-            product_code=data2["policy"]["product_code"],
-            name=data2["policy"]["name"],
-            version=data2["policy"]["version"],
-            effective_date=date.fromisoformat(data2["policy"]["effective_date"]),
+            product_code=data2["product_code"],
+            name=data2["name"],
+            version=data2["version"],
+            effective_date=date.fromisoformat(data2["effective_date"]),
         )
 
         hash1 = compute_policy_pack_hash(policy1)
@@ -447,24 +447,25 @@ class TestDeterminism:
         auto_data = load_yaml(auto_path)
         marine_data = load_yaml(marine_path)
 
+        # Flat YAML structure - fields at root level
         auto_policy = Policy(
-            id=auto_data["policy"]["id"],
-            jurisdiction=auto_data["policy"]["jurisdiction"],
+            id=auto_data["id"],
+            jurisdiction=auto_data["jurisdiction"],
             line_of_business=LineOfBusiness.AUTO,
-            product_code=auto_data["policy"]["product_code"],
-            name=auto_data["policy"]["name"],
-            version=auto_data["policy"]["version"],
-            effective_date=date.fromisoformat(auto_data["policy"]["effective_date"]),
+            product_code=auto_data["product_code"],
+            name=auto_data["name"],
+            version=auto_data["version"],
+            effective_date=date.fromisoformat(auto_data["effective_date"]),
         )
 
         marine_policy = Policy(
-            id=marine_data["policy"]["id"],
-            jurisdiction=marine_data["policy"]["jurisdiction"],
+            id=marine_data["id"],
+            jurisdiction=marine_data["jurisdiction"],
             line_of_business=LineOfBusiness.MARINE,
-            product_code=marine_data["policy"]["product_code"],
-            name=marine_data["policy"]["name"],
-            version=marine_data["policy"]["version"],
-            effective_date=date.fromisoformat(marine_data["policy"]["effective_date"]),
+            product_code=marine_data["product_code"],
+            name=marine_data["name"],
+            version=marine_data["version"],
+            effective_date=date.fromisoformat(marine_data["effective_date"]),
         )
 
         auto_hash = compute_policy_pack_hash(auto_policy)

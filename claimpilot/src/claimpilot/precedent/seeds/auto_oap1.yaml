@@ -1,0 +1,126 @@
+# Auto Insurance (OAP 1) Seed Configuration
+# Generates 500 precedents for Ontario auto insurance
+
+schema_id: claimpilot:oap1:auto:v1
+registry_id: claimpilot:auto:v1
+jurisdiction: CA-ON
+policy_pack_id: CA-ON-OAP1-2024
+policy_version: "1.0"
+
+exclusions:
+  - code: "4.2.1"
+    name: Commercial Use
+    count: 70
+    deny_rate: 0.92
+    appeal_rate: 0.20
+    upheld_rate: 0.83
+    base_facts:
+      policy.status: active
+      driver.license_status: valid
+    variable_facts:
+      vehicle.use_at_loss: [personal, commercial, rideshare, delivery]
+      driver.rideshare_app_active: [true, false]
+
+  - code: "4.2.1-RIDESHARE"
+    name: Rideshare/TNP Use
+    count: 50
+    deny_rate: 0.95
+    appeal_rate: 0.18
+    upheld_rate: 0.88
+    base_facts:
+      policy.status: active
+      driver.license_status: valid
+      driver.rideshare_app_active: true
+    variable_facts:
+      vehicle.use_at_loss: [rideshare, personal_with_app]
+
+  - code: "4.3.1"
+    name: Impairment - Alcohol
+    count: 60
+    deny_rate: 0.98
+    appeal_rate: 0.15
+    upheld_rate: 0.92
+    base_facts:
+      policy.status: active
+      driver.impairment_indicated: true
+    variable_facts:
+      driver.bac_level: [0.05, 0.08, 0.10, 0.15, 0.20]
+      driver.license_status: [valid, suspended]
+
+  - code: "4.3.2"
+    name: Impairment - Drugs
+    count: 40
+    deny_rate: 0.96
+    appeal_rate: 0.17
+    upheld_rate: 0.90
+    base_facts:
+      policy.status: active
+      driver.impairment_indicated: true
+    variable_facts:
+      driver.bac_level: [0.0, 0.02]
+      driver.license_status: [valid, suspended]
+
+  - code: "4.3.3"
+    name: Impairment - Combined
+    count: 30
+    deny_rate: 0.98
+    appeal_rate: 0.17
+    upheld_rate: 0.90
+    base_facts:
+      policy.status: active
+      driver.impairment_indicated: true
+    variable_facts:
+      driver.bac_level: [0.05, 0.08, 0.10]
+      driver.license_status: [valid, suspended]
+
+  - code: "4.4.1"
+    name: Racing Exclusion
+    count: 30
+    deny_rate: 0.95
+    appeal_rate: 0.12
+    upheld_rate: 0.95
+    base_facts:
+      policy.status: active
+      driver.license_status: valid
+      loss.racing_activity: true
+    variable_facts:
+      vehicle.use_at_loss: [racing, speed_test, track_event]
+
+  - code: "4.5.1"
+    name: Unlicensed Driver
+    count: 35
+    deny_rate: 0.97
+    appeal_rate: 0.10
+    upheld_rate: 0.93
+    base_facts:
+      policy.status: active
+      driver.license_status: never_licensed
+    variable_facts:
+      vehicle.use_at_loss: [personal, commercial]
+      driver.impairment_indicated: [true, false]
+
+  - code: "4.5.2"
+    name: Suspended License
+    count: 35
+    deny_rate: 0.96
+    appeal_rate: 0.14
+    upheld_rate: 0.88
+    base_facts:
+      policy.status: active
+      driver.license_status: suspended
+    variable_facts:
+      vehicle.use_at_loss: [personal, commercial]
+      driver.impairment_indicated: [true, false]
+
+clean_approvals:
+  count: 150
+  appeal_rate: 0.03
+  base_facts:
+    policy.status: active
+    driver.license_status: valid
+    driver.bac_level: 0.0
+    driver.rideshare_app_active: false
+    driver.impairment_indicated: false
+    loss.racing_activity: false
+  variable_facts:
+    vehicle.use_at_loss: [personal, commute, errands]
