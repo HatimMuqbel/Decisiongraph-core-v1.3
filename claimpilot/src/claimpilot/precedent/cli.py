@@ -19,6 +19,70 @@ from .seed_generator import SeedGenerator, SeedConfig, CleanApprovalConfig
 from .seeds import load_seed_config, load_all_seed_configs, list_seed_configs
 
 
+def generate_all_insurance_seeds(salt: str = "claimpilot-seed-salt-2024") -> list:
+    """
+    Generate all insurance seed precedents and return JudgmentPayload objects.
+
+    Args:
+        salt: Salt for deterministic generation
+
+    Returns:
+        List of JudgmentPayload objects (2,150 total)
+    """
+    generator = SeedGenerator(salt=salt)
+    all_configs = load_all_seed_configs()
+    all_precedents = []
+
+    for config_name, config in all_configs.items():
+        schema_id = config.get("schema_id", "")
+        jurisdiction = config.get("jurisdiction", "CA-ON")
+        policy_pack_id = config.get("policy_pack_id", "")
+        policy_version = config.get("policy_version", "1.0")
+
+        parts = schema_id.split(":")
+        if len(parts) == 4:
+            policy_type = parts[2]
+        elif len(parts) == 3:
+            policy_type = parts[1]
+        else:
+            policy_type = "unknown"
+
+        seed_configs = []
+        for exclusion in config.get("exclusions", []):
+            seed_configs.append(SeedConfig(
+                exclusion_code=exclusion["code"],
+                count=exclusion.get("count", 10),
+                deny_rate=exclusion.get("deny_rate", 0.9),
+                appeal_rate=exclusion.get("appeal_rate", 0.15),
+                upheld_rate=exclusion.get("upheld_rate", 0.8),
+                base_facts=exclusion.get("base_facts", {}),
+                variable_facts=exclusion.get("variable_facts", {}),
+                name=exclusion.get("name", ""),
+            ))
+
+        clean_approvals = None
+        if "clean_approvals" in config:
+            ca = config["clean_approvals"]
+            clean_approvals = CleanApprovalConfig(
+                count=ca.get("count", 0),
+                appeal_rate=ca.get("appeal_rate", 0.03),
+                base_facts=ca.get("base_facts", {}),
+                variable_facts=ca.get("variable_facts", {}),
+            )
+
+        precedents = generator.generate_precedents(
+            policy_type=policy_type,
+            jurisdiction=jurisdiction,
+            configs=seed_configs,
+            policy_pack_id=policy_pack_id,
+            policy_version=policy_version,
+            clean_approvals=clean_approvals,
+        )
+        all_precedents.extend(precedents)
+
+    return all_precedents
+
+
 def generate_all_seeds(salt: str = "claimpilot-seed-salt-2024") -> dict[str, Any]:
     """
     Generate all seed precedents and return statistics.

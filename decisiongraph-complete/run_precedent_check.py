@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Precedent History Check Report Demo
+Precedent History Check Report - Using REAL Seeds
 
-Demonstrates the heat map and consistency checking functionality
-using mock precedent data for both insurance and banking scenarios.
+This report uses ACTUAL seed data:
+- Banking (AML): 2,000 seeds from generate_all_banking_seeds()
+- Insurance (ClaimPilot): 2,150 seeds from generate_all_insurance_seeds()
+
+NO MOCK DATA - Everything comes from real seed generators.
 """
 
 import sys
 sys.path.insert(0, '.')
+sys.path.insert(0, '/workspaces/Decisiongraph-core-v1.3/claimpilot')
 
+from collections import defaultdict
+from src.decisiongraph import generate_all_banking_seeds
 from src.decisiongraph.precedent_check_report import (
     HeatMapEntry,
     PrecedentHeatMap,
@@ -20,212 +26,121 @@ from src.decisiongraph.cell import get_current_timestamp
 from uuid import uuid4
 
 
-def create_demo_heat_map(domain: str) -> PrecedentHeatMap:
-    """Create a realistic demo heat map for the specified domain."""
+def build_heat_map_from_seeds(seeds, namespace_prefix):
+    """Build heat map from REAL seed data."""
+    by_code = defaultdict(lambda: {
+        'total': 0, 'pay': 0, 'deny': 0, 'partial': 0,
+        'escalate': 0, 'appealed': 0, 'overturned': 0
+    })
 
-    if domain == "insurance":
-        # Insurance claim heat map entries
-        entries = [
-            HeatMapEntry(
-                code="4.2.1",
-                code_label="Commercial Use Exclusion",
-                total_count=85,
-                pay_count=5,
-                deny_count=75,
-                partial_count=3,
-                escalate_count=2,
-                appeal_count=14,
-                overturn_count=2,
-            ),
-            HeatMapEntry(
-                code="4.3.3",
-                code_label="Impaired Operation",
-                total_count=72,
-                pay_count=1,
-                deny_count=70,
-                partial_count=0,
-                escalate_count=1,
-                appeal_count=11,
-                overturn_count=1,
-            ),
-            HeatMapEntry(
-                code="5.1.0",
-                code_label="Failure to Cooperate",
-                total_count=45,
-                pay_count=12,
-                deny_count=28,
-                partial_count=3,
-                escalate_count=2,
-                appeal_count=8,
-                overturn_count=3,
-            ),
-            HeatMapEntry(
-                code="2.1.4",
-                code_label="Named Perils - Collision",
-                total_count=180,
-                pay_count=155,
-                deny_count=10,
-                partial_count=10,
-                escalate_count=5,
-                appeal_count=6,
-                overturn_count=1,
-            ),
-            HeatMapEntry(
-                code="3.2.1",
-                code_label="Property Damage - Theft",
-                total_count=95,
-                pay_count=70,
-                deny_count=15,
-                partial_count=8,
-                escalate_count=2,
-                appeal_count=4,
-                overturn_count=2,
-            ),
-        ]
-    else:  # banking/AML
-        entries = [
-            HeatMapEntry(
-                code="RC-TXN-STRUCT",
-                code_label="Structuring Indicators",
-                total_count=120,
-                pay_count=5,
-                deny_count=0,
-                partial_count=0,
-                escalate_count=115,
-                appeal_count=18,
-                overturn_count=2,
-            ),
-            HeatMapEntry(
-                code="RC-KYC-ID-MISMATCH",
-                code_label="ID Document Mismatch",
-                total_count=65,
-                pay_count=8,
-                deny_count=52,
-                partial_count=0,
-                escalate_count=5,
-                appeal_count=12,
-                overturn_count=3,
-            ),
-            HeatMapEntry(
-                code="RC-SCR-FALSE-POS",
-                code_label="False Positive - Cleared",
-                total_count=320,
-                pay_count=295,
-                deny_count=5,
-                partial_count=0,
-                escalate_count=20,
-                appeal_count=8,
-                overturn_count=0,
-            ),
-            HeatMapEntry(
-                code="RC-RPT-STR-REQ",
-                code_label="STR Required",
-                total_count=45,
-                pay_count=0,
-                deny_count=0,
-                partial_count=0,
-                escalate_count=45,
-                appeal_count=5,
-                overturn_count=1,
-            ),
-            HeatMapEntry(
-                code="RC-MON-DORMANT",
-                code_label="Dormant Account Reactivation",
-                total_count=78,
-                pay_count=45,
-                deny_count=8,
-                partial_count=0,
-                escalate_count=25,
-                appeal_count=6,
-                overturn_count=2,
-            ),
-        ]
+    for seed in seeds:
+        # Use unique codes from both exclusion_codes and reason_codes (deduplicated)
+        all_codes = set(seed.exclusion_codes) | set(seed.reason_codes)
+        for code in all_codes:
+            stats = by_code[code]
+            stats['total'] += 1
+            if seed.outcome_code == 'pay':
+                stats['pay'] += 1
+            elif seed.outcome_code == 'deny':
+                stats['deny'] += 1
+            elif seed.outcome_code == 'partial':
+                stats['partial'] += 1
+            elif seed.outcome_code == 'escalate':
+                stats['escalate'] += 1
+            if seed.appealed:
+                stats['appealed'] += 1
+                if seed.appeal_outcome == 'overturned':
+                    stats['overturned'] += 1
+
+    entries = []
+    for code, stats in by_code.items():
+        if stats['total'] >= 5:  # Only codes with 5+ cases
+            entries.append(HeatMapEntry(
+                code=code,
+                code_label=code,
+                total_count=stats['total'],
+                pay_count=stats['pay'],
+                deny_count=stats['deny'],
+                partial_count=stats['partial'],
+                escalate_count=stats['escalate'],
+                appeal_count=stats['appealed'],
+                overturn_count=stats['overturned'],
+            ))
+
+    entries.sort(key=lambda e: e.total_count, reverse=True)
 
     return PrecedentHeatMap(
         entries=entries,
         generated_at=get_current_timestamp(),
-        namespace_prefix=f"{domain}.precedents",
-        total_precedents_analyzed=sum(e.total_count for e in entries),
+        namespace_prefix=namespace_prefix,
+        total_precedents_analyzed=len(seeds),
     )
 
 
-def create_demo_matches(codes: list, outcome: str) -> tuple:
-    """Create demo precedent matches."""
-    tier0 = []
-    tier05 = []
-    tier1 = []
+def find_matching_seeds(seeds, codes, outcome=None):
+    """Find seeds matching given codes."""
+    matches = []
+    codes_set = set(codes)
+    for seed in seeds:
+        seed_codes = set(seed.exclusion_codes) | set(seed.reason_codes)
+        overlap = seed_codes & codes_set
+        if overlap:
+            if outcome is None or seed.outcome_code == outcome:
+                matches.append((seed, len(overlap)))
+    matches.sort(key=lambda x: x[1], reverse=True)
+    return matches
 
-    # Simulate some matches
-    for i, code in enumerate(codes[:2]):
-        # Tier 0.5 matches (same codes, same outcome)
-        tier05.append(PrecedentMatch(
-            precedent_id=str(uuid4()),
+
+def build_report(seeds, namespace, codes, proposed_outcome):
+    """Build precedent check report from REAL seeds."""
+    heat_map = build_heat_map_from_seeds(seeds, namespace)
+
+    # Find matches
+    tier05_matches = []
+    tier1_matches = []
+
+    exact = find_matching_seeds(seeds, codes, outcome=proposed_outcome)
+    for seed, overlap in exact[:10]:
+        tier05_matches.append(PrecedentMatch(
+            precedent_id=seed.precedent_id,
             match_tier=0.5,
-            overlap_score=len(codes),
-            outcome_code=outcome,
-            decision_level="adjuster",
-            decided_at="2025-11-15T10:30:00Z",
-            appealed=False,
-            appeal_outcome=None,
-            anchor_facts_summary={
-                "primary_code": code,
-                "amount_band": "medium",
-            },
+            overlap_score=overlap,
+            outcome_code=seed.outcome_code,
+            decision_level=seed.decision_level,
+            decided_at=seed.decided_at,
+            appealed=seed.appealed,
+            appeal_outcome=seed.appeal_outcome,
+            anchor_facts_summary={},
         ))
 
-    # Tier 1 matches (overlapping codes, different outcomes)
-    for i in range(3):
-        alt_outcome = "deny" if outcome == "pay" else "pay"
-        tier1.append(PrecedentMatch(
-            precedent_id=str(uuid4()),
-            match_tier=1.0,
-            overlap_score=1,
-            outcome_code=alt_outcome if i % 2 == 0 else outcome,
-            decision_level="manager" if i == 0 else "adjuster",
-            decided_at=f"2025-{10+i}-01T09:00:00Z",
-            appealed=i == 0,
-            appeal_outcome="upheld" if i == 0 else None,
-            anchor_facts_summary={
-                "primary_code": codes[0] if codes else "unknown",
-            },
-        ))
+    all_matches = find_matching_seeds(seeds, codes, outcome=None)
+    for seed, overlap in all_matches[:15]:
+        if seed.precedent_id not in [m.precedent_id for m in tier05_matches]:
+            tier1_matches.append(PrecedentMatch(
+                precedent_id=seed.precedent_id,
+                match_tier=1.0,
+                overlap_score=overlap,
+                outcome_code=seed.outcome_code,
+                decision_level=seed.decision_level,
+                decided_at=seed.decided_at,
+                appealed=seed.appealed,
+                appeal_outcome=seed.appeal_outcome,
+                anchor_facts_summary={},
+            ))
 
-    return tier0, tier05, tier1
-
-
-def create_demo_report(
-    domain: str,
-    codes: list,
-    proposed_outcome: str,
-    code_labels: dict,
-) -> PrecedentHistoryReport:
-    """Create a demo precedent history report."""
-
-    heat_map = create_demo_heat_map(domain)
-    tier0, tier05, tier1 = create_demo_matches(codes, proposed_outcome)
-
-    # Simulate consistency check
-    all_matches = tier0 + tier05 + tier1
-    supporting = sum(1 for m in all_matches if m.outcome_code == proposed_outcome)
-    contrary = len(all_matches) - supporting
-
-    # Determine consistency
-    consistency_score = supporting / max(len(all_matches), 1)
-    is_consistent = consistency_score >= 0.4
-
-    warning_level = None
-    warning_message = None
-    requires_escalation = False
+    all_found = tier05_matches + tier1_matches
+    supporting = sum(1 for m in all_found if m.outcome_code == proposed_outcome)
+    contrary = len(all_found) - supporting
+    consistency_score = supporting / max(len(all_found), 1)
 
     if consistency_score < 0.3:
-        warning_level = "critical"
+        warning_level, is_consistent = "critical", False
         warning_message = f"Proposed '{proposed_outcome}' conflicts with {(1-consistency_score):.0%} of precedents"
-        requires_escalation = True
     elif consistency_score < 0.6:
-        warning_level = "caution"
+        warning_level, is_consistent = "caution", True
         warning_message = f"Mixed precedent history ({consistency_score:.0%} support)"
     else:
-        warning_level = "advisory"
+        warning_level, is_consistent = "advisory", True
         warning_message = "Decision aligns with precedent pattern"
 
     consistency_check = ConsistencyCheck(
@@ -236,141 +151,164 @@ def create_demo_report(
         warning_message=warning_message,
         supporting_precedents=supporting,
         contrary_precedents=contrary,
-        similar_cases_overturned=1 if contrary > 0 else 0,
-        requires_escalation=requires_escalation,
-        recommended_action="Proceed with confidence" if is_consistent else "Escalate for review",
+        similar_cases_overturned=sum(1 for m in all_found if m.appealed and m.appeal_outcome == 'overturned'),
+        requires_escalation=not is_consistent,
+        recommended_action="Proceed" if is_consistent else "Escalate",
     )
 
     warnings = []
-    if not is_consistent:
-        warnings.append("Decision may deviate from established precedent")
-
-    # Check heat map for hot codes
     for code in codes:
         entry = heat_map.get_entry_by_code(code)
         if entry and entry.deny_rate > 0.7:
-            warnings.append(f"Code {code} has {entry.deny_rate:.0%} historical deny rate")
-
-    recommendations = [consistency_check.recommended_action]
-    if tier0:
-        recommendations.append(f"Review binding precedent {tier0[0].precedent_id[:8]}...")
+            warnings.append(f"Code {code} has {entry.deny_rate:.0%} deny rate")
+        if entry and entry.escalate_rate > 0.7:
+            warnings.append(f"Code {code} has {entry.escalate_rate:.0%} escalation rate")
 
     return PrecedentHistoryReport(
         report_id=str(uuid4()),
         generated_at=get_current_timestamp(),
-        namespace_prefix=f"{domain}.precedents",
+        namespace_prefix=namespace,
         fingerprint_hash=None,
         exclusion_codes_searched=codes,
         proposed_outcome=proposed_outcome,
-        tier0_matches=tier0,
-        tier05_matches=tier05,
-        tier1_matches=tier1,
+        tier0_matches=[],
+        tier05_matches=tier05_matches,
+        tier1_matches=tier1_matches,
         heat_map=heat_map,
         consistency_check=consistency_check,
-        total_precedents_found=len(tier0) + len(tier05) + len(tier1),
-        has_binding_precedent=len(tier0) > 0,
-        binding_precedent_id=tier0[0].precedent_id if tier0 else None,
+        total_precedents_found=len(all_found),
+        has_binding_precedent=False,
+        binding_precedent_id=None,
         warnings=warnings,
-        recommendations=recommendations,
+        recommendations=[consistency_check.recommended_action],
     )
 
 
 def main():
     print("=" * 70)
-    print("PRECEDENT HISTORY CHECK REPORT DEMO")
+    print("PRECEDENT HISTORY CHECK REPORT")
+    print("Using REAL Seed Data (NOT Mock)")
     print("=" * 70)
     print()
-    print("This demo shows the Heat Map and Consistency Check features")
-    print("that enable decision-makers to validate against precedent history.")
+
+    # Load REAL seeds
+    print("Loading seeds...")
+    banking_seeds = generate_all_banking_seeds()
+    print(f"  Banking (AML):     {len(banking_seeds):,} seeds")
+
+    from claimpilot.precedent.cli import generate_all_insurance_seeds
+    insurance_seeds = generate_all_insurance_seeds()
+    print(f"  Insurance:         {len(insurance_seeds):,} seeds")
+    print(f"  TOTAL:             {len(banking_seeds) + len(insurance_seeds):,} seeds")
     print()
 
-    # Demo 1: Insurance - Commercial Use Denial
+    # ========================================
+    # INSURANCE SCENARIOS
+    # ========================================
+    print("=" * 70)
+    print("INSURANCE (ClaimPilot) - Using 2,150 REAL Seeds")
+    print("=" * 70)
+    print()
+
+    # Insurance Scenario 1: Commercial Use Denial
     print("-" * 70)
-    print("SCENARIO 1: INSURANCE - Commercial Use Exclusion (Deny)")
+    print("INSURANCE SCENARIO 1: Commercial Use Exclusion (Deny)")
     print("-" * 70)
-    report = create_demo_report(
-        domain="insurance",
-        codes=["4.2.1", "5.1.0"],
+    report = build_report(
+        seeds=insurance_seeds,
+        namespace="insurance.auto",
+        codes=["4.2.1", "RC-4.2.1"],
         proposed_outcome="deny",
-        code_labels={
-            "4.2.1": "Commercial Use Exclusion",
-            "5.1.0": "Failure to Cooperate",
-        },
     )
     print(report.format_summary())
     print()
 
-    # Demo 2: Insurance - Potentially inconsistent pay
+    # Insurance Scenario 2: Flood Exclusion
     print("-" * 70)
-    print("SCENARIO 2: INSURANCE - Commercial Use (Propose Pay - Inconsistent)")
+    print("INSURANCE SCENARIO 2: Flood Exclusion (Deny)")
     print("-" * 70)
-    report = create_demo_report(
-        domain="insurance",
-        codes=["4.2.1"],
-        proposed_outcome="pay",  # Against pattern
-        code_labels={
-            "4.2.1": "Commercial Use Exclusion",
-        },
+    report = build_report(
+        seeds=insurance_seeds,
+        namespace="insurance.property",
+        codes=["RC-FLOOD", "RC-FLOOD-SURFACE"],
+        proposed_outcome="deny",
     )
     print(report.format_summary())
     print()
 
-    # Demo 3: Banking - Structuring escalation
+    # Insurance Scenario 3: Clean Approval
     print("-" * 70)
-    print("SCENARIO 3: BANKING - Structuring Indicators (Escalate)")
+    print("INSURANCE SCENARIO 3: Clean Claim (Pay)")
     print("-" * 70)
-    report = create_demo_report(
-        domain="banking",
-        codes=["RC-TXN-STRUCT", "RC-RPT-STR-REQ"],
-        proposed_outcome="escalate",
-        code_labels={
-            "RC-TXN-STRUCT": "Structuring Indicators",
-            "RC-RPT-STR-REQ": "STR Required",
-        },
-    )
-    print(report.format_summary())
-    print()
-
-    # Demo 4: Banking - False positive cleared
-    print("-" * 70)
-    print("SCENARIO 4: BANKING - Screening False Positive (Pay/Clear)")
-    print("-" * 70)
-    report = create_demo_report(
-        domain="banking",
-        codes=["RC-SCR-FALSE-POS"],
+    report = build_report(
+        seeds=insurance_seeds,
+        namespace="insurance.auto",
+        codes=["RC-COV-CONFIRMED"],
         proposed_outcome="pay",
-        code_labels={
-            "RC-SCR-FALSE-POS": "False Positive - Cleared",
-        },
+    )
+    print(report.format_summary())
+    print()
+
+    # ========================================
+    # BANKING SCENARIOS
+    # ========================================
+    print("=" * 70)
+    print("BANKING (AML) - Using 2,000 REAL Seeds")
+    print("=" * 70)
+    print()
+
+    # Banking Scenario 1: Structuring
+    print("-" * 70)
+    print("BANKING SCENARIO 1: Structuring (Escalate)")
+    print("-" * 70)
+    report = build_report(
+        seeds=banking_seeds,
+        namespace="banking.aml",
+        codes=["RC-TXN-STRUCT", "RC-TXN-STRUCT-MULTI"],
+        proposed_outcome="escalate",
+    )
+    print(report.format_summary())
+    print()
+
+    # Banking Scenario 2: Sanctions Hit
+    print("-" * 70)
+    print("BANKING SCENARIO 2: Sanctions Match (Deny)")
+    print("-" * 70)
+    report = build_report(
+        seeds=banking_seeds,
+        namespace="banking.aml",
+        codes=["RC-SCR-SANCTION", "RC-SCR-OFAC"],
+        proposed_outcome="deny",
+    )
+    print(report.format_summary())
+    print()
+
+    # Banking Scenario 3: False Positive
+    print("-" * 70)
+    print("BANKING SCENARIO 3: Screening False Positive (Pay)")
+    print("-" * 70)
+    report = build_report(
+        seeds=banking_seeds,
+        namespace="banking.aml",
+        codes=["RC-SCR-FP", "RC-SCR-FP-NAME"],
+        proposed_outcome="pay",
     )
     print(report.format_summary())
 
-    # Summary
+    # ========================================
+    # SUMMARY
+    # ========================================
     print()
     print("=" * 70)
-    print("DEMO COMPLETE")
+    print("VERIFICATION SUMMARY")
     print("=" * 70)
     print()
-    print("The Precedent History Check Report provides:")
-    print("  1. TIERED MATCHING:")
-    print("     - Tier 0: Exact fingerprint match (binding precedent)")
-    print("     - Tier 0.5: Same codes + same outcome")
-    print("     - Tier 1: Overlapping codes (any outcome)")
+    print("All reports use REAL seed data:")
+    print(f"  - Banking seeds:   {len(banking_seeds):,} (from generate_all_banking_seeds)")
+    print(f"  - Insurance seeds: {len(insurance_seeds):,} (from generate_all_insurance_seeds)")
     print()
-    print("  2. HEAT MAP:")
-    print("     - Shows outcome distribution by exclusion/reason code")
-    print("     - Identifies 'hot' codes with high deny rates")
-    print("     - Highlights codes with high appeal/overturn rates")
-    print()
-    print("  3. CONSISTENCY CHECK:")
-    print("     - Validates proposed decision against precedent")
-    print("     - Calculates consistency score (0-100%)")
-    print("     - Issues warnings for potential inconsistencies")
-    print("     - Recommends escalation when needed")
-    print()
-    print("This feature supports both Insurance (ClaimPilot) and Banking (AML)")
-    print("domains, enabling consistent decision-making across all cases.")
-    print()
+    print("NO MOCK DATA USED")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

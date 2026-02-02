@@ -116,6 +116,9 @@ class TemplateLoader:
         warnings = []
         step = 1
 
+        # Track rule codes we've already evaluated (deduplicate by code, not citation)
+        evaluated_rule_codes = set()
+
         # Check evidence requirements first
         for rule in evidence_rules:
             condition = rule.get("when", {})
@@ -140,11 +143,15 @@ class TemplateLoader:
         matched_outcome = None
         for rule in decision_rules:
             condition = rule.get("when", {})
+            outcome = rule.get("outcome", {})
+            rule_code = outcome.get("code", "")
+            citations = outcome.get("citations", [])
+            primary_citation = citations[0] if citations else rule_code
 
             # Check if this is the default rule
             if condition.get("default"):
                 if not matched_outcome:
-                    matched_outcome = rule.get("outcome")
+                    matched_outcome = outcome
                     reasoning_chain.append({
                         "step": step,
                         "status": "pass",
@@ -152,26 +159,30 @@ class TemplateLoader:
                     })
                 continue
 
+            # Skip if we've already evaluated this rule code (deduplicate)
+            if rule_code in evaluated_rule_codes:
+                continue
+            evaluated_rule_codes.add(rule_code)
+
             # Evaluate the condition
             if self._evaluate_condition(condition, facts):
-                matched_outcome = rule.get("outcome")
+                matched_outcome = outcome
                 reasoning_chain.append({
                     "step": step,
-                    "status": "fail" if matched_outcome.get("severity") == "critical" else "warn",
-                    "text": f"{matched_outcome.get('code')}: {', '.join(matched_outcome.get('citations', []))}"
+                    "status": "fail" if outcome.get("severity") == "critical" else "warn",
+                    "text": f"{rule_code}: {', '.join(citations)}"
                 })
+                step += 1
                 break
             else:
                 # Rule didn't match - record as passed check
-                outcome = rule.get("outcome", {})
-                citations = outcome.get("citations", [])
-                if citations:
+                if rule_code:
                     reasoning_chain.append({
                         "step": step,
                         "status": "pass",
-                        "text": f"Checked: {citations[0]} — not triggered"
+                        "text": f"Checked: {rule_code} — not triggered"
                     })
-            step += 1
+                    step += 1
 
         if not matched_outcome:
             matched_outcome = {
