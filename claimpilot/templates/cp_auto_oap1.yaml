@@ -181,6 +181,14 @@ decision_rules:
       severity: critical
       citations: ["OAP1:4.3.3 Impaired (BAC)"]
 
+  - when: { eq: [driver.bac_level, "0_05"] }
+    outcome:
+      decision: escalate
+      code: AUTO_ESCALATE_BAC_WARN
+      label: "ESCALATE (BAC Warn Range)"
+      severity: warning
+      citations: ["OAP1:4.3.3 Impaired (Warn Range)", "HTA:48.3"]
+
   - when: { true: [driver.impairment_indicated] }
     outcome:
       decision: deny
@@ -281,6 +289,7 @@ expected_outcomes:
   - { scenario: "Personal use, licensed, no impairment", outcome: "PAY" }
   - { scenario: "Rideshare app active", outcome: "DENY (4.2.1 Commercial)" }
   - { scenario: "BAC >= 0.08", outcome: "DENY (4.3.3 Impaired BAC)" }
+  - { scenario: "BAC 0.05-0.079 (warn range)", outcome: "ESCALATE (BAC Warn Range)" }
   - { scenario: "Impairment indicated (drug/other)", outcome: "DENY (4.3.3 Impaired)" }
   - { scenario: "License suspended", outcome: "DENY (4.1.2 Unlicensed)" }
   - { scenario: "Racing activity", outcome: "DENY (4.5.1 Racing)" }
