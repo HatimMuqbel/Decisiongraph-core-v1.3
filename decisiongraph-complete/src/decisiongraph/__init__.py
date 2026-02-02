@@ -823,6 +823,15 @@ __all__ = [
     'create_screening_seed_config',
     'create_monitoring_seed_config',
     'generate_all_banking_seeds',
+    # Precedent History Check Report (v2.1 - Insurance/Banking)
+    'PrecedentCheckError',
+    'InsufficientPrecedentsError',
+    'HeatMapEntry',
+    'PrecedentHeatMap',
+    'ConsistencyCheck',
+    'PrecedentMatch',
+    'PrecedentHistoryReport',
+    'generate_precedent_history_report',
 ]
 
 # Case Schema (Financial Crime)
@@ -957,4 +966,16 @@ from .aml_seed_generator import (
     create_screening_seed_config,
     create_monitoring_seed_config,
     generate_all_banking_seeds,
+)
+
+# Precedent History Check Report (v2.1 - Insurance/Banking Precedent Checking)
+from .precedent_check_report import (
+    PrecedentCheckError,
+    InsufficientPrecedentsError,
+    HeatMapEntry,
+    PrecedentHeatMap,
+    ConsistencyCheck,
+    PrecedentMatch,
+    PrecedentHistoryReport,
+    generate_precedent_history_report,
 )
