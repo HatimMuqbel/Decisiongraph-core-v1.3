@@ -125,6 +125,14 @@ decision_rules:
       severity: critical
       citations: ["Health:Non-Formulary"]
 
+  - when: { and: [{ true: [health.prior_auth_required] }, { eq: [health.prior_auth_approved, "no"] }] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_PRIOR_AUTH
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Prior Auth Denied"]
+
   - when: { and: [{ true: [health.pre_existing_condition] }, { in: [health.coverage_months, ["0_3", "3_6", "6_12"]] }] }
     outcome:
       decision: deny
@@ -176,7 +184,9 @@ decision_rules:
 expected_outcomes:
   - { scenario: "Formulary drug, active member", outcome: "PAY" }
   - { scenario: "Non-formulary, no prior auth", outcome: "DENY (Non-Formulary)" }
+  - { scenario: "Prior auth required but denied", outcome: "DENY (Prior Auth)" }
   - { scenario: "Pre-existing, < 12 months coverage", outcome: "DENY (Pre-existing)" }
   - { scenario: "Work-related", outcome: "DENY (WSIB covers)" }
   - { scenario: "Cosmetic", outcome: "DENY (Cosmetic)" }
+  - { scenario: "Experimental treatment", outcome: "DENY (Experimental)" }
   - { scenario: "Drug cost > $500/month", outcome: "ESCALATE (Clinical Review)" }

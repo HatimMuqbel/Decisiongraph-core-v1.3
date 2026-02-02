@@ -113,6 +113,14 @@ evidence_rules:
     missing_behavior: downgrade_certainty
 
 decision_rules:
+  - when: { false: [wsib.employer_registered] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_NOT_REG
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Employer Not Registered"]
+
   - when: { false: [wsib.injury_work_related] }
     outcome:
       decision: deny
@@ -120,6 +128,14 @@ decision_rules:
       label: "DENY"
       severity: critical
       citations: ["WSIB:Not Work Related"]
+
+  - when: { false: [wsib.arose_out_of_employment] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_NOT_AOE
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Did Not Arise From Employment"]
 
   - when: { and: [{ true: [wsib.pre_existing_condition] }, { eq: [wsib.pre_existing_aggravated, "no"] }] }
     outcome:
@@ -163,7 +179,9 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Work injury, during work, at workplace", outcome: "PAY" }
+  - { scenario: "Employer not WSIB registered", outcome: "DENY (Not Registered)" }
   - { scenario: "Not work related", outcome: "DENY (Not Work Related)" }
+  - { scenario: "Did not arise from employment", outcome: "DENY (Not AOE)" }
   - { scenario: "Pre-existing, not aggravated", outcome: "DENY (Pre-existing)" }
   - { scenario: "Intoxication sole cause", outcome: "DENY (Intoxication)" }
   - { scenario: "Self-inflicted", outcome: "DENY (Self-Inflicted)" }

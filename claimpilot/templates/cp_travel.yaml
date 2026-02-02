@@ -120,6 +120,22 @@ visibility_rules:
     hide_fields: [travel.high_risk_activity_type]
 
 decision_rules:
+  - when: { false: [travel.outside_home_province] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_NOT_TRAVEL
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Not Outside Home Province"]
+
+  - when: { false: [travel.emergency_treatment] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_NOT_EMERGENCY
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Not Emergency Treatment"]
+
   - when: { and: [{ true: [travel.pre_existing_condition] }, { eq: [travel.condition_stable_90_days, "no"] }] }
     outcome:
       decision: deny
@@ -170,8 +186,10 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Emergency abroad, no pre-existing", outcome: "PAY" }
+  - { scenario: "Not outside home province", outcome: "DENY (Not Travel)" }
+  - { scenario: "Not emergency treatment", outcome: "DENY (Not Emergency)" }
   - { scenario: "Pre-existing, not stable", outcome: "DENY (Pre-existing)" }
-  - { scenario: "Elective treatment", outcome: "DENY (Not Emergency)" }
+  - { scenario: "Elective treatment", outcome: "DENY (Elective)" }
   - { scenario: "High-risk activity", outcome: "DENY (High-Risk)" }
   - { scenario: "Travel advisory", outcome: "DENY (Travel Advisory)" }
   - { scenario: "Cost > $50K", outcome: "ESCALATE (Medical Director)" }

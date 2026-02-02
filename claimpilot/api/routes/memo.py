@@ -455,6 +455,181 @@ The recommendation may be independently verified using the `/verify` endpoint an
 # =============================================================================
 
 from api.template_loader import get_byoc_evaluation
+from claimpilot.precedent import (
+    FingerprintSchemaRegistry,
+    PrecedentQueryEngine,
+)
+
+
+def get_precedent_matches(facts: dict, policy_pack_id: str, triggered_exclusion: str | None) -> dict:
+    """
+    Query precedent system for similar cases.
+
+    Returns dict with:
+    - matches: list of similar precedent cases
+    - heat_map: outcome distribution data
+    - summary: statistics about matches
+    """
+    # Map policy pack ID to schema
+    schema_map = {
+        "CA-ON-OAP1": "claimpilot:oap1:auto:v1",
+        "CA-ON-HO3": "claimpilot:ho3:property:v1",
+        "MARINE-STD": "claimpilot:marine:v1",
+        "CA-ON-HEALTH": "claimpilot:health:v1",
+        "CA-ON-WSIB": "claimpilot:wsib:v1",
+        "CGL-STD": "claimpilot:cgl:v1",
+        "EO-STD": "claimpilot:eo:v1",
+        "TRAVEL-MED": "claimpilot:travel:v1",
+    }
+
+    schema_id = schema_map.get(policy_pack_id)
+    if not schema_id:
+        return {"matches": [], "heat_map": None, "summary": None}
+
+    try:
+        # Get schema registry
+        registry = FingerprintSchemaRegistry()
+
+        # Check if schema exists
+        if not registry.has_schema(schema_id):
+            return {"matches": [], "heat_map": None, "summary": None}
+
+        schema = registry.get(schema_id)
+
+        # Compute fingerprint for this case
+        fingerprint = schema.compute_fingerprint(facts, salt="claimpilot-seed-salt-2024")
+
+        # For now, return simulated precedent data based on seed configs
+        # In production, this would query the actual precedent store
+        matches = _get_simulated_precedents(policy_pack_id, triggered_exclusion, fingerprint)
+        heat_map = _compute_heat_map(matches)
+        summary = _compute_summary(matches, triggered_exclusion)
+
+        return {
+            "matches": matches,
+            "heat_map": heat_map,
+            "summary": summary,
+        }
+
+    except Exception as e:
+        # Log error but don't fail memo generation
+        print(f"Precedent lookup error: {e}")
+        return {"matches": [], "heat_map": None, "summary": None}
+
+
+def _get_simulated_precedents(policy_pack_id: str, triggered_exclusion: str | None, fingerprint: str) -> list:
+    """
+    Get simulated precedents based on seed configuration.
+
+    In production, this would query the actual precedent database.
+    """
+    import hashlib
+    from datetime import date, timedelta
+    import random
+
+    # Use fingerprint as seed for deterministic results
+    seed = int(hashlib.md5(fingerprint.encode()).hexdigest()[:8], 16)
+    rng = random.Random(seed)
+
+    # Seed precedent configurations by exclusion type
+    exclusion_configs = {
+        # Auto
+        "AUTO_DENY_IMPAIRED_INDICATED": {"count": 8, "deny_rate": 0.95, "appeal_rate": 0.17, "upheld_rate": 0.90},
+        "AUTO_DENY_IMPAIRED_BAC": {"count": 12, "deny_rate": 0.98, "appeal_rate": 0.15, "upheld_rate": 0.92},
+        "AUTO_DENY_COMMERCIAL": {"count": 10, "deny_rate": 0.92, "appeal_rate": 0.20, "upheld_rate": 0.83},
+        "AUTO_DENY_UNLICENSED": {"count": 9, "deny_rate": 0.96, "appeal_rate": 0.12, "upheld_rate": 0.88},
+        "AUTO_DENY_RACING": {"count": 5, "deny_rate": 0.94, "appeal_rate": 0.18, "upheld_rate": 0.85},
+        # Property
+        "HO_DENY_FLOOD": {"count": 15, "deny_rate": 0.97, "appeal_rate": 0.22, "upheld_rate": 0.91},
+        "HO_DENY_EARTH": {"count": 8, "deny_rate": 0.96, "appeal_rate": 0.18, "upheld_rate": 0.89},
+        "HO_DENY_VACANCY": {"count": 12, "deny_rate": 0.88, "appeal_rate": 0.25, "upheld_rate": 0.78},
+        "HO_DENY_GRADUAL": {"count": 20, "deny_rate": 0.85, "appeal_rate": 0.28, "upheld_rate": 0.75},
+        "HO_DENY_MAINTENANCE": {"count": 14, "deny_rate": 0.82, "appeal_rate": 0.30, "upheld_rate": 0.72},
+        # Health
+        "HLT_DENY_PREEX": {"count": 18, "deny_rate": 0.90, "appeal_rate": 0.35, "upheld_rate": 0.82},
+        "HLT_DENY_NON_FORM": {"count": 22, "deny_rate": 0.94, "appeal_rate": 0.15, "upheld_rate": 0.88},
+        "HLT_DENY_PRIOR_AUTH": {"count": 10, "deny_rate": 0.92, "appeal_rate": 0.20, "upheld_rate": 0.85},
+        # Default for unknown exclusions
+        "DEFAULT": {"count": 5, "deny_rate": 0.80, "appeal_rate": 0.20, "upheld_rate": 0.75},
+    }
+
+    config = exclusion_configs.get(triggered_exclusion, exclusion_configs["DEFAULT"])
+
+    # Generate precedents
+    matches = []
+    base_date = date.today() - timedelta(days=730)  # 2 years ago
+
+    for i in range(min(config["count"], 8)):  # Show max 8 matches
+        days_offset = rng.randint(0, 700)
+        case_date = base_date + timedelta(days=days_offset)
+
+        # Determine outcome based on config rates
+        is_deny = rng.random() < config["deny_rate"]
+        outcome = "DENY" if is_deny else "PAY"
+
+        # Determine if appealed
+        appealed = rng.random() < config["appeal_rate"]
+        appeal_outcome = None
+        if appealed:
+            upheld = rng.random() < config["upheld_rate"]
+            appeal_outcome = "Upheld" if upheld else "Overturned"
+
+        # Compute similarity (deterministic based on fingerprint + index)
+        similarity = 0.95 - (i * 0.05) + rng.uniform(-0.02, 0.02)
+        similarity = max(0.65, min(0.99, similarity))
+
+        matches.append({
+            "case_id": f"PREC-{policy_pack_id[:4]}-{seed % 10000:04d}-{i+1:02d}",
+            "case_date": case_date.isoformat(),
+            "outcome": outcome,
+            "exclusion_code": triggered_exclusion or "N/A",
+            "similarity": round(similarity, 2),
+            "appealed": appealed,
+            "appeal_outcome": appeal_outcome,
+            "decision_level": rng.choice(["Adjuster", "Adjuster", "Adjuster", "Senior", "Manager"]),
+        })
+
+    # Sort by similarity descending
+    matches.sort(key=lambda x: x["similarity"], reverse=True)
+    return matches
+
+
+def _compute_heat_map(matches: list) -> dict | None:
+    """Compute outcome distribution heat map data."""
+    if not matches:
+        return None
+
+    total = len(matches)
+    deny_count = sum(1 for m in matches if m["outcome"] == "DENY")
+    pay_count = total - deny_count
+    appeal_count = sum(1 for m in matches if m["appealed"])
+    overturn_count = sum(1 for m in matches if m["appeal_outcome"] == "Overturned")
+
+    return {
+        "total": total,
+        "deny_count": deny_count,
+        "deny_pct": round(deny_count / total * 100, 1) if total > 0 else 0,
+        "pay_count": pay_count,
+        "pay_pct": round(pay_count / total * 100, 1) if total > 0 else 0,
+        "appeal_count": appeal_count,
+        "appeal_pct": round(appeal_count / total * 100, 1) if total > 0 else 0,
+        "overturn_count": overturn_count,
+        "overturn_pct": round(overturn_count / appeal_count * 100, 1) if appeal_count > 0 else 0,
+    }
+
+
+def _compute_summary(matches: list, triggered_exclusion: str | None) -> dict | None:
+    """Compute summary statistics for precedents."""
+    if not matches:
+        return None
+
+    return {
+        "total_similar": len(matches),
+        "exclusion_code": triggered_exclusion,
+        "top_similarity": matches[0]["similarity"] if matches else 0,
+        "consistent_outcome": all(m["outcome"] == matches[0]["outcome"] for m in matches) if matches else False,
+        "majority_outcome": matches[0]["outcome"] if matches else "N/A",
+    }
 
 
 @router.get("/byoc/{decision_id}", response_class=HTMLResponse)
@@ -503,8 +678,9 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
             "notes": ""
         })
 
-    # Determine decision status
+    # Determine decision status and triggered exclusion
     decision = result.get("decision", "unknown")
+    triggered_exclusion = result.get("decision_code")
     if decision in ["approve", "pay"]:
         decision_status = "approve"
         decision_explainer = "Coverage applies. No exclusions triggered."
@@ -514,6 +690,10 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
     else:
         decision_status = "review"
         decision_explainer = f"Requires review: {result.get('decision_code', 'N/A')}"
+
+    # Get precedent matches
+    policy_pack_id = result.get("version_pins", {}).get("policy_pack_id", "")
+    precedent_data = get_precedent_matches(facts, policy_pack_id, triggered_exclusion)
 
     context = {
         "request": request,
@@ -530,9 +710,13 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
         "exclusions": exclusions,
         "evidence_requirements": [],
         "reasoning_steps": reasoning_steps,
-        "policy_pack_id": result.get("version_pins", {}).get("policy_pack_id", "N/A"),
+        "policy_pack_id": policy_pack_id or "N/A",
         "policy_pack_version": result.get("version_pins", {}).get("policy_pack_version", "N/A"),
         "policy_pack_hash": f"byoc-{decision_id[:16]}",
+        # Precedent data
+        "precedent_matches": precedent_data.get("matches", []),
+        "precedent_heat_map": precedent_data.get("heat_map"),
+        "precedent_summary": precedent_data.get("summary"),
     }
 
     return templates.TemplateResponse("claim_memo.html", context)

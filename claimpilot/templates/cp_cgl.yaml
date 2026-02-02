@@ -114,6 +114,22 @@ evidence_rules:
     missing_behavior: warn
 
 decision_rules:
+  - when: { false: [cgl.occurrence_during_policy] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_NOT_POLICY
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Occurrence Not During Policy"]
+
+  - when: { false: [cgl.in_coverage_territory] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_TERRITORY
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Outside Coverage Territory"]
+
   - when: { true: [cgl.expected_intended] }
     outcome:
       decision: deny
@@ -146,6 +162,14 @@ decision_rules:
       severity: critical
       citations: ["CGL:Professional Services Exclusion"]
 
+  - when: { true: [cgl.contractual_liability] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_CONTRACT
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Contractual Liability Exclusion"]
+
   - when: { true: [cgl.lawsuit_filed] }
     outcome:
       decision: escalate
@@ -164,8 +188,11 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Slip & fall on premises", outcome: "PAY" }
+  - { scenario: "Occurrence not during policy", outcome: "DENY (Not During Policy)" }
+  - { scenario: "Outside coverage territory", outcome: "DENY (Territory)" }
   - { scenario: "Expected/intended injury", outcome: "DENY (Intentional)" }
   - { scenario: "Pollution event", outcome: "DENY (Pollution)" }
   - { scenario: "Auto involved", outcome: "DENY (Auto Exclusion)" }
   - { scenario: "Professional services", outcome: "DENY (Professional - need E&O)" }
+  - { scenario: "Contractual liability", outcome: "DENY (Contractual)" }
   - { scenario: "Lawsuit filed", outcome: "ESCALATE (Claims Counsel)" }

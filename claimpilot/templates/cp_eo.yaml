@@ -91,6 +91,14 @@ evidence:
   - { id: lawsuit_documents, label: "Lawsuit Documents", default: false }
 
 decision_rules:
+  - when: { false: [eo.claim_first_made_during_policy] }
+    outcome:
+      decision: deny
+      code: EO_DENY_NOT_CLAIMS_MADE
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Claim Not First Made During Policy"]
+
   - when: { eq: [eo.wrongful_act_date, before_retro_date] }
     outcome:
       decision: deny
@@ -141,7 +149,9 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Error in professional work, after retro", outcome: "PAY" }
+  - { scenario: "Claim not first made during policy", outcome: "DENY (Claims-Made)" }
   - { scenario: "Wrongful act before retro date", outcome: "DENY (Prior Acts)" }
   - { scenario: "Known before policy", outcome: "DENY (Known Circumstances)" }
   - { scenario: "Fraudulent act", outcome: "DENY (Fraud/Dishonesty)" }
   - { scenario: "Bodily injury", outcome: "DENY (BI Exclusion - need CGL)" }
+  - { scenario: "Not in professional capacity", outcome: "DENY (Not Professional)" }

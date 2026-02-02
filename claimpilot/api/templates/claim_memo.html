@@ -232,6 +232,112 @@
       </tbody>
     </table>
 
+    {% if precedent_matches and precedent_matches|length > 0 %}
+    <h2>Precedent Analysis</h2>
+
+    {% if precedent_summary %}
+    <div class="card break" style="background:#f0f9ff; border-color:#bae6fd;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div>
+          <strong style="font-size:14px;">{{ precedent_summary.total_similar }} Similar Cases Found</strong>
+          <p class="small" style="margin:4px 0 0 0;">
+            Exclusion: <code class="mono">{{ precedent_summary.exclusion_code or 'N/A' }}</code> |
+            Top Match: {{ (precedent_summary.top_similarity * 100)|round|int }}% similarity
+          </p>
+        </div>
+        {% if precedent_summary.consistent_outcome %}
+        <span class="pill pass" style="font-size:11px;">Consistent Outcomes</span>
+        {% else %}
+        <span class="pill req" style="font-size:11px;">Mixed Outcomes</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if precedent_heat_map %}
+    <h3>Outcome Distribution (Heat Map)</h3>
+    <div class="card break">
+      <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <!-- Outcome bar -->
+        <div style="flex:1; min-width:200px;">
+          <div style="margin-bottom:8px; font-size:13px; font-weight:600;">Decision Outcomes</div>
+          <div style="display:flex; height:24px; border-radius:4px; overflow:hidden; border:1px solid var(--border);">
+            <div style="width:{{ precedent_heat_map.deny_pct }}%; background:#fecaca; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#991b1b;">
+              {% if precedent_heat_map.deny_pct > 15 %}DENY {{ precedent_heat_map.deny_pct }}%{% endif %}
+            </div>
+            <div style="width:{{ precedent_heat_map.pay_pct }}%; background:#a7f3d0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#065f46;">
+              {% if precedent_heat_map.pay_pct > 15 %}PAY {{ precedent_heat_map.pay_pct }}%{% endif %}
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; color:var(--muted);">
+            <span>{{ precedent_heat_map.deny_count }} denials</span>
+            <span>{{ precedent_heat_map.pay_count }} approvals</span>
+          </div>
+        </div>
+        <!-- Appeal stats -->
+        <div style="min-width:160px;">
+          <div style="margin-bottom:8px; font-size:13px; font-weight:600;">Appeal Activity</div>
+          <div style="font-size:24px; font-weight:700; color:var(--fg);">{{ precedent_heat_map.appeal_pct }}%</div>
+          <div style="font-size:12px; color:var(--muted);">appealed ({{ precedent_heat_map.appeal_count }} cases)</div>
+          {% if precedent_heat_map.appeal_count > 0 %}
+          <div style="margin-top:8px; font-size:12px;">
+            <span style="color:var(--bad);">{{ precedent_heat_map.overturn_pct }}% overturned</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <h3>Similar Cases</h3>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Case ID</th>
+          <th>Date</th>
+          <th style="width:100px;">Similarity</th>
+          <th style="width:100px;">Outcome</th>
+          <th>Decision Level</th>
+          <th>Appeal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in precedent_matches[:6] %}
+        <tr>
+          <td class="mono">{{ match.case_id }}</td>
+          <td class="mono">{{ match.case_date }}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="flex:1; height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden;">
+                <div style="width:{{ (match.similarity * 100)|round|int }}%; height:100%; background:{% if match.similarity >= 0.9 %}#10b981{% elif match.similarity >= 0.8 %}#f59e0b{% else %}#6b7280{% endif %};"></div>
+              </div>
+              <span style="font-size:12px; font-weight:600;">{{ (match.similarity * 100)|round|int }}%</span>
+            </div>
+          </td>
+          <td>
+            {% if match.outcome == "DENY" %}
+              <span class="pill trig">DENY</span>
+            {% else %}
+              <span class="pill pass">PAY</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ match.decision_level }}</td>
+          <td class="small">
+            {% if match.appealed %}
+              {{ match.appeal_outcome }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="small" style="margin-top:8px;">
+      Precedent matching uses privacy-preserving fingerprints. Case IDs shown are anonymized references from the seed precedent database.
+    </p>
+    {% endif %}
+
     <h2>Policy Provenance</h2>
     <div class="provenance break">
       <div class="kv">

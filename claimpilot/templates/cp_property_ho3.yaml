@@ -200,6 +200,14 @@ decision_rules:
       severity: warning
       citations: ["HO3:Fraud/Arson Handling"]
 
+  - when: { true: [prop.maintenance_issue] }
+    outcome:
+      decision: deny
+      code: HO_DENY_MAINTENANCE
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Maintenance/Wear & Tear Exclusion"]
+
   - when: { default: true }
     outcome:
       decision: pay
@@ -215,3 +223,4 @@ expected_outcomes:
   - { scenario: "Gradual water damage", outcome: "DENY (Wear & Tear)" }
   - { scenario: "Vacant > 30 days", outcome: "DENY (Vacancy)" }
   - { scenario: "Arson suspected", outcome: "REFER SIU" }
+  - { scenario: "Maintenance issue", outcome: "DENY (Maintenance)" }
