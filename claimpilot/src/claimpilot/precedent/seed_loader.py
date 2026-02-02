@@ -27,12 +27,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
-from decisiongraph.judgment import (
-    JudgmentPayload,
-    create_judgment_cell,
-    parse_judgment_payload,
-    is_judgment_cell,
-)
+# DecisionGraph imports are optional - the module may not be installed
+try:
+    from decisiongraph.judgment import (
+        JudgmentPayload,
+        create_judgment_cell,
+        parse_judgment_payload,
+        is_judgment_cell,
+    )
+    DECISIONGRAPH_AVAILABLE = True
+except ImportError:
+    # Create stub types for when decisiongraph is not available
+    JudgmentPayload = Any  # type: ignore
+    def create_judgment_cell(*args, **kwargs) -> Any:  # type: ignore
+        return None
+    def parse_judgment_payload(*args, **kwargs) -> Any:  # type: ignore
+        return None
+    def is_judgment_cell(*args, **kwargs) -> bool:  # type: ignore
+        return False
+    DECISIONGRAPH_AVAILABLE = False
 
 from .fingerprint_schema import FingerprintSchemaRegistry
 from .reason_code_registry import ReasonCodeRegistry

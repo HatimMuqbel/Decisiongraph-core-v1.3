@@ -29,7 +29,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from decisiongraph.judgment import AnchorFact, JudgmentPayload, compute_case_id_hash
+# DecisionGraph imports are optional - the module may not be installed
+try:
+    from decisiongraph.judgment import AnchorFact, JudgmentPayload, compute_case_id_hash
+    DECISIONGRAPH_AVAILABLE = True
+except ImportError:
+    # Create stub types for when decisiongraph is not available
+    AnchorFact = Any  # type: ignore
+    JudgmentPayload = Any  # type: ignore
+    def compute_case_id_hash(*args, **kwargs) -> str:  # type: ignore
+        return hashlib.sha256(str(args).encode()).hexdigest()[:16]
+    DECISIONGRAPH_AVAILABLE = False
 
 from .fingerprint_schema import FingerprintSchemaRegistry
 from .reason_code_registry import ReasonCodeRegistry

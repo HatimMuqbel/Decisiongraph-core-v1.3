@@ -49,12 +49,22 @@ from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 from uuid import uuid4
 
-from decisiongraph.judgment import JudgmentPayload
-from decisiongraph.precedent_registry import (
-    PrecedentRegistry,
-    PrecedentStatistics,
-    AppealStatistics,
-)
+# DecisionGraph imports are optional - the module may not be installed
+try:
+    from decisiongraph.judgment import JudgmentPayload
+    from decisiongraph.precedent_registry import (
+        PrecedentRegistry,
+        PrecedentStatistics,
+        AppealStatistics,
+    )
+    DECISIONGRAPH_AVAILABLE = True
+except ImportError:
+    # Create stub types for when decisiongraph is not available
+    JudgmentPayload = Any  # type: ignore
+    PrecedentRegistry = Any  # type: ignore
+    PrecedentStatistics = Any  # type: ignore
+    AppealStatistics = Any  # type: ignore
+    DECISIONGRAPH_AVAILABLE = False
 
 from .fingerprint_schema import FingerprintSchemaRegistry
 
