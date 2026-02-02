@@ -195,8 +195,11 @@ fields:
     options:
       - { value: "0", label: "0" }
       - { value: "1", label: "1" }
-      - { value: "2_plus", label: "2+" }
+      - { value: "2", label: "2" }
+      - { value: "3", label: "3" }
+      - { value: "4_plus", label: "4+" }
     default: "0"
+    help_text: "1 SAR → review; 2-3 SARs → enhanced monitoring; 4+ → exit consideration"
 
   screen.previous_account_closures:
     label: "Previous Account Closures"
@@ -236,14 +239,61 @@ visibility_rules:
     hide_fields: [txn.destination_country]
 
 decision_rules:
+  # BLOCK rules (highest severity - must come first)
   - when: { true: [screen.sanctions_match] }
     outcome:
       decision: block
       code: AML_BLOCK_SANCTIONS
       label: "BLOCK + Report"
       severity: critical
-      citations: ["Sanctions:Block"]
+      citations: ["Sanctions:Block", "SEMA"]
 
+  # Cumulative SAR rule - 4+ SARs indicates pattern requiring exit
+  - when: { eq: [screen.prior_sars_filed, "4_plus"] }
+    outcome:
+      decision: block
+      code: AML_BLOCK_SAR_PATTERN
+      label: "BLOCK (Exit Review)"
+      severity: critical
+      citations: ["FINTRAC:PatternOfSuspicion", "Policy:ExitConsideration"]
+
+  # Previous account closures - serious red flag
+  - when: { true: [screen.previous_account_closures] }
+    outcome:
+      decision: escalate
+      code: AML_ESC_PRIOR_CLOSURE
+      label: "ESCALATE (Prior Closure)"
+      severity: warning
+      citations: ["FINTRAC:ExitedCustomer", "Policy:EnhancedReview"]
+
+  # Cumulative SAR rule - 2-3 SARs requires enhanced monitoring
+  - when: { in: [screen.prior_sars_filed, ["2", "3"]] }
+    outcome:
+      decision: escalate
+      code: AML_ESC_SAR_HISTORY
+      label: "ESCALATE (SAR History)"
+      severity: warning
+      citations: ["FINTRAC:EnhancedMonitoring"]
+
+  # Adverse media - always investigate
+  - when: { true: [screen.adverse_media] }
+    outcome:
+      decision: investigate
+      code: AML_INV_ADVERSE_MEDIA
+      label: "INVESTIGATE (Adverse Media)"
+      severity: warning
+      citations: ["FINTRAC:AdverseMedia"]
+
+  # PEP match from screening
+  - when: { true: [screen.pep_match] }
+    outcome:
+      decision: escalate
+      code: AML_ESC_PEP_SCREEN
+      label: "ESCALATE (PEP Screening)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  # Structuring indicators (original rule)
   - when: { or: [{ true: [txn.just_below_10k] }, { true: [txn.multiple_same_day_txns] }, { true: [flag.structuring_suspected] }] }
     outcome:
       decision: investigate
@@ -252,6 +302,34 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:StructuringIndicators"]
 
+  # Round amounts (potential structuring indicator)
+  - when: { and: [{ true: [txn.round_amount] }, { in: [txn.amount_band, ["3k_10k", "10k_25k"]] }] }
+    outcome:
+      decision: investigate
+      code: AML_INV_ROUND
+      label: "INVESTIGATE (Round Amount)"
+      severity: warning
+      citations: ["FINTRAC:StructuringIndicators"]
+
+  # Source of funds unclear
+  - when: { false: [txn.source_of_funds_clear] }
+    outcome:
+      decision: investigate
+      code: AML_INV_SOF
+      label: "INVESTIGATE (Source of Funds)"
+      severity: warning
+      citations: ["FINTRAC:SourceOfFunds"]
+
+  # Stated purpose unclear
+  - when: { eq: [txn.stated_purpose, unclear] }
+    outcome:
+      decision: investigate
+      code: AML_INV_PURPOSE
+      label: "INVESTIGATE (Unclear Purpose)"
+      severity: warning
+      citations: ["FINTRAC:TransactionPurpose"]
+
+  # High-risk country destination
   - when: { and: [{ true: [txn.cross_border] }, { eq: [txn.destination_country, high_risk_country] }] }
     outcome:
       decision: escalate
@@ -260,6 +338,16 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:HighRiskJurisdiction"]
 
+  # Cash-intensive business - requires enhanced monitoring
+  - when: { and: [{ true: [risk.cash_intensive_business] }, { in: [txn.amount_band, ["10k_25k", "25k_100k", "100k_plus"]] }] }
+    outcome:
+      decision: escalate
+      code: AML_ESC_CASH_INTENSIVE
+      label: "ESCALATE (Cash-Intensive)"
+      severity: warning
+      citations: ["FINTRAC:CashIntensiveBusiness"]
+
+  # PEP with large amount
   - when: { and: [{ true: [risk.pep] }, { in: [txn.amount_band, ["25k_100k", "100k_plus"]] }] }
     outcome:
       decision: escalate
@@ -268,6 +356,7 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:PEPEDD"]
 
+  # Layering/shell company indicators
   - when: { or: [{ true: [flag.layering_indicators] }, { true: [flag.shell_company_indicators] }] }
     outcome:
       decision: investigate
@@ -276,6 +365,34 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:LayeringIndicators"]
 
+  # Rapid movement - standalone rule
+  - when: { true: [flag.rapid_movement] }
+    outcome:
+      decision: investigate
+      code: AML_INV_RAPID
+      label: "INVESTIGATE (Rapid Movement)"
+      severity: warning
+      citations: ["FINTRAC:FlowThrough"]
+
+  # Unusual for profile - standalone rule
+  - when: { true: [flag.unusual_for_profile] }
+    outcome:
+      decision: investigate
+      code: AML_INV_UNUSUAL
+      label: "INVESTIGATE (Profile Deviation)"
+      severity: warning
+      citations: ["FINTRAC:UnusualActivity"]
+
+  # Third-party payment
+  - when: { true: [flag.third_party_payment] }
+    outcome:
+      decision: investigate
+      code: AML_INV_THIRD_PARTY
+      label: "INVESTIGATE (Third Party)"
+      severity: warning
+      citations: ["FINTRAC:ThirdParty"]
+
+  # New customer with large transaction (reportable)
   - when: { and: [{ eq: [customer.relationship_length, new_lt_6mo] }, { in: [txn.amount_band, ["10k_25k", "25k_100k", "100k_plus"]] }, { true: [txn.source_of_funds_clear] }] }
     outcome:
       decision: approve
@@ -284,6 +401,7 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:Reporting"]
 
+  # Default approve
   - when: { default: true }
     outcome:
       decision: approve
@@ -296,6 +414,20 @@ expected_outcomes:
   - { scenario: "Known customer, normal pattern, under $10K", outcome: "APPROVE" }
   - { scenario: "New customer, >$10K, source clear", outcome: "APPROVE + Report" }
   - { scenario: "Just below $10K, multiple same day", outcome: "INVESTIGATE (Structuring)" }
+  - { scenario: "Round amount in reporting range", outcome: "INVESTIGATE (Round Amount)" }
+  - { scenario: "Source of funds unclear", outcome: "INVESTIGATE (Source of Funds)" }
+  - { scenario: "Stated purpose unclear", outcome: "INVESTIGATE (Unclear Purpose)" }
   - { scenario: "High-risk country destination", outcome: "ESCALATE (Compliance)" }
+  - { scenario: "Cash-intensive business, large amount", outcome: "ESCALATE (Cash-Intensive)" }
   - { scenario: "Sanctions match", outcome: "BLOCK + Report" }
   - { scenario: "PEP, large amount", outcome: "ESCALATE (Senior Management)" }
+  - { scenario: "PEP screening match", outcome: "ESCALATE (PEP Screening)" }
+  - { scenario: "Adverse media", outcome: "INVESTIGATE (Adverse Media)" }
+  - { scenario: "1 prior SAR", outcome: "Normal processing with monitoring" }
+  - { scenario: "2-3 prior SARs", outcome: "ESCALATE (SAR History)" }
+  - { scenario: "4+ prior SARs", outcome: "BLOCK (Exit Review)" }
+  - { scenario: "Previous account closure", outcome: "ESCALATE (Prior Closure)" }
+  - { scenario: "Rapid in/out movement", outcome: "INVESTIGATE (Rapid Movement)" }
+  - { scenario: "Unusual for customer profile", outcome: "INVESTIGATE (Profile Deviation)" }
+  - { scenario: "Third-party payment", outcome: "INVESTIGATE (Third Party)" }
+  - { scenario: "Layering/shell company indicators", outcome: "INVESTIGATE (Layering)" }

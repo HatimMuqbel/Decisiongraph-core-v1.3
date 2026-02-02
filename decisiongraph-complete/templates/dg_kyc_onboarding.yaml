@@ -165,8 +165,30 @@ fields:
     options:
       - { value: "0", label: "0" }
       - { value: "1", label: "1" }
-      - { value: "2_plus", label: "2+" }
+      - { value: "2", label: "2" }
+      - { value: "3_plus", label: "3+" }
     default: "0"
+    help_text: "Prior SAR history indicates elevated risk requiring enhanced review"
+
+  screen.previous_account_closures:
+    label: "Previous Account Closures"
+    control_type: toggle
+    default: false
+
+  shell.nominee_directors:
+    label: "Nominee Directors"
+    control_type: toggle
+    default: false
+
+  shell.registered_agent_only:
+    label: "Registered Agent Only"
+    control_type: toggle
+    default: false
+
+  shell.no_physical_presence:
+    label: "No Physical Presence"
+    control_type: toggle
+    default: false
 
 field_groups:
   - name: "Customer"
@@ -180,7 +202,9 @@ field_groups:
   - name: "Enhanced Due Diligence"
     fields: [edd.required, edd.completed, edd.senior_management_approval]
   - name: "Screening"
-    fields: [screen.sanctions_match, screen.adverse_media, screen.prior_sars_filed]
+    fields: [screen.sanctions_match, screen.adverse_media, screen.prior_sars_filed, screen.previous_account_closures]
+  - name: "Shell Company Indicators"
+    fields: [shell.nominee_directors, shell.registered_agent_only, shell.no_physical_presence]
 
 evidence:
   - { id: gov_photo_id, label: "Government Photo ID", default: true }
@@ -204,15 +228,20 @@ visibility_rules:
     show_fields: [edd.completed, edd.senior_management_approval]
   - when: { false: [edd.required] }
     hide_fields: [edd.completed, edd.senior_management_approval]
+  - when: { in: [customer.type, [corporation, partnership, trust]] }
+    show_fields: [shell.nominee_directors, shell.registered_agent_only, shell.no_physical_presence]
+  - when: { in: [customer.type, [individual, sole_prop, non_profit]] }
+    hide_fields: [shell.nominee_directors, shell.registered_agent_only, shell.no_physical_presence]
 
 decision_rules:
+  # DECLINE rules (highest severity - must come first)
   - when: { true: [screen.sanctions_match] }
     outcome:
       decision: decline
       code: KYC_DECLINE_SANCTIONS
       label: "DECLINE + Report"
       severity: critical
-      citations: ["Sanctions:Block"]
+      citations: ["Sanctions:Block", "SEMA"]
 
   - when: { false: [kyc.id_verified] }
     outcome:
@@ -222,6 +251,124 @@ decision_rules:
       severity: critical
       citations: ["FINTRAC:IDV Required"]
 
+  # ID expired - must obtain valid ID
+  - when: { true: [kyc.id_expired] }
+    outcome:
+      decision: hold
+      code: KYC_HOLD_EXPIRED_ID
+      label: "HOLD (Expired ID)"
+      severity: warning
+      citations: ["FINTRAC:ValidID"]
+
+  # Address not verified - incomplete KYC
+  - when: { false: [kyc.address_verified] }
+    outcome:
+      decision: hold
+      code: KYC_HOLD_NO_ADDRESS
+      label: "HOLD (Address Required)"
+      severity: warning
+      citations: ["FINTRAC:AddressVerification"]
+
+  # Business not registered - decline corporate
+  - when: { and: [{ in: [customer.type, [corporation, partnership]] }, { false: [biz.registered] }] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_UNREG_BIZ
+      label: "DECLINE (Unregistered Business)"
+      severity: critical
+      citations: ["FINTRAC:BusinessVerification"]
+
+  # Beneficial owners not identified - hold for info
+  - when: { and: [{ in: [customer.type, [corporation, partnership, trust]] }, { false: [biz.beneficial_owners_identified] }] }
+    outcome:
+      decision: hold
+      code: KYC_HOLD_NO_UBO
+      label: "HOLD (UBO Required)"
+      severity: warning
+      citations: ["FINTRAC:BeneficialOwnership"]
+
+  # Source of wealth not documented - EDD trigger
+  - when: { and: [{ in: [customer.type, [corporation, partnership, trust]] }, { false: [biz.source_of_wealth_documented] }] }
+    outcome:
+      decision: hold
+      code: KYC_HOLD_NO_SOW
+      label: "HOLD (Source of Wealth Required)"
+      severity: warning
+      citations: ["FINTRAC:SourceOfWealth"]
+
+  # Business activity not verified
+  - when: { and: [{ in: [customer.type, [corporation, partnership]] }, { false: [biz.activity_verified] }] }
+    outcome:
+      decision: hold
+      code: KYC_HOLD_NO_ACTIVITY
+      label: "HOLD (Business Activity Required)"
+      severity: warning
+      citations: ["FINTRAC:BusinessActivity"]
+
+  # Shell company indicators - multiple present = decline
+  - when: { and: [{ true: [shell.nominee_directors] }, { true: [shell.no_physical_presence] }] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_SHELL
+      label: "DECLINE (Shell Company)"
+      severity: critical
+      citations: ["FINTRAC:ShellCompany", "Policy:RiskAppetite"]
+
+  # Shell company indicators - single = escalate
+  - when: { or: [{ true: [shell.nominee_directors] }, { true: [shell.registered_agent_only] }, { true: [shell.no_physical_presence] }] }
+    outcome:
+      decision: escalate
+      code: KYC_ESC_SHELL_INDICATOR
+      label: "ESCALATE (Shell Indicator)"
+      severity: warning
+      citations: ["FINTRAC:ShellCompany"]
+
+  # Cumulative SAR rule - 3+ SARs = decline
+  - when: { eq: [screen.prior_sars_filed, "3_plus"] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_SAR_HISTORY
+      label: "DECLINE (SAR History)"
+      severity: critical
+      citations: ["Policy:RiskAppetite", "FINTRAC:PatternOfSuspicion"]
+
+  # Previous account closures
+  - when: { true: [screen.previous_account_closures] }
+    outcome:
+      decision: escalate
+      code: KYC_ESC_PRIOR_CLOSURE
+      label: "ESCALATE (Prior Closure)"
+      severity: warning
+      citations: ["FINTRAC:ExitedCustomer"]
+
+  # Adverse media with any SAR history
+  - when: { and: [{ true: [screen.adverse_media] }, { in: [screen.prior_sars_filed, ["1", "2", "3_plus"]] }] }
+    outcome:
+      decision: decline
+      code: KYC_DECLINE_ADVERSE
+      label: "DECLINE (Adverse + SAR)"
+      severity: critical
+      citations: ["Policy:AdverseMedia"]
+
+  # Adverse media alone - escalate for review
+  - when: { true: [screen.adverse_media] }
+    outcome:
+      decision: escalate
+      code: KYC_ESC_ADVERSE_MEDIA
+      label: "ESCALATE (Adverse Media)"
+      severity: warning
+      citations: ["FINTRAC:AdverseMedia"]
+
+  # High-risk jurisdiction - EDD required
+  - when: { true: [risk.high_risk_jurisdiction] }
+    outcome:
+      decision: escalate
+      code: KYC_ESC_HR_JURISDICTION
+      label: "ESCALATE (High-Risk Jurisdiction)"
+      severity: warning
+      citations: ["FINTRAC:HighRiskJurisdiction"]
+
+  # PEP without EDD
   - when: { and: [{ true: [risk.pep] }, { or: [{ eq: [edd.completed, "no"] }, { eq: [edd.completed, "na"] }] }] }
     outcome:
       decision: hold
@@ -230,22 +377,16 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:PEPEDD"]
 
+  # High-risk industry without senior approval
   - when: { and: [{ true: [risk.high_risk_industry] }, { or: [{ eq: [edd.senior_management_approval, "no"] }, { eq: [edd.senior_management_approval, "na"] }] }] }
     outcome:
       decision: escalate
       code: KYC_ESC_HR_INDUSTRY
-      label: "ESCALATE"
+      label: "ESCALATE (Senior Approval Required)"
       severity: warning
       citations: ["FINTRAC:SeniorApproval"]
 
-  - when: { and: [{ true: [screen.adverse_media] }, { in: [screen.prior_sars_filed, ["1", "2_plus"]] }] }
-    outcome:
-      decision: decline
-      code: KYC_DECLINE_ADVERSE
-      label: "DECLINE"
-      severity: critical
-      citations: ["Policy:AdverseMedia"]
-
+  # Default approve
   - when: { default: true }
     outcome:
       decision: approve
@@ -257,7 +398,19 @@ decision_rules:
 expected_outcomes:
   - { scenario: "Full KYC complete, low risk", outcome: "APPROVE" }
   - { scenario: "Missing ID verification", outcome: "DECLINE (Incomplete KYC)" }
+  - { scenario: "ID expired", outcome: "HOLD (Expired ID)" }
+  - { scenario: "Address not verified", outcome: "HOLD (Address Required)" }
+  - { scenario: "Business not registered", outcome: "DECLINE (Unregistered)" }
+  - { scenario: "Beneficial owners not identified", outcome: "HOLD (UBO Required)" }
+  - { scenario: "Source of wealth not documented", outcome: "HOLD (SOW Required)" }
+  - { scenario: "Business activity not verified", outcome: "HOLD (Activity Required)" }
+  - { scenario: "Shell company indicators (multiple)", outcome: "DECLINE (Shell Company)" }
+  - { scenario: "Shell company indicators (single)", outcome: "ESCALATE (Shell Indicator)" }
   - { scenario: "PEP, EDD not complete", outcome: "HOLD (Pending EDD)" }
-  - { scenario: "High-risk industry, no senior approval", outcome: "ESCALATE" }
+  - { scenario: "High-risk industry, no senior approval", outcome: "ESCALATE (Senior Approval)" }
+  - { scenario: "High-risk jurisdiction", outcome: "ESCALATE (High-Risk Jurisdiction)" }
   - { scenario: "Sanctions match", outcome: "DECLINE + Report" }
-  - { scenario: "Adverse media, serious", outcome: "DECLINE" }
+  - { scenario: "Adverse media alone", outcome: "ESCALATE (Adverse Media)" }
+  - { scenario: "Adverse media with SAR history", outcome: "DECLINE (Adverse + SAR)" }
+  - { scenario: "3+ prior SARs", outcome: "DECLINE (SAR History)" }
+  - { scenario: "Previous account closure", outcome: "ESCALATE (Prior Closure)" }

@@ -39,8 +39,32 @@ fields:
     options:
       - { value: "0", label: "0" }
       - { value: "1", label: "1" }
-      - { value: "2_plus", label: "2+" }
+      - { value: "2", label: "2" }
+      - { value: "3_plus", label: "3+" }
     default: "0"
+    help_text: "Prior SAR history indicates elevated risk"
+
+  match.type:
+    label: "Match Type"
+    control_type: select
+    options:
+      - { value: exact, label: "Exact Match" }
+      - { value: fuzzy_high, label: "Fuzzy (High Confidence)" }
+      - { value: fuzzy_medium, label: "Fuzzy (Medium Confidence)" }
+      - { value: false_positive, label: "False Positive" }
+    default: fuzzy_medium
+
+  match.list_source:
+    label: "List Source"
+    control_type: select
+    options:
+      - { value: ofac_sdn, label: "OFAC SDN" }
+      - { value: un_sanctions, label: "UN Sanctions" }
+      - { value: eu_sanctions, label: "EU Sanctions" }
+      - { value: ca_sema, label: "Canadian SEMA" }
+      - { value: pep_database, label: "PEP Database" }
+      - { value: adverse_media, label: "Adverse Media" }
+    default: pep_database
 
   edd.required:
     label: "EDD Required"
@@ -68,6 +92,8 @@ fields:
 field_groups:
   - name: "Screening Results"
     fields: [screen.sanctions_match, screen.pep_match, screen.adverse_media, screen.previous_account_closures, screen.prior_sars_filed]
+  - name: "Match Details"
+    fields: [match.type, match.list_source]
   - name: "Enhanced Due Diligence"
     fields: [edd.required, edd.completed, edd.senior_management_approval]
 
@@ -84,14 +110,70 @@ visibility_rules:
     hide_fields: [edd.required, edd.completed, edd.senior_management_approval]
 
 decision_rules:
+  # BLOCK rules (highest severity)
   - when: { true: [screen.sanctions_match] }
     outcome:
       decision: block
       code: SCR_BLOCK_SANCTIONS
       label: "BLOCK + Report"
       severity: critical
-      citations: ["Sanctions:Block"]
+      citations: ["Sanctions:Block", "SEMA", "OFAC"]
 
+  # Exact match on high-risk list
+  - when: { and: [{ eq: [match.type, exact] }, { in: [match.list_source, [ofac_sdn, un_sanctions, ca_sema]] }] }
+    outcome:
+      decision: block
+      code: SCR_BLOCK_EXACT_MATCH
+      label: "BLOCK (Exact Match)"
+      severity: critical
+      citations: ["Sanctions:ExactMatch"]
+
+  # Cumulative SAR rule - 3+ SARs = decline
+  - when: { eq: [screen.prior_sars_filed, "3_plus"] }
+    outcome:
+      decision: decline
+      code: SCR_DECLINE_SAR_HISTORY
+      label: "DECLINE (SAR Pattern)"
+      severity: critical
+      citations: ["Policy:RiskAppetite", "FINTRAC:PatternOfSuspicion"]
+
+  # Previous closures + adverse media = decline
+  - when: { and: [{ true: [screen.adverse_media] }, { true: [screen.previous_account_closures] }] }
+    outcome:
+      decision: decline
+      code: SCR_DECLINE_ADVERSE_CLOSURE
+      label: "DECLINE (Adverse + Closure)"
+      severity: critical
+      citations: ["Policy:AdverseMedia", "Policy:RiskAppetite"]
+
+  # Previous account closures - escalate
+  - when: { true: [screen.previous_account_closures] }
+    outcome:
+      decision: escalate
+      code: SCR_ESC_PRIOR_CLOSURE
+      label: "ESCALATE (Prior Closure)"
+      severity: warning
+      citations: ["FINTRAC:ExitedCustomer"]
+
+  # Adverse media alone - escalate for review
+  - when: { true: [screen.adverse_media] }
+    outcome:
+      decision: escalate
+      code: SCR_ESC_ADVERSE_MEDIA
+      label: "ESCALATE (Adverse Media)"
+      severity: warning
+      citations: ["FINTRAC:AdverseMedia"]
+
+  # 2 prior SARs - enhanced monitoring
+  - when: { eq: [screen.prior_sars_filed, "2"] }
+    outcome:
+      decision: escalate
+      code: SCR_ESC_SAR_HISTORY
+      label: "ESCALATE (SAR History)"
+      severity: warning
+      citations: ["FINTRAC:EnhancedMonitoring"]
+
+  # PEP with complete EDD and senior approval
   - when: { and: [{ true: [screen.pep_match] }, { eq: [edd.completed, "yes"] }, { eq: [edd.senior_management_approval, "yes"] }] }
     outcome:
       decision: approve
@@ -100,6 +182,7 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:PEPEDD"]
 
+  # PEP without EDD
   - when: { and: [{ true: [screen.pep_match] }, { or: [{ eq: [edd.completed, "no"] }, { eq: [edd.completed, "na"] }] }] }
     outcome:
       decision: hold
@@ -108,14 +191,16 @@ decision_rules:
       severity: warning
       citations: ["FINTRAC:PEPEDD"]
 
-  - when: { and: [{ true: [screen.adverse_media] }, { true: [screen.previous_account_closures] }] }
+  # False positive - clear
+  - when: { eq: [match.type, false_positive] }
     outcome:
-      decision: escalate
-      code: SCR_ESC_ADVERSE
-      label: "ESCALATE (Compliance)"
-      severity: warning
-      citations: ["Policy:AdverseMedia"]
+      decision: approve
+      code: SCR_APPROVE_FP
+      label: "APPROVE (False Positive)"
+      severity: normal
+      citations: ["Policy:FalsePositiveResolution"]
 
+  # Default approve
   - when: { default: true }
     outcome:
       decision: approve
@@ -126,7 +211,13 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "No matches, clear screening", outcome: "APPROVE" }
+  - { scenario: "False positive resolved", outcome: "APPROVE (False Positive)" }
   - { scenario: "PEP match, EDD complete, approved", outcome: "APPROVE (EDD Complete)" }
   - { scenario: "PEP match, EDD pending", outcome: "HOLD (Pending EDD)" }
-  - { scenario: "Adverse media + previous closures", outcome: "ESCALATE (Compliance)" }
+  - { scenario: "Adverse media alone", outcome: "ESCALATE (Adverse Media)" }
+  - { scenario: "Previous account closure", outcome: "ESCALATE (Prior Closure)" }
+  - { scenario: "2 prior SARs", outcome: "ESCALATE (SAR History)" }
+  - { scenario: "Adverse media + previous closures", outcome: "DECLINE (Adverse + Closure)" }
+  - { scenario: "3+ prior SARs", outcome: "DECLINE (SAR Pattern)" }
   - { scenario: "Sanctions match", outcome: "BLOCK + Report" }
+  - { scenario: "Exact match on OFAC/UN/SEMA", outcome: "BLOCK (Exact Match)" }
