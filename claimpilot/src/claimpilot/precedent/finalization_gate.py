@@ -103,6 +103,9 @@ class FinalizationResult:
         precedent_id: Random UUID for the precedent
         fingerprint_hash: Computed fingerprint hash
         error: Error message if finalization failed
+        was_override: Whether human overrode engine recommendation
+        engine_outcome: Original engine recommendation (if override)
+        final_outcome: Final human outcome (always the recorded outcome)
     """
     success: bool
     judgment_cell_id: Optional[str] = None
@@ -110,6 +113,9 @@ class FinalizationResult:
     precedent_id: Optional[str] = None
     fingerprint_hash: Optional[str] = None
     error: Optional[str] = None
+    was_override: bool = False
+    engine_outcome: Optional[str] = None
+    final_outcome: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -182,11 +188,17 @@ class FinalizationGate:
         Create a JUDGMENT cell from a sealed disposition.
 
         This is the main entry point for finalization. It:
-        1. Validates the disposition is sealed
+        1. Validates the disposition is sealed (WRITE-ONCE PRINCIPLE)
         2. Computes the fingerprint from claim facts
-        3. Creates the JUDGMENT payload
+        3. Creates the JUDGMENT payload with FINAL HUMAN OUTCOME (MIRROR RULE)
         4. Appends the JUDGMENT cell to the chain
         5. Returns the result with cell ID
+
+        GOVERNANCE RULES:
+        - Write-Once Principle: A JUDGMENT cell can only be created when
+          case status moves to FINAL (disposition is sealed)
+        - Mirror Rule: If human overrides engine recommendation, the JUDGMENT
+          cell records the Final Human Outcome, not the original engine suggestion
 
         Args:
             disposition: The sealed FinalDisposition
@@ -202,11 +214,15 @@ class FinalizationGate:
             DispositionNotSealedError: If disposition is not sealed
             FinalizationDataError: If required data is missing
         """
-        # Validate disposition is sealed
+        # =================================================================
+        # WRITE-ONCE PRINCIPLE: Only sealed (FINAL) dispositions become
+        # precedents. This ensures immutability and audit integrity.
+        # =================================================================
         if not disposition.is_sealed:
             raise DispositionNotSealedError(
                 f"Disposition {disposition.id} is not sealed. "
-                f"Call disposition.seal() before finalization."
+                f"Call disposition.seal() before finalization. "
+                f"WRITE-ONCE PRINCIPLE: Only FINAL cases become precedents."
             )
 
         # Validate required data
@@ -233,11 +249,28 @@ class FinalizationGate:
             # Extract anchor facts
             anchor_facts = self._create_anchor_facts(context, schema)
 
-            # Map disposition to outcome_code
-            outcome_code = self._disposition_to_outcome_code(disposition)
+            # =============================================================
+            # MIRROR RULE: Record the FINAL HUMAN OUTCOME, not the engine
+            # suggestion. If human overrode engine, we track both but the
+            # JUDGMENT cell records what actually happened.
+            # =============================================================
+            final_outcome_code = self._disposition_to_outcome_code(disposition)
+            engine_outcome_code = self._recommendation_to_outcome_code(recommendation)
+
+            # Detect override: human chose differently than engine suggested
+            was_override = (final_outcome_code != engine_outcome_code)
+
+            # The outcome_code in JUDGMENT is ALWAYS the final human decision
+            outcome_code = final_outcome_code
 
             # Map certainty
             certainty = self._recommendation_certainty_to_string(recommendation)
+
+            # Determine source_type based on override
+            if was_override:
+                source_type = "human_override"
+            else:
+                source_type = "system_generated"
 
             # Create JUDGMENT payload
             payload = JudgmentPayload.create(
@@ -259,11 +292,20 @@ class FinalizationGate:
                            if not disposition.finalized_at.tzinfo
                            else disposition.finalized_at.isoformat(),
                 decided_by_role=disposition.finalizer_role or "adjuster",
-                source_type="system_generated",
+                source_type=source_type,
                 authority_hashes=[
                     c.excerpt_hash for c in recommendation.authority_hashes
                 ],
             )
+
+            # If override, add metadata to payload (if supported)
+            if was_override and hasattr(payload, 'metadata'):
+                payload.metadata = payload.metadata or {}
+                payload.metadata['override'] = {
+                    'engine_recommendation': engine_outcome_code,
+                    'human_decision': final_outcome_code,
+                    'override_reason': getattr(disposition, 'override_reason', None),
+                }
 
             # Create the JUDGMENT cell
             cell = create_judgment_cell(
@@ -282,6 +324,9 @@ class FinalizationGate:
                 judgment_cell_hash=cell.cell_id,
                 precedent_id=payload.precedent_id,
                 fingerprint_hash=fingerprint_hash,
+                was_override=was_override,
+                engine_outcome=engine_outcome_code if was_override else None,
+                final_outcome=final_outcome_code,
             )
 
         except Exception as e:
@@ -358,6 +403,34 @@ class FinalizationGate:
         }
         disposition_value = disposition.disposition.value
         return mapping.get(disposition_value, "escalate")
+
+    def _recommendation_to_outcome_code(
+        self,
+        recommendation: RecommendationRecord,
+    ) -> str:
+        """Map RecommendationRecord to outcome_code string (engine suggestion)."""
+        # Get the recommended disposition from the engine
+        rec_disposition = getattr(recommendation, 'recommended_disposition', None)
+        if rec_disposition is None:
+            rec_disposition = getattr(recommendation, 'disposition', 'escalate')
+
+        # Handle enum or string
+        if hasattr(rec_disposition, 'value'):
+            rec_disposition = rec_disposition.value
+
+        mapping = {
+            "pay": "pay",
+            "deny": "deny",
+            "partial": "partial",
+            "escalate": "escalate",
+            "request_info": "escalate",
+            "hold": "escalate",
+            "refer_siu": "deny",
+            "subrogation": "pay",
+            "reserve_only": "escalate",
+            "close_no_pay": "deny",
+        }
+        return mapping.get(str(rec_disposition).lower(), "escalate")
 
     def _recommendation_certainty_to_string(
         self,
