@@ -8,6 +8,9 @@ Key components:
 - DispositionApproval: Approval chain for escalated decisions
 
 Core Principle: "The adjuster decides. ClaimPilot recommends and documents."
+
+v2.0 CHANGES:
+- Added judgment_cell_id to link sealed dispositions to JUDGMENT cells
 """
 from __future__ import annotations
 
@@ -86,6 +89,9 @@ class FinalDisposition:
     # Notes
     internal_notes: Optional[str] = None
     external_notes: Optional[str] = None  # For claimant communication
+
+    # Precedent link (v2.0)
+    judgment_cell_id: Optional[str] = None  # Link to created JUDGMENT cell
 
     @classmethod
     def create(
@@ -222,6 +228,8 @@ class FinalDisposition:
             result["approved_at"] = self.approved_at.isoformat() if self.approved_at else None
         if self.content_hash:
             result["content_hash"] = self.content_hash
+        if self.judgment_cell_id:
+            result["judgment_cell_id"] = self.judgment_cell_id
         return result
 
 

@@ -9,12 +9,17 @@ Key components:
 - RecommendationMemo: Structured output for display/reporting
 
 Core Principle: "The adjuster decides. ClaimPilot recommends and documents."
+
+v2.0 CHANGES:
+- Added precedent support fields for decision consistency
+- PrecedentSummary, PrecedentMatchRecord for structured precedent output
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from decimal import Decimal
+from typing import Any, Optional, TYPE_CHECKING
 from uuid import uuid4
 
 from .enums import (
@@ -26,6 +31,188 @@ from .enums import (
 )
 from .authority import AuthorityRef
 from .precedent import PrecedentHit
+
+if TYPE_CHECKING:
+    from ..precedent.precedent_query import (
+        PrecedentMatch,
+        PrecedentQueryParams,
+        PrecedentSummary,
+    )
+
+
+# =============================================================================
+# Precedent Support (v2.0 - Precedent-Aware Decision Support)
+# =============================================================================
+
+@dataclass
+class AppealStats:
+    """
+    Appeal statistics for a set of precedents.
+
+    Provides metrics for confidence scoring based on appeal outcomes.
+
+    Attributes:
+        total_appealed: Number of cases that were appealed
+        upheld: Number upheld on appeal
+        overturned: Number overturned on appeal
+        settled: Number settled on appeal
+    """
+    total_appealed: int = 0
+    upheld: int = 0
+    overturned: int = 0
+    settled: int = 0
+
+    @property
+    def upheld_rate(self) -> Decimal:
+        """Rate of appeals that were upheld (0.0-1.0)."""
+        if self.total_appealed == 0:
+            return Decimal("1.0")  # No appeals = perfect record
+        decided = self.upheld + self.overturned + self.settled
+        if decided == 0:
+            return Decimal("1.0")
+        return Decimal(self.upheld) / Decimal(decided)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "total_appealed": self.total_appealed,
+            "upheld": self.upheld,
+            "overturned": self.overturned,
+            "settled": self.settled,
+            "upheld_rate": str(self.upheld_rate),
+        }
+
+
+@dataclass
+class PrecedentSummaryRecord:
+    """
+    Summary of precedent query results for recommendation output.
+
+    Provides high-level metrics for consistency and confidence display.
+
+    Attributes:
+        total_matched: Total number of matching precedents
+        same_outcome_count: Count with same outcome as proposed
+        consistency_rate: Rate of same-outcome precedents (0.0-1.0)
+        appeal_stats: Appeal statistics
+        precedent_confidence: Computed confidence score (0.0-1.0)
+        precedent_confidence_model_id: Model used for confidence calculation
+    """
+    total_matched: int = 0
+    same_outcome_count: int = 0
+    consistency_rate: Decimal = Decimal("0")
+    appeal_stats: AppealStats = field(default_factory=AppealStats)
+    precedent_confidence: Decimal = Decimal("0.5")
+    precedent_confidence_model_id: str = "pc_v1"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "total_matched": self.total_matched,
+            "same_outcome_count": self.same_outcome_count,
+            "consistency_rate": str(self.consistency_rate),
+            "appeal_stats": self.appeal_stats.to_dict(),
+            "precedent_confidence": str(self.precedent_confidence),
+            "precedent_confidence_model_id": self.precedent_confidence_model_id,
+        }
+
+
+@dataclass
+class PrecedentMatchRecord:
+    """
+    A single matching precedent for recommendation output.
+
+    Privacy Design:
+    - precedent_id: Random UUID (NOT case_id) for external reference
+    - case_id is NEVER exposed externally
+
+    Attributes:
+        precedent_id: Random UUID for external reference
+        judgment_cell_hash: Hash of the JUDGMENT cell
+        match_type: Type of match (exact_fingerprint, exclusion_code, etc.)
+        match_score: Computed match score (0.0-1.0)
+        match_factors: What matched (list of descriptions)
+        distinguish_factors: What differs (for adjuster review)
+        outcome_code: The precedent's outcome
+        exclusion_codes: The precedent's exclusion codes
+        decided_at: When the precedent was decided
+        decision_level: Authority level of the decision
+        appealed: Whether it was appealed
+        appeal_outcome: Outcome if appealed
+        outcome_notable: Notable marker (boundary_case, landmark, overturned)
+        is_caution: True if this is a caution precedent
+    """
+    precedent_id: str
+    judgment_cell_hash: str
+    match_type: str
+    match_score: Decimal
+    match_factors: list[str] = field(default_factory=list)
+    distinguish_factors: list[str] = field(default_factory=list)
+    outcome_code: str = ""
+    exclusion_codes: list[str] = field(default_factory=list)
+    decided_at: str = ""
+    decision_level: str = ""
+    appealed: bool = False
+    appeal_outcome: Optional[str] = None
+    outcome_notable: Optional[str] = None
+    is_caution: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        result: dict[str, Any] = {
+            "precedent_id": self.precedent_id,
+            "judgment_cell_hash": self.judgment_cell_hash,
+            "match_type": self.match_type,
+            "match_score": str(self.match_score),
+            "match_factors": self.match_factors,
+            "distinguish_factors": self.distinguish_factors,
+            "outcome_code": self.outcome_code,
+            "exclusion_codes": self.exclusion_codes,
+            "decided_at": self.decided_at,
+            "decision_level": self.decision_level,
+            "appealed": self.appealed,
+            "is_caution": self.is_caution,
+        }
+        if self.appeal_outcome:
+            result["appeal_outcome"] = self.appeal_outcome
+        if self.outcome_notable:
+            result["outcome_notable"] = self.outcome_notable
+        return result
+
+
+@dataclass
+class PrecedentQueryParamsRecord:
+    """
+    Parameters used for a precedent query, stored for auditability.
+
+    Attributes:
+        fingerprint_hash: The computed fingerprint hash
+        fingerprint_schema_id: Schema used to compute fingerprint
+        exclusion_codes: Exclusion codes being evaluated
+        min_exclusion_overlap: Minimum codes that must overlap for Tier 1
+        query_tier: The tier of query performed
+        evaluated_at: When the query was performed (ISO 8601)
+        namespace_prefix: Namespace searched
+    """
+    fingerprint_hash: str = ""
+    fingerprint_schema_id: str = ""
+    exclusion_codes: list[str] = field(default_factory=list)
+    min_exclusion_overlap: int = 1
+    query_tier: str = "tier_0"
+    evaluated_at: str = ""
+    namespace_prefix: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "fingerprint_hash": self.fingerprint_hash,
+            "fingerprint_schema_id": self.fingerprint_schema_id,
+            "exclusion_codes": self.exclusion_codes,
+            "min_exclusion_overlap": self.min_exclusion_overlap,
+            "query_tier": self.query_tier,
+            "evaluated_at": self.evaluated_at,
+            "namespace_prefix": self.namespace_prefix,
+        }
 
 
 # =============================================================================
@@ -310,6 +497,13 @@ class RecommendationRecord:
     evaluated_at: Optional[datetime] = None           # When recommendation was generated
     engine_version: str = ""                          # ClaimPilot version (git SHA or semver)
 
+    # === PRECEDENT SUPPORT (v2.0) ===
+    # Provides precedent-aware decision consistency and confidence
+    precedent_summary: Optional[PrecedentSummaryRecord] = None
+    supporting_precedents: list[PrecedentMatchRecord] = field(default_factory=list)
+    caution_precedents: list[PrecedentMatchRecord] = field(default_factory=list)
+    precedent_query_params: Optional[PrecedentQueryParamsRecord] = None
+
     @classmethod
     def create(
         cls,
@@ -362,7 +556,7 @@ class RecommendationRecord:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
-        return {
+        result: dict[str, Any] = {
             "id": self.id,
             "claim_id": self.claim_id,
             "recommended_disposition": self.recommended_disposition.value,
@@ -375,6 +569,22 @@ class RecommendationRecord:
             "required_role": self.required_role,
             "generated_at": self.generated_at.isoformat(),
         }
+
+        # Include precedent support fields if present
+        if self.precedent_summary:
+            result["precedent_summary"] = self.precedent_summary.to_dict()
+        if self.supporting_precedents:
+            result["supporting_precedents"] = [
+                p.to_dict() for p in self.supporting_precedents
+            ]
+        if self.caution_precedents:
+            result["caution_precedents"] = [
+                p.to_dict() for p in self.caution_precedents
+            ]
+        if self.precedent_query_params:
+            result["precedent_query_params"] = self.precedent_query_params.to_dict()
+
+        return result
 
 
 # =============================================================================

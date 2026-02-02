@@ -153,6 +153,11 @@ from .recommendation import (
     ReasoningStep,
     RecommendationRecord,
     RecommendationMemo,
+    # Precedent support (v2.0)
+    AppealStats,
+    PrecedentSummaryRecord,
+    PrecedentMatchRecord,
+    PrecedentQueryParamsRecord,
 )
 
 # =============================================================================
@@ -245,6 +250,11 @@ __all__ = [
     "ReasoningStep",
     "RecommendationRecord",
     "RecommendationMemo",
+    # Precedent support (v2.0)
+    "AppealStats",
+    "PrecedentSummaryRecord",
+    "PrecedentMatchRecord",
+    "PrecedentQueryParamsRecord",
     # Disposition
     "FinalDisposition",
     "DispositionApproval",

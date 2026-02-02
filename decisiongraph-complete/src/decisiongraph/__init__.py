@@ -755,6 +755,26 @@ __all__ = [
     'PackLoaderError',
     'PackValidationError',
     'PackCompilationError',
+    # Judgment (v2.0 - Precedent System)
+    'JudgmentPayloadError',
+    'JudgmentValidationError',
+    'JudgmentCreationError',
+    'AnchorFact',
+    'JudgmentPayload',
+    'compute_case_id_hash',
+    'validate_judgment_payload',
+    'create_judgment_cell',
+    'parse_judgment_payload',
+    'is_judgment_cell',
+    'JUDGMENT_RULE_ID',
+    'JUDGMENT_RULE_HASH',
+    'JUDGMENT_INTERPRETER',
+    # Precedent Registry (v2.0 - Precedent System)
+    'PrecedentRegistryError',
+    'InvalidQueryError',
+    'AppealStatistics',
+    'PrecedentStatistics',
+    'PrecedentRegistry',
 ]
 
 # Case Schema (Financial Crime)
@@ -806,4 +826,30 @@ from .str_gate import (
     dual_gate_decision,
     STR_RATIONALE_TEMPLATE,
     NO_STR_RATIONALE_TEMPLATE,
+)
+
+# Judgment (v2.0 - Precedent System)
+from .judgment import (
+    JudgmentPayloadError,
+    JudgmentValidationError,
+    JudgmentCreationError,
+    AnchorFact,
+    JudgmentPayload,
+    compute_case_id_hash,
+    validate_judgment_payload,
+    create_judgment_cell,
+    parse_judgment_payload,
+    is_judgment_cell,
+    JUDGMENT_RULE_ID,
+    JUDGMENT_RULE_HASH,
+    JUDGMENT_INTERPRETER,
+)
+
+# Precedent Registry (v2.0 - Precedent System)
+from .precedent_registry import (
+    PrecedentRegistryError,
+    InvalidQueryError,
+    AppealStatistics,
+    PrecedentStatistics,
+    PrecedentRegistry,
 )
