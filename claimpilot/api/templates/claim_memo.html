@@ -13,52 +13,54 @@
       --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
     *{ box-sizing:border-box; }
-    body{ margin:0; padding:24px; font-family:var(--sans); color:var(--fg); background:var(--bg); }
+    body{ margin:0; padding:24px; font-family:var(--sans); color:var(--fg); background:var(--bg); font-size:14px; line-height:1.5; }
     .page{ max-width:900px; margin:0 auto; }
     .header{ text-align:center; padding-bottom:20px; border-bottom:2px solid var(--fg); margin-bottom:24px; }
-    .header h1{ font-size:24px; margin:0 0 4px 0; }
-    .header .subtitle{ color:var(--muted); font-size:14px; }
-    h2{ font-size:16px; margin:24px 0 12px 0; padding-bottom:6px; border-bottom:1px solid var(--border); }
-    h3{ font-size:14px; margin:16px 0 8px 0; }
+    .header h1{ font-size:22px; margin:0 0 4px 0; font-weight:700; }
+    .header .subtitle{ color:var(--muted); font-size:13px; font-style:italic; }
+    h2{ font-size:15px; margin:28px 0 14px 0; padding-bottom:6px; border-bottom:1px solid var(--border); font-weight:700; }
+    h2 .num{ color:var(--muted); font-weight:600; margin-right:8px; }
+    h3{ font-size:13px; margin:16px 0 8px 0; font-weight:600; }
     .card{ border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; }
-    .kv{ display:grid; grid-template-columns: 180px 1fr; gap:8px 16px; font-size:14px; }
+    .kv{ display:grid; grid-template-columns: 180px 1fr; gap:6px 16px; font-size:13px; }
     .kv .label{ color:var(--muted); }
     .kv .value{ font-weight:600; }
-    .kv .value.mono{ font-family:var(--mono); font-size:13px; }
-    table{ width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
-    th, td{ text-align:left; padding:10px 12px; border:1px solid var(--border); vertical-align:top; }
-    th{ background:#f9fafb; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
+    .kv .value.mono{ font-family:var(--mono); font-size:12px; }
+    table{ width:100%; border-collapse:collapse; font-size:12px; margin:12px 0; }
+    th, td{ text-align:left; padding:8px 10px; border:1px solid var(--border); vertical-align:top; }
+    th{ background:#f9fafb; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
     .status{ border-radius:8px; padding:16px; margin:12px 0; }
     .status.ok{ background:var(--okbg); border:1px solid #a7f3d0; }
     .status.warn{ background:var(--warnbg); border:1px solid #fcd34d; }
     .status.bad{ background:var(--badbg); border:1px solid #fecaca; }
-    .status h3{ margin:0 0 8px 0; font-size:15px; }
-    .status p{ margin:0; font-size:14px; color:var(--fg); }
-    .status ul{ margin:8px 0 0 0; padding-left:20px; }
+    .status h3{ margin:0 0 8px 0; font-size:16px; font-weight:700; }
+    .status p{ margin:0; font-size:13px; color:var(--fg); }
+    .status ul{ margin:8px 0 0 0; padding-left:20px; font-size:13px; }
     .status li{ margin:4px 0; }
-    .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+    .pill{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
     .pill.na{ background:#f3f4f6; color:#374151; }
     .pill.req{ background:#fffbeb; color:var(--warn); }
     .pill.trig{ background:#fef2f2; color:var(--bad); }
     .pill.pass{ background:#ecfdf5; color:var(--ok); }
     .mono{ font-family:var(--mono); }
-    .small{ font-size:12px; color:var(--muted); }
-    .evidence-block{ background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:16px; margin:12px 0; }
-    .evidence-block h4{ margin:0 0 8px 0; font-size:14px; color:var(--warn); }
-    .evidence-block .purpose{ font-style:italic; color:var(--muted); margin-bottom:12px; font-size:13px; }
-    .evidence-block h5{ margin:12px 0 6px 0; font-size:13px; font-weight:600; }
-    .evidence-block ul{ margin:0; padding-left:20px; font-size:13px; }
-    .evidence-block li{ margin:4px 0; }
+    .small{ font-size:11px; color:var(--muted); }
+    .note{ font-size:12px; color:var(--muted); font-style:italic; margin:8px 0; }
     .provenance{ background:#f9fafb; border:1px solid var(--border); border-radius:8px; padding:16px; }
-    .provenance .hash{ word-break:break-all; font-size:12px; }
-    .statement{ background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
-    .compliance{ background:#fefce8; border:1px solid #fde047; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
-    .foot{ margin-top:24px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; text-align:center; }
+    .provenance .hash{ word-break:break-all; font-size:11px; }
+    .statement{ background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:16px; margin:16px 0; font-size:13px; }
+    .statement ul{ margin:8px 0 0 0; padding-left:20px; }
+    .statement li{ margin:4px 0; }
+    .info-required{ background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:16px; margin:12px 0; }
+    .info-required h4{ margin:0 0 8px 0; font-size:13px; color:var(--warn); font-weight:600; }
+    .info-required ul{ margin:0; padding-left:20px; font-size:13px; }
+    .info-required li{ margin:4px 0; }
+    .foot{ margin-top:24px; padding-top:16px; border-top:2px solid var(--fg); color:var(--muted); font-size:11px; text-align:center; }
     .break{ break-inside:avoid; page-break-inside:avoid; }
+    hr.section-end{ border:none; border-top:1px solid var(--border); margin:20px 0; }
     @media print {
-      body { padding: 12px; }
+      body { padding: 12px; font-size:12px; }
       .page { max-width: 100%; }
-      .status, .evidence-block, .provenance, .statement, .compliance { break-inside: avoid; }
+      .status, .provenance, .statement, .info-required { break-inside: avoid; }
     }
   </style>
 </head>
@@ -66,30 +68,40 @@
   <div class="page">
     <div class="header">
       <h1>Claim Evaluation Memorandum</h1>
-      <div class="subtitle">Deterministic Policy Engine (Zero LLM)</div>
+      <div class="subtitle">Deterministic Insurance Policy Engine (Zero-LLM Core)</div>
     </div>
 
-    <h2>Administrative Details</h2>
+    <!-- Section 1: Administrative Details -->
+    <h2><span class="num">1.</span>Administrative Details</h2>
     <div class="card break">
       <div class="kv">
         <div class="label">Request ID</div>
         <div class="value mono">{{ request_id }}</div>
         <div class="label">Claim ID</div>
         <div class="value mono">{{ claim_id }}</div>
+        <div class="label">Line of Business</div>
+        <div class="value">{{ line_of_business or 'Insurance' }}</div>
+        <div class="label">Jurisdiction</div>
+        <div class="value mono">{{ jurisdiction or 'CA-ON' }}</div>
         <div class="label">Policy ID</div>
         <div class="value mono">{{ policy_pack_id }}</div>
         <div class="label">Policy Version</div>
         <div class="value mono">{{ policy_pack_version }}</div>
-        <div class="label">Evaluated At</div>
+        <div class="label">Evaluated At (UTC)</div>
         <div class="value mono">{{ evaluated_at }}</div>
         <div class="label">Engine Version</div>
         <div class="value mono">{{ engine_version }}</div>
+        <div class="label">Decision Status</div>
+        <div class="value">{{ decision_status_label or 'provisional' }}</div>
         <div class="label">Certainty Level</div>
         <div class="value">{{ certainty_level }}</div>
       </div>
     </div>
+    <hr class="section-end">
 
-    <h2>Claim Facts</h2>
+    <!-- Section 2: Claim Facts -->
+    <h2><span class="num">2.</span>Claim Facts (Structured Inputs)</h2>
+    <p class="note">All facts were supplied via structured systems and validated input controls. No free-text interpretation was used.</p>
     <table class="break">
       <thead>
         <tr>
@@ -106,49 +118,67 @@
         {% endfor %}
       </tbody>
     </table>
+    <hr class="section-end">
 
-    <h2>Recommendation</h2>
+    <!-- Section 3: Coverage Evaluation Summary -->
+    <h2><span class="num">3.</span>Coverage Evaluation Summary</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px;"><strong>Current Recommendation:</strong></p>
     {% if decision_status == "approve" %}
       <div class="status ok break">
-        <h3>APPROVE{% if decision_note %} — {{ decision_note }}{% endif %}</h3>
-        <p>{{ decision_explainer }}</p>
+        <h3>PAY</h3>
+        <p><strong>Decision Rationale:</strong></p>
+        <ul>
+          <li>Coverage evaluation completed under the active policy pack</li>
+          <li>No exclusions triggered based on the supplied facts</li>
+          {% if decision_note %}<li>{{ decision_note }}</li>{% endif %}
+        </ul>
       </div>
     {% elif decision_status == "deny" %}
       <div class="status bad break">
-        <h3>DENY{% if decision_note %} — {{ decision_note }}{% endif %}</h3>
-        <p>{{ decision_explainer }}</p>
-        {% if exclusions_triggered and exclusions_triggered|length > 0 %}
-          <p style="margin-top:12px;"><strong>Exclusions triggered:</strong></p>
-          <ul>
+        <h3>DENY</h3>
+        <p><strong>Decision Rationale:</strong></p>
+        <ul>
+          <li>Coverage evaluation completed under the active policy pack</li>
+          <li>{{ decision_explainer }}</li>
+          {% if exclusions_triggered and exclusions_triggered|length > 0 %}
             {% for ex in exclusions_triggered %}
-              <li><strong>{{ ex.code }}</strong> — {{ ex.name }}</li>
+              <li>Exclusion <strong>{{ ex.code }}</strong> triggered: {{ ex.name }}</li>
             {% endfor %}
-          </ul>
-        {% endif %}
+          {% endif %}
+        </ul>
+      </div>
+    {% elif decision_status == "escalate" or decision_status == "review" %}
+      <div class="status warn break">
+        <h3>ESCALATE</h3>
+        <p><strong>Decision Rationale:</strong></p>
+        <ul>
+          <li>Coverage evaluation completed under the active policy pack</li>
+          <li>One or more internal review or escalation conditions were triggered</li>
+          <li>{{ decision_explainer }}</li>
+          <li>No final coverage determination issued at this stage</li>
+        </ul>
       </div>
     {% else %}
       <div class="status warn break">
         <h3>REQUEST ADDITIONAL INFORMATION</h3>
-        <p>{{ decision_explainer }}</p>
-        {% if unresolved_exclusions and unresolved_exclusions|length > 0 %}
-          <p style="margin-top:12px;"><strong>Unresolved exclusions requiring additional evidence:</strong></p>
-          <ul>
-            {% for ex in unresolved_exclusions %}
-              <li><strong>{{ ex.code }}</strong> — {{ ex.name }}</li>
-            {% endfor %}
-          </ul>
-        {% endif %}
-        <p class="small" style="margin-top:12px;">No denial has been issued at this stage.</p>
+        <p><strong>Decision Rationale:</strong></p>
+        <ul>
+          <li>Coverage evaluation completed under the active policy pack</li>
+          <li>One or more exclusions require additional evidence for determination</li>
+          <li>No final coverage determination issued at this stage</li>
+        </ul>
       </div>
     {% endif %}
+    <hr class="section-end">
 
-    <h2>Exclusions Evaluated</h2>
+    <!-- Section 4: Exclusions & Conditions Evaluated -->
+    <h2><span class="num">4.</span>Exclusions & Conditions Evaluated</h2>
     <table class="break">
       <thead>
         <tr>
-          <th style="width:80px;">Code</th>
+          <th style="width:100px;">Code</th>
           <th>Description</th>
-          <th style="width:180px;">Evaluation Result</th>
+          <th style="width:140px;">Result</th>
           <th>Notes</th>
         </tr>
       </thead>
@@ -156,14 +186,14 @@
         {% for ex in exclusions_evaluated %}
         <tr>
           <td class="mono">{{ ex.code }}</td>
-          <td>{{ ex.name }}</td>
+          <td>{{ ex.name or ex.description }}</td>
           <td>
-            {% if ex.status == "not_applicable" %}
-              <span class="pill na">Not Applicable</span>
+            {% if ex.status == "triggered" or ex.evaluation_result == "TRIGGERED" %}
+              <span class="pill trig">TRIGGERED</span>
             {% elif ex.status == "requires_evidence" %}
-              <span class="pill req">Additional Evidence Required</span>
+              <span class="pill req">PENDING</span>
             {% else %}
-              <span class="pill trig">Triggered</span>
+              <span class="pill pass">NOT TRIGGERED</span>
             {% endif %}
           </td>
           <td class="small">{{ ex.notes or '' }}</td>
@@ -171,149 +201,94 @@
         {% endfor %}
       </tbody>
     </table>
+    <p class="note">"NOT TRIGGERED" indicates the condition was evaluated and did not apply based on the current facts.</p>
+    <hr class="section-end">
 
-    {% if evidence_requests and evidence_requests|length > 0 %}
-    <h2>Evidence Requests</h2>
-    <p class="small">The following standardized evidence is required to resolve indeterminate exclusions.</p>
-
-    {% for er in evidence_requests %}
-    <div class="evidence-block break">
-      <h4>Exclusion {{ er.exclusion_code }} — {{ er.exclusion_name }}</h4>
-      <div class="purpose">{{ er.purpose }}</div>
-
-      {% if er.to_confirm and er.to_confirm|length > 0 %}
-      <h5>Evidence to Confirm Applicability</h5>
-      <ul>
-        {% for item in er.to_confirm %}
-          <li>{{ item }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-
-      {% if er.to_rule_out and er.to_rule_out|length > 0 %}
-      <h5>Evidence to Rule Out Applicability</h5>
-      <ul>
-        {% for item in er.to_rule_out %}
-          <li>{{ item }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-    </div>
-    {% endfor %}
-    {% endif %}
-
-    <h2>Reasoning Chain</h2>
+    <!-- Section 5: Reasoning Chain -->
+    <h2><span class="num">5.</span>Reasoning Chain (Deterministic)</h2>
     <table class="break">
       <thead>
         <tr>
-          <th style="width:60px;">Step</th>
+          <th style="width:50px;">Step</th>
           <th>Evaluation Action</th>
-          <th style="width:140px;">Outcome</th>
+          <th style="width:100px;">Outcome</th>
         </tr>
       </thead>
       <tbody>
         {% for step in reasoning_steps %}
         <tr>
-          <td class="mono">{{ step.step_id }}</td>
+          <td class="mono">{{ step.step_id or step.step }}</td>
           <td>{{ step.action }}</td>
           <td>
-            {% if step.outcome == "PASSED" %}
-              <span class="pill pass">Passed</span>
-            {% elif step.outcome == "INDETERMINATE" %}
-              <span class="pill req">Indeterminate</span>
-            {% elif step.outcome == "NOT_APPLICABLE" %}
-              <span class="pill na">Not Applicable</span>
+            {% if step.outcome == "PASS" or step.outcome == "PASSED" %}
+              <span class="pill pass">PASS</span>
+            {% elif step.outcome == "WARN" %}
+              <span class="pill req">WARN</span>
+            {% elif step.outcome == "FAIL" %}
+              <span class="pill trig">FAIL</span>
             {% else %}
-              <span class="pill trig">{{ step.outcome }}</span>
+              <span class="pill na">{{ step.outcome }}</span>
             {% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    <hr class="section-end">
 
+    <!-- Section 6: Precedent Analysis -->
     {% if precedent_matches and precedent_matches|length > 0 %}
-    <h2>Precedent Analysis</h2>
+    <h2><span class="num">6.</span>Precedent Analysis (Historical Consistency Check)</h2>
+    <p class="note">Historical precedents were queried using privacy-preserving fingerprints derived from exclusion-relevant facts only.</p>
 
     {% if precedent_summary %}
-    <div class="card break" style="background:#f0f9ff; border-color:#bae6fd;">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-        <div>
-          <strong style="font-size:14px;">{{ precedent_summary.total_similar }} Similar Cases Found</strong>
-          <p class="small" style="margin:4px 0 0 0;">
-            Exclusion: <code class="mono">{{ precedent_summary.exclusion_code or 'N/A' }}</code> |
-            Top Match: {{ (precedent_summary.top_similarity * 100)|round|int }}% similarity
-          </p>
-        </div>
-        <div style="text-align:right;">
-          {% if precedent_summary.consistent_outcome %}
-          <span class="pill pass" style="font-size:11px;">Consistent Outcomes</span>
-          {% else %}
-          <span class="pill req" style="font-size:11px;">Mixed Outcomes</span>
-          {% endif %}
-          <div style="margin-top:6px; font-size:11px; color:var(--muted);">
-            Confidence: <strong>{{ precedent_summary.confidence_level }}</strong> ({{ precedent_summary.precedent_confidence }})
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:12px; padding-top:12px; border-top:1px solid #bae6fd; font-size:13px;">
+    <h3>Precedent Summary</h3>
+    <div class="card break">
+      <ul style="margin:0; padding-left:20px; font-size:13px;">
+        <li><strong>Similar cases found:</strong> {{ precedent_summary.total_similar }}</li>
+        <li><strong>Top similarity score:</strong> {{ (precedent_summary.top_similarity * 100)|round|int }}%</li>
+        <li><strong>Outcome distribution:</strong>
+          <ul style="margin:4px 0 0 0;">
+            <li>PAY: {{ precedent_heat_map.pay_count if precedent_heat_map else 0 }}</li>
+            <li>DENY: {{ precedent_heat_map.deny_count if precedent_heat_map else 0 }}</li>
+          </ul>
+        </li>
+        {% if precedent_heat_map %}
+        <li><strong>Challenge / Appeal activity:</strong>
+          <ul style="margin:4px 0 0 0;">
+            <li>{{ precedent_heat_map.appeal_pct }}% challenged</li>
+            <li>{{ precedent_heat_map.overturn_pct }}% overturned</li>
+          </ul>
+        </li>
+        {% endif %}
+      </ul>
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px;">
+        <strong>Precedent Confidence:</strong> {{ precedent_summary.confidence_level }} ({{ precedent_summary.precedent_confidence }})
+        &nbsp;|&nbsp;
         <strong>Decision Support:</strong> {{ precedent_summary.decision_support }}
       </div>
     </div>
 
     {% if precedent_summary.caution_message %}
-    <div class="status warn break" style="margin-top:12px;">
-      <h3 style="margin:0 0 4px 0; font-size:13px;">⚠ Precedent Risk</h3>
-      <p style="margin:0; font-size:13px;">{{ precedent_summary.caution_message }}</p>
+    <div class="status warn break">
+      <h3 style="font-size:13px; margin:0 0 4px 0;">⚠ Precedent Risk Notice</h3>
+      <p>{{ precedent_summary.caution_message }}</p>
     </div>
     {% endif %}
     {% endif %}
+    <hr class="section-end">
 
-    {% if precedent_heat_map %}
-    <h3>Outcome Distribution (Heat Map)</h3>
-    <div class="card break">
-      <div style="display:flex; gap:24px; flex-wrap:wrap;">
-        <!-- Outcome bar -->
-        <div style="flex:1; min-width:200px;">
-          <div style="margin-bottom:8px; font-size:13px; font-weight:600;">Decision Outcomes</div>
-          <div style="display:flex; height:24px; border-radius:4px; overflow:hidden; border:1px solid var(--border);">
-            <div style="width:{{ precedent_heat_map.deny_pct }}%; background:#fecaca; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#991b1b;">
-              {% if precedent_heat_map.deny_pct > 15 %}DENY {{ precedent_heat_map.deny_pct }}%{% endif %}
-            </div>
-            <div style="width:{{ precedent_heat_map.pay_pct }}%; background:#a7f3d0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#065f46;">
-              {% if precedent_heat_map.pay_pct > 15 %}PAY {{ precedent_heat_map.pay_pct }}%{% endif %}
-            </div>
-          </div>
-          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; color:var(--muted);">
-            <span>{{ precedent_heat_map.deny_count }} denials</span>
-            <span>{{ precedent_heat_map.pay_count }} approvals</span>
-          </div>
-        </div>
-        <!-- Appeal stats -->
-        <div style="min-width:160px;">
-          <div style="margin-bottom:8px; font-size:13px; font-weight:600;">Appeal Activity</div>
-          <div style="font-size:24px; font-weight:700; color:var(--fg);">{{ precedent_heat_map.appeal_pct }}%</div>
-          <div style="font-size:12px; color:var(--muted);">appealed ({{ precedent_heat_map.appeal_count }} cases)</div>
-          {% if precedent_heat_map.appeal_count > 0 %}
-          <div style="margin-top:8px; font-size:12px;">
-            <span style="color:var(--bad);">{{ precedent_heat_map.overturn_pct }}% overturned</span>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-    <h3>Similar Cases</h3>
+    <!-- Section 7: Similar Cases -->
+    <h2><span class="num">7.</span>Similar Cases (Anonymized)</h2>
     <table class="break">
       <thead>
         <tr>
-          <th>Case ID</th>
+          <th>Precedent ID</th>
           <th>Date</th>
-          <th style="width:90px;">Similarity</th>
-          <th style="width:90px;">Outcome</th>
-          <th>Level</th>
-          <th>Challenge</th>
+          <th style="width:80px;">Similarity</th>
+          <th style="width:70px;">Outcome</th>
+          <th>Decision Level</th>
+          <th>Review / Appeal</th>
         </tr>
       </thead>
       <tbody>
@@ -321,14 +296,7 @@
         <tr{% if match.appeal_outcome == "Overturned" %} style="background:#fef2f2;"{% endif %}>
           <td class="mono">{{ match.case_id }}</td>
           <td class="mono">{{ match.case_date }}</td>
-          <td>
-            <div style="display:flex; align-items:center; gap:6px;">
-              <div style="flex:1; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden;">
-                <div style="width:{{ (match.similarity * 100)|round|int }}%; height:100%; background:{% if match.similarity >= 0.9 %}#10b981{% elif match.similarity >= 0.8 %}#f59e0b{% else %}#6b7280{% endif %};"></div>
-              </div>
-              <span style="font-size:11px; font-weight:600;">{{ (match.similarity * 100)|round|int }}%</span>
-            </div>
-          </td>
+          <td>{{ (match.similarity * 100)|round|int }}%</td>
           <td>
             {% if match.outcome == "DENY" %}
               <span class="pill trig" style="font-size:10px;">DENY</span>
@@ -336,83 +304,97 @@
               <span class="pill pass" style="font-size:10px;">PAY</span>
             {% endif %}
             {% if match.appeal_outcome == "Overturned" %}
-              <span class="pill req" style="font-size:9px; margin-left:2px;">⚠ Overturned</span>
+              <span style="font-size:9px; color:var(--warn);">⚠</span>
             {% endif %}
           </td>
           <td class="small">{{ match.decision_level }}</td>
-          <td class="small">
-            {% if match.appealed %}
-              {{ match.appeal_outcome }}
-            {% else %}
-              —
-            {% endif %}
-          </td>
+          <td class="small">{{ match.appeal_outcome if match.appealed else '—' }}</td>
         </tr>
-        {% if match.matched_anchors %}
-        <tr style="background:#f9fafb;">
-          <td colspan="6" style="padding:6px 12px; font-size:11px; border-top:none;">
-            <span style="color:var(--muted);">Match factors:</span>
-            {% for anchor in match.matched_anchors %}
-              <code style="background:#e0f2fe; color:#0369a1; padding:1px 4px; border-radius:3px; margin-left:4px; font-size:10px;">{{ anchor }}</code>
-            {% endfor %}
-            {% if match.key_differences %}
-              <span style="color:var(--muted); margin-left:8px;">| Differs:</span>
-              {% for diff in match.key_differences %}
-                <code style="background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:3px; margin-left:4px; font-size:10px;">{{ diff }}</code>
-              {% endfor %}
-            {% endif %}
-          </td>
-        </tr>
-        {% endif %}
-        {% if match.overturn_reason %}
-        <tr style="background:#fef2f2;">
-          <td colspan="6" style="padding:6px 12px; font-size:11px; border-top:none; color:var(--bad);">
-            <strong>Overturn reason:</strong> {{ match.overturn_reason }}
-          </td>
-        </tr>
-        {% endif %}
         {% endfor %}
       </tbody>
     </table>
-    <p class="small" style="margin-top:8px;">
-      Precedent matching uses privacy-preserving fingerprints. Case IDs are anonymized references. Challenge activity includes internal disputes, ombudsman cases, and litigation.
-    </p>
+
+    {% if precedent_matches[0].matched_anchors %}
+    <div style="margin-top:12px; padding:12px; background:#f9fafb; border-radius:6px; font-size:12px;">
+      <strong>Matching Basis (top case):</strong>
+      <ul style="margin:6px 0 0 0; padding-left:20px;">
+        {% for anchor in precedent_matches[0].matched_anchors %}
+        <li><code class="mono" style="background:#e0f2fe; color:#0369a1; padding:1px 4px; border-radius:3px; font-size:10px;">{{ anchor }}</code></li>
+        {% endfor %}
+      </ul>
+      {% if precedent_matches[0].key_differences %}
+      <div style="margin-top:8px;">
+        <strong>Key differences:</strong>
+        {% for diff in precedent_matches[0].key_differences %}
+          <code class="mono" style="background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:3px; margin-left:4px; font-size:10px;">{{ diff }}</code>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    <hr class="section-end">
     {% endif %}
 
-    <h2>Policy Provenance</h2>
+    <!-- Section 8: Information Required (if applicable) -->
+    {% if decision_status == "request_info" or (unresolved_exclusions and unresolved_exclusions|length > 0) or (evidence_requests and evidence_requests|length > 0) %}
+    <h2><span class="num">{% if precedent_matches and precedent_matches|length > 0 %}8{% else %}6{% endif %}.</span>Information Required</h2>
+    <div class="info-required break">
+      <h4>To resolve the outstanding review condition(s), the following information is required:</h4>
+      <ul>
+        {% if evidence_requests %}
+          {% for er in evidence_requests %}
+            <li>{{ er.exclusion_name }}: {{ er.purpose or 'Documentation required' }}</li>
+          {% endfor %}
+        {% elif unresolved_exclusions %}
+          {% for ex in unresolved_exclusions %}
+            <li>{{ ex.name }}: Evidence to confirm or rule out applicability</li>
+          {% endfor %}
+        {% else %}
+          <li>Additional documentation as specified by claims handler</li>
+        {% endif %}
+      </ul>
+      <p class="small" style="margin-top:12px;">No final denial has been issued at this stage.</p>
+    </div>
+    <hr class="section-end">
+    {% endif %}
+
+    <!-- Section 9: Policy Provenance & Integrity -->
+    <h2><span class="num">{% if precedent_matches and precedent_matches|length > 0 %}9{% else %}7{% endif %}.</span>Policy Provenance & Integrity</h2>
     <div class="provenance break">
       <div class="kv">
         <div class="label">Policy Pack ID</div>
         <div class="value mono">{{ policy_pack_id }}</div>
         <div class="label">Policy Pack Version</div>
         <div class="value mono">{{ policy_pack_version }}</div>
-        <div class="label">Hash Scheme</div>
-        <div class="value mono">{{ policy_pack_hash_scheme or 'sha256:rfc8785' }}</div>
         <div class="label">Policy Pack Hash</div>
         <div class="value mono hash">{{ policy_pack_hash }}</div>
+        <div class="label">Hash Scheme</div>
+        <div class="value mono">SHA-256 (RFC 8785 Canonical JSON)</div>
       </div>
       <p class="small" style="margin-top:12px;">
         This recommendation is cryptographically bound to the exact policy wording evaluated at decision time.
       </p>
     </div>
+    <hr class="section-end">
 
+    <!-- Section 10: Determinism & Auditability Statement -->
+    <h2><span class="num">{% if precedent_matches and precedent_matches|length > 0 %}10{% else %}8{% endif %}.</span>Determinism & Auditability Statement</h2>
     <div class="statement break">
-      <strong>Determinism & Auditability Statement</strong><br><br>
-      This claim evaluation was produced by a deterministic rule engine.
-      Re-evaluation using identical inputs and the same policy pack will produce identical results.<br><br>
-      The recommendation may be independently verified using the <code class="mono">/verify</code> endpoint and the recorded provenance fields.
+      <p style="margin:0 0 12px 0;">This claim evaluation was produced by a <strong>deterministic rules-based insurance engine</strong>.</p>
+      <ul>
+        <li>No probabilistic or generative AI was used in coverage determination</li>
+        <li>Re-evaluation using identical inputs and the same policy pack will produce <strong>identical results</strong></li>
+        <li>All evaluations are reproducible and independently verifiable</li>
+      </ul>
+      <p style="margin:12px 0 0 0; font-size:12px; color:var(--muted);">
+        Verification may be performed using the recorded provenance fields and the <code class="mono">/verify</code> endpoint.
+      </p>
     </div>
 
-    {% if decision_status == "request_info" %}
-    <div class="compliance break">
-      <strong>Compliance Note</strong><br><br>
-      No coverage denial has been issued.
-      Outstanding exclusions are explicitly identified and require documentary resolution prior to final disposition.
-    </div>
-    {% endif %}
-
+    <!-- Footer -->
     <div class="foot">
-      <strong>ClaimPilot</strong> — Deterministic • Reproducible • Auditable<br>
+      <strong>End of Memorandum</strong><br>
+      <span style="margin-top:8px; display:inline-block;">ClaimPilot — Deterministic • Reproducible • Auditable</span><br>
       Generated {{ evaluated_at }}
     </div>
   </div>
