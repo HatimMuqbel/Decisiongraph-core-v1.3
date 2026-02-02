@@ -152,10 +152,18 @@ decision_rules:
   - when: { in: [driver.bac_level, ["0_08", "0_10", "0_12_plus"]] }
     outcome:
       decision: deny
-      code: AUTO_DENY_IMPAIRED
+      code: AUTO_DENY_IMPAIRED_BAC
       label: "DENY"
       severity: critical
-      citations: ["OAP1:4.3.3 Impaired"]
+      citations: ["OAP1:4.3.3 Impaired (BAC)"]
+
+  - when: { true: [driver.impairment_indicated] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_IMPAIRED_INDICATED
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:4.3.3 Impaired (Indicated)"]
 
   - when: { in: [driver.license_status, [suspended, expired, never_licensed]] }
     outcome:
@@ -200,7 +208,8 @@ decision_rules:
 expected_outcomes:
   - { scenario: "Personal use, licensed, no impairment", outcome: "PAY" }
   - { scenario: "Rideshare app active", outcome: "DENY (4.2.1 Commercial)" }
-  - { scenario: "BAC >= 0.08", outcome: "DENY (4.3.3 Impaired)" }
+  - { scenario: "BAC >= 0.08", outcome: "DENY (4.3.3 Impaired BAC)" }
+  - { scenario: "Impairment indicated (drug/other)", outcome: "DENY (4.3.3 Impaired)" }
   - { scenario: "License suspended", outcome: "DENY (4.1.2 Unlicensed)" }
   - { scenario: "Racing activity", outcome: "DENY (4.5.1 Racing)" }
   - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }
