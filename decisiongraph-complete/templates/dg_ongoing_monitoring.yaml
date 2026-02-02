@@ -1,0 +1,526 @@
+template_id: dg.aml.ongoing_monitoring
+template_version: "2026.02.01"
+domain: banking_aml
+reg_pack_id: "CA-FINTRAC-MON"
+reg_pack_version: "2025.1"
+
+ui:
+  title: "Ongoing Customer Monitoring"
+  summary_tokens:
+    - { field: trigger.type }
+    - { field: review.risk_change }
+    - { field: customer.risk_level }
+    - { field: exit.decision }
+
+fields:
+  trigger.type:
+    label: "Trigger Type"
+    control_type: select
+    options:
+      - { value: activity_spike, label: "Activity Spike" }
+      - { value: periodic_annual, label: "Annual Review" }
+      - { value: periodic_trigger, label: "Trigger-Based Review" }
+      - { value: regulatory, label: "Regulatory Review" }
+      - { value: profile_change, label: "Profile Change" }
+      - { value: dormant_reactivation, label: "Dormant Reactivation" }
+      - { value: exit_review, label: "Exit Review" }
+    default: periodic_annual
+
+  customer.type:
+    label: "Customer Type"
+    control_type: select
+    options:
+      - { value: individual, label: "Individual" }
+      - { value: sole_prop, label: "Sole Proprietor" }
+      - { value: corporation, label: "Corporation" }
+      - { value: partnership, label: "Partnership" }
+      - { value: trust, label: "Trust" }
+      - { value: non_profit, label: "Non-Profit" }
+    default: individual
+
+  customer.risk_level:
+    label: "Current Risk Level"
+    control_type: select
+    options:
+      - { value: low, label: "Low" }
+      - { value: medium, label: "Medium" }
+      - { value: high, label: "High" }
+      - { value: prohibited, label: "Prohibited" }
+    default: medium
+
+  customer.pep:
+    label: "PEP Status"
+    control_type: toggle
+    default: false
+
+  customer.high_risk_industry:
+    label: "High-Risk Industry"
+    control_type: toggle
+    default: false
+
+  # Activity triggers
+  activity.volume_change:
+    label: "Volume Change"
+    control_type: select
+    options:
+      - { value: minor, label: "Minor (<50%)" }
+      - { value: moderate, label: "Moderate (50-100%)" }
+      - { value: significant, label: "Significant (100-300%)" }
+      - { value: extreme, label: "Extreme (>300%)" }
+    default: minor
+
+  activity.value_change:
+    label: "Value Change"
+    control_type: select
+    options:
+      - { value: minor, label: "Minor (<50%)" }
+      - { value: moderate, label: "Moderate (50-100%)" }
+      - { value: significant, label: "Significant (100-300%)" }
+      - { value: extreme, label: "Extreme (>300%)" }
+    default: minor
+
+  activity.new_pattern:
+    label: "New Pattern Detected"
+    control_type: toggle
+    default: false
+
+  activity.new_jurisdiction:
+    label: "New Jurisdiction"
+    control_type: toggle
+    default: false
+
+  activity.new_counterparty_type:
+    label: "New Counterparty Type"
+    control_type: toggle
+    default: false
+
+  # Periodic review
+  review.type:
+    label: "Review Type"
+    control_type: select
+    options:
+      - { value: annual, label: "Annual" }
+      - { value: trigger_based, label: "Trigger-Based" }
+      - { value: regulatory, label: "Regulatory" }
+    default: annual
+
+  review.risk_change:
+    label: "Risk Change"
+    control_type: select
+    options:
+      - { value: unchanged, label: "Unchanged" }
+      - { value: upgraded, label: "Upgraded (Higher Risk)" }
+      - { value: downgraded, label: "Downgraded (Lower Risk)" }
+    default: unchanged
+
+  review.kyc_refresh_needed:
+    label: "KYC Refresh Needed"
+    control_type: toggle
+    default: false
+
+  review.kyc_current:
+    label: "KYC Information Current"
+    control_type: toggle
+    default: true
+
+  review.edd_current:
+    label: "EDD Current (if applicable)"
+    control_type: select
+    options:
+      - { value: "yes", label: "Yes" }
+      - { value: "no", label: "No" }
+      - { value: "na", label: "N/A" }
+    default: "na"
+
+  # Profile changes
+  profile.address_change:
+    label: "Address Change"
+    control_type: toggle
+    default: false
+
+  profile.bo_change:
+    label: "Beneficial Owner Change"
+    control_type: toggle
+    default: false
+
+  profile.industry_change:
+    label: "Industry Change"
+    control_type: toggle
+    default: false
+
+  profile.jurisdiction_change:
+    label: "Jurisdiction Change"
+    control_type: toggle
+    default: false
+
+  profile.high_risk_change:
+    label: "High-Risk Jurisdiction/Industry Change"
+    control_type: toggle
+    default: false
+    help_text: "Change involves high-risk jurisdiction or industry"
+
+  # Dormant
+  dormant.months_inactive:
+    label: "Months Inactive"
+    control_type: select
+    options:
+      - { value: "0", label: "Not Dormant" }
+      - { value: short, label: "6-12 months" }
+      - { value: medium, label: "13-24 months" }
+      - { value: long, label: "25-60 months" }
+      - { value: very_long, label: "60+ months" }
+    default: "0"
+
+  dormant.reactivation_pattern:
+    label: "Reactivation Pattern"
+    control_type: select
+    options:
+      - { value: normal, label: "Normal" }
+      - { value: unusual, label: "Unusual" }
+      - { value: suspicious, label: "Suspicious" }
+      - { value: na, label: "N/A" }
+    default: na
+
+  # Exit
+  exit.decision:
+    label: "Exit Decision"
+    control_type: select
+    options:
+      - { value: continue, label: "Continue Relationship" }
+      - { value: enhanced_monitoring, label: "Enhanced Monitoring" }
+      - { value: exit_recommended, label: "Exit Recommended" }
+      - { value: immediate_exit, label: "Immediate Exit" }
+    default: continue
+
+  exit.reason:
+    label: "Exit Reason"
+    control_type: select
+    options:
+      - { value: risk, label: "Risk-Based" }
+      - { value: sar, label: "SAR-Related" }
+      - { value: regulatory, label: "Regulatory" }
+      - { value: commercial, label: "Commercial" }
+      - { value: na, label: "N/A" }
+    default: na
+
+  exit.sar_related:
+    label: "SAR-Related Exit"
+    control_type: toggle
+    default: false
+
+  # Screening history
+  screening.adverse_media:
+    label: "Adverse Media"
+    control_type: toggle
+    default: false
+
+  screening.sanctions_alert:
+    label: "Sanctions Alert"
+    control_type: toggle
+    default: false
+
+  prior.sars_filed:
+    label: "Prior SARs Filed"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2", label: "2" }
+      - { value: "3", label: "3" }
+      - { value: "4_plus", label: "4+" }
+    default: "0"
+
+field_groups:
+  - name: "Trigger"
+    fields: [trigger.type]
+  - name: "Customer"
+    fields: [customer.type, customer.risk_level, customer.pep, customer.high_risk_industry]
+  - name: "Activity Triggers"
+    fields: [activity.volume_change, activity.value_change, activity.new_pattern, activity.new_jurisdiction, activity.new_counterparty_type]
+  - name: "Periodic Review"
+    fields: [review.type, review.risk_change, review.kyc_refresh_needed, review.kyc_current, review.edd_current]
+  - name: "Profile Changes"
+    fields: [profile.address_change, profile.bo_change, profile.industry_change, profile.jurisdiction_change, profile.high_risk_change]
+  - name: "Dormant Account"
+    fields: [dormant.months_inactive, dormant.reactivation_pattern]
+  - name: "Exit Decision"
+    fields: [exit.decision, exit.reason, exit.sar_related]
+  - name: "Screening"
+    fields: [screening.adverse_media, screening.sanctions_alert, prior.sars_filed]
+
+evidence:
+  - { id: customer_profile, label: "Customer Profile", default: true }
+  - { id: transaction_history, label: "Transaction History", default: true }
+  - { id: kyc_documents, label: "KYC Documents", default: false }
+  - { id: screening_results, label: "Screening Results", default: false }
+  - { id: sar_history, label: "SAR History", default: false }
+  - { id: correspondence, label: "Customer Correspondence", default: false }
+  - { id: investigation_notes, label: "Investigation Notes", default: false }
+
+visibility_rules:
+  - when: { in: [trigger.type, [activity_spike]] }
+    show_fields: [activity.volume_change, activity.value_change, activity.new_pattern, activity.new_jurisdiction, activity.new_counterparty_type]
+  - when: { in: [trigger.type, [periodic_annual, periodic_trigger, regulatory]] }
+    show_fields: [review.type, review.risk_change, review.kyc_refresh_needed, review.kyc_current, review.edd_current]
+  - when: { eq: [trigger.type, profile_change] }
+    show_fields: [profile.address_change, profile.bo_change, profile.industry_change, profile.jurisdiction_change, profile.high_risk_change]
+  - when: { eq: [trigger.type, dormant_reactivation] }
+    show_fields: [dormant.months_inactive, dormant.reactivation_pattern]
+  - when: { eq: [trigger.type, exit_review] }
+    show_fields: [exit.decision, exit.reason, exit.sar_related]
+
+decision_rules:
+  # Sanctions alert - immediate escalation
+  - when: { true: [screening.sanctions_alert] }
+    outcome:
+      decision: escalate_urgent
+      code: MON_ESC_SANCTION
+      label: "ESCALATE URGENT (Sanctions)"
+      severity: critical
+      citations: ["SEMA", "FINTRAC:Sanctions"]
+
+  # Exit decisions - SAR-related
+  - when: { and: [{ eq: [exit.decision, immediate_exit] }, { true: [exit.sar_related] }] }
+    outcome:
+      decision: exit_sar
+      code: MON_EXIT_SAR
+      label: "EXIT (SAR-Related)"
+      severity: critical
+      citations: ["Policy:ExitProcedure", "FINTRAC:SARProtocol"]
+
+  # Exit - 4+ SARs pattern
+  - when: { eq: [prior.sars_filed, "4_plus"] }
+    outcome:
+      decision: exit_review
+      code: MON_EXIT_SAR_PATTERN
+      label: "EXIT REVIEW (SAR Pattern)"
+      severity: critical
+      citations: ["Policy:RiskAppetite", "FINTRAC:PatternOfSuspicion"]
+
+  # Exit - risk-based
+  - when: { eq: [exit.decision, exit_recommended] }
+    outcome:
+      decision: exit_risk
+      code: MON_EXIT_RISK
+      label: "EXIT RECOMMENDED (Risk)"
+      severity: warning
+      citations: ["Policy:RiskAppetite"]
+
+  # Suspicious dormant reactivation
+  - when: { and: [{ eq: [trigger.type, dormant_reactivation] }, { eq: [dormant.reactivation_pattern, suspicious] }] }
+    outcome:
+      decision: investigate
+      code: MON_INV_DORM_SUSP
+      label: "INVESTIGATE (Suspicious Reactivation)"
+      severity: warning
+      citations: ["FINTRAC:DormantAccount"]
+
+  # Unusual dormant reactivation
+  - when: { and: [{ eq: [trigger.type, dormant_reactivation] }, { eq: [dormant.reactivation_pattern, unusual] }] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_DORM_UNUSUAL
+      label: "ESCALATE (Unusual Reactivation)"
+      severity: warning
+      citations: ["FINTRAC:DormantAccount"]
+
+  # Very long dormancy
+  - when: { eq: [dormant.months_inactive, very_long] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_DORM_LONG
+      label: "ESCALATE (Extended Dormancy)"
+      severity: warning
+      citations: ["Policy:DormantReview"]
+
+  # Extreme activity changes
+  - when: { eq: [activity.volume_change, extreme] }
+    outcome:
+      decision: investigate
+      code: MON_INV_VOL_EXTREME
+      label: "INVESTIGATE (Extreme Volume)"
+      severity: warning
+      citations: ["FINTRAC:UnusualActivity"]
+
+  - when: { eq: [activity.value_change, extreme] }
+    outcome:
+      decision: investigate
+      code: MON_INV_VAL_EXTREME
+      label: "INVESTIGATE (Extreme Value)"
+      severity: warning
+      citations: ["FINTRAC:UnusualActivity"]
+
+  # Significant activity changes
+  - when: { eq: [activity.volume_change, significant] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_VOL_SIG
+      label: "ESCALATE (Significant Volume)"
+      severity: warning
+      citations: ["FINTRAC:EnhancedMonitoring"]
+
+  - when: { eq: [activity.value_change, significant] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_VAL_SIG
+      label: "ESCALATE (Significant Value)"
+      severity: warning
+      citations: ["FINTRAC:EnhancedMonitoring"]
+
+  # New pattern detected
+  - when: { true: [activity.new_pattern] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_NEW_PATTERN
+      label: "ESCALATE (New Pattern)"
+      severity: warning
+      citations: ["FINTRAC:ProfileDeviation"]
+
+  # New high-risk jurisdiction
+  - when: { and: [{ true: [activity.new_jurisdiction] }, { true: [customer.high_risk_industry] }] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_NEW_JURIS
+      label: "ESCALATE (New High-Risk Jurisdiction)"
+      severity: warning
+      citations: ["FINTRAC:HighRiskJurisdiction"]
+
+  # Risk upgrade
+  - when: { eq: [review.risk_change, upgraded] }
+    outcome:
+      decision: enhanced_monitoring
+      code: MON_ENHANCED_UPGRADE
+      label: "ENHANCED MONITORING (Risk Upgrade)"
+      severity: warning
+      citations: ["FINTRAC:RiskRating"]
+
+  # High-risk profile change
+  - when: { and: [{ or: [{ true: [profile.bo_change] }, { true: [profile.industry_change] }] }, { true: [profile.high_risk_change] }] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_HR_CHANGE
+      label: "ESCALATE (High-Risk Change)"
+      severity: warning
+      citations: ["FINTRAC:ProfileChange"]
+
+  # Beneficial owner change
+  - when: { true: [profile.bo_change] }
+    outcome:
+      decision: review_kyc
+      code: MON_KYC_BO_CHANGE
+      label: "KYC REFRESH (BO Change)"
+      severity: warning
+      citations: ["PCMLTFA:BeneficialOwnership"]
+
+  # KYC refresh needed
+  - when: { true: [review.kyc_refresh_needed] }
+    outcome:
+      decision: review_kyc
+      code: MON_KYC_REFRESH
+      label: "KYC REFRESH REQUIRED"
+      severity: warning
+      citations: ["FINTRAC:KYCRefresh"]
+
+  # KYC not current
+  - when: { false: [review.kyc_current] }
+    outcome:
+      decision: hold
+      code: MON_HOLD_KYC
+      label: "HOLD (KYC Outdated)"
+      severity: warning
+      citations: ["FINTRAC:KYCRefresh"]
+
+  # EDD not current for high-risk
+  - when: { and: [{ eq: [customer.risk_level, high] }, { eq: [review.edd_current, "no"] }] }
+    outcome:
+      decision: hold
+      code: MON_HOLD_EDD
+      label: "HOLD (EDD Outdated)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  # Adverse media
+  - when: { true: [screening.adverse_media] }
+    outcome:
+      decision: escalate
+      code: MON_ESC_ADVERSE
+      label: "ESCALATE (Adverse Media)"
+      severity: warning
+      citations: ["FINTRAC:AdverseMedia"]
+
+  # 2-3 prior SARs - enhanced monitoring
+  - when: { in: [prior.sars_filed, ["2", "3"]] }
+    outcome:
+      decision: enhanced_monitoring
+      code: MON_ENHANCED_SAR
+      label: "ENHANCED MONITORING (SAR History)"
+      severity: warning
+      citations: ["FINTRAC:EnhancedMonitoring"]
+
+  # PEP - always enhanced
+  - when: { true: [customer.pep] }
+    outcome:
+      decision: enhanced_monitoring
+      code: MON_ENHANCED_PEP
+      label: "ENHANCED MONITORING (PEP)"
+      severity: warning
+      citations: ["FINTRAC:PEPEDD"]
+
+  # Risk downgrade
+  - when: { eq: [review.risk_change, downgraded] }
+    outcome:
+      decision: approve
+      code: MON_APPROVE_DOWNGRADE
+      label: "APPROVE (Risk Downgrade)"
+      severity: normal
+      citations: ["FINTRAC:RiskRating"]
+
+  # Normal dormant reactivation
+  - when: { and: [{ eq: [trigger.type, dormant_reactivation] }, { eq: [dormant.reactivation_pattern, normal] }] }
+    outcome:
+      decision: approve
+      code: MON_APPROVE_DORM
+      label: "APPROVE (Normal Reactivation)"
+      severity: normal
+      citations: ["Policy:DormantReactivation"]
+
+  # Annual review - no issues
+  - when: { and: [{ eq: [trigger.type, periodic_annual] }, { eq: [review.risk_change, unchanged] }, { true: [review.kyc_current] }] }
+    outcome:
+      decision: approve
+      code: MON_APPROVE_ANNUAL
+      label: "APPROVE (Annual Review)"
+      severity: normal
+      citations: ["FINTRAC:PeriodicReview"]
+
+  # Default - continue monitoring
+  - when: { default: true }
+    outcome:
+      decision: continue
+      code: MON_CONTINUE
+      label: "CONTINUE MONITORING"
+      severity: normal
+      citations: ["FINTRAC:OngoingMonitoring"]
+
+expected_outcomes:
+  - { scenario: "Sanctions alert", outcome: "ESCALATE URGENT (Sanctions)" }
+  - { scenario: "SAR-related exit", outcome: "EXIT (SAR-Related)" }
+  - { scenario: "4+ prior SARs", outcome: "EXIT REVIEW (SAR Pattern)" }
+  - { scenario: "Risk-based exit recommended", outcome: "EXIT RECOMMENDED (Risk)" }
+  - { scenario: "Suspicious dormant reactivation", outcome: "INVESTIGATE (Suspicious Reactivation)" }
+  - { scenario: "Unusual dormant reactivation", outcome: "ESCALATE (Unusual Reactivation)" }
+  - { scenario: "Extreme volume change", outcome: "INVESTIGATE (Extreme Volume)" }
+  - { scenario: "Significant volume change", outcome: "ESCALATE (Significant Volume)" }
+  - { scenario: "New transaction pattern", outcome: "ESCALATE (New Pattern)" }
+  - { scenario: "Risk rating upgraded", outcome: "ENHANCED MONITORING (Risk Upgrade)" }
+  - { scenario: "High-risk profile change", outcome: "ESCALATE (High-Risk Change)" }
+  - { scenario: "Beneficial owner change", outcome: "KYC REFRESH (BO Change)" }
+  - { scenario: "KYC outdated", outcome: "HOLD (KYC Outdated)" }
+  - { scenario: "EDD outdated for high-risk", outcome: "HOLD (EDD Outdated)" }
+  - { scenario: "Adverse media", outcome: "ESCALATE (Adverse Media)" }
+  - { scenario: "2-3 prior SARs", outcome: "ENHANCED MONITORING (SAR History)" }
+  - { scenario: "PEP customer", outcome: "ENHANCED MONITORING (PEP)" }
+  - { scenario: "Risk downgrade", outcome: "APPROVE (Risk Downgrade)" }
+  - { scenario: "Normal dormant reactivation", outcome: "APPROVE (Normal Reactivation)" }
+  - { scenario: "Annual review, no issues", outcome: "APPROVE (Annual Review)" }
+  - { scenario: "No triggers, normal activity", outcome: "CONTINUE MONITORING" }

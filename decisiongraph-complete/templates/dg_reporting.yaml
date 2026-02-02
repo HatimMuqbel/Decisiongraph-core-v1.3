@@ -1,0 +1,344 @@
+template_id: dg.aml.reporting
+template_version: "2026.02.01"
+domain: banking_aml
+reg_pack_id: "CA-FINTRAC-REPORT"
+reg_pack_version: "2025.1"
+
+ui:
+  title: "AML Reporting Decision"
+  summary_tokens:
+    - { field: report.type }
+    - { field: txn.cash_involved }
+    - { field: txn.amount_band }
+    - { field: suspicious.indicator_count }
+
+fields:
+  report.type:
+    label: "Report Type"
+    control_type: select
+    options:
+      - { value: lctr, label: "LCTR (Large Cash)" }
+      - { value: str, label: "STR (Suspicious)" }
+      - { value: tpr, label: "TPR (Terrorist Property)" }
+      - { value: eftr, label: "EFTR (Electronic Funds)" }
+      - { value: none, label: "No Report" }
+    default: none
+
+  txn.type:
+    label: "Transaction Type"
+    control_type: select
+    options:
+      - { value: wire_domestic, label: "Wire (Domestic)" }
+      - { value: wire_international, label: "Wire (International)" }
+      - { value: cash_deposit, label: "Cash Deposit" }
+      - { value: cash_withdrawal, label: "Cash Withdrawal" }
+      - { value: check, label: "Check" }
+      - { value: ach_eft, label: "ACH/EFT" }
+      - { value: crypto, label: "Crypto" }
+    default: wire_domestic
+
+  txn.cash_involved:
+    label: "Cash Involved"
+    control_type: toggle
+    default: false
+
+  txn.cash_amount_band:
+    label: "Cash Amount"
+    control_type: select
+    options:
+      - { value: under_10k, label: "Under $10K" }
+      - { value: 10k_25k, label: "$10K - $25K" }
+      - { value: 25k_50k, label: "$25K - $50K" }
+      - { value: 50k_plus, label: "$50K+" }
+    default: under_10k
+
+  txn.amount_band:
+    label: "Transaction Amount"
+    control_type: select
+    options:
+      - { value: under_3k, label: "Under $3K" }
+      - { value: 3k_10k, label: "$3K - $10K" }
+      - { value: 10k_25k, label: "$10K - $25K" }
+      - { value: 25k_100k, label: "$25K - $100K" }
+      - { value: 100k_plus, label: "$100K+" }
+    default: 3k_10k
+
+  txn.multiple_cash_same_day:
+    label: "Multiple Cash Same Day"
+    control_type: toggle
+    default: false
+    help_text: "Multiple cash transactions totaling over $10K"
+
+  suspicious.indicator_count:
+    label: "Suspicious Indicator Count"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2", label: "2" }
+      - { value: "3", label: "3" }
+      - { value: "4_plus", label: "4+" }
+    default: "0"
+
+  suspicious.structuring:
+    label: "Structuring Indicators"
+    control_type: toggle
+    default: false
+    help_text: "Pattern suggests intentional threshold avoidance"
+
+  suspicious.unusual_pattern:
+    label: "Unusual Pattern"
+    control_type: toggle
+    default: false
+
+  suspicious.third_party:
+    label: "Third Party Involvement"
+    control_type: toggle
+    default: false
+
+  suspicious.layering:
+    label: "Layering Indicators"
+    control_type: toggle
+    default: false
+
+  suspicious.source_unclear:
+    label: "Source of Funds Unclear"
+    control_type: toggle
+    default: false
+
+  suspicious.purpose_unclear:
+    label: "Purpose Unclear"
+    control_type: toggle
+    default: false
+
+  suspicious.unusual_explained:
+    label: "Unusual Activity Explained"
+    control_type: toggle
+    default: false
+    help_text: "Initially unusual activity satisfactorily explained"
+
+  terrorist.property_indicators:
+    label: "Terrorist Property Indicators"
+    control_type: toggle
+    default: false
+
+  terrorist.listed_entity:
+    label: "Listed Terrorist Entity"
+    control_type: toggle
+    default: false
+
+  terrorist.associated_entity:
+    label: "Associated Terrorist Entity"
+    control_type: toggle
+    default: false
+
+  prior.sars_filed:
+    label: "Prior SARs Filed"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2", label: "2" }
+      - { value: "3", label: "3" }
+      - { value: "4_plus", label: "4+" }
+    default: "0"
+
+  prior.lctr_filed:
+    label: "Prior LCTRs Filed (90 days)"
+    control_type: select
+    options:
+      - { value: "0", label: "0" }
+      - { value: "1", label: "1" }
+      - { value: "2", label: "2" }
+      - { value: "3_plus", label: "3+" }
+    default: "0"
+
+  prior.account_closures:
+    label: "Prior Account Closures"
+    control_type: toggle
+    default: false
+
+field_groups:
+  - name: "Report Type"
+    fields: [report.type]
+  - name: "Transaction"
+    fields: [txn.type, txn.cash_involved, txn.cash_amount_band, txn.amount_band, txn.multiple_cash_same_day]
+  - name: "Suspicious Indicators"
+    fields: [suspicious.indicator_count, suspicious.structuring, suspicious.unusual_pattern, suspicious.third_party, suspicious.layering, suspicious.source_unclear, suspicious.purpose_unclear, suspicious.unusual_explained]
+  - name: "Terrorist Financing"
+    fields: [terrorist.property_indicators, terrorist.listed_entity, terrorist.associated_entity]
+  - name: "History"
+    fields: [prior.sars_filed, prior.lctr_filed, prior.account_closures]
+
+evidence:
+  - { id: transaction_records, label: "Transaction Records", default: true }
+  - { id: customer_profile, label: "Customer Profile", default: true }
+  - { id: source_of_funds_docs, label: "Source of Funds Documentation", default: false }
+  - { id: customer_correspondence, label: "Customer Correspondence", default: false }
+  - { id: investigation_notes, label: "Investigation Notes", default: false }
+  - { id: sanctions_screening, label: "Sanctions Screening Results", default: false }
+
+visibility_rules:
+  - when: { true: [txn.cash_involved] }
+    show_fields: [txn.cash_amount_band, txn.multiple_cash_same_day]
+  - when: { false: [txn.cash_involved] }
+    hide_fields: [txn.cash_amount_band, txn.multiple_cash_same_day]
+
+decision_rules:
+  # TPR - Terrorist Property Report (highest priority)
+  - when: { true: [terrorist.listed_entity] }
+    outcome:
+      decision: report_tpr
+      code: RPT_TPR_LISTED
+      label: "FILE TPR (Listed Entity)"
+      severity: critical
+      citations: ["Criminal Code:83.1", "FINTRAC:TPR"]
+
+  - when: { and: [{ true: [terrorist.property_indicators] }, { true: [terrorist.associated_entity] }] }
+    outcome:
+      decision: report_tpr
+      code: RPT_TPR_ASSOCIATED
+      label: "FILE TPR (Associated Entity)"
+      severity: critical
+      citations: ["Criminal Code:83.1", "FINTRAC:TPR"]
+
+  # LCTR - Large Cash Transaction Report
+  - when: { and: [{ true: [txn.cash_involved] }, { in: [txn.cash_amount_band, ["10k_25k", "25k_50k", "50k_plus"]] }] }
+    outcome:
+      decision: report_lctr
+      code: RPT_LCTR_SINGLE
+      label: "FILE LCTR"
+      severity: normal
+      citations: ["PCMLTFA:Section 9"]
+
+  - when: { and: [{ true: [txn.cash_involved] }, { true: [txn.multiple_cash_same_day] }] }
+    outcome:
+      decision: report_lctr
+      code: RPT_LCTR_MULTI
+      label: "FILE LCTR (Multiple Transactions)"
+      severity: warning
+      citations: ["PCMLTFA:Section 9(1)", "FINTRAC:Aggregation"]
+
+  # STR - Suspicious Transaction Report (structuring patterns)
+  - when: { true: [suspicious.structuring] }
+    outcome:
+      decision: report_str
+      code: RPT_STR_STRUCT
+      label: "FILE STR (Structuring)"
+      severity: warning
+      citations: ["PCMLTFA:Section 7", "FINTRAC:Structuring"]
+
+  # STR - Multiple suspicious indicators
+  - when: { eq: [suspicious.indicator_count, "4_plus"] }
+    outcome:
+      decision: report_str
+      code: RPT_STR_MULTI_IND
+      label: "FILE STR (Multiple Indicators)"
+      severity: warning
+      citations: ["PCMLTFA:Section 7"]
+
+  - when: { in: [suspicious.indicator_count, ["2", "3"]] }
+    outcome:
+      decision: escalate
+      code: RPT_ESC_INDICATORS
+      label: "ESCALATE (Review for STR)"
+      severity: warning
+      citations: ["FINTRAC:STRGuidance"]
+
+  # STR - Layering
+  - when: { true: [suspicious.layering] }
+    outcome:
+      decision: report_str
+      code: RPT_STR_LAYER
+      label: "FILE STR (Layering)"
+      severity: warning
+      citations: ["PCMLTFA:Section 7", "FINTRAC:LayeringIndicators"]
+
+  # STR - Third party with unclear source
+  - when: { and: [{ true: [suspicious.third_party] }, { true: [suspicious.source_unclear] }] }
+    outcome:
+      decision: report_str
+      code: RPT_STR_3RD_PARTY
+      label: "FILE STR (Third Party)"
+      severity: warning
+      citations: ["PCMLTFA:Section 7"]
+
+  # Escalate - source or purpose unclear
+  - when: { true: [suspicious.source_unclear] }
+    outcome:
+      decision: escalate
+      code: RPT_ESC_SOURCE
+      label: "ESCALATE (Source of Funds)"
+      severity: warning
+      citations: ["FINTRAC:SourceOfFunds"]
+
+  - when: { true: [suspicious.purpose_unclear] }
+    outcome:
+      decision: escalate
+      code: RPT_ESC_PURPOSE
+      label: "ESCALATE (Unclear Purpose)"
+      severity: warning
+      citations: ["FINTRAC:TransactionPurpose"]
+
+  # Escalate - unusual pattern not explained
+  - when: { and: [{ true: [suspicious.unusual_pattern] }, { false: [suspicious.unusual_explained] }] }
+    outcome:
+      decision: escalate
+      code: RPT_ESC_UNUSUAL
+      label: "ESCALATE (Unusual Pattern)"
+      severity: warning
+      citations: ["FINTRAC:UnusualActivity"]
+
+  # Prior SAR history - enhanced review
+  - when: { in: [prior.sars_filed, ["3", "4_plus"]] }
+    outcome:
+      decision: escalate
+      code: RPT_ESC_SAR_HISTORY
+      label: "ESCALATE (SAR History)"
+      severity: warning
+      citations: ["FINTRAC:PatternOfSuspicion"]
+
+  # Prior account closures
+  - when: { true: [prior.account_closures] }
+    outcome:
+      decision: escalate
+      code: RPT_ESC_PRIOR_CLOSURE
+      label: "ESCALATE (Prior Closure)"
+      severity: warning
+      citations: ["FINTRAC:ExitedCustomer"]
+
+  # Unusual explained - clear
+  - when: { and: [{ true: [suspicious.unusual_pattern] }, { true: [suspicious.unusual_explained] }] }
+    outcome:
+      decision: no_report
+      code: RPT_NONE_EXPLAINED
+      label: "NO REPORT (Explained)"
+      severity: normal
+      citations: ["Policy:DocumentedExplanation"]
+
+  # Default - no report required
+  - when: { default: true }
+    outcome:
+      decision: no_report
+      code: RPT_NONE_CLEAR
+      label: "NO REPORT"
+      severity: normal
+      citations: ["FINTRAC:RiskBased"]
+
+expected_outcomes:
+  - { scenario: "Listed terrorist entity", outcome: "FILE TPR (Listed Entity)" }
+  - { scenario: "Associated terrorist entity with indicators", outcome: "FILE TPR (Associated Entity)" }
+  - { scenario: "Cash transaction $10K+", outcome: "FILE LCTR" }
+  - { scenario: "Multiple cash same day aggregating $10K+", outcome: "FILE LCTR (Multiple Transactions)" }
+  - { scenario: "Structuring indicators", outcome: "FILE STR (Structuring)" }
+  - { scenario: "4+ suspicious indicators", outcome: "FILE STR (Multiple Indicators)" }
+  - { scenario: "2-3 suspicious indicators", outcome: "ESCALATE (Review for STR)" }
+  - { scenario: "Layering indicators", outcome: "FILE STR (Layering)" }
+  - { scenario: "Third party with unclear source", outcome: "FILE STR (Third Party)" }
+  - { scenario: "Source of funds unclear", outcome: "ESCALATE (Source of Funds)" }
+  - { scenario: "Purpose unclear", outcome: "ESCALATE (Unclear Purpose)" }
+  - { scenario: "Unusual pattern, not explained", outcome: "ESCALATE (Unusual Pattern)" }
+  - { scenario: "3+ prior SARs", outcome: "ESCALATE (SAR History)" }
+  - { scenario: "Prior account closures", outcome: "ESCALATE (Prior Closure)" }
+  - { scenario: "Unusual activity explained", outcome: "NO REPORT (Explained)" }
+  - { scenario: "Normal transaction", outcome: "NO REPORT" }
