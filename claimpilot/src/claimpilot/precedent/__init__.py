@@ -145,6 +145,17 @@ from .seeds import (
     SEEDS_DIR,
 )
 
+# Temporal Look-Back Service
+from .lookback_service import (
+    LookbackWindow,
+    JurisdictionLookbackRule,
+    PriorIncident,
+    LookbackResult,
+    ONTARIO_LOOKBACK_RULES,
+    JURISDICTION_LOOKBACK_RULES,
+    LookbackService,
+)
+
 # Master Banding Library
 from .banding_library import (
     BandingLibrary,
@@ -270,6 +281,15 @@ __all__ = [
     "load_all_seed_configs",
     "get_seed_config_path",
     "SEEDS_DIR",
+
+    # Temporal Look-Back Service
+    "LookbackWindow",
+    "JurisdictionLookbackRule",
+    "PriorIncident",
+    "LookbackResult",
+    "ONTARIO_LOOKBACK_RULES",
+    "JURISDICTION_LOOKBACK_RULES",
+    "LookbackService",
 
     # Master Banding Library
     "BandingLibrary",

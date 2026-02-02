@@ -68,8 +68,11 @@ fields:
     options:
       - { value: "0", label: "0" }
       - { value: "1", label: "1" }
-      - { value: "2_plus", label: "2+" }
+      - { value: "2", label: "2" }
+      - { value: "3", label: "3" }
+      - { value: "4_plus", label: "4+" }
     default: "0"
+    help_text: "2-3 triggers underwriting review; 4+ indicates systemic professional issue"
 
   eo.personal_profit:
     label: "Personal Profit/Gain"
@@ -188,7 +191,16 @@ decision_rules:
       severity: warning
       citations: ["EO:Regulatory Action"]
 
-  - when: { eq: [eo.prior_similar_claims, "2_plus"] }
+  # Cumulative prior claims logic - 4+ indicates systemic professional issue
+  - when: { eq: [eo.prior_similar_claims, "4_plus"] }
+    outcome:
+      decision: deny
+      code: EO_DENY_SYSTEMIC
+      label: "DENY (Systemic Professional Issue)"
+      severity: critical
+      citations: ["EO:Uninsurable Risk", "Professional Conduct Pattern"]
+
+  - when: { in: [eo.prior_similar_claims, ["2", "3"]] }
     outcome:
       decision: escalate
       code: EO_ESCALATE_PRIOR_CLAIMS
@@ -223,5 +235,6 @@ expected_outcomes:
   - { scenario: "Personal profit/gain", outcome: "DENY (Personal Profit)" }
   - { scenario: "Property damage", outcome: "DENY (PD Exclusion)" }
   - { scenario: "Regulatory investigation", outcome: "ESCALATE (Legal)" }
-  - { scenario: "2+ prior similar claims", outcome: "ESCALATE (Underwriting)" }
+  - { scenario: "2-3 prior similar claims", outcome: "ESCALATE (Underwriting)" }
+  - { scenario: "4+ prior similar claims", outcome: "DENY (Systemic Professional Issue)" }
   - { scenario: "Claim > $100K", outcome: "ESCALATE (Manager)" }

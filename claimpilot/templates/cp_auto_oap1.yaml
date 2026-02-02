@@ -78,6 +78,17 @@ fields:
       - { value: "0_12_plus", label: "0.12+" }
     default: "0_00"
 
+  driver.prior_warn_strikes:
+    label: "Prior Warn-Range Strikes (10yr)"
+    control_type: select
+    options:
+      - { value: "0", label: "0 (No prior)" }
+      - { value: "1", label: "1 (1st prior)" }
+      - { value: "2_plus", label: "2+ (2nd+ prior)" }
+    default: "0"
+    help_text: "HTA 48.3 cumulative - 3rd strike triggers Ignition Interlock mandate"
+    lookback_rule: "bac_warn_range"
+
   driver.impairment_indicated:
     label: "Impairment Indicated"
     control_type: toggle
@@ -124,7 +135,7 @@ field_groups:
   - name: "Loss Details"
     fields: [auto.loss_type, auto.vehicle_use, auto.rideshare_app_active]
   - name: "Driver"
-    fields: [driver.license_status, driver.bac_level, driver.impairment_indicated]
+    fields: [driver.license_status, driver.bac_level, driver.prior_warn_strikes, driver.impairment_indicated]
   - name: "Circumstances"
     fields: [auto.racing, auto.intentional_damage, auto.vehicle_listed_on_policy, auto.named_driver_permitted, auto.vehicle_registered, auto.vehicle_police_flagged]
 
@@ -181,11 +192,31 @@ decision_rules:
       severity: critical
       citations: ["OAP1:4.3.3 Impaired (BAC)"]
 
+  # BAC Warn Range (0.05-0.079) - Ontario HTA 48.3 Cumulative Rules
+  # 3rd strike within 10 years triggers Ignition Interlock mandate
+  # Driver loses authority under OAP1:4.1.2 if no interlock installed
+
+  - when: { and: [{ eq: [driver.bac_level, "0_05"] }, { eq: [driver.prior_warn_strikes, "2_plus"] }] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_BAC_WARN_3RD
+      label: "DENY (3rd Strike - Interlock Required)"
+      severity: critical
+      citations: ["OAP1:4.1.2 Authority to Drive", "HTA:48.3 (3rd Strike)", "Ignition Interlock Mandate"]
+
+  - when: { and: [{ eq: [driver.bac_level, "0_05"] }, { eq: [driver.prior_warn_strikes, "1"] }] }
+    outcome:
+      decision: escalate
+      code: AUTO_ESCALATE_BAC_WARN_2ND
+      label: "ESCALATE (2nd Strike - Warn Range)"
+      severity: warning
+      citations: ["OAP1:4.3.3 Impaired (Warn Range)", "HTA:48.3 (2nd Strike)"]
+
   - when: { eq: [driver.bac_level, "0_05"] }
     outcome:
       decision: escalate
       code: AUTO_ESCALATE_BAC_WARN
-      label: "ESCALATE (BAC Warn Range)"
+      label: "ESCALATE (1st Strike - Warn Range)"
       severity: warning
       citations: ["OAP1:4.3.3 Impaired (Warn Range)", "HTA:48.3"]
 
@@ -289,7 +320,9 @@ expected_outcomes:
   - { scenario: "Personal use, licensed, no impairment", outcome: "PAY" }
   - { scenario: "Rideshare app active", outcome: "DENY (4.2.1 Commercial)" }
   - { scenario: "BAC >= 0.08", outcome: "DENY (4.3.3 Impaired BAC)" }
-  - { scenario: "BAC 0.05-0.079 (warn range)", outcome: "ESCALATE (BAC Warn Range)" }
+  - { scenario: "BAC 0.05 (1st strike)", outcome: "ESCALATE (1st Strike - Warn Range)" }
+  - { scenario: "BAC 0.05 (2nd strike in 10yr)", outcome: "ESCALATE (2nd Strike - Warn Range)" }
+  - { scenario: "BAC 0.05 (3rd strike in 10yr)", outcome: "DENY (Interlock Required - 4.1.2)" }
   - { scenario: "Impairment indicated (drug/other)", outcome: "DENY (4.3.3 Impaired)" }
   - { scenario: "License suspended", outcome: "DENY (4.1.2 Unlicensed)" }
   - { scenario: "Racing activity", outcome: "DENY (4.5.1 Racing)" }

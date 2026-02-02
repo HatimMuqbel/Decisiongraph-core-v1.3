@@ -111,8 +111,11 @@ fields:
       - { value: "0", label: "0" }
       - { value: "1", label: "1" }
       - { value: "2", label: "2" }
-      - { value: "3_plus", label: "3+" }
+      - { value: "3", label: "3" }
+      - { value: "4", label: "4" }
+      - { value: "5_plus", label: "5+" }
     default: "0"
+    help_text: "3-4 claims triggers review; 5+ may indicate fraud pattern"
 
   prop.intentional_by_insured:
     label: "Intentional Damage by Insured"
@@ -296,7 +299,16 @@ decision_rules:
       severity: critical
       citations: ["HO3:Government Action Exclusion"]
 
-  - when: { eq: [prop.prior_claims_3yr, "3_plus"] }
+  # Cumulative prior claims logic - 5+ suggests fraud pattern
+  - when: { eq: [prop.prior_claims_3yr, "5_plus"] }
+    outcome:
+      decision: refer_siu
+      code: HO_REFER_SIU_FREQ
+      label: "REFER SIU (Excessive Claims)"
+      severity: critical
+      citations: ["HO3:Fraud Pattern Indicator", "SIU Protocol"]
+
+  - when: { in: [prop.prior_claims_3yr, ["3", "4"]] }
     outcome:
       decision: escalate
       code: HO_ESCALATE_FREQ
@@ -335,5 +347,6 @@ expected_outcomes:
   - { scenario: "Ordinance/law", outcome: "ESCALATE (Ordinance Review)" }
   - { scenario: "Nuclear hazard", outcome: "DENY (Nuclear)" }
   - { scenario: "Government action", outcome: "DENY (Govt Action)" }
-  - { scenario: "3+ claims in 3 years", outcome: "ESCALATE (High Frequency)" }
+  - { scenario: "3-4 claims in 3 years", outcome: "ESCALATE (High Frequency)" }
+  - { scenario: "5+ claims in 3 years", outcome: "REFER SIU (Excessive Claims)" }
   - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }
