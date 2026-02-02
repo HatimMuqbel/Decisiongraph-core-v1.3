@@ -474,7 +474,7 @@ def get_precedent_matches(facts: dict, policy_pack_id: str, triggered_exclusion:
     schema_map = {
         "CA-ON-OAP1": "claimpilot:oap1:auto:v1",
         "CA-ON-HO3": "claimpilot:ho3:property:v1",
-        "MARINE-STD": "claimpilot:marine:v1",
+        "CA-ON-MARINE": "claimpilot:marine:v1",
         "CA-ON-HEALTH": "claimpilot:health:v1",
         "CA-ON-WSIB": "claimpilot:wsib:v1",
         "CGL-STD": "claimpilot:cgl:v1",
@@ -533,22 +533,62 @@ def _get_simulated_precedents(policy_pack_id: str, triggered_exclusion: str | No
 
     # Seed precedent configurations by exclusion type
     exclusion_configs = {
-        # Auto
+        # Auto (OAP1)
         "AUTO_DENY_IMPAIRED_INDICATED": {"count": 8, "deny_rate": 0.95, "appeal_rate": 0.17, "upheld_rate": 0.90},
         "AUTO_DENY_IMPAIRED_BAC": {"count": 12, "deny_rate": 0.98, "appeal_rate": 0.15, "upheld_rate": 0.92},
         "AUTO_DENY_COMMERCIAL": {"count": 10, "deny_rate": 0.92, "appeal_rate": 0.20, "upheld_rate": 0.83},
         "AUTO_DENY_UNLICENSED": {"count": 9, "deny_rate": 0.96, "appeal_rate": 0.12, "upheld_rate": 0.88},
         "AUTO_DENY_RACING": {"count": 5, "deny_rate": 0.94, "appeal_rate": 0.18, "upheld_rate": 0.85},
-        # Property
+        "AUTO_REFER_SIU_INTENT": {"count": 6, "deny_rate": 0.85, "appeal_rate": 0.10, "upheld_rate": 0.80},
+        # Property (HO-3)
         "HO_DENY_FLOOD": {"count": 15, "deny_rate": 0.97, "appeal_rate": 0.22, "upheld_rate": 0.91},
         "HO_DENY_EARTH": {"count": 8, "deny_rate": 0.96, "appeal_rate": 0.18, "upheld_rate": 0.89},
         "HO_DENY_VACANCY": {"count": 12, "deny_rate": 0.88, "appeal_rate": 0.25, "upheld_rate": 0.78},
         "HO_DENY_GRADUAL": {"count": 20, "deny_rate": 0.85, "appeal_rate": 0.28, "upheld_rate": 0.75},
         "HO_DENY_MAINTENANCE": {"count": 14, "deny_rate": 0.82, "appeal_rate": 0.30, "upheld_rate": 0.72},
+        "HO_REFER_SIU_ARSON": {"count": 7, "deny_rate": 0.78, "appeal_rate": 0.15, "upheld_rate": 0.85},
+        # Marine
+        "MAR_DENY_NAV": {"count": 10, "deny_rate": 0.94, "appeal_rate": 0.18, "upheld_rate": 0.88},
+        "MAR_DENY_PCOC": {"count": 8, "deny_rate": 0.96, "appeal_rate": 0.12, "upheld_rate": 0.92},
+        "MAR_DENY_COMM": {"count": 6, "deny_rate": 0.90, "appeal_rate": 0.22, "upheld_rate": 0.80},
+        "MAR_DENY_ICE": {"count": 12, "deny_rate": 0.92, "appeal_rate": 0.25, "upheld_rate": 0.85},
+        "MAR_DENY_RACING": {"count": 5, "deny_rate": 0.95, "appeal_rate": 0.15, "upheld_rate": 0.90},
         # Health
         "HLT_DENY_PREEX": {"count": 18, "deny_rate": 0.90, "appeal_rate": 0.35, "upheld_rate": 0.82},
         "HLT_DENY_NON_FORM": {"count": 22, "deny_rate": 0.94, "appeal_rate": 0.15, "upheld_rate": 0.88},
         "HLT_DENY_PRIOR_AUTH": {"count": 10, "deny_rate": 0.92, "appeal_rate": 0.20, "upheld_rate": 0.85},
+        "HLT_DENY_WSIB": {"count": 8, "deny_rate": 0.98, "appeal_rate": 0.08, "upheld_rate": 0.95},
+        "HLT_DENY_COSMETIC": {"count": 15, "deny_rate": 0.97, "appeal_rate": 0.10, "upheld_rate": 0.92},
+        "HLT_DENY_EXPERIMENTAL": {"count": 9, "deny_rate": 0.88, "appeal_rate": 0.40, "upheld_rate": 0.70},
+        # WSIB
+        "WSIB_DENY_NOT_REG": {"count": 6, "deny_rate": 0.99, "appeal_rate": 0.05, "upheld_rate": 0.98},
+        "WSIB_DENY_NOT_WORK": {"count": 14, "deny_rate": 0.92, "appeal_rate": 0.30, "upheld_rate": 0.78},
+        "WSIB_DENY_NOT_AOE": {"count": 10, "deny_rate": 0.88, "appeal_rate": 0.35, "upheld_rate": 0.72},
+        "WSIB_DENY_PREEX": {"count": 12, "deny_rate": 0.85, "appeal_rate": 0.38, "upheld_rate": 0.68},
+        "WSIB_DENY_INTOX": {"count": 8, "deny_rate": 0.96, "appeal_rate": 0.18, "upheld_rate": 0.88},
+        "WSIB_DENY_SELF": {"count": 5, "deny_rate": 0.94, "appeal_rate": 0.20, "upheld_rate": 0.85},
+        # CGL
+        "CGL_DENY_NOT_POLICY": {"count": 8, "deny_rate": 0.97, "appeal_rate": 0.12, "upheld_rate": 0.92},
+        "CGL_DENY_TERRITORY": {"count": 6, "deny_rate": 0.95, "appeal_rate": 0.15, "upheld_rate": 0.90},
+        "CGL_DENY_INTENT": {"count": 10, "deny_rate": 0.98, "appeal_rate": 0.10, "upheld_rate": 0.95},
+        "CGL_DENY_POLLUTION": {"count": 12, "deny_rate": 0.94, "appeal_rate": 0.22, "upheld_rate": 0.85},
+        "CGL_DENY_AUTO": {"count": 9, "deny_rate": 0.96, "appeal_rate": 0.08, "upheld_rate": 0.95},
+        "CGL_DENY_PROF": {"count": 11, "deny_rate": 0.93, "appeal_rate": 0.18, "upheld_rate": 0.82},
+        "CGL_DENY_CONTRACT": {"count": 7, "deny_rate": 0.90, "appeal_rate": 0.25, "upheld_rate": 0.78},
+        # E&O
+        "EO_DENY_NOT_CLAIMS_MADE": {"count": 8, "deny_rate": 0.97, "appeal_rate": 0.15, "upheld_rate": 0.92},
+        "EO_DENY_PRIOR_ACTS": {"count": 10, "deny_rate": 0.95, "appeal_rate": 0.20, "upheld_rate": 0.88},
+        "EO_DENY_KNOWN": {"count": 9, "deny_rate": 0.94, "appeal_rate": 0.18, "upheld_rate": 0.85},
+        "EO_DENY_FRAUD": {"count": 6, "deny_rate": 0.99, "appeal_rate": 0.08, "upheld_rate": 0.98},
+        "EO_DENY_BI": {"count": 7, "deny_rate": 0.96, "appeal_rate": 0.12, "upheld_rate": 0.90},
+        "EO_DENY_NOT_PROF": {"count": 8, "deny_rate": 0.92, "appeal_rate": 0.22, "upheld_rate": 0.80},
+        # Travel
+        "TRV_DENY_NOT_TRAVEL": {"count": 5, "deny_rate": 0.98, "appeal_rate": 0.05, "upheld_rate": 0.95},
+        "TRV_DENY_NOT_EMERGENCY": {"count": 12, "deny_rate": 0.90, "appeal_rate": 0.28, "upheld_rate": 0.75},
+        "TRV_DENY_PREEX": {"count": 18, "deny_rate": 0.88, "appeal_rate": 0.35, "upheld_rate": 0.72},
+        "TRV_DENY_ELECTIVE": {"count": 10, "deny_rate": 0.95, "appeal_rate": 0.15, "upheld_rate": 0.88},
+        "TRV_DENY_HIGHRISK": {"count": 8, "deny_rate": 0.94, "appeal_rate": 0.18, "upheld_rate": 0.85},
+        "TRV_DENY_ADVISORY": {"count": 6, "deny_rate": 0.97, "appeal_rate": 0.10, "upheld_rate": 0.92},
         # Default for unknown exclusions
         "DEFAULT": {"count": 5, "deny_rate": 0.80, "appeal_rate": 0.20, "upheld_rate": 0.75},
     }
