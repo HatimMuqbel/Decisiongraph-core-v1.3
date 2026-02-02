@@ -490,14 +490,14 @@ def get_precedent_matches(facts: dict, policy_pack_id: str, triggered_exclusion:
         # Get schema registry
         registry = FingerprintSchemaRegistry()
 
-        # Check if schema exists
-        if not registry.has_schema(schema_id):
+        # Try to get the schema (raises if not found)
+        try:
+            schema = registry.get_schema_by_id(schema_id)
+        except Exception:
             return {"matches": [], "heat_map": None, "summary": None}
 
-        schema = registry.get(schema_id)
-
         # Compute fingerprint for this case
-        fingerprint = schema.compute_fingerprint(facts, salt="claimpilot-seed-salt-2024")
+        fingerprint = registry.compute_fingerprint(schema, facts, salt="claimpilot-seed-salt-2024")
 
         # For now, return simulated precedent data based on seed configs
         # In production, this would query the actual precedent store
