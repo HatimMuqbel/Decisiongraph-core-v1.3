@@ -43,6 +43,11 @@ def build_case_inputs():
         "customer_response": "COMPLIANT",
         "adverse_media_mltf": False,
         "legal_prohibition": False,
+        # Additional facts for str_basis audit trail
+        "multiple_same_day_txns": True,
+        "just_below_threshold": True,
+        "ubo_discrepancy": True,
+        "high_risk_industry": True,
     }
 
     # Structuring detected: 2 transactions just under $10K in 24 hours
@@ -356,6 +361,15 @@ def render_report(inputs, esc_result, str_result, final_decision):
     lines.append(f"  4. Suspicion Elements: Intent + Deception + Sustained Pattern")
     lines.append(f"  5. Mitigations: INSUFFICIENT (new account, no SOF, UBO discrepancy)")
     lines.append("")
+
+    # STR Basis (Audit Trail)
+    if str_result.str_basis:
+        lines.append("STR BASIS (AUDIT TRAIL):")
+        lines.append(f"  Primary:    {str_result.str_basis.primary}")
+        lines.append(f"  Supporting:")
+        for factor in str_result.str_basis.supporting:
+            lines.append(f"    - {factor}")
+        lines.append("")
 
     # Regulatory Compliance
     lines.append("=" * w)

@@ -50,12 +50,25 @@ class STRSectionResult:
 
 
 @dataclass
+class STRBasis:
+    """
+    Structured basis for STR decision - makes audit trail unassailable.
+
+    Documents exactly why the STR threshold was crossed with primary
+    and supporting factors.
+    """
+    primary: str = ""  # Primary reason (e.g., "structuring_indicators", "sanctions_match")
+    supporting: List[str] = field(default_factory=list)  # Supporting factors
+
+
+@dataclass
 class STRGateResult:
     """Complete result of the Positive STR Gate."""
     sections: List[STRSectionResult] = field(default_factory=list)
     decision: STRDecision = STRDecision.PROHIBITED
     rationale: str = ""
     str_rationale_statement: str = ""
+    str_basis: Optional[STRBasis] = None  # Structured audit basis
     timestamp: str = ""
 
     def __post_init__(self):
@@ -172,6 +185,9 @@ class STRGateValidator:
         result.decision = STRDecision.REQUIRED
         result.rationale = "All mandatory sections passed. STR filing is warranted."
         result.str_rationale_statement = STR_RATIONALE_TEMPLATE
+
+        # Build str_basis for audit trail
+        result.str_basis = self._build_str_basis(suspicion_evidence, mitigation_status, facts)
 
         return result
 
@@ -487,6 +503,90 @@ class STRGateValidator:
         section.passed = all(c.satisfied for c in checks)
         return section
 
+    def _build_str_basis(
+        self,
+        suspicion_evidence: Dict[str, Any],
+        mitigation_status: Dict[str, bool],
+        facts: Dict[str, Any],
+    ) -> STRBasis:
+        """
+        Build structured STR basis for audit trail.
+
+        This makes the decision unassailable by documenting exactly why
+        the STR threshold was crossed.
+        """
+        primary = ""
+        supporting = []
+
+        # Determine primary basis
+        # Priority: Hard stops > Structuring > Other behavioral
+        has_sanctions = facts.get("sanctions_result") == "MATCH"
+        has_false_docs = facts.get("document_status") == "FALSE"
+        has_refusal = facts.get("customer_response") == "REFUSAL"
+        has_legal_prohibition = facts.get("legal_prohibition", False)
+        has_adverse_media = facts.get("adverse_media_mltf", False)
+
+        if has_sanctions:
+            primary = "sanctions_match"
+            supporting.append("confirmed_sanctions_hit")
+        elif has_false_docs:
+            primary = "fraudulent_documents"
+            supporting.append("document_verification_failed")
+        elif has_refusal:
+            primary = "customer_refusal"
+            supporting.append("information_request_refused")
+        elif has_legal_prohibition:
+            primary = "legal_prohibition"
+            supporting.append("regulatory_instruction")
+        elif has_adverse_media:
+            primary = "adverse_media_mltf"
+            supporting.append("media_linked_to_ml_tf")
+        elif suspicion_evidence.get("has_intent") and suspicion_evidence.get("has_sustained_pattern"):
+            primary = "structuring_indicators"
+        elif suspicion_evidence.get("has_deception"):
+            primary = "deceptive_conduct"
+        elif suspicion_evidence.get("has_intent"):
+            primary = "intent_to_evade"
+        elif suspicion_evidence.get("has_sustained_pattern"):
+            primary = "sustained_suspicious_pattern"
+        else:
+            primary = "behavioral_suspicion"
+
+        # Add supporting factors (only if not already the primary)
+        if primary != "structuring_indicators" and suspicion_evidence.get("has_sustained_pattern"):
+            supporting.append("threshold_avoidance_pattern")
+
+        if suspicion_evidence.get("has_intent") and primary not in ["intent_to_evade", "structuring_indicators"]:
+            supporting.append("intent_to_conceal")
+
+        if suspicion_evidence.get("has_deception") and primary != "deceptive_conduct":
+            supporting.append("deceptive_conduct")
+
+        # Mitigation failures as supporting factors
+        if mitigation_status.get("explanation_insufficient"):
+            supporting.append("unclear_source_of_funds")
+
+        if mitigation_status.get("history_misaligned"):
+            supporting.append("new_customer_no_baseline")
+
+        if mitigation_status.get("docs_unsupportive"):
+            supporting.append("documentation_insufficient")
+
+        # Add transaction-specific factors from facts
+        if facts.get("multiple_same_day_txns"):
+            supporting.append("multiple_same_day_transactions")
+
+        if facts.get("just_below_threshold"):
+            supporting.append("just_below_reporting_threshold")
+
+        if facts.get("ubo_discrepancy"):
+            supporting.append("beneficial_ownership_discrepancy")
+
+        if facts.get("high_risk_industry"):
+            supporting.append("high_risk_industry_profile")
+
+        return STRBasis(primary=primary, supporting=supporting)
+
     def render_checklist(self, result: STRGateResult, width: int = 80) -> List[str]:
         """Render the STR checklist result as text lines."""
         lines = []
@@ -639,12 +739,19 @@ def dual_gate_decision(
         }
 
     if str_result.decision == STRDecision.REQUIRED:
-        return {
+        result = {
             "final_decision": "STR",
             "rationale": "Escalation permitted AND STR criteria met",
             "action": "FILE_STR",
             "str_required": True,
         }
+        # Include str_basis for audit trail
+        if str_result.str_basis:
+            result["str_basis"] = {
+                "primary": str_result.str_basis.primary,
+                "supporting": str_result.str_basis.supporting,
+            }
+        return result
 
     if str_result.decision == STRDecision.PROHIBITED:
         return {
@@ -667,6 +774,7 @@ __all__ = [
     'STRDecision',
     'STRCheck',
     'STRSectionResult',
+    'STRBasis',
     'STRGateResult',
     'STRGateValidator',
     'run_str_gate',

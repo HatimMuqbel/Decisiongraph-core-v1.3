@@ -10,7 +10,7 @@ Alert ID:       CAN-STR-2026-X9
 Case ID:        struct-maple-2026-002
 Priority:       CRITICAL
 Jurisdiction:   CA (PCMLTFA)
-Processed:      2026-01-29
+Processed:      2026-02-02
 
 ================================================================================
 CASE SUMMARY
@@ -193,6 +193,18 @@ Rationale:
   3. Typology: CONFIRMED (Structuring - CAD 10K threshold evasion)
   4. Suspicion Elements: Intent + Deception + Sustained Pattern
   5. Mitigations: INSUFFICIENT (new account, no SOF, UBO discrepancy)
+
+STR BASIS (AUDIT TRAIL):
+  Primary:    structuring_indicators
+  Supporting:
+    - deceptive_conduct
+    - unclear_source_of_funds
+    - new_customer_no_baseline
+    - documentation_insufficient
+    - multiple_same_day_transactions
+    - just_below_reporting_threshold
+    - beneficial_ownership_discrepancy
+    - high_risk_industry_profile
 
 ================================================================================
 REGULATORY COMPLIANCE
