@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import hashlib
+import json
 
 from api.schemas.responses import EvaluateResponse
 from api.data.evidence_matrix import get_evidence_requirement
@@ -861,7 +863,6 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
     precedent_data = get_precedent_matches(facts, policy_pack_id, triggered_exclusion)
 
     # Compute real SHA-256 hash of the policy pack (template + decision_rules)
-    import json
     hash_input = json.dumps({
         "policy_pack_id": policy_pack_id,
         "policy_pack_version": policy_pack_version,
@@ -870,6 +871,36 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
     }, sort_keys=True, separators=(',', ':'))
     policy_pack_hash = hashlib.sha256(hash_input.encode()).hexdigest()
 
+    # Determine line of business from policy pack ID
+    lob_map = {
+        "CA-ON-OAP1": "Auto",
+        "CA-ON-HO3": "Property",
+        "CA-ON-MARINE": "Marine",
+        "CA-ON-HEALTH": "Health",
+        "CA-ON-WSIB": "WSIB",
+        "CGL-STD": "Commercial General Liability",
+        "EO-STD": "Errors & Omissions",
+        "TRAVEL-MED": "Travel Medical",
+    }
+    line_of_business = lob_map.get(policy_pack_id, "Insurance")
+
+    # Determine jurisdiction from policy pack ID
+    if policy_pack_id.startswith("CA-ON"):
+        jurisdiction = "CA-ON"
+    elif policy_pack_id.startswith("CA-"):
+        jurisdiction = policy_pack_id.split("-")[0] + "-" + policy_pack_id.split("-")[1]
+    else:
+        jurisdiction = "CA-ON"
+
+    # Build triggered exclusions list
+    exclusions_triggered = []
+    for step in reasoning:
+        if step.get("status") == "fail":
+            exclusions_triggered.append({
+                "code": triggered_exclusion or "EXCLUSION",
+                "name": step.get("text", "Exclusion triggered"),
+            })
+
     context = {
         "request": request,
         "request_id": decision_id,
@@ -877,6 +908,11 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
         "evaluated_at": data.get("timestamp", datetime.utcnow().isoformat()),
         "engine_version": "2.1.1",
         "certainty_level": result.get("certainty", "high").upper(),
+        # New canonical template variables
+        "line_of_business": line_of_business,
+        "jurisdiction": jurisdiction,
+        "decision_status_label": decision_status.replace("_", " ").title(),
+        # Facts and decision
         "claim_facts": facts_list,
         "decision_status": decision_status,
         "decision_note": None,
@@ -884,7 +920,8 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
         "unresolved_exclusions": [],
         "exclusions": exclusions,
         "exclusions_evaluated": exclusions,  # For the table
-        "evidence_requirements": [],
+        "exclusions_triggered": exclusions_triggered,  # For decision rationale
+        "evidence_requests": [],
         "reasoning_steps": reasoning_steps,
         "policy_pack_id": policy_pack_id or "N/A",
         "policy_pack_version": policy_pack_version,
