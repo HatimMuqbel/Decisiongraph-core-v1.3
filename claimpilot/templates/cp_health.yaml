@@ -92,6 +92,26 @@ fields:
       - { value: "1000_plus", label: "$1,000+" }
     default: "under_100"
 
+  health.submission_within_timeframe:
+    label: "Submitted Within Timeframe"
+    control_type: toggle
+    default: true
+
+  health.annual_max_reached:
+    label: "Annual Maximum Reached"
+    control_type: toggle
+    default: false
+
+  health.provider_in_network:
+    label: "Provider In-Network"
+    control_type: toggle
+    default: true
+
+  health.cob_primary_payer:
+    label: "COB: This Plan Primary"
+    control_type: toggle
+    default: true
+
 field_groups:
   - name: "Member"
     fields: [health.member_status, health.coverage_months]
@@ -101,6 +121,8 @@ field_groups:
     fields: [health.drug_on_formulary, health.prior_auth_required, health.prior_auth_approved]
   - name: "Exclusion Factors"
     fields: [health.pre_existing_condition, health.work_related_injury, health.cosmetic_procedure, health.experimental_treatment]
+  - name: "Administrative"
+    fields: [health.submission_within_timeframe, health.annual_max_reached, health.provider_in_network, health.cob_primary_payer]
 
 evidence:
   - { id: claim_form, label: "Claim Form", default: true }
@@ -117,6 +139,30 @@ visibility_rules:
     hide_fields: [health.prior_auth_approved]
 
 decision_rules:
+  - when: { eq: [health.member_status, terminated] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_TERMINATED
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Member Terminated"]
+
+  - when: { false: [health.submission_within_timeframe] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_LATE
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Late Submission"]
+
+  - when: { true: [health.annual_max_reached] }
+    outcome:
+      decision: deny
+      code: HLT_DENY_MAX_REACHED
+      label: "DENY"
+      severity: critical
+      citations: ["Health:Annual Maximum Reached"]
+
   - when: { and: [{ false: [health.drug_on_formulary] }, { false: [health.prior_auth_required] }] }
     outcome:
       decision: deny
@@ -173,6 +219,22 @@ decision_rules:
       severity: warning
       citations: ["Internal:ClinicalReview"]
 
+  - when: { false: [health.provider_in_network] }
+    outcome:
+      decision: escalate
+      code: HLT_ESCALATE_OON
+      label: "ESCALATE (Out-of-Network Review)"
+      severity: warning
+      citations: ["Health:Out-of-Network"]
+
+  - when: { false: [health.cob_primary_payer] }
+    outcome:
+      decision: escalate
+      code: HLT_ESCALATE_COB
+      label: "ESCALATE (COB Review)"
+      severity: warning
+      citations: ["Health:Coordination of Benefits"]
+
   - when: { default: true }
     outcome:
       decision: pay
@@ -183,6 +245,9 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Formulary drug, active member", outcome: "PAY" }
+  - { scenario: "Member terminated", outcome: "DENY (Terminated)" }
+  - { scenario: "Late submission", outcome: "DENY (Late)" }
+  - { scenario: "Annual max reached", outcome: "DENY (Max Reached)" }
   - { scenario: "Non-formulary, no prior auth", outcome: "DENY (Non-Formulary)" }
   - { scenario: "Prior auth required but denied", outcome: "DENY (Prior Auth)" }
   - { scenario: "Pre-existing, < 12 months coverage", outcome: "DENY (Pre-existing)" }
@@ -190,3 +255,5 @@ expected_outcomes:
   - { scenario: "Cosmetic", outcome: "DENY (Cosmetic)" }
   - { scenario: "Experimental treatment", outcome: "DENY (Experimental)" }
   - { scenario: "Drug cost > $500/month", outcome: "ESCALATE (Clinical Review)" }
+  - { scenario: "Out-of-network provider", outcome: "ESCALATE (OON Review)" }
+  - { scenario: "Secondary payer (COB)", outcome: "ESCALATE (COB Review)" }

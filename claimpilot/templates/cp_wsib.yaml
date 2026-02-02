@@ -84,13 +84,30 @@ fields:
     control_type: toggle
     default: false
 
+  wsib.reported_timely:
+    label: "Reported Within 72 Hours"
+    control_type: toggle
+    default: true
+
+  wsib.serious_misconduct:
+    label: "Serious/Willful Misconduct"
+    control_type: toggle
+    default: false
+
+  wsib.violation_safety_rules:
+    label: "Violation of Safety Rules"
+    control_type: toggle
+    default: false
+
 field_groups:
   - name: "Injury"
     fields: [wsib.injury_type, wsib.fatality]
   - name: "Employment Connection"
     fields: [wsib.employer_registered, wsib.injury_work_related, wsib.arose_out_of_employment, wsib.in_course_of_employment, wsib.during_work_hours, wsib.at_workplace]
   - name: "Exclusion Factors"
-    fields: [wsib.self_inflicted, wsib.intoxication_sole_cause, wsib.pre_existing_condition, wsib.pre_existing_aggravated]
+    fields: [wsib.self_inflicted, wsib.intoxication_sole_cause, wsib.pre_existing_condition, wsib.pre_existing_aggravated, wsib.serious_misconduct, wsib.violation_safety_rules]
+  - name: "Administrative"
+    fields: [wsib.reported_timely]
 
 evidence:
   - { id: form_7_employer, label: "Form 7 (Employer Report)", default: true }
@@ -161,6 +178,46 @@ decision_rules:
       severity: critical
       citations: ["WSIB:Self-Inflicted"]
 
+  - when: { true: [wsib.serious_misconduct] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_MISCONDUCT
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Serious Misconduct"]
+
+  - when: { false: [wsib.during_work_hours] }
+    outcome:
+      decision: escalate
+      code: WSIB_ESCALATE_HOURS
+      label: "ESCALATE (Investigation)"
+      severity: warning
+      citations: ["WSIB:Outside Work Hours"]
+
+  - when: { false: [wsib.at_workplace] }
+    outcome:
+      decision: escalate
+      code: WSIB_ESCALATE_LOCATION
+      label: "ESCALATE (Investigation)"
+      severity: warning
+      citations: ["WSIB:Outside Workplace"]
+
+  - when: { false: [wsib.reported_timely] }
+    outcome:
+      decision: escalate
+      code: WSIB_ESCALATE_LATE
+      label: "ESCALATE (Late Report)"
+      severity: warning
+      citations: ["WSIB:Late Reporting"]
+
+  - when: { true: [wsib.violation_safety_rules] }
+    outcome:
+      decision: escalate
+      code: WSIB_ESCALATE_SAFETY
+      label: "ESCALATE (Safety Violation)"
+      severity: warning
+      citations: ["WSIB:Safety Rule Violation"]
+
   - when: { true: [wsib.fatality] }
     outcome:
       decision: escalate
@@ -185,4 +242,9 @@ expected_outcomes:
   - { scenario: "Pre-existing, not aggravated", outcome: "DENY (Pre-existing)" }
   - { scenario: "Intoxication sole cause", outcome: "DENY (Intoxication)" }
   - { scenario: "Self-inflicted", outcome: "DENY (Self-Inflicted)" }
+  - { scenario: "Serious misconduct", outcome: "DENY (Misconduct)" }
+  - { scenario: "Outside work hours", outcome: "ESCALATE (Investigation)" }
+  - { scenario: "Outside workplace", outcome: "ESCALATE (Investigation)" }
+  - { scenario: "Late reporting (>72 hrs)", outcome: "ESCALATE (Late Report)" }
+  - { scenario: "Safety rule violation", outcome: "ESCALATE (Safety Review)" }
   - { scenario: "Fatality", outcome: "ESCALATE (Manager)" }

@@ -85,13 +85,38 @@ fields:
       - { value: "500k_plus", label: "$500K+" }
     default: "under_25k"
 
+  cgl.liquor_liability:
+    label: "Liquor Liability"
+    control_type: toggle
+    default: false
+
+  cgl.employers_liability:
+    label: "Employers Liability (Employee Injury)"
+    control_type: toggle
+    default: false
+
+  cgl.aircraft_watercraft:
+    label: "Aircraft/Watercraft Involved"
+    control_type: toggle
+    default: false
+
+  cgl.damage_to_your_product:
+    label: "Damage to Your Product"
+    control_type: toggle
+    default: false
+
+  cgl.recall_expense:
+    label: "Recall Expense"
+    control_type: toggle
+    default: false
+
 field_groups:
   - name: "Policy"
     fields: [policy.status, cgl.amount_band]
   - name: "Loss Details"
     fields: [cgl.loss_type, cgl.occurrence_during_policy, cgl.in_coverage_territory]
   - name: "Exclusion Factors"
-    fields: [cgl.expected_intended, cgl.pollution_related, cgl.auto_involved, cgl.contractual_liability, cgl.professional_services, cgl.your_work_product]
+    fields: [cgl.expected_intended, cgl.pollution_related, cgl.auto_involved, cgl.contractual_liability, cgl.professional_services, cgl.your_work_product, cgl.liquor_liability, cgl.employers_liability, cgl.aircraft_watercraft, cgl.damage_to_your_product, cgl.recall_expense]
   - name: "Legal Status"
     fields: [cgl.lawsuit_filed]
 
@@ -114,6 +139,14 @@ evidence_rules:
     missing_behavior: warn
 
 decision_rules:
+  - when: { ne: [policy.status, active] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_POLICY_STATUS
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Policy Not Active"]
+
   - when: { false: [cgl.occurrence_during_policy] }
     outcome:
       decision: deny
@@ -170,6 +203,54 @@ decision_rules:
       severity: critical
       citations: ["CGL:Contractual Liability Exclusion"]
 
+  - when: { true: [cgl.liquor_liability] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_LIQUOR
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Liquor Liability Exclusion"]
+
+  - when: { true: [cgl.employers_liability] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_EMPLOYERS
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Employers Liability Exclusion"]
+
+  - when: { true: [cgl.aircraft_watercraft] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_AIRCRAFT
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Aircraft/Watercraft Exclusion"]
+
+  - when: { true: [cgl.damage_to_your_product] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_YOUR_PRODUCT
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Damage to Your Product"]
+
+  - when: { true: [cgl.recall_expense] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_RECALL
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Recall Expense Exclusion"]
+
+  - when: { in: [cgl.amount_band, ["100k_500k", "500k_plus"]] }
+    outcome:
+      decision: escalate
+      code: CGL_ESCALATE_HIGH_VALUE
+      label: "ESCALATE (Manager)"
+      severity: warning
+      citations: ["Internal:HighValue"]
+
   - when: { true: [cgl.lawsuit_filed] }
     outcome:
       decision: escalate
@@ -188,6 +269,7 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Slip & fall on premises", outcome: "PAY" }
+  - { scenario: "Policy lapsed/cancelled", outcome: "DENY (Policy Status)" }
   - { scenario: "Occurrence not during policy", outcome: "DENY (Not During Policy)" }
   - { scenario: "Outside coverage territory", outcome: "DENY (Territory)" }
   - { scenario: "Expected/intended injury", outcome: "DENY (Intentional)" }
@@ -195,4 +277,10 @@ expected_outcomes:
   - { scenario: "Auto involved", outcome: "DENY (Auto Exclusion)" }
   - { scenario: "Professional services", outcome: "DENY (Professional - need E&O)" }
   - { scenario: "Contractual liability", outcome: "DENY (Contractual)" }
+  - { scenario: "Liquor liability", outcome: "DENY (Liquor)" }
+  - { scenario: "Employee injury", outcome: "DENY (Employers Liability - need WC)" }
+  - { scenario: "Aircraft/watercraft", outcome: "DENY (Aircraft/Watercraft)" }
+  - { scenario: "Damage to your product", outcome: "DENY (Your Product)" }
+  - { scenario: "Recall expense", outcome: "DENY (Recall)" }
+  - { scenario: "Claim > $100K", outcome: "ESCALATE (Manager)" }
   - { scenario: "Lawsuit filed", outcome: "ESCALATE (Claims Counsel)" }

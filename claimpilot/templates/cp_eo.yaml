@@ -71,15 +71,40 @@ fields:
       - { value: "2_plus", label: "2+" }
     default: "0"
 
+  eo.personal_profit:
+    label: "Personal Profit/Gain"
+    control_type: toggle
+    default: false
+
+  eo.regulatory_action:
+    label: "Regulatory Investigation/Action"
+    control_type: toggle
+    default: false
+
+  eo.property_damage:
+    label: "Property Damage Involved"
+    control_type: toggle
+    default: false
+
+  eo.claim_amount_band:
+    label: "Claim Amount"
+    control_type: select
+    options:
+      - { value: "under_25k", label: "Under $25K" }
+      - { value: "25k_100k", label: "$25K - $100K" }
+      - { value: "100k_500k", label: "$100K - $500K" }
+      - { value: "500k_plus", label: "$500K+" }
+    default: "under_25k"
+
 field_groups:
   - name: "Claim Details"
     fields: [eo.claim_type, eo.claim_first_made_during_policy, eo.wrongful_act_date]
   - name: "Coverage Criteria"
     fields: [eo.in_professional_capacity, eo.defense_costs_incurred]
   - name: "Exclusion Factors"
-    fields: [eo.known_before_policy, eo.fraud_dishonest_act, eo.bodily_injury_involved]
-  - name: "History"
-    fields: [eo.prior_similar_claims]
+    fields: [eo.known_before_policy, eo.fraud_dishonest_act, eo.bodily_injury_involved, eo.personal_profit, eo.property_damage, eo.regulatory_action]
+  - name: "History & Amount"
+    fields: [eo.prior_similar_claims, eo.claim_amount_band]
 
 evidence:
   - { id: claim_notice, label: "Claim Notice", default: true }
@@ -139,6 +164,46 @@ decision_rules:
       severity: critical
       citations: ["EO:Professional Capacity Required"]
 
+  - when: { true: [eo.personal_profit] }
+    outcome:
+      decision: deny
+      code: EO_DENY_PROFIT
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Personal Profit Exclusion"]
+
+  - when: { true: [eo.property_damage] }
+    outcome:
+      decision: deny
+      code: EO_DENY_PD
+      label: "DENY"
+      severity: critical
+      citations: ["EO:Property Damage Exclusion"]
+
+  - when: { true: [eo.regulatory_action] }
+    outcome:
+      decision: escalate
+      code: EO_ESCALATE_REGULATORY
+      label: "ESCALATE (Legal)"
+      severity: warning
+      citations: ["EO:Regulatory Action"]
+
+  - when: { eq: [eo.prior_similar_claims, "2_plus"] }
+    outcome:
+      decision: escalate
+      code: EO_ESCALATE_PRIOR_CLAIMS
+      label: "ESCALATE (Underwriting)"
+      severity: warning
+      citations: ["EO:Multiple Prior Claims"]
+
+  - when: { in: [eo.claim_amount_band, ["100k_500k", "500k_plus"]] }
+    outcome:
+      decision: escalate
+      code: EO_ESCALATE_HIGH_VALUE
+      label: "ESCALATE (Manager)"
+      severity: warning
+      citations: ["Internal:HighValue"]
+
   - when: { default: true }
     outcome:
       decision: pay
@@ -155,3 +220,8 @@ expected_outcomes:
   - { scenario: "Fraudulent act", outcome: "DENY (Fraud/Dishonesty)" }
   - { scenario: "Bodily injury", outcome: "DENY (BI Exclusion - need CGL)" }
   - { scenario: "Not in professional capacity", outcome: "DENY (Not Professional)" }
+  - { scenario: "Personal profit/gain", outcome: "DENY (Personal Profit)" }
+  - { scenario: "Property damage", outcome: "DENY (PD Exclusion)" }
+  - { scenario: "Regulatory investigation", outcome: "ESCALATE (Legal)" }
+  - { scenario: "2+ prior similar claims", outcome: "ESCALATE (Underwriting)" }
+  - { scenario: "Claim > $100K", outcome: "ESCALATE (Manager)" }

@@ -84,6 +84,26 @@ fields:
     control_type: toggle
     default: false
 
+  marine.vessel_registered:
+    label: "Vessel Registered (Transport Canada)"
+    control_type: toggle
+    default: true
+
+  marine.operator_impaired:
+    label: "Operator Impaired (Alcohol/Drugs)"
+    control_type: toggle
+    default: false
+
+  marine.during_layup:
+    label: "During Lay-up Period"
+    control_type: toggle
+    default: false
+
+  marine.safety_equipment_compliant:
+    label: "Safety Equipment Compliant"
+    control_type: toggle
+    default: true
+
 field_groups:
   - name: "Policy"
     fields: [policy.status, claim.amount_band]
@@ -92,7 +112,9 @@ field_groups:
   - name: "Vessel/Operator"
     fields: [marine.within_navigation_limits, marine.operator_pcoc_valid, marine.vessel_in_water, marine.maintenance_current]
   - name: "Exclusion Factors"
-    fields: [marine.commercial_use, marine.racing_activity, marine.ice_damage]
+    fields: [marine.commercial_use, marine.racing_activity, marine.ice_damage, marine.operator_impaired, marine.during_layup]
+  - name: "Compliance"
+    fields: [marine.vessel_registered, marine.safety_equipment_compliant]
 
 evidence:
   - { id: claim_form, label: "Claim Form", default: true }
@@ -153,6 +175,38 @@ decision_rules:
       severity: critical
       citations: ["Marine:Racing Exclusion"]
 
+  - when: { false: [marine.vessel_registered] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_UNREGISTERED
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Vessel Registration Required", "Canada Shipping Act"]
+
+  - when: { true: [marine.operator_impaired] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_IMPAIRED
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Operator Impairment", "Criminal Code s.320.14"]
+
+  - when: { true: [marine.during_layup] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_LAYUP
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Lay-up Period Exclusion"]
+
+  - when: { false: [marine.safety_equipment_compliant] }
+    outcome:
+      decision: escalate
+      code: MAR_ESCALATE_SAFETY
+      label: "ESCALATE (Underwriting)"
+      severity: warning
+      citations: ["Marine:Safety Equipment Warranty"]
+
   - when: { or: [{ true: [marine.total_loss] }, { eq: [marine.loss_type, sinking] }] }
     outcome:
       decision: escalate
@@ -160,6 +214,14 @@ decision_rules:
       label: "ESCALATE (Marine Manager)"
       severity: warning
       citations: ["Internal:MarineManager"]
+
+  - when: { in: [claim.amount_band, ["50k_100k", "100k_plus"]] }
+    outcome:
+      decision: escalate
+      code: MAR_ESCALATE_HIGH_VALUE
+      label: "ESCALATE (Manager)"
+      severity: warning
+      citations: ["Internal:HighValue"]
 
   - when: { default: true }
     outcome:
@@ -177,3 +239,8 @@ expected_outcomes:
   - { scenario: "Ice damage, in water", outcome: "DENY (Ice)" }
   - { scenario: "Racing", outcome: "DENY (Racing)" }
   - { scenario: "Sinking/Total loss", outcome: "ESCALATE (Marine Manager)" }
+  - { scenario: "Vessel not registered", outcome: "DENY (Unregistered)" }
+  - { scenario: "Operator impaired", outcome: "DENY (Impaired)" }
+  - { scenario: "During lay-up period", outcome: "DENY (Lay-up)" }
+  - { scenario: "Safety equipment non-compliant", outcome: "ESCALATE (Underwriting)" }
+  - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }

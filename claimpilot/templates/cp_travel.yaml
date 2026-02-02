@@ -90,6 +90,36 @@ fields:
       - { value: "50k_plus", label: "$50K+" }
     default: "under_1k"
 
+  travel.trip_during_policy:
+    label: "Trip During Policy Period"
+    control_type: toggle
+    default: true
+
+  travel.intoxication_involved:
+    label: "Intoxication Involved"
+    control_type: toggle
+    default: false
+
+  travel.self_harm:
+    label: "Self-Harm/Suicide Attempt"
+    control_type: toggle
+    default: false
+
+  travel.war_zone:
+    label: "War Zone/Civil Unrest"
+    control_type: toggle
+    default: false
+
+  travel.treatment_delay:
+    label: "Treatment Delayed (>24hrs)"
+    control_type: toggle
+    default: false
+
+  travel.dental_emergency:
+    label: "Dental Emergency"
+    control_type: toggle
+    default: false
+
 field_groups:
   - name: "Claim Details"
     fields: [travel.claim_type, travel.treatment_cost_band]
@@ -98,7 +128,9 @@ field_groups:
   - name: "Pre-existing"
     fields: [travel.pre_existing_condition, travel.condition_stable_90_days]
   - name: "Exclusion Factors"
-    fields: [travel.high_risk_activity, travel.high_risk_activity_type, travel.travel_advisory_in_effect, travel.elective_treatment]
+    fields: [travel.high_risk_activity, travel.high_risk_activity_type, travel.travel_advisory_in_effect, travel.elective_treatment, travel.intoxication_involved, travel.self_harm, travel.war_zone, travel.treatment_delay, travel.dental_emergency]
+  - name: "Policy"
+    fields: [travel.trip_during_policy]
 
 evidence:
   - { id: claim_form, label: "Claim Form", default: true }
@@ -120,6 +152,14 @@ visibility_rules:
     hide_fields: [travel.high_risk_activity_type]
 
 decision_rules:
+  - when: { false: [travel.trip_during_policy] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_NOT_POLICY
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Trip Not During Policy Period"]
+
   - when: { false: [travel.outside_home_province] }
     outcome:
       decision: deny
@@ -168,6 +208,46 @@ decision_rules:
       severity: critical
       citations: ["Travel:Advisory Exclusion"]
 
+  - when: { true: [travel.intoxication_involved] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_INTOX
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Intoxication Exclusion"]
+
+  - when: { true: [travel.self_harm] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_SELF_HARM
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:Self-Harm Exclusion"]
+
+  - when: { true: [travel.war_zone] }
+    outcome:
+      decision: deny
+      code: TRV_DENY_WAR
+      label: "DENY"
+      severity: critical
+      citations: ["Travel:War/Civil Unrest Exclusion"]
+
+  - when: { true: [travel.treatment_delay] }
+    outcome:
+      decision: escalate
+      code: TRV_ESCALATE_DELAY
+      label: "ESCALATE (Medical Review)"
+      severity: warning
+      citations: ["Travel:Treatment Delay"]
+
+  - when: { true: [travel.dental_emergency] }
+    outcome:
+      decision: escalate
+      code: TRV_ESCALATE_DENTAL
+      label: "ESCALATE (Limited Dental)"
+      severity: warning
+      citations: ["Travel:Dental Limitation"]
+
   - when: { eq: [travel.treatment_cost_band, "50k_plus"] }
     outcome:
       decision: escalate
@@ -186,10 +266,16 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Emergency abroad, no pre-existing", outcome: "PAY" }
+  - { scenario: "Trip not during policy period", outcome: "DENY (Not During Policy)" }
   - { scenario: "Not outside home province", outcome: "DENY (Not Travel)" }
   - { scenario: "Not emergency treatment", outcome: "DENY (Not Emergency)" }
   - { scenario: "Pre-existing, not stable", outcome: "DENY (Pre-existing)" }
   - { scenario: "Elective treatment", outcome: "DENY (Elective)" }
   - { scenario: "High-risk activity", outcome: "DENY (High-Risk)" }
   - { scenario: "Travel advisory", outcome: "DENY (Travel Advisory)" }
+  - { scenario: "Intoxication involved", outcome: "DENY (Intoxication)" }
+  - { scenario: "Self-harm/suicide attempt", outcome: "DENY (Self-Harm)" }
+  - { scenario: "War zone/civil unrest", outcome: "DENY (War Zone)" }
+  - { scenario: "Treatment delayed >24hrs", outcome: "ESCALATE (Medical Review)" }
+  - { scenario: "Dental emergency", outcome: "ESCALATE (Limited Dental)" }
   - { scenario: "Cost > $50K", outcome: "ESCALATE (Medical Director)" }

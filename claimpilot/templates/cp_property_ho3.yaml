@@ -114,6 +114,36 @@ fields:
       - { value: "3_plus", label: "3+" }
     default: "0"
 
+  prop.intentional_by_insured:
+    label: "Intentional Damage by Insured"
+    control_type: toggle
+    default: false
+
+  prop.business_use:
+    label: "Business Use of Property"
+    control_type: toggle
+    default: false
+
+  prop.mold_damage:
+    label: "Mold Damage"
+    control_type: toggle
+    default: false
+
+  prop.ordinance_law:
+    label: "Ordinance/Law (Code Upgrade)"
+    control_type: toggle
+    default: false
+
+  prop.nuclear_hazard:
+    label: "Nuclear Hazard"
+    control_type: toggle
+    default: false
+
+  prop.government_action:
+    label: "Government Action"
+    control_type: toggle
+    default: false
+
 field_groups:
   - name: "Policy"
     fields: [policy.status, claim.amount_band]
@@ -122,7 +152,9 @@ field_groups:
   - name: "Property Status"
     fields: [prop.days_vacant, prop.dwelling_occupied]
   - name: "Risk Factors"
-    fields: [prop.arson_suspected, prop.maintenance_issue, prop.prior_claims_3yr]
+    fields: [prop.arson_suspected, prop.maintenance_issue, prop.prior_claims_3yr, prop.intentional_by_insured]
+  - name: "Exclusions"
+    fields: [prop.business_use, prop.mold_damage, prop.ordinance_law, prop.nuclear_hazard, prop.government_action]
 
 evidence:
   - { id: proof_of_loss, label: "Proof of Loss", default: true }
@@ -160,6 +192,22 @@ evidence_rules:
     missing_behavior: warn
 
 decision_rules:
+  - when: { ne: [policy.status, active] }
+    outcome:
+      decision: deny
+      code: HO_DENY_POLICY_STATUS
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Policy Not Active"]
+
+  - when: { true: [prop.intentional_by_insured] }
+    outcome:
+      decision: refer_siu
+      code: HO_REFER_SIU_INTENT
+      label: "REFER SIU"
+      severity: critical
+      citations: ["HO3:Intentional Acts", "SIU Protocol"]
+
   - when: { eq: [prop.loss_cause, flood_surface_water] }
     outcome:
       decision: deny
@@ -208,6 +256,62 @@ decision_rules:
       severity: critical
       citations: ["HO3:Maintenance/Wear & Tear Exclusion"]
 
+  - when: { true: [prop.business_use] }
+    outcome:
+      decision: deny
+      code: HO_DENY_BUSINESS
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Business Use Exclusion"]
+
+  - when: { true: [prop.mold_damage] }
+    outcome:
+      decision: escalate
+      code: HO_ESCALATE_MOLD
+      label: "ESCALATE (Mold Review)"
+      severity: warning
+      citations: ["HO3:Mold Limitation"]
+
+  - when: { true: [prop.ordinance_law] }
+    outcome:
+      decision: escalate
+      code: HO_ESCALATE_ORDINANCE
+      label: "ESCALATE (Ordinance Review)"
+      severity: warning
+      citations: ["HO3:Ordinance/Law"]
+
+  - when: { true: [prop.nuclear_hazard] }
+    outcome:
+      decision: deny
+      code: HO_DENY_NUCLEAR
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Nuclear Hazard Exclusion"]
+
+  - when: { true: [prop.government_action] }
+    outcome:
+      decision: deny
+      code: HO_DENY_GOVT
+      label: "DENY"
+      severity: critical
+      citations: ["HO3:Government Action Exclusion"]
+
+  - when: { eq: [prop.prior_claims_3yr, "3_plus"] }
+    outcome:
+      decision: escalate
+      code: HO_ESCALATE_FREQ
+      label: "ESCALATE (High Frequency)"
+      severity: warning
+      citations: ["Internal:HighFrequency"]
+
+  - when: { in: [claim.amount_band, ["50k_100k", "100k_plus"]] }
+    outcome:
+      decision: escalate
+      code: HO_ESCALATE_HIGH_VALUE
+      label: "ESCALATE (Manager)"
+      severity: warning
+      citations: ["Internal:HighValue"]
+
   - when: { default: true }
     outcome:
       decision: pay
@@ -218,9 +322,18 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Fire, occupied, no issues", outcome: "PAY" }
+  - { scenario: "Policy lapsed/cancelled", outcome: "DENY (Policy Status)" }
+  - { scenario: "Intentional by insured", outcome: "REFER SIU (Intent)" }
   - { scenario: "Flood/surface water", outcome: "DENY (Flood Exclusion)" }
   - { scenario: "Earthquake", outcome: "DENY (Earth Movement)" }
   - { scenario: "Gradual water damage", outcome: "DENY (Wear & Tear)" }
   - { scenario: "Vacant > 30 days", outcome: "DENY (Vacancy)" }
   - { scenario: "Arson suspected", outcome: "REFER SIU" }
   - { scenario: "Maintenance issue", outcome: "DENY (Maintenance)" }
+  - { scenario: "Business use", outcome: "DENY (Business Use)" }
+  - { scenario: "Mold damage", outcome: "ESCALATE (Mold Review)" }
+  - { scenario: "Ordinance/law", outcome: "ESCALATE (Ordinance Review)" }
+  - { scenario: "Nuclear hazard", outcome: "DENY (Nuclear)" }
+  - { scenario: "Government action", outcome: "DENY (Govt Action)" }
+  - { scenario: "3+ claims in 3 years", outcome: "ESCALATE (High Frequency)" }
+  - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }
