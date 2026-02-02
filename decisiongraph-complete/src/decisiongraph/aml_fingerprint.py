@@ -84,7 +84,7 @@ class AMLBandingRule:
         Apply banding to a value.
 
         Args:
-            value: The numeric value to band
+            value: The numeric value to band, or a pre-banded string
 
         Returns:
             The band label
@@ -95,12 +95,25 @@ class AMLBandingRule:
         if value is None:
             return "unknown"
 
-        try:
-            numeric_value = float(value)
-        except (TypeError, ValueError):
-            raise AMLBandingError(
-                f"Cannot band non-numeric value '{value}' for field '{self.field_id}'"
-            )
+        # If value is already a string, check if it's a known band label
+        # This allows pre-banded values to pass through
+        if isinstance(value, str):
+            known_labels = {label for _, label in self.bands}
+            if value in known_labels:
+                return value
+            # Try to convert to float if it looks numeric
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                # Not a number and not a known label - pass through as-is
+                return value
+        else:
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                raise AMLBandingError(
+                    f"Cannot band non-numeric value '{value}' for field '{self.field_id}'"
+                )
 
         for upper_bound, label in self.bands:
             if upper_bound is None or numeric_value <= upper_bound:
