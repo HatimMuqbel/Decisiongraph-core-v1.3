@@ -103,6 +103,21 @@ fields:
     control_type: toggle
     default: true
 
+  auto.vehicle_registered:
+    label: "Vehicle Registered (MTO)"
+    control_type: toggle
+    default: true
+
+  auto.vehicle_police_flagged:
+    label: "Vehicle Flagged by Police"
+    control_type: select
+    options:
+      - { value: none, label: "None" }
+      - { value: stolen, label: "Reported Stolen" }
+      - { value: investigation, label: "Under Investigation" }
+      - { value: recovered_stolen, label: "Recovered Stolen" }
+    default: none
+
 field_groups:
   - name: "Policy"
     fields: [policy.status, claim.amount_band]
@@ -111,7 +126,7 @@ field_groups:
   - name: "Driver"
     fields: [driver.license_status, driver.bac_level, driver.impairment_indicated]
   - name: "Circumstances"
-    fields: [auto.racing, auto.intentional_damage, auto.vehicle_listed_on_policy, auto.named_driver_permitted]
+    fields: [auto.racing, auto.intentional_damage, auto.vehicle_listed_on_policy, auto.named_driver_permitted, auto.vehicle_registered, auto.vehicle_police_flagged]
 
 evidence:
   - { id: police_report, label: "Police Report", default: true }
@@ -122,6 +137,9 @@ evidence:
   - { id: toxicology_report, label: "Toxicology Report", default: false }
   - { id: rideshare_app_activity, label: "App Activity Records", default: false }
   - { id: mto_driver_abstract, label: "MTO Driver Abstract", default: false }
+  - { id: mto_vehicle_registration, label: "MTO Vehicle Registration", default: false }
+  - { id: cpic_check, label: "CPIC Check (Police Database)", default: false }
+  - { id: ownership_permit, label: "Vehicle Ownership Permit", default: false }
 
 visibility_rules:
   - when: { eq: [auto.vehicle_use, rideshare_delivery] }
@@ -139,6 +157,12 @@ evidence_rules:
   - when: { in: [driver.license_status, [suspended, expired, never_licensed]] }
     require_evidence: [mto_driver_abstract]
     missing_behavior: warn
+  - when: { false: [auto.vehicle_registered] }
+    require_evidence: [mto_vehicle_registration, ownership_permit]
+    missing_behavior: warn
+  - when: { ne: [auto.vehicle_police_flagged, none] }
+    require_evidence: [cpic_check, police_report]
+    missing_behavior: require
 
 decision_rules:
   - when: { true: [auto.rideshare_app_active] }
@@ -189,6 +213,54 @@ decision_rules:
       severity: warning
       citations: ["OAP1:Intentional Acts"]
 
+  - when: { false: [auto.vehicle_listed_on_policy] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_UNLISTED_VEHICLE
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:1.5 Described Automobile"]
+
+  - when: { false: [auto.named_driver_permitted] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_UNAUTHORIZED_DRIVER
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:1.6 Authorized Driver"]
+
+  - when: { false: [auto.vehicle_registered] }
+    outcome:
+      decision: deny
+      code: AUTO_DENY_UNREGISTERED
+      label: "DENY"
+      severity: critical
+      citations: ["OAP1:4.1.1 Unregistered Vehicle", "HTA:7(1)"]
+
+  - when: { eq: [auto.vehicle_police_flagged, stolen] }
+    outcome:
+      decision: refer_siu
+      code: AUTO_REFER_SIU_STOLEN
+      label: "REFER SIU"
+      severity: critical
+      citations: ["OAP1:4.7 Stolen Vehicle", "SIU Protocol"]
+
+  - when: { eq: [auto.vehicle_police_flagged, investigation] }
+    outcome:
+      decision: refer_siu
+      code: AUTO_REFER_SIU_INVESTIGATION
+      label: "REFER SIU"
+      severity: critical
+      citations: ["OAP1:4.7 Police Investigation", "SIU Protocol"]
+
+  - when: { eq: [auto.vehicle_police_flagged, recovered_stolen] }
+    outcome:
+      decision: escalate
+      code: AUTO_ESCALATE_RECOVERED_STOLEN
+      label: "ESCALATE (SIU Review)"
+      severity: warning
+      citations: ["OAP1:4.7 Recovered Stolen", "SIU Protocol"]
+
   - when: { in: [claim.amount_band, ["50k_100k", "100k_plus"]] }
     outcome:
       decision: escalate
@@ -214,3 +286,9 @@ expected_outcomes:
   - { scenario: "Racing activity", outcome: "DENY (4.5.1 Racing)" }
   - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }
   - { scenario: "Intentional damage", outcome: "REFER SIU" }
+  - { scenario: "Vehicle not listed on policy", outcome: "DENY (1.5 Described Auto)" }
+  - { scenario: "Unauthorized driver", outcome: "DENY (1.6 Authorized Driver)" }
+  - { scenario: "Vehicle not registered", outcome: "DENY (4.1.1 Unregistered)" }
+  - { scenario: "Vehicle reported stolen", outcome: "REFER SIU (Stolen)" }
+  - { scenario: "Vehicle under investigation", outcome: "REFER SIU (Investigation)" }
+  - { scenario: "Recovered stolen vehicle", outcome: "ESCALATE (SIU Review)" }
