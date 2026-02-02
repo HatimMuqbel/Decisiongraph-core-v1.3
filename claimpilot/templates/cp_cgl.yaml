@@ -203,6 +203,14 @@ decision_rules:
       severity: critical
       citations: ["CGL:Contractual Liability Exclusion"]
 
+  - when: { true: [cgl.your_work_product] }
+    outcome:
+      decision: deny
+      code: CGL_DENY_YOUR_WORK
+      label: "DENY"
+      severity: critical
+      citations: ["CGL:Your Work Exclusion"]
+
   - when: { true: [cgl.liquor_liability] }
     outcome:
       decision: deny
@@ -277,6 +285,7 @@ expected_outcomes:
   - { scenario: "Auto involved", outcome: "DENY (Auto Exclusion)" }
   - { scenario: "Professional services", outcome: "DENY (Professional - need E&O)" }
   - { scenario: "Contractual liability", outcome: "DENY (Contractual)" }
+  - { scenario: "Your work/product defective", outcome: "DENY (Your Work)" }
   - { scenario: "Liquor liability", outcome: "DENY (Liquor)" }
   - { scenario: "Employee injury", outcome: "DENY (Employers Liability - need WC)" }
   - { scenario: "Aircraft/watercraft", outcome: "DENY (Aircraft/Watercraft)" }

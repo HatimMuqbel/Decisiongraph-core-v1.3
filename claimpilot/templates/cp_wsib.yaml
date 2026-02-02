@@ -154,6 +154,14 @@ decision_rules:
       severity: critical
       citations: ["WSIB:Did Not Arise From Employment"]
 
+  - when: { false: [wsib.in_course_of_employment] }
+    outcome:
+      decision: deny
+      code: WSIB_DENY_NOT_COE
+      label: "DENY"
+      severity: critical
+      citations: ["WSIB:Not In Course of Employment"]
+
   - when: { and: [{ true: [wsib.pre_existing_condition] }, { eq: [wsib.pre_existing_aggravated, "no"] }] }
     outcome:
       decision: deny
@@ -239,6 +247,7 @@ expected_outcomes:
   - { scenario: "Employer not WSIB registered", outcome: "DENY (Not Registered)" }
   - { scenario: "Not work related", outcome: "DENY (Not Work Related)" }
   - { scenario: "Did not arise from employment", outcome: "DENY (Not AOE)" }
+  - { scenario: "Not in course of employment", outcome: "DENY (Not COE)" }
   - { scenario: "Pre-existing, not aggravated", outcome: "DENY (Pre-existing)" }
   - { scenario: "Intoxication sole cause", outcome: "DENY (Intoxication)" }
   - { scenario: "Self-inflicted", outcome: "DENY (Self-Inflicted)" }

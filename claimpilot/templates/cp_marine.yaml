@@ -135,6 +135,14 @@ evidence_rules:
     missing_behavior: warn
 
 decision_rules:
+  - when: { ne: [policy.status, active] }
+    outcome:
+      decision: deny
+      code: MAR_DENY_POLICY_STATUS
+      label: "DENY"
+      severity: critical
+      citations: ["Marine:Policy Not Active"]
+
   - when: { false: [marine.within_navigation_limits] }
     outcome:
       decision: deny
@@ -207,6 +215,14 @@ decision_rules:
       severity: warning
       citations: ["Marine:Safety Equipment Warranty"]
 
+  - when: { false: [marine.maintenance_current] }
+    outcome:
+      decision: escalate
+      code: MAR_ESCALATE_MAINTENANCE
+      label: "ESCALATE (Maintenance Review)"
+      severity: warning
+      citations: ["Marine:Maintenance Warranty"]
+
   - when: { or: [{ true: [marine.total_loss] }, { eq: [marine.loss_type, sinking] }] }
     outcome:
       decision: escalate
@@ -233,6 +249,7 @@ decision_rules:
 
 expected_outcomes:
   - { scenario: "Storm, within limits, PCOC valid", outcome: "PAY" }
+  - { scenario: "Policy lapsed/cancelled", outcome: "DENY (Policy Status)" }
   - { scenario: "Outside navigation limits", outcome: "DENY (Navigation)" }
   - { scenario: "No PCOC", outcome: "DENY (Operator)" }
   - { scenario: "Commercial use", outcome: "DENY (Commercial)" }
@@ -243,4 +260,5 @@ expected_outcomes:
   - { scenario: "Operator impaired", outcome: "DENY (Impaired)" }
   - { scenario: "During lay-up period", outcome: "DENY (Lay-up)" }
   - { scenario: "Safety equipment non-compliant", outcome: "ESCALATE (Underwriting)" }
+  - { scenario: "Maintenance not current", outcome: "ESCALATE (Maintenance Review)" }
   - { scenario: "Claim > $50K", outcome: "ESCALATE (Manager)" }
