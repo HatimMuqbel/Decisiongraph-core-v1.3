@@ -595,6 +595,37 @@ def _get_simulated_precedents(policy_pack_id: str, triggered_exclusion: str | No
 
     config = exclusion_configs.get(triggered_exclusion, exclusion_configs["DEFAULT"])
 
+    # Anchor facts that could match (policy-type specific)
+    anchor_pools = {
+        "AUTO": ["loss_type", "driver_status", "vehicle_use", "policy_status", "claim_amount_band"],
+        "HO": ["loss_cause", "damage_type", "days_vacant", "policy_status", "claim_amount_band"],
+        "MAR": ["loss_type", "vessel_in_water", "maintenance_current", "navigation_limits", "total_loss"],
+        "HLT": ["claim_type", "coverage_months", "member_status", "drug_cost_band"],
+        "WSIB": ["injury_type", "work_related", "during_work_hours", "employer_registered"],
+        "CGL": ["loss_type", "occurrence_during_policy", "coverage_territory", "claim_amount_band"],
+        "EO": ["claim_type", "wrongful_act_timing", "professional_capacity", "prior_claims"],
+        "TRV": ["claim_type", "location", "emergency_status", "treatment_cost_band"],
+    }
+
+    # Overturn reasons by exclusion type
+    overturn_reasons = {
+        "MAR_DENY_ICE": "Ice damage causation disputed — maintenance records showed compliance",
+        "MAR_DENY_NAV": "Navigation limits interpretation overturned on appeal",
+        "AUTO_DENY_IMPAIRED_INDICATED": "Impairment evidence insufficient — toxicology inconclusive",
+        "AUTO_DENY_COMMERCIAL": "Commercial use determination reversed — personal errand at time of loss",
+        "HO_DENY_GRADUAL": "Gradual damage finding overturned — sudden pipe failure evidence",
+        "HO_DENY_VACANCY": "Vacancy period disputed — owner visits documented",
+        "HLT_DENY_PREEX": "Pre-existing condition not materially related to claim",
+        "WSIB_DENY_NOT_WORK": "Work-relatedness established on review of job duties",
+        "CGL_DENY_POLLUTION": "Pollution exclusion scope limited by court interpretation",
+        "TRV_DENY_PREEX": "Stability period met per medical documentation",
+        "DEFAULT": "Decision reversed on supplementary evidence review",
+    }
+
+    # Get anchor pool for this policy type
+    prefix = (triggered_exclusion or "DEFAULT").split("_")[0]
+    available_anchors = anchor_pools.get(prefix, anchor_pools.get("AUTO"))
+
     # Generate precedents
     matches = []
     base_date = date.today() - timedelta(days=730)  # 2 years ago
@@ -610,13 +641,26 @@ def _get_simulated_precedents(policy_pack_id: str, triggered_exclusion: str | No
         # Determine if appealed
         appealed = rng.random() < config["appeal_rate"]
         appeal_outcome = None
+        overturn_reason = None
         if appealed:
             upheld = rng.random() < config["upheld_rate"]
             appeal_outcome = "Upheld" if upheld else "Overturned"
+            if appeal_outcome == "Overturned":
+                overturn_reason = overturn_reasons.get(triggered_exclusion, overturn_reasons["DEFAULT"])
 
         # Compute similarity (deterministic based on fingerprint + index)
         similarity = 0.95 - (i * 0.05) + rng.uniform(-0.02, 0.02)
         similarity = max(0.65, min(0.99, similarity))
+
+        # Generate match factors (why is it similar?)
+        num_matched = rng.randint(3, min(5, len(available_anchors)))
+        matched_anchors = rng.sample(available_anchors, num_matched)
+        # Sometimes add a difference for realism
+        key_differences = []
+        if rng.random() < 0.4 and len(available_anchors) > num_matched:
+            remaining = [a for a in available_anchors if a not in matched_anchors]
+            if remaining:
+                key_differences.append(f"{rng.choice(remaining)} differs")
 
         matches.append({
             "case_id": f"PREC-{policy_pack_id[:4]}-{seed % 10000:04d}-{i+1:02d}",
@@ -626,7 +670,10 @@ def _get_simulated_precedents(policy_pack_id: str, triggered_exclusion: str | No
             "similarity": round(similarity, 2),
             "appealed": appealed,
             "appeal_outcome": appeal_outcome,
+            "overturn_reason": overturn_reason,
             "decision_level": rng.choice(["Adjuster", "Adjuster", "Adjuster", "Senior", "Manager"]),
+            "matched_anchors": matched_anchors,
+            "key_differences": key_differences,
         })
 
     # Sort by similarity descending
@@ -663,12 +710,89 @@ def _compute_summary(matches: list, triggered_exclusion: str | None) -> dict | N
     if not matches:
         return None
 
+    total = len(matches)
+    deny_count = sum(1 for m in matches if m["outcome"] == "DENY")
+    pay_count = total - deny_count
+    appeal_count = sum(1 for m in matches if m["appealed"])
+    overturn_count = sum(1 for m in matches if m["appeal_outcome"] == "Overturned")
+
+    # Determine majority outcome
+    majority_outcome = "DENY" if deny_count > pay_count else "PAY" if pay_count > deny_count else "MIXED"
+    majority_pct = max(deny_count, pay_count) / total if total > 0 else 0
+
+    # Compute consistency
+    consistent_outcome = all(m["outcome"] == matches[0]["outcome"] for m in matches)
+
+    # Compute overturn rate (of appeals)
+    overturn_rate = overturn_count / appeal_count if appeal_count > 0 else 0
+
+    # Compute precedent confidence (pc_v1 formula)
+    # base = majority_pct * 0.30 + upheld_rate * 0.25 + recency * 0.20 + policy_match * 0.15 + level * 0.10
+    upheld_rate = 1 - overturn_rate
+    recency_score = 0.8  # Simplified - would weight by date
+    policy_match_score = 0.9  # Same policy pack
+    level_score = 0.7  # Mix of adjuster/senior/manager
+
+    base_confidence = (
+        majority_pct * 0.30 +
+        upheld_rate * 0.25 +
+        recency_score * 0.20 +
+        policy_match_score * 0.15 +
+        level_score * 0.10
+    )
+
+    # Apply overturn penalty
+    overturn_penalty = overturn_rate * 0.15
+    precedent_confidence = max(0, min(1, base_confidence - overturn_penalty))
+
+    # Determine confidence level
+    if precedent_confidence >= 0.75:
+        confidence_level = "HIGH"
+    elif precedent_confidence >= 0.50:
+        confidence_level = "MEDIUM"
+    else:
+        confidence_level = "LOW"
+
+    # Determine caution level and message
+    caution_level = None
+    caution_message = None
+
+    # High caution: mixed outcomes OR high overturn rate
+    if not consistent_outcome or majority_pct < 0.70:
+        caution_level = "HIGH"
+        caution_message = f"Similar cases show mixed outcomes ({deny_count} deny / {pay_count} pay). Senior review recommended before final disposition."
+    elif overturn_rate >= 0.30:
+        caution_level = "HIGH"
+        caution_message = f"High overturn rate ({overturn_rate*100:.0f}% of appeals). Manager review recommended before denial."
+    elif overturn_rate >= 0.15:
+        caution_level = "MEDIUM"
+        caution_message = f"Non-trivial overturn rate ({overturn_rate*100:.0f}% of appeals). Consider additional documentation."
+    elif appeal_count > 0 and appeal_count / total >= 0.25:
+        caution_level = "LOW"
+        caution_message = f"Elevated appeal rate ({appeal_count}/{total} cases). Ensure thorough documentation."
+
+    # Decision support recommendation
+    if caution_level == "HIGH":
+        decision_support = "Recommend escalation — no coverage conclusion"
+    elif caution_level == "MEDIUM":
+        decision_support = "Proceed with caution — document thoroughly"
+    elif consistent_outcome and majority_pct >= 0.90:
+        decision_support = f"Strong precedent support for {majority_outcome}"
+    else:
+        decision_support = f"Moderate precedent support for {majority_outcome}"
+
     return {
-        "total_similar": len(matches),
+        "total_similar": total,
         "exclusion_code": triggered_exclusion,
         "top_similarity": matches[0]["similarity"] if matches else 0,
-        "consistent_outcome": all(m["outcome"] == matches[0]["outcome"] for m in matches) if matches else False,
-        "majority_outcome": matches[0]["outcome"] if matches else "N/A",
+        "consistent_outcome": consistent_outcome,
+        "majority_outcome": majority_outcome,
+        "majority_pct": round(majority_pct * 100, 1),
+        "precedent_confidence": round(precedent_confidence, 2),
+        "confidence_level": confidence_level,
+        "caution_level": caution_level,
+        "caution_message": caution_message,
+        "decision_support": decision_support,
     }
 
 
@@ -733,7 +857,18 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
 
     # Get precedent matches
     policy_pack_id = result.get("version_pins", {}).get("policy_pack_id", "")
+    policy_pack_version = result.get("version_pins", {}).get("policy_pack_version", "N/A")
     precedent_data = get_precedent_matches(facts, policy_pack_id, triggered_exclusion)
+
+    # Compute real SHA-256 hash of the policy pack (template + decision_rules)
+    import json
+    hash_input = json.dumps({
+        "policy_pack_id": policy_pack_id,
+        "policy_pack_version": policy_pack_version,
+        "decision_rules": template_data.get("decision_rules", []),
+        "fields": list(template_data.get("fields", {}).keys()),
+    }, sort_keys=True, separators=(',', ':'))
+    policy_pack_hash = hashlib.sha256(hash_input.encode()).hexdigest()
 
     context = {
         "request": request,
@@ -748,11 +883,13 @@ async def get_byoc_memo_html(request: Request, decision_id: str):
         "decision_explainer": decision_explainer,
         "unresolved_exclusions": [],
         "exclusions": exclusions,
+        "exclusions_evaluated": exclusions,  # For the table
         "evidence_requirements": [],
         "reasoning_steps": reasoning_steps,
         "policy_pack_id": policy_pack_id or "N/A",
-        "policy_pack_version": result.get("version_pins", {}).get("policy_pack_version", "N/A"),
-        "policy_pack_hash": f"byoc-{decision_id[:16]}",
+        "policy_pack_version": policy_pack_version,
+        "policy_pack_hash": policy_pack_hash,
+        "policy_pack_hash_scheme": "sha256:rfc8785",
         # Precedent data
         "precedent_matches": precedent_data.get("matches", []),
         "precedent_heat_map": precedent_data.get("heat_map"),
