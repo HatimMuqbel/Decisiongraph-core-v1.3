@@ -6,11 +6,17 @@ Product-agnostic insurance claims evaluation engine.
 
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add src directory to path for claimpilot imports
 src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
+
+# Add decisiongraph path for chain/precedent support
+dg_path = Path(__file__).parent.parent.parent / "decisiongraph-complete" / "src"
+if str(dg_path) not in sys.path:
+    sys.path.insert(0, str(dg_path))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +26,20 @@ from contextlib import asynccontextmanager
 
 from claimpilot.packs.loader import PolicyPackLoader
 from claimpilot.models import Policy
+
+# Precedent system imports
+try:
+    from decisiongraph.chain import Chain
+    from decisiongraph.cell import NULL_HASH
+    from decisiongraph.precedent_registry import PrecedentRegistry
+    from decisiongraph.judgment import create_judgment_cell
+    from claimpilot.precedent.cli import generate_all_insurance_seeds
+    PRECEDENT_SYSTEM_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Precedent system not available: {e}")
+    PRECEDENT_SYSTEM_AVAILABLE = False
+    Chain = None
+    PrecedentRegistry = None
 
 from api.routes import policies, evaluate, demo, verify, memo, templates
 from api.template_loader import TemplateLoader
@@ -32,6 +52,72 @@ policies_cache: dict[str, Policy] = {}
 # Template loader
 templates_dir = Path(__file__).parent.parent / "templates"
 template_loader = TemplateLoader(templates_dir)
+
+# Precedent system globals
+PRECEDENT_CHAIN: Optional[Chain] = None
+PRECEDENT_REGISTRY: Optional[PrecedentRegistry] = None
+PRECEDENTS_LOADED = False
+PRECEDENT_COUNT = 0
+
+
+def load_precedent_seeds() -> int:
+    """
+    Load the 2,150 insurance seed precedents into a Chain.
+
+    Returns:
+        Number of precedents loaded
+    """
+    global PRECEDENT_CHAIN, PRECEDENT_REGISTRY, PRECEDENTS_LOADED, PRECEDENT_COUNT
+
+    if not PRECEDENT_SYSTEM_AVAILABLE:
+        print("  [SKIP] Precedent system not available")
+        return 0
+
+    try:
+        # Generate all seed precedents
+        seeds = generate_all_insurance_seeds()
+        PRECEDENT_COUNT = len(seeds)
+
+        # Create and initialize the chain
+        PRECEDENT_CHAIN = Chain()
+        genesis = PRECEDENT_CHAIN.initialize(
+            graph_name="ClaimPilotPrecedents",
+            root_namespace="claims_precedents",
+            creator="system:seed_loader",
+            hash_scheme="canon:rfc8785:v1",
+        )
+
+        # Append all JUDGMENT cells
+        prev_hash = genesis.cell_id
+        graph_id = genesis.header.graph_id
+
+        for payload in seeds:
+            # Derive namespace from policy type, normalize to valid format
+            policy_type = payload.policy_pack_id.split(":")[-1] if payload.policy_pack_id else "general"
+            # Normalize: lowercase, replace hyphens with underscores
+            policy_type = policy_type.lower().replace("-", "_")
+
+            cell = create_judgment_cell(
+                payload=payload,
+                namespace=f"claims_precedents_{policy_type}",
+                graph_id=graph_id,
+                prev_cell_hash=prev_hash,
+            )
+            PRECEDENT_CHAIN.append(cell)
+            prev_hash = cell.cell_id
+
+        # Create the registry for queries
+        PRECEDENT_REGISTRY = PrecedentRegistry(PRECEDENT_CHAIN)
+        PRECEDENTS_LOADED = True
+
+        return PRECEDENT_COUNT
+
+    except Exception as e:
+        print(f"  [ERROR] Failed to load precedent seeds: {e}")
+        import traceback
+        traceback.print_exc()
+        PRECEDENTS_LOADED = False
+        return 0
 
 
 @asynccontextmanager
@@ -72,6 +158,11 @@ async def lifespan(app: FastAPI):
     print("Loading case templates...")
     templates_loaded = template_loader.load_all()
     print(f"Loaded {templates_loaded} case templates")
+
+    # Load precedent seeds
+    print("Loading precedent seeds...")
+    precedents_loaded = load_precedent_seeds()
+    print(f"Loaded {precedents_loaded} precedent seeds")
 
     # Share loader with routes
     policies.set_loader(loader, policies_cache)
@@ -165,6 +256,8 @@ async def api_info():
         "version": "1.0.0",
         "status": "running",
         "policies_loaded": len(policies_cache),
+        "precedents_loaded": PRECEDENT_COUNT,
+        "precedent_system_available": PRECEDENTS_LOADED,
         "docs": "/docs",
         "openapi": "/openapi.json"
     }
@@ -175,7 +268,9 @@ async def health():
     """Health check endpoint."""
     return {
         "healthy": True,
-        "policies_loaded": len(policies_cache)
+        "policies_loaded": len(policies_cache),
+        "precedents_loaded": PRECEDENT_COUNT,
+        "precedent_system_available": PRECEDENTS_LOADED
     }
 
 
