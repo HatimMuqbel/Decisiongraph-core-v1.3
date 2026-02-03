@@ -56,6 +56,13 @@ from decisiongraph.decision_pack import (
 from decisiongraph.escalation_gate import run_escalation_gate, EscalationDecision
 from decisiongraph.str_gate import run_str_gate, dual_gate_decision
 
+# Precedent system imports
+from decisiongraph.chain import Chain
+from decisiongraph.cell import NULL_HASH
+from decisiongraph.precedent_registry import PrecedentRegistry
+from decisiongraph.aml_seed_generator import generate_all_banking_seeds
+from decisiongraph.judgment import create_judgment_cell
+
 # Import routers
 from service.routers import demo, report, verify, templates
 from service.template_loader import TemplateLoader, set_cache_decision
@@ -89,6 +96,71 @@ POLICY_HASH_FULL = hashlib.sha256(
     f"{DG_POLICY_VERSION}:{DG_ENGINE_VERSION}".encode()
 ).hexdigest()
 POLICY_HASH_SHORT = POLICY_HASH_FULL[:16]
+
+# =============================================================================
+# Precedent System (2,000 banking seeds)
+# =============================================================================
+
+PRECEDENT_CHAIN: Optional[Chain] = None
+PRECEDENT_REGISTRY: Optional[PrecedentRegistry] = None
+PRECEDENTS_LOADED = False
+PRECEDENT_COUNT = 0
+
+def load_precedent_seeds():
+    """Load the 2,000 banking seed precedents into a Chain."""
+    global PRECEDENT_CHAIN, PRECEDENT_REGISTRY, PRECEDENTS_LOADED, PRECEDENT_COUNT
+
+    try:
+        # Generate all banking seeds
+        seeds = generate_all_banking_seeds()
+        PRECEDENT_COUNT = len(seeds)
+
+        # Create a chain and initialize with Genesis
+        # Use canonical hash scheme to match JUDGMENT cells
+        PRECEDENT_CHAIN = Chain()
+        genesis = PRECEDENT_CHAIN.initialize(
+            graph_name="BankingPrecedents",
+            root_namespace="banking",
+            creator="system:seed_loader",
+            hash_scheme="canon:rfc8785:v1",
+        )
+
+        # Load seeds as JUDGMENT cells
+        prev_hash = genesis.cell_id
+        graph_id = genesis.header.graph_id
+
+        for payload in seeds:
+            # Determine namespace based on reason codes
+            code_category = "general"
+            if payload.exclusion_codes:
+                first_code = payload.exclusion_codes[0]
+                # Extract category from code like "RC-TXN-STRUCT" -> "txn"
+                parts = first_code.split("-")
+                if len(parts) >= 2:
+                    code_category = parts[1].lower()
+
+            # Create JUDGMENT cell from payload
+            cell = create_judgment_cell(
+                payload=payload,
+                namespace=f"banking.aml.{code_category}",
+                graph_id=graph_id,
+                prev_cell_hash=prev_hash,
+            )
+            PRECEDENT_CHAIN.append(cell)
+            prev_hash = cell.cell_id
+
+        # Create the registry
+        PRECEDENT_REGISTRY = PrecedentRegistry(PRECEDENT_CHAIN)
+        PRECEDENTS_LOADED = True
+
+        return PRECEDENT_COUNT
+
+    except Exception as e:
+        logger.error(f"Failed to load precedent seeds: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        PRECEDENTS_LOADED = False
+        return 0
 
 # =============================================================================
 # Logging Setup (Structured JSON)
@@ -334,6 +406,7 @@ async def readiness_check():
         "output_schema_valid": OUTPUT_SCHEMA is not None,
         "policy_pack_valid": True,  # Would check actual policy pack
         "jsonschema_available": HAS_JSONSCHEMA,
+        "precedents_loaded": PRECEDENTS_LOADED,
     }
 
     all_ready = all(checks.values())
@@ -547,6 +620,25 @@ async def decide(request: Request):
         decision_pack["meta"]["engine_commit"] = DG_ENGINE_COMMIT
         # Note: policy_hash and decision_id are computed by decision_pack.py with full SHA-256
 
+        # Query similar precedents and add to decision pack
+        reason_codes = extract_reason_codes(facts, indicators, obligations)
+        proposed_outcome = decision_pack["decision"]["verdict"].lower()
+        # Map verdict to precedent outcome codes
+        outcome_map = {
+            "str": "escalate",
+            "escalate": "escalate",
+            "hard_stop": "deny",
+            "pass": "pay",
+            "pass_with_edd": "pay",
+        }
+        proposed_outcome = outcome_map.get(proposed_outcome, "escalate")
+
+        precedent_analysis = query_similar_precedents(
+            reason_codes=reason_codes,
+            proposed_outcome=proposed_outcome,
+        )
+        decision_pack["precedent_analysis"] = precedent_analysis
+
         # Calculate duration
         duration_ms = int((time.time() - start_time) * 1000)
 
@@ -692,6 +784,135 @@ def extract_instrument_type(case_data: dict) -> str:
         "cheque": "cheque",
     }.get(method, "unknown")
 
+
+def extract_reason_codes(facts: dict, indicators: list, obligations: list) -> list:
+    """
+    Extract reason codes from case facts for precedent matching.
+
+    Maps case characteristics to AML reason codes used in the seed precedents.
+    """
+    codes = []
+
+    # Sanctions-related
+    if facts.get("sanctions_result") == "MATCH":
+        codes.append("RC-SCR-SANCTION")
+
+    # Adverse media
+    if facts.get("adverse_media_mltf"):
+        codes.append("RC-KYC-ADVERSE-MAJOR")
+
+    # PEP-related
+    if any("PEP" in o for o in obligations):
+        codes.append("RC-KYC-PEP")
+
+    # Structuring indicators
+    for ind in indicators:
+        ind_type = ind.get("type", "").upper() if isinstance(ind, dict) else str(ind).upper()
+        if "STRUCTUR" in ind_type:
+            codes.append("RC-TXN-STRUCT")
+        if "LAYER" in ind_type:
+            codes.append("RC-TXN-LAYER")
+        if "CRYPTO" in ind_type or "VIRTUAL" in ind_type:
+            codes.append("RC-TXN-CRYPTO")
+
+    # Default code if none found
+    if not codes:
+        codes.append("RC-TXN-GENERAL")
+
+    return codes
+
+
+def query_similar_precedents(
+    reason_codes: list,
+    proposed_outcome: str,
+    namespace_prefix: str = "banking.aml",
+) -> dict:
+    """
+    Query precedent registry for similar cases and return analysis.
+
+    Returns a dict with:
+    - match_count: Total matches found
+    - outcome_distribution: Count by outcome
+    - appeal_statistics: Appeal rates
+    - precedent_confidence: Confidence score (0-1)
+    - caution_precedents: Cases overturned on appeal
+    - supporting_precedents: Cases supporting the proposed outcome
+    """
+    if not PRECEDENTS_LOADED or not PRECEDENT_REGISTRY:
+        return {
+            "available": False,
+            "message": "Precedent system not loaded"
+        }
+
+    try:
+        # Get statistics by reason codes
+        stats = PRECEDENT_REGISTRY.get_statistics_by_codes(
+            exclusion_codes=reason_codes,
+            namespace_prefix=namespace_prefix,
+            min_overlap=1,
+        )
+
+        # Find matching precedents (Tier 1 - overlapping codes)
+        matches = PRECEDENT_REGISTRY.find_by_exclusion_codes(
+            codes=reason_codes,
+            namespace_prefix=namespace_prefix,
+            min_overlap=1,
+        )
+
+        # Count supporting vs contrary
+        supporting = 0
+        contrary = 0
+        caution_precedents = []
+
+        for payload, overlap in matches[:50]:  # Limit to first 50 for performance
+            if payload.outcome_code == proposed_outcome:
+                supporting += 1
+            else:
+                contrary += 1
+
+            # Track overturned cases as caution precedents
+            if payload.appealed and payload.appeal_outcome == "overturned":
+                caution_precedents.append({
+                    "precedent_id": payload.precedent_id[:8] + "...",
+                    "outcome": payload.outcome_code,
+                    "appeal_outcome": payload.appeal_outcome,
+                    "reason_codes": payload.reason_codes[:3],
+                })
+
+        # Calculate confidence score
+        total = supporting + contrary
+        if total > 0:
+            consistency_rate = supporting / total
+            # Factor in appeal statistics
+            upheld_rate = stats.appeal_stats.upheld_rate if stats.appeal_stats.total_appealed > 0 else 1.0
+            precedent_confidence = (consistency_rate * 0.7) + (upheld_rate * 0.3)
+        else:
+            precedent_confidence = 0.5  # No data - neutral confidence
+
+        return {
+            "available": True,
+            "match_count": stats.total_matched,
+            "outcome_distribution": stats.by_outcome,
+            "appeal_statistics": {
+                "total_appealed": stats.appeal_stats.total_appealed,
+                "upheld": stats.appeal_stats.upheld,
+                "overturned": stats.appeal_stats.overturned,
+                "upheld_rate": round(stats.appeal_stats.upheld_rate, 2),
+            },
+            "precedent_confidence": round(precedent_confidence, 2),
+            "supporting_precedents": supporting,
+            "contrary_precedents": contrary,
+            "caution_precedents": caution_precedents[:5],  # Top 5 caution cases
+            "reason_codes_searched": reason_codes,
+        }
+
+    except Exception as e:
+        logger.warning(f"Precedent query failed: {e}")
+        return {
+            "available": False,
+            "message": f"Precedent query failed: {str(e)}"
+        }
+
 # =============================================================================
 # Startup/Shutdown
 # =============================================================================
@@ -747,6 +968,10 @@ async def startup_event():
 
     # Wire up report caching for Build Your Own Case
     set_cache_decision(report.cache_decision)
+
+    # Load banking precedent seeds (2,000 precedents)
+    precedents_loaded = load_precedent_seeds()
+    logger.info(f"Precedent seeds loaded: {precedents_loaded}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
