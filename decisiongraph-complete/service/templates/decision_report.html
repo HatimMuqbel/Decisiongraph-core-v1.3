@@ -247,13 +247,20 @@
       <div class="kv">
         <div class="label">Similar Cases Found</div>
         <div class="value">{{ precedent_analysis.match_count }}</div>
+        <div class="label">Sample Size Analyzed</div>
+        <div class="value">{{ precedent_analysis.sample_size | default(50) }}</div>
         <div class="label">Precedent Confidence</div>
         <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
         <div class="label">Supporting Precedents</div>
-        <div class="value">{{ precedent_analysis.supporting_precedents }}</div>
+        <div class="value" style="color: var(--ok);">{{ precedent_analysis.supporting_precedents }}</div>
         <div class="label">Contrary Precedents</div>
-        <div class="value">{{ precedent_analysis.contrary_precedents }}</div>
+        <div class="value" style="color: var(--bad);">{{ precedent_analysis.contrary_precedents }}</div>
+        <div class="label">Neutral Precedents</div>
+        <div class="value" style="color: var(--muted);">{{ precedent_analysis.neutral_precedents | default(0) }}</div>
       </div>
+      <p class="small" style="margin-top:12px;">
+        <em>Neutral indicates precedents where the outcome is a review/escalation state rather than a final pay/deny decision.</em>
+      </p>
     </div>
 
     <h3>Outcome Distribution</h3>

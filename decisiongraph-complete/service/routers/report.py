@@ -241,14 +241,21 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
     confidence_pct = int(precedent_analysis.get("precedent_confidence", 0) * 100)
     upheld_rate_pct = int(appeal.get("upheld_rate", 0) * 100)
 
+    sample_size = precedent_analysis.get('sample_size', 50)
+    neutral = precedent_analysis.get('neutral_precedents', 0)
+
     return f"""## Precedent Analysis
 
 | Metric | Value |
 |--------|-------|
 | Similar Cases Found | {precedent_analysis.get('match_count', 0)} |
+| Sample Size Analyzed | {sample_size} |
 | Precedent Confidence | {confidence_pct}% |
 | Supporting Precedents | {precedent_analysis.get('supporting_precedents', 0)} |
 | Contrary Precedents | {precedent_analysis.get('contrary_precedents', 0)} |
+| Neutral Precedents | {neutral} |
+
+*Neutral indicates precedents where the outcome is a review/escalation state rather than a final pay/deny decision.*
 
 ### Outcome Distribution
 

@@ -839,6 +839,154 @@ def extract_reason_codes(facts: dict, indicators: list, obligations: list) -> li
     return list(set(codes))  # Deduplicate
 
 
+# =============================================================================
+# Precedent Outcome Normalization & Classification
+# =============================================================================
+
+def normalize_outcome(raw: str) -> str:
+    """
+    Normalize any outcome string to canonical form: pay, deny, or escalate.
+
+    This is the SINGLE source of truth for outcome normalization.
+    All precedent comparisons must use this function first.
+
+    Args:
+        raw: Raw outcome string (any case, any format)
+
+    Returns:
+        Canonical outcome: "pay", "deny", or "escalate"
+    """
+    if not raw:
+        return "escalate"  # Unknown defaults to escalate (review state)
+
+    # Normalize: lowercase, strip whitespace, collapse spaces, replace underscores
+    normalized = " ".join(raw.lower().strip().split()).replace("_", " ")
+
+    # PAY family (transaction approved, claim paid, account cleared)
+    pay_terms = {
+        "pay", "paid", "approve", "approved", "accept", "accepted",
+        "clear", "cleared", "covered", "eligible", "pass", "passed",
+        "no report", "report lctr", "close", "closed",
+    }
+    if normalized in pay_terms:
+        return "pay"
+
+    # DENY family (transaction blocked, claim denied)
+    deny_terms = {
+        "deny", "denied", "decline", "declined", "reject", "rejected",
+        "block", "blocked", "refuse", "refused", "hard stop", "exit",
+    }
+    if normalized in deny_terms:
+        return "deny"
+
+    # ESCALATE family (review required, needs investigation)
+    escalate_terms = {
+        "escalate", "escalated", "investigate", "investigation",
+        "review", "review required", "hold", "pending", "manual review",
+        "needs info", "request more info", "str", "report str", "report tpr",
+        "pass with edd",
+    }
+    if normalized in escalate_terms:
+        return "escalate"
+
+    # Default: unknown outcomes treated as escalate (safe default)
+    return "escalate"
+
+
+def classify_precedent_match(precedent_outcome: str, proposed_outcome: str) -> str:
+    """
+    Classify a precedent match as supporting, contrary, or neutral.
+
+    Rules:
+    - Same canonical outcome = SUPPORTING
+    - pay vs deny = CONTRARY (opposite decisions)
+    - escalate vs (pay or deny) = NEUTRAL (escalate is a review state, not a final decision)
+
+    Args:
+        precedent_outcome: The precedent's outcome (will be normalized)
+        proposed_outcome: The proposed outcome (will be normalized)
+
+    Returns:
+        Classification: "supporting", "contrary", or "neutral"
+    """
+    prec = normalize_outcome(precedent_outcome)
+    prop = normalize_outcome(proposed_outcome)
+
+    # Same outcome = supporting
+    if prec == prop:
+        return "supporting"
+
+    # Pay vs Deny = contrary (opposite final decisions)
+    if {prec, prop} == {"pay", "deny"}:
+        return "contrary"
+
+    # Everything else is neutral (escalate vs pay/deny)
+    return "neutral"
+
+
+def stratified_precedent_sample(
+    matches: list,
+    proposed_outcome: str,
+    max_total: int = 50,
+    max_supporting: int = 35,
+    max_contrary: int = 10,
+    max_neutral: int = 15,
+) -> tuple[list, dict]:
+    """
+    Create a stratified sample of precedent matches for balanced analysis.
+
+    Ensures diversity of outcomes in the sample while maintaining:
+    - Determinism (same input = same output)
+    - Relevance-first ordering (highest overlap first within each bucket)
+
+    Args:
+        matches: List of (payload, overlap) tuples, pre-sorted by relevance
+        proposed_outcome: The proposed outcome for classification
+        max_total: Maximum total matches to include
+        max_supporting: Maximum supporting matches
+        max_contrary: Maximum contrary matches
+        max_neutral: Maximum neutral matches
+
+    Returns:
+        Tuple of (sampled_matches, counts_dict)
+    """
+    supporting = []
+    contrary = []
+    neutral = []
+
+    # Classify all matches
+    for payload, overlap in matches:
+        classification = classify_precedent_match(payload.outcome_code, proposed_outcome)
+
+        if classification == "supporting" and len(supporting) < max_supporting:
+            supporting.append((payload, overlap, classification))
+        elif classification == "contrary" and len(contrary) < max_contrary:
+            contrary.append((payload, overlap, classification))
+        elif classification == "neutral" and len(neutral) < max_neutral:
+            neutral.append((payload, overlap, classification))
+
+        # Stop if we have enough in all buckets
+        if (len(supporting) >= max_supporting and
+            len(contrary) >= max_contrary and
+            len(neutral) >= max_neutral):
+            break
+
+    # Combine and sort by overlap (highest first) for consistent ordering
+    sampled = supporting + contrary + neutral
+    sampled.sort(key=lambda x: x[1], reverse=True)
+
+    # Trim to max_total if needed
+    sampled = sampled[:max_total]
+
+    counts = {
+        "supporting": len([x for x in sampled if x[2] == "supporting"]),
+        "contrary": len([x for x in sampled if x[2] == "contrary"]),
+        "neutral": len([x for x in sampled if x[2] == "neutral"]),
+    }
+
+    return sampled, counts
+
+
 def query_similar_precedents(
     reason_codes: list,
     proposed_outcome: str,
@@ -847,13 +995,19 @@ def query_similar_precedents(
     """
     Query precedent registry for similar cases and return analysis.
 
+    Uses stratified sampling and proper outcome classification:
+    - Supporting: Same outcome family
+    - Contrary: Opposite outcome (pay vs deny)
+    - Neutral: Escalate vs final decision (review state)
+
     Returns a dict with:
     - match_count: Total matches found
+    - sample_size: Number of matches analyzed (stratified sample)
     - outcome_distribution: Count by outcome
     - appeal_statistics: Appeal rates
     - precedent_confidence: Confidence score (0-1)
+    - supporting/contrary/neutral counts
     - caution_precedents: Cases overturned on appeal
-    - supporting_precedents: Cases supporting the proposed outcome
     """
     if not PRECEDENTS_LOADED or not PRECEDENT_REGISTRY:
         return {
@@ -862,6 +1016,9 @@ def query_similar_precedents(
         }
 
     try:
+        # Normalize proposed outcome first
+        proposed_normalized = normalize_outcome(proposed_outcome)
+
         # Get statistics by reason codes
         stats = PRECEDENT_REGISTRY.get_statistics_by_codes(
             exclusion_codes=reason_codes,
@@ -870,45 +1027,52 @@ def query_similar_precedents(
         )
 
         # Find matching precedents (Tier 1 - overlapping codes)
+        # Returns list sorted by overlap descending
         matches = PRECEDENT_REGISTRY.find_by_exclusion_codes(
             codes=reason_codes,
             namespace_prefix=namespace_prefix,
             min_overlap=1,
         )
 
-        # Count supporting vs contrary
-        supporting = 0
-        contrary = 0
+        # Get stratified sample for balanced analysis
+        sampled, counts = stratified_precedent_sample(
+            matches=matches,
+            proposed_outcome=proposed_normalized,
+            max_total=50,
+            max_supporting=35,
+            max_contrary=10,
+            max_neutral=15,
+        )
+
+        # Track caution precedents (overturned cases)
         caution_precedents = []
-
-        for payload, overlap in matches[:50]:  # Limit to first 50 for performance
-            if payload.outcome_code == proposed_outcome:
-                supporting += 1
-            else:
-                contrary += 1
-
-            # Track overturned cases as caution precedents
+        for payload, overlap, classification in sampled:
             if payload.appealed and payload.appeal_outcome == "overturned":
                 caution_precedents.append({
                     "precedent_id": payload.precedent_id[:8] + "...",
                     "outcome": payload.outcome_code,
+                    "outcome_normalized": normalize_outcome(payload.outcome_code),
+                    "classification": classification,
                     "appeal_outcome": payload.appeal_outcome,
                     "reason_codes": payload.reason_codes[:3],
                 })
 
         # Calculate confidence score
-        total = supporting + contrary
-        if total > 0:
-            consistency_rate = supporting / total
+        # Only supporting and contrary factor into consistency (neutral is excluded)
+        decisive_total = counts["supporting"] + counts["contrary"]
+        if decisive_total > 0:
+            consistency_rate = counts["supporting"] / decisive_total
             # Factor in appeal statistics
             upheld_rate = stats.appeal_stats.upheld_rate if stats.appeal_stats.total_appealed > 0 else 1.0
             precedent_confidence = (consistency_rate * 0.7) + (upheld_rate * 0.3)
         else:
-            precedent_confidence = 0.5  # No data - neutral confidence
+            # No decisive precedents - use neutral confidence
+            precedent_confidence = 0.5
 
         return {
             "available": True,
             "match_count": stats.total_matched,
+            "sample_size": len(sampled),
             "outcome_distribution": stats.by_outcome,
             "appeal_statistics": {
                 "total_appealed": stats.appeal_stats.total_appealed,
@@ -917,10 +1081,12 @@ def query_similar_precedents(
                 "upheld_rate": round(stats.appeal_stats.upheld_rate, 2),
             },
             "precedent_confidence": round(precedent_confidence, 2),
-            "supporting_precedents": supporting,
-            "contrary_precedents": contrary,
-            "caution_precedents": caution_precedents[:5],  # Top 5 caution cases
+            "supporting_precedents": counts["supporting"],
+            "contrary_precedents": counts["contrary"],
+            "neutral_precedents": counts["neutral"],
+            "caution_precedents": caution_precedents[:5],
             "reason_codes_searched": reason_codes,
+            "proposed_outcome_normalized": proposed_normalized,
         }
 
     except Exception as e:
