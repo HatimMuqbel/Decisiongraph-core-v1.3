@@ -8,15 +8,21 @@ import yaml
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 # Import report cache function (will be set by main.py)
 _cache_decision = None
+_query_precedents = None
 
 def set_cache_decision(cache_fn):
     """Set the cache function from report module."""
     global _cache_decision
     _cache_decision = cache_fn
+
+def set_precedent_query(query_fn: Callable):
+    """Set the precedent query function from main module."""
+    global _query_precedents
+    _query_precedents = query_fn
 
 
 class TemplateLoader:
@@ -254,6 +260,18 @@ class TemplateLoader:
                 },
                 "compliance": {}
             }
+
+            # Add precedent analysis if available
+            if _query_precedents:
+                try:
+                    # Extract reason codes from matched outcome
+                    reason_codes = ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"]
+                    outcome_code = matched_outcome.get("decision", "pay")
+                    precedent_analysis = _query_precedents(reason_codes, outcome_code)
+                    report_pack["precedent_analysis"] = precedent_analysis
+                except Exception as e:
+                    report_pack["precedent_analysis"] = {"available": False, "error": str(e)}
+
             _cache_decision(decision_id, report_pack)
 
         return result

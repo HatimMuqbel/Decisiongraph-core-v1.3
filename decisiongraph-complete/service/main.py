@@ -65,7 +65,7 @@ from decisiongraph.judgment import create_judgment_cell
 
 # Import routers
 from service.routers import demo, report, verify, templates
-from service.template_loader import TemplateLoader, set_cache_decision
+from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
 
 # =============================================================================
 # Configuration
@@ -989,6 +989,9 @@ async def startup_event():
     # Load banking precedent seeds (2,000 precedents)
     precedents_loaded = load_precedent_seeds()
     logger.info(f"Precedent seeds loaded: {precedents_loaded}")
+
+    # Wire up precedent query for Build Your Own Case reports
+    set_precedent_query(query_similar_precedents)
 
 @app.on_event("shutdown")
 async def shutdown_event():
