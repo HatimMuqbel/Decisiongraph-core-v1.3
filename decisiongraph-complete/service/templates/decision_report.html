@@ -65,8 +65,8 @@
 <body>
   <div class="page">
     <div class="header">
-      <h1>AML/KYC Decision Report</h1>
-      <div class="subtitle">Bank-Grade Dual-Gate Engine (Zero LLM)</div>
+      <h1>AML/KYC Investigation Report</h1>
+      <div class="subtitle">Bank-Grade Deterministic Engine</div>
     </div>
 
     <h2>Administrative Details</h2>
@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <h2>Transaction Facts</h2>
+    <h2>Case Facts</h2>
     <table class="break">
       <thead>
         <tr>
@@ -105,46 +105,65 @@
       </tbody>
     </table>
 
-    <h2>Decision</h2>
+    <h2>Regulatory Determination</h2>
     {% if decision_status == "pass" %}
       <div class="status ok break">
-        <h3>PASS — Transaction Allowed</h3>
-        <p>{{ decision_explainer }}</p>
+        <h3>NO_REPORT — Alert Cleared</h3>
+        <p>Based on available information at time of review, the totality of indicators does not meet the threshold for reasonable grounds to suspect money laundering or terrorist financing activity.</p>
+        <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
+        <ul class="small">
+          <li>Document clearance rationale</li>
+          <li>Return to standard monitoring parameters</li>
+          <li>No regulatory filing required at this time</li>
+        </ul>
       </div>
     {% elif decision_status == "escalate" %}
       <div class="status bad break">
-        <h3>ESCALATE — {{ action }}</h3>
-        <p>{{ decision_explainer }}</p>
+        <h3>FILE_STR — Suspicious Transaction Report Required</h3>
+        <p>Suspicion threshold met under PCMLTFA/FINTRAC guidance. Reasonable grounds exist to suspect that the transaction or attempted transaction is related to the commission or attempted commission of a money laundering or terrorist financing offence.</p>
         {% if escalation_reasons and escalation_reasons|length > 0 %}
-          <p style="margin-top:12px;"><strong>Escalation triggers:</strong></p>
+          <p style="margin-top:12px;"><strong>Primary Suspicion Drivers:</strong></p>
           <ul>
-            {% for reason in escalation_reasons %}
+            {% for reason in escalation_reasons[:4] %}
               <li>{{ reason }}</li>
             {% endfor %}
           </ul>
         {% endif %}
+        <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
+        <ul class="small">
+          <li>File STR within 30 days of suspicion formation</li>
+          <li>Apply Enhanced Due Diligence measures</li>
+          <li>Implement ongoing monitoring with elevated parameters</li>
+          <li>Document investigative rationale in case file</li>
+        </ul>
       </div>
     {% else %}
       <div class="status warn break">
-        <h3>REVIEW REQUIRED</h3>
-        <p>{{ decision_explainer }}</p>
+        <h3>EDD_REQUIRED — Enhanced Due Diligence Required</h3>
+        <p>Additional information required before regulatory determination can be finalized. Current indicators warrant enhanced scrutiny but do not independently establish reasonable grounds to suspect.</p>
+        <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
+        <ul class="small">
+          <li>Complete Enhanced Due Diligence review</li>
+          <li>Obtain additional documentation as required</li>
+          <li>Escalate to Senior Analyst / Compliance Officer within 5 business days</li>
+        </ul>
       </div>
     {% endif %}
 
-    <h2>Gate 1: Escalation Permission</h2>
+    <h2>Gate 1: Zero-False-Escalation Check</h2>
     <div class="gate-block break">
       <h4>
         {% if gate1_passed %}
-          <span class="pill pass">ESCALATION PERMITTED</span>
+          <span class="pill pass">REVIEW PERMITTED</span>
         {% else %}
-          <span class="pill trig">ESCALATION BLOCKED</span>
+          <span class="pill trig">REVIEW BLOCKED</span>
         {% endif %}
       </h4>
       <p class="small" style="margin-bottom:12px;">
         {% if gate1_passed %}
-          Sufficient lawful basis exists to permit escalation if warranted by Gate 2.
+          Sufficient regulatory basis exists to permit enhanced review if warranted by suspicion indicators.
         {% else %}
-          Escalation blocked = insufficient lawful basis to escalate. Transaction is permitted to proceed.
+          Insufficient lawful basis to escalate. Case cleared — no regulatory reporting required.
         {% endif %}
       </p>
       {% if gate1_sections and gate1_sections|length > 0 %}
@@ -242,28 +261,49 @@
     </table>
 
     {% if precedent_analysis and precedent_analysis.available %}
-    <h2>Precedent Analysis</h2>
+    <h2>Precedent Intelligence</h2>
+
+    <!-- Decision Intelligence Summary -->
+    <div class="gate-block break" style="background: #f8fafc;">
+      <h4 style="margin-bottom:8px;">Precedent Alignment Summary</h4>
+      <div class="kv" style="font-size:13px;">
+        <div class="label">Comparable Cases Evaluated</div>
+        <div class="value">{{ precedent_analysis.match_count }}</div>
+        <div class="label">Representative Sample</div>
+        <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (similarity ≥70%)</div>
+        <div class="label">Precedent Alignment</div>
+        <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
+      </div>
+      {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
+      {% if total_decisive > 0 %}
+      <p class="small" style="margin-top:12px;">
+        <strong>{{ "%.0f"|format(precedent_analysis.supporting_precedents / total_decisive * 100) }}%</strong> of comparable cases resulted in the same regulatory outcome.
+      </p>
+      {% endif %}
+      {% if precedent_analysis.contrary_precedents > precedent_analysis.supporting_precedents %}
+      <div class="status warn" style="margin-top:12px; padding:12px;">
+        <strong>⚠️ PRECEDENT DIVERGENCE DETECTED</strong><br>
+        <span class="small">Current recommendation diverges from majority of historical cases. Senior compliance review advised before finalization.</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <h3>Precedent Classification</h3>
     <div class="card break">
       <div class="kv">
-        <div class="label">Similar Cases Found</div>
-        <div class="value">{{ precedent_analysis.match_count }}</div>
-        <div class="label">Sample Size Analyzed</div>
-        <div class="value">{{ precedent_analysis.sample_size | default(50) }}</div>
-        <div class="label">Precedent Confidence</div>
-        <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
         <div class="label">Supporting Precedents</div>
-        <div class="value" style="color: var(--ok);">{{ precedent_analysis.supporting_precedents }}</div>
+        <div class="value" style="color: var(--ok);">{{ precedent_analysis.supporting_precedents }} <span class="small">(same outcome as recommendation)</span></div>
         <div class="label">Contrary Precedents</div>
-        <div class="value" style="color: var(--bad);">{{ precedent_analysis.contrary_precedents }}</div>
+        <div class="value" style="color: var(--bad);">{{ precedent_analysis.contrary_precedents }} <span class="small">(different outcome)</span></div>
         <div class="label">Neutral Precedents</div>
-        <div class="value" style="color: var(--muted);">{{ precedent_analysis.neutral_precedents | default(0) }}</div>
+        <div class="value" style="color: var(--muted);">{{ precedent_analysis.neutral_precedents | default(0) }} <span class="small">(resolved via enhanced review)</span></div>
       </div>
       <p class="small" style="margin-top:12px;">
-        <em>Neutral indicates precedents where the outcome is a review/escalation state rather than a final pay/deny decision.</em>
+        <em>Neutral precedents reflect cases resolved through enhanced review processes rather than immediate determination. Their inclusion demonstrates balanced historical analysis.</em>
       </p>
     </div>
 
-    <h3>Outcome Distribution</h3>
+    <h3>Historical Outcome Distribution</h3>
     <table class="break">
       <thead>
         <tr>
@@ -274,7 +314,7 @@
       <tbody>
         {% for outcome, count in precedent_analysis.outcome_distribution.items() %}
         <tr>
-          <td>{{ outcome|upper }}</td>
+          <td>{% if outcome|lower == 'pay' %}NO_REPORT{% elif outcome|lower == 'deny' %}FILE_STR{% elif outcome|lower == 'escalate' %}EDD_REQUIRED{% else %}{{ outcome|upper }}{% endif %}</td>
           <td class="mono">{{ count }}</td>
         </tr>
         {% endfor %}
@@ -314,7 +354,7 @@
     {% endif %}
     {% endif %}
 
-    <h2>Evidence Considered</h2>
+    <h2>Risk Factor Assessment</h2>
     <table class="break">
       <thead>
         <tr>
@@ -339,7 +379,7 @@
         {% endfor %}
         {% if not evidence_used %}
         <tr>
-          <td colspan="2" class="small">No evidence recorded</td>
+          <td colspan="2" class="small">No risk factors recorded</td>
         </tr>
         {% endif %}
       </tbody>
@@ -364,9 +404,9 @@
 
     <div class="statement break">
       <strong>Determinism & Auditability Statement</strong><br><br>
-      This decision was produced by a deterministic rule engine.
+      This decision was produced by a deterministic rule engine operating under CA-FINTRAC regulatory framework.
       Re-evaluation using identical inputs and the same policy version will produce identical results.<br><br>
-      The decision may be independently verified using the <code class="mono">/verify</code> endpoint and the recorded provenance fields.
+      The decision may be independently verified using the <code class="mono">/verify</code> endpoint. Complete decision lineage, rule evaluation sequence, and evidence chain are preserved in the immutable audit log and available for regulatory examination upon request.
     </div>
 
     {% if str_required %}
