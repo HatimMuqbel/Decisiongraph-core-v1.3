@@ -241,6 +241,72 @@
       </tbody>
     </table>
 
+    {% if precedent_analysis and precedent_analysis.available %}
+    <h2>Precedent Analysis</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Similar Cases Found</div>
+        <div class="value">{{ precedent_analysis.match_count }}</div>
+        <div class="label">Precedent Confidence</div>
+        <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
+        <div class="label">Supporting Precedents</div>
+        <div class="value">{{ precedent_analysis.supporting_precedents }}</div>
+        <div class="label">Contrary Precedents</div>
+        <div class="value">{{ precedent_analysis.contrary_precedents }}</div>
+      </div>
+    </div>
+
+    <h3>Outcome Distribution</h3>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Outcome</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for outcome, count in precedent_analysis.outcome_distribution.items() %}
+        <tr>
+          <td>{{ outcome|upper }}</td>
+          <td class="mono">{{ count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h3>Appeal Statistics</h3>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Total Appealed</div>
+        <div class="value">{{ precedent_analysis.appeal_statistics.total_appealed }}</div>
+        <div class="label">Upheld</div>
+        <div class="value">{{ precedent_analysis.appeal_statistics.upheld }}</div>
+        <div class="label">Overturned</div>
+        <div class="value">{{ precedent_analysis.appeal_statistics.overturned }}</div>
+        <div class="label">Upheld Rate</div>
+        <div class="value">{{ "%.0f"|format(precedent_analysis.appeal_statistics.upheld_rate * 100) }}%</div>
+      </div>
+    </div>
+
+    {% if precedent_analysis.caution_precedents and precedent_analysis.caution_precedents|length > 0 %}
+    <h3>Caution Precedents (Overturned Cases)</h3>
+    <div class="status warn break">
+      <p><strong>{{ precedent_analysis.caution_precedents|length }}</strong> similar cases were later overturned on appeal. Review these precedents carefully:</p>
+      <ul>
+        {% for prec in precedent_analysis.caution_precedents[:5] %}
+        <li>
+          <strong>{{ prec.case_ref }}</strong> — {{ prec.outcome|upper }}
+          {% if prec.appeal_result %}<span class="small">(Appeal: {{ prec.appeal_result }})</span>{% endif %}
+        </li>
+        {% endfor %}
+        {% if precedent_analysis.caution_precedents|length > 5 %}
+        <li class="small">... and {{ precedent_analysis.caution_precedents|length - 5 }} more</li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
     <h2>Evidence Considered</h2>
     <table class="break">
       <thead>

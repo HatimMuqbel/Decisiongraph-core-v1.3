@@ -790,36 +790,53 @@ def extract_reason_codes(facts: dict, indicators: list, obligations: list) -> li
     Extract reason codes from case facts for precedent matching.
 
     Maps case characteristics to AML reason codes used in the seed precedents.
+    Uses codes that match the banking AML seed generator format.
     """
     codes = []
 
-    # Sanctions-related
+    # Sanctions-related (matches RC-SCR-* codes in seeds)
     if facts.get("sanctions_result") == "MATCH":
         codes.append("RC-SCR-SANCTION")
+        codes.append("RC-SCR-OFAC")
 
-    # Adverse media
+    # Adverse media (matches RC-KYC-ADVERSE-* codes in seeds)
     if facts.get("adverse_media_mltf"):
         codes.append("RC-KYC-ADVERSE-MAJOR")
+    elif facts.get("adverse_media"):
+        codes.append("RC-KYC-ADVERSE-MINOR")
 
-    # PEP-related
-    if any("PEP" in o for o in obligations):
-        codes.append("RC-KYC-PEP")
+    # PEP-related (matches RC-TXN-PEP and RC-KYC-PEP-* codes in seeds)
+    if any("PEP" in str(o) for o in obligations):
+        codes.append("RC-TXN-PEP")
+        codes.append("RC-TXN-PEP-EDD")
+        codes.append("RC-KYC-PEP-APPROVED")
 
-    # Structuring indicators
+    # Structuring indicators (matches RC-TXN-STRUCT-* codes in seeds)
     for ind in indicators:
         ind_type = ind.get("type", "").upper() if isinstance(ind, dict) else str(ind).upper()
         if "STRUCTUR" in ind_type:
             codes.append("RC-TXN-STRUCT")
-        if "LAYER" in ind_type:
+            codes.append("RC-TXN-STRUCT-MULTI")
+        if "LAYER" in ind_type or "RAPID" in ind_type:
             codes.append("RC-TXN-LAYER")
+            codes.append("RC-TXN-RAPID")
         if "CRYPTO" in ind_type or "VIRTUAL" in ind_type:
-            codes.append("RC-TXN-CRYPTO")
+            codes.append("RC-TXN-CRYPTO-UNREG")
+            codes.append("RC-TXN-CRYPTO-UNHOSTED")
+        if "UNUSUAL" in ind_type or "DEVIATION" in ind_type:
+            codes.append("RC-TXN-UNUSUAL")
+            codes.append("RC-TXN-DEVIATION")
 
-    # Default code if none found
+    # High-risk jurisdictions
+    if facts.get("fatf_grey") or facts.get("high_risk_jurisdiction"):
+        codes.append("RC-TXN-FATF-GREY")
+
+    # Normal transaction baseline (for PASS cases)
     if not codes:
-        codes.append("RC-TXN-GENERAL")
+        codes.append("RC-TXN-NORMAL")
+        codes.append("RC-TXN-PROFILE-MATCH")
 
-    return codes
+    return list(set(codes))  # Deduplicate
 
 
 def query_similar_precedents(

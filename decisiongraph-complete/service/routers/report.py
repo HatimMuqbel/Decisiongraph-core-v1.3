@@ -205,7 +205,69 @@ def build_report_context(decision: dict) -> dict:
 
         # Rationale
         "summary": rationale.get("summary", "") or "No summary available",
+
+        # Precedent Analysis
+        "precedent_analysis": decision.get("precedent_analysis", {}),
     }
+
+
+def _build_precedent_markdown(precedent_analysis: dict) -> str:
+    """Build markdown section for precedent analysis."""
+    if not precedent_analysis or not precedent_analysis.get("available"):
+        return ""
+
+    # Outcome distribution rows
+    outcome_rows = ""
+    for outcome, count in precedent_analysis.get("outcome_distribution", {}).items():
+        outcome_rows += f"| {outcome.upper()} | {count} |\n"
+
+    # Appeal stats
+    appeal = precedent_analysis.get("appeal_statistics", {})
+
+    # Caution precedents
+    caution = precedent_analysis.get("caution_precedents", [])
+    caution_section = ""
+    if caution:
+        caution_section = "\n### Caution Precedents (Overturned Cases)\n\n"
+        caution_section += f"**{len(caution)}** similar cases were later overturned on appeal:\n\n"
+        for prec in caution[:5]:
+            caution_section += f"- **{prec.get('case_ref', 'N/A')}** — {prec.get('outcome', 'N/A').upper()}"
+            if prec.get("appeal_result"):
+                caution_section += f" (Appeal: {prec['appeal_result']})"
+            caution_section += "\n"
+        if len(caution) > 5:
+            caution_section += f"- ... and {len(caution) - 5} more\n"
+
+    confidence_pct = int(precedent_analysis.get("precedent_confidence", 0) * 100)
+    upheld_rate_pct = int(appeal.get("upheld_rate", 0) * 100)
+
+    return f"""## Precedent Analysis
+
+| Metric | Value |
+|--------|-------|
+| Similar Cases Found | {precedent_analysis.get('match_count', 0)} |
+| Precedent Confidence | {confidence_pct}% |
+| Supporting Precedents | {precedent_analysis.get('supporting_precedents', 0)} |
+| Contrary Precedents | {precedent_analysis.get('contrary_precedents', 0)} |
+
+### Outcome Distribution
+
+| Outcome | Count |
+|---------|-------|
+{outcome_rows or "| No data | - |"}
+
+### Appeal Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total Appealed | {appeal.get('total_appealed', 0)} |
+| Upheld | {appeal.get('upheld', 0)} |
+| Overturned | {appeal.get('overturned', 0)} |
+| Upheld Rate | {upheld_rate_pct}% |
+{caution_section}
+---
+
+"""
 
 
 @router.get("/{decision_id}", response_class=HTMLResponse)
@@ -403,6 +465,8 @@ async def get_report_markdown(decision_id: str):
 {rules_rows or "| No rules evaluated | - | - |"}
 
 ---
+
+{_build_precedent_markdown(ctx.get('precedent_analysis', {}))}
 
 ## Evidence Considered
 
