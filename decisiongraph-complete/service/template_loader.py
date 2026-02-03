@@ -266,7 +266,17 @@ class TemplateLoader:
                 try:
                     # Extract reason codes from matched outcome
                     reason_codes = ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"]
-                    outcome_code = matched_outcome.get("decision", "pay")
+                    # Map BYOC decision codes to seed outcome codes
+                    byoc_to_seed_outcome = {
+                        "approve": "pay",
+                        "block": "deny",
+                        "investigate": "escalate",
+                        "escalate": "escalate",
+                        "pay": "pay",
+                        "deny": "deny",
+                    }
+                    raw_outcome = matched_outcome.get("decision", "pay")
+                    outcome_code = byoc_to_seed_outcome.get(raw_outcome, "escalate")
                     precedent_analysis = _query_precedents(reason_codes, outcome_code)
                     report_pack["precedent_analysis"] = precedent_analysis
                 except Exception as e:
