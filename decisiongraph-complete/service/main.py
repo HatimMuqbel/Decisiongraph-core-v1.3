@@ -99,7 +99,7 @@ POLICY_HASH_FULL = hashlib.sha256(
 POLICY_HASH_SHORT = POLICY_HASH_FULL[:16]
 
 # =============================================================================
-# Precedent System (2,000 banking seeds)
+# Precedent System (3,000 banking seeds)
 # =============================================================================
 
 PRECEDENT_CHAIN: Optional[Chain] = None
@@ -108,7 +108,7 @@ PRECEDENTS_LOADED = False
 PRECEDENT_COUNT = 0
 
 def load_precedent_seeds():
-    """Load the 2,000 banking seed precedents into a Chain."""
+    """Load the 3,000 banking seed precedents into a Chain."""
     global PRECEDENT_CHAIN, PRECEDENT_REGISTRY, PRECEDENTS_LOADED, PRECEDENT_COUNT
 
     try:

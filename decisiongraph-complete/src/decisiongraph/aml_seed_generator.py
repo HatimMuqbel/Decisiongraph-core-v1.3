@@ -15,12 +15,12 @@ Design Principles:
 - Realistic: Follows real-world distribution of outcomes and appeals
 
 Generated Precedent Counts (per BANKING_SEED_SPEC.md):
-- Transaction Monitoring: 700 precedents
-- KYC Onboarding: 450 precedents
-- Reporting: 200 precedents
-- Sanctions/Screening: 350 precedents
-- Ongoing Monitoring: 300 precedents
-- Total: 2,000 precedents
+- Transaction Monitoring: 1,050 precedents
+- KYC Onboarding: 675 precedents
+- Reporting: 300 precedents
+- Sanctions/Screening: 525 precedents
+- Ongoing Monitoring: 450 precedents
+- Total: 3,000 precedents
 
 Example:
     >>> generator = SeedGenerator(fingerprint_registry, reason_registry, salt="seed-salt")
@@ -471,7 +471,7 @@ def create_txn_monitoring_seed_config() -> SeedConfig:
     """
     Create seed configuration for Transaction Monitoring.
 
-    Generates 700 precedents across 8 scenario categories.
+    Generates 1,050 precedents across 14 scenario categories.
     """
     return SeedConfig(
         category="txn",
@@ -636,6 +636,127 @@ def create_txn_monitoring_seed_config() -> SeedConfig:
                 appeal_rate=0.20,
                 upheld_rate=0.85,
             ),
+            # Correspondent Banking - 80
+            SeedScenario(
+                code="TXN-CORRESP",
+                name="Correspondent Banking Risk",
+                reason_codes=["RC-TXN-CORRESP", "RC-TXN-FATF-GREY"],
+                count=80,
+                outcome="escalate",
+                deny_rate=0.12,
+                base_facts={
+                    "txn.cross_border": True,
+                    "txn.third_party_involved": True,
+                    "screening.sanctions_match": False,
+                },
+                variable_facts={
+                    "txn.destination_country_risk": ["high", "prohibited"],
+                    "txn.amount_band": ["100k_500k", "over_1m"],
+                    "customer.risk_level": ["medium", "high"],
+                    "customer.high_risk_industry": [True, False],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.88,
+            ),
+            # Round-Trip Transactions - 60
+            SeedScenario(
+                code="TXN-ROUNDTRIP",
+                name="Round-Trip Transaction",
+                reason_codes=["RC-TXN-ROUNDTRIP", "RC-TXN-RAPID"],
+                count=60,
+                outcome="investigate",
+                deny_rate=0.12,
+                base_facts={
+                    "txn.rapid_movement": True,
+                    "screening.sanctions_match": False,
+                },
+                variable_facts={
+                    "txn.cross_border": [True, False],
+                    "txn.third_party_involved": [True, False],
+                    "txn.amount_band": ["25k_100k", "100k_500k"],
+                    "txn.pattern_matches_profile": [False, True],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.86,
+            ),
+            # Crypto Mixer Indicators - 60
+            SeedScenario(
+                code="TXN-CRYPTO-MIX",
+                name="Crypto Mixer Indicators",
+                reason_codes=["RC-TXN-CRYPTO-MIX", "RC-TXN-CRYPTO-UNHOSTED"],
+                count=60,
+                outcome="investigate",
+                deny_rate=0.12,
+                base_facts={
+                    "txn.type": "crypto",
+                    "crypto.mixer_indicators": True,
+                },
+                variable_facts={
+                    "crypto.wallet_type": ["unhosted", "hosted"],
+                    "crypto.exchange_regulated": [True, False],
+                    "txn.amount_band": ["10k_25k", "25k_100k"],
+                },
+                appeal_rate=0.20,
+                upheld_rate=0.85,
+            ),
+            # Prior SAR History - 50
+            SeedScenario(
+                code="TXN-SAR-HIST",
+                name="Prior SAR History",
+                reason_codes=["RC-TXN-SAR-HISTORY", "RC-TXN-UNUSUAL"],
+                count=50,
+                outcome="escalate",
+                deny_rate=0.10,
+                base_facts={
+                    "txn.pattern_matches_profile": False,
+                    "screening.adverse_media": False,
+                },
+                variable_facts={
+                    "customer.risk_level": ["medium", "high"],
+                    "txn.amount_band": ["25k_100k", "100k_500k"],
+                    "txn.third_party_involved": [True, False],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.86,
+            ),
+            # Prior Account Closure - 50
+            SeedScenario(
+                code="TXN-PRIOR-CLOSURE",
+                name="Prior Account Closure",
+                reason_codes=["RC-TXN-PRIOR-CLOSURE", "RC-TXN-STRUCT"],
+                count=50,
+                outcome="escalate",
+                deny_rate=0.15,
+                base_facts={
+                    "txn.just_below_threshold": True,
+                },
+                variable_facts={
+                    "txn.multiple_same_day": [True, False],
+                    "txn.amount_band": ["3k_10k", "10k_25k"],
+                    "customer.relationship_length": ["new", "recent"],
+                },
+                appeal_rate=0.20,
+                upheld_rate=0.85,
+            ),
+            # PEP Related Party - 50
+            SeedScenario(
+                code="TXN-PEP-RCA",
+                name="PEP Related Party",
+                reason_codes=["RC-TXN-PEP-RCA", "RC-TXN-PEP"],
+                count=50,
+                outcome="escalate",
+                deny_rate=0.08,
+                base_facts={
+                    "customer.pep": True,
+                },
+                variable_facts={
+                    "customer.pep_type": ["rca", "foreign"],
+                    "txn.amount_band": ["25k_100k", "100k_500k"],
+                    "customer.risk_level": ["medium", "high"],
+                },
+                appeal_rate=0.20,
+                upheld_rate=0.87,
+            ),
         ],
     )
 
@@ -644,7 +765,7 @@ def create_kyc_onboarding_seed_config() -> SeedConfig:
     """
     Create seed configuration for KYC Onboarding.
 
-    Generates 450 precedents across 7 scenario categories.
+    Generates 675 precedents across 12 scenario categories.
     """
     return SeedConfig(
         category="kyc",
@@ -789,6 +910,105 @@ def create_kyc_onboarding_seed_config() -> SeedConfig:
                 appeal_rate=0.10,
                 upheld_rate=0.95,
             ),
+            # Expired / Missing ID - 60
+            SeedScenario(
+                code="KYC-ID-EXPIRED",
+                name="Expired or Missing ID",
+                reason_codes=["RC-KYC-EXPIRED-ID", "RC-KYC-MISSING-ID"],
+                count=60,
+                outcome="hold",
+                deny_rate=0.15,
+                base_facts={
+                    "screening.sanctions_match": False,
+                },
+                variable_facts={
+                    "kyc.id_verified": [True, False],
+                    "kyc.id_expired": [True, False],
+                    "kyc.id_type": ["passport", "driver_license", "national_id"],
+                    "kyc.address_verified": [True, False],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.82,
+            ),
+            # Source of Wealth Pending - 50
+            SeedScenario(
+                code="KYC-SOW-PENDING",
+                name="Source of Wealth Pending",
+                reason_codes=["RC-KYC-PENDING-SOW", "RC-KYC-PENDING-EDD"],
+                count=50,
+                outcome="hold",
+                deny_rate=0.12,
+                base_facts={
+                    "kyc.id_verified": True,
+                    "screening.sanctions_match": False,
+                },
+                variable_facts={
+                    "kyc.source_of_wealth_documented": [True, False],
+                    "kyc.source_of_funds_documented": [True, False],
+                    "edd.required": [True, False],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.84,
+            ),
+            # Outside Risk Appetite - 40
+            SeedScenario(
+                code="KYC-APPETITE",
+                name="Outside Risk Appetite",
+                reason_codes=["RC-KYC-OUTSIDE-APPETITE"],
+                count=40,
+                outcome="deny",
+                deny_rate=0.65,
+                base_facts={
+                    "customer.risk_level": "high",
+                    "screening.sanctions_match": False,
+                },
+                variable_facts={
+                    "customer.jurisdiction": ["high_risk", "offshore", "unknown"],
+                    "customer.cash_intensive": [True, False],
+                },
+                appeal_rate=0.22,
+                upheld_rate=0.80,
+            ),
+            # PEP Declined - 35
+            SeedScenario(
+                code="KYC-PEP-DECLINE",
+                name="PEP Declined",
+                reason_codes=["RC-KYC-PEP-DECLINED"],
+                count=35,
+                outcome="deny",
+                deny_rate=0.80,
+                base_facts={
+                    "customer.pep": True,
+                    "edd.complete": False,
+                    "edd.senior_approval": False,
+                },
+                variable_facts={
+                    "customer.pep_level": ["head_of_state", "senior_official"],
+                    "customer.pep_type": ["foreign", "international_org"],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.88,
+            ),
+            # Prior SAR History - 40
+            SeedScenario(
+                code="KYC-SAR-HIST",
+                name="Prior SAR History",
+                reason_codes=["RC-KYC-SAR-HISTORY", "RC-KYC-OUTSIDE-APPETITE"],
+                count=40,
+                outcome="escalate",
+                deny_rate=0.45,
+                base_facts={
+                    "customer.risk_level": "high",
+                    "screening.sanctions_match": False,
+                },
+                variable_facts={
+                    "customer.jurisdiction": ["high_risk", "offshore"],
+                    "customer.cash_intensive": [True, False],
+                    "edd.required": [True, False],
+                },
+                appeal_rate=0.22,
+                upheld_rate=0.83,
+            ),
         ],
     )
 
@@ -797,7 +1017,7 @@ def create_reporting_seed_config() -> SeedConfig:
     """
     Create seed configuration for Reporting.
 
-    Generates 200 precedents across 4 scenario categories.
+    Generates 300 precedents across 7 scenario categories.
     """
     return SeedConfig(
         category="report",
@@ -880,6 +1100,63 @@ def create_reporting_seed_config() -> SeedConfig:
                 appeal_rate=0.20,
                 upheld_rate=0.75,
             ),
+            # STR - Layering - 50
+            SeedScenario(
+                code="RPT-STR-LAYER",
+                name="Suspicious Transaction - Layering",
+                reason_codes=["RC-RPT-STR-LAYER", "RC-RPT-STR-UNUSUAL"],
+                count=50,
+                outcome="report_str",
+                deny_rate=0.04,
+                base_facts={
+                    "suspicious.layering": True,
+                    "terrorist.listed_entity": False,
+                },
+                variable_facts={
+                    "suspicious.indicator_count": [3, 4, 5],
+                    "suspicious.source_unclear": [True, False],
+                    "suspicious.purpose_unclear": [True, False],
+                },
+                appeal_rate=0.16,
+                upheld_rate=0.84,
+            ),
+            # STR - Third Party - 30
+            SeedScenario(
+                code="RPT-STR-3RD",
+                name="Suspicious Transaction - Third Party",
+                reason_codes=["RC-RPT-STR-3RD", "RC-RPT-STR-STRUCT"],
+                count=30,
+                outcome="report_str",
+                deny_rate=0.03,
+                base_facts={
+                    "suspicious.third_party": True,
+                    "suspicious.structuring": True,
+                },
+                variable_facts={
+                    "suspicious.indicator_count": [2, 3, 4],
+                    "suspicious.unusual_pattern": [True, False],
+                },
+                appeal_rate=0.16,
+                upheld_rate=0.84,
+            ),
+            # Approve with Reporting - 20
+            SeedScenario(
+                code="RPT-APPROVE",
+                name="Approve with Reporting",
+                reason_codes=["RC-RPT-APPROVE-REPORT", "RC-RPT-LCTR"],
+                count=20,
+                outcome="report_lctr",
+                base_facts={
+                    "txn.cash_involved": True,
+                    "terrorist.listed_entity": False,
+                },
+                variable_facts={
+                    "txn.cash_amount_band": ["10k_25k", "25k_50k", "50k_plus"],
+                    "txn.multiple_cash_same_day": [True, False],
+                },
+                appeal_rate=0.08,
+                upheld_rate=0.90,
+            ),
         ],
     )
 
@@ -888,7 +1165,7 @@ def create_screening_seed_config() -> SeedConfig:
     """
     Create seed configuration for Sanctions/Screening.
 
-    Generates 350 precedents across 6 scenario categories.
+    Generates 525 precedents across 9 scenario categories.
     """
     return SeedConfig(
         category="screening",
@@ -996,6 +1273,62 @@ def create_screening_seed_config() -> SeedConfig:
                 appeal_rate=0.17,
                 upheld_rate=0.85,
             ),
+            # Alias / Partial Match - 70
+            SeedScenario(
+                code="SCR-ALIAS",
+                name="Alias or Partial Match",
+                reason_codes=["RC-SCR-FP-PARTIAL", "RC-SCR-FP-NAME"],
+                count=70,
+                outcome="clear",
+                base_facts={
+                    "match.secondary_identifiers": False,
+                    "match.type": "sanctions",
+                },
+                variable_facts={
+                    "match.name_match_type": ["alias", "partial", "fuzzy"],
+                    "match.score_band": ["low", "medium"],
+                    "match.list_source": ["ofac", "un", "eu"],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.84,
+            ),
+            # Adverse Media Screening - 55
+            SeedScenario(
+                code="SCR-ADVERSE",
+                name="Adverse Media Screening",
+                reason_codes=["RC-SCR-ADVERSE"],
+                count=55,
+                outcome="escalate",
+                deny_rate=0.18,
+                base_facts={
+                    "match.type": "adverse_media",
+                },
+                variable_facts={
+                    "match.score_band": ["medium", "high"],
+                    "match.name_match_type": ["fuzzy", "partial"],
+                    "entity.type": ["individual", "corporate"],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.83,
+            ),
+            # Cleared After Review - 50
+            SeedScenario(
+                code="SCR-CLEAR",
+                name="Cleared After Review",
+                reason_codes=["RC-SCR-CLEAR", "RC-SCR-DELIST-CLEAR"],
+                count=50,
+                outcome="approve",
+                base_facts={
+                    "match.secondary_identifiers": True,
+                },
+                variable_facts={
+                    "match.name_match_type": ["exact", "fuzzy"],
+                    "match.score_band": ["medium", "high"],
+                    "match.list_source": ["ofac", "un", "ca_sema", "eu"],
+                },
+                appeal_rate=0.15,
+                upheld_rate=0.88,
+            ),
         ],
     )
 
@@ -1004,7 +1337,7 @@ def create_monitoring_seed_config() -> SeedConfig:
     """
     Create seed configuration for Ongoing Monitoring.
 
-    Generates 300 precedents across 5 scenario categories.
+    Generates 450 precedents across 9 scenario categories.
     """
     return SeedConfig(
         category="monitoring",
@@ -1094,6 +1427,76 @@ def create_monitoring_seed_config() -> SeedConfig:
                 appeal_rate=0.20,
                 upheld_rate=0.85,
             ),
+            # New Jurisdiction Activity - 50
+            SeedScenario(
+                code="MON-NEW-JURIS",
+                name="New Jurisdiction Activity",
+                reason_codes=["RC-MON-NEW-JURIS", "RC-MON-NEW-PATTERN"],
+                count=50,
+                outcome="investigate",
+                deny_rate=0.06,
+                base_facts={
+                    "activity.new_jurisdiction": True,
+                },
+                variable_facts={
+                    "activity.new_pattern": [True, False],
+                    "activity.new_counterparty_type": ["foreign", "unknown", "shell"],
+                },
+                appeal_rate=0.16,
+                upheld_rate=0.86,
+            ),
+            # Review Downgrade - 40
+            SeedScenario(
+                code="MON-REVIEW-DOWN",
+                name="Periodic Review Downgrade",
+                reason_codes=["RC-MON-REVIEW-DOWNGRADE"],
+                count=40,
+                outcome="approve",
+                base_facts={
+                    "review.type": "annual",
+                },
+                variable_facts={
+                    "review.risk_change": ["downgraded"],
+                    "review.kyc_refresh_needed": [False, True],
+                },
+                appeal_rate=0.10,
+                upheld_rate=0.90,
+            ),
+            # KYC Refresh Needed - 40
+            SeedScenario(
+                code="MON-KYC-REFRESH",
+                name="KYC Refresh Needed",
+                reason_codes=["RC-MON-KYC-REFRESH", "RC-MON-REVIEW-UPGRADE"],
+                count=40,
+                outcome="investigate",
+                deny_rate=0.04,
+                base_facts={
+                    "review.kyc_refresh_needed": True,
+                },
+                variable_facts={
+                    "review.type": ["regulatory", "trigger_based"],
+                    "review.risk_change": ["upgraded", "unchanged"],
+                },
+                appeal_rate=0.15,
+                upheld_rate=0.86,
+            ),
+            # Exit Regulatory - 20
+            SeedScenario(
+                code="MON-EXIT-REG",
+                name="Exit Regulatory",
+                reason_codes=["RC-MON-EXIT-REG"],
+                count=20,
+                outcome="exit",
+                deny_rate=0.0,
+                base_facts={
+                    "exit.reason": "regulatory",
+                },
+                variable_facts={
+                    "exit.sar_related": [True, False],
+                },
+                appeal_rate=0.18,
+                upheld_rate=0.86,
+            ),
         ],
     )
 
@@ -1110,7 +1513,7 @@ def generate_all_banking_seeds(
         random_seed: Seed for random number generation
 
     Returns:
-        List of 2,000 JudgmentPayload objects
+        List of 3,000 JudgmentPayload objects
     """
     fp_registry = AMLFingerprintSchemaRegistry()
     rc_registry = AMLReasonCodeRegistry()
@@ -1120,11 +1523,11 @@ def generate_all_banking_seeds(
 
     # Generate for each category
     configs = [
-        create_txn_monitoring_seed_config(),    # 700
-        create_kyc_onboarding_seed_config(),    # 450
-        create_reporting_seed_config(),          # 200
-        create_screening_seed_config(),          # 350
-        create_monitoring_seed_config(),         # 300
+        create_txn_monitoring_seed_config(),    # 1,050
+        create_kyc_onboarding_seed_config(),    # 675
+        create_reporting_seed_config(),          # 300
+        create_screening_seed_config(),          # 525
+        create_monitoring_seed_config(),         # 450
     ]
 
     for config in configs:

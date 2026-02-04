@@ -363,7 +363,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for ev in evidence_used %}
+        {% for ev in risk_factors %}
         <tr>
           <td class="mono">{{ ev.field }}</td>
           <td>
@@ -377,7 +377,7 @@
           </td>
         </tr>
         {% endfor %}
-        {% if not evidence_used %}
+        {% if not risk_factors %}
         <tr>
           <td colspan="2" class="small">No risk factors recorded</td>
         </tr>

@@ -155,8 +155,62 @@ def build_report_context(decision: dict) -> dict:
     # Rules fired
     rules_fired = eval_trace.get("rules_fired", []) or []
 
-    # Evidence used
+    # Evidence used (raw evaluation trace)
     evidence_used = eval_trace.get("evidence_used", []) or []
+
+    # Risk factor assessment (derived from decision layers)
+    risk_factors = []
+    layer1_facts = layers.get("layer1_facts", {}) or {}
+    layer2_obligations = layers.get("layer2_obligations", {}) or {}
+    layer3_indicators = layers.get("layer3_indicators", {}) or {}
+    layer4_typologies = layers.get("layer4_typologies", {}) or {}
+    layer6_suspicion = layers.get("layer6_suspicion", {}) or {}
+
+    if layer1_facts.get("hard_stop_triggered"):
+        risk_factors.append({
+            "field": "Hard stop",
+            "value": layer1_facts.get("hard_stop_reason") or "Triggered",
+        })
+
+    for obligation in layer2_obligations.get("obligations", []) or []:
+        risk_factors.append({
+            "field": "Regulatory obligation",
+            "value": obligation,
+        })
+
+    for indicator in layer3_indicators.get("indicators", []) or []:
+        if isinstance(indicator, dict):
+            code = indicator.get("code") or indicator.get("name") or "Indicator"
+            status = "Corroborated" if indicator.get("corroborated") else "Uncorroborated"
+            evidence = indicator.get("evidence")
+            value = f"{status}" + (f" — {evidence}" if evidence else "")
+            risk_factors.append({
+                "field": code,
+                "value": value,
+            })
+        else:
+            risk_factors.append({
+                "field": "Indicator",
+                "value": str(indicator),
+            })
+
+    for typology in layer4_typologies.get("typologies", []) or []:
+        if isinstance(typology, dict):
+            name = typology.get("name") or "Typology"
+            maturity = typology.get("maturity")
+            value = f"{name}" + (f" ({maturity})" if maturity else "")
+            risk_factors.append({
+                "field": "Typology",
+                "value": value,
+            })
+
+    elements = layer6_suspicion.get("elements", {}) or {}
+    for element, active in elements.items():
+        if active:
+            risk_factors.append({
+                "field": "Suspicion element",
+                "value": element,
+            })
 
     # Safe string extraction
     decision_id = meta.get("decision_id", "") or ""
@@ -210,6 +264,7 @@ def build_report_context(decision: dict) -> dict:
         # Evaluation trace
         "rules_fired": rules_fired,
         "evidence_used": evidence_used,
+        "risk_factors": risk_factors,
         "decision_path_trace": eval_trace.get("decision_path", "") or "",
 
         # Rationale

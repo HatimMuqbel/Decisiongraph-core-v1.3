@@ -16,11 +16,11 @@ Design Principles:
 - Schema versioning: Compatible schemas can match across versions
 
 Schemas Defined:
-- decisiongraph:aml:txn:v1 - Transaction Monitoring (700 precedents)
-- decisiongraph:aml:kyc:v1 - KYC Onboarding (450 precedents)
-- decisiongraph:aml:report:v1 - Reporting (200 precedents)
-- decisiongraph:aml:screening:v1 - Sanctions/Screening (350 precedents)
-- decisiongraph:aml:monitoring:v1 - Ongoing Monitoring (300 precedents)
+- decisiongraph:aml:txn:v1 - Transaction Monitoring (1,050 precedents)
+- decisiongraph:aml:kyc:v1 - KYC Onboarding (675 precedents)
+- decisiongraph:aml:report:v1 - Reporting (300 precedents)
+- decisiongraph:aml:screening:v1 - Sanctions/Screening (525 precedents)
+- decisiongraph:aml:monitoring:v1 - Ongoing Monitoring (450 precedents)
 
 Example:
     >>> registry = AMLFingerprintSchemaRegistry()
