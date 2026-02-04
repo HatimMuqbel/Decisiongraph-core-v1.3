@@ -273,6 +273,8 @@ class TemplateLoader:
                         reason_codes,
                         raw_outcome,
                         domain=template.get("domain"),
+                        case_facts=facts,
+                        jurisdiction="CA",
                     )
                     report_pack["precedent_analysis"] = precedent_analysis
                 except Exception as e:

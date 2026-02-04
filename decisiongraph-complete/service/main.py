@@ -61,6 +61,7 @@ from decisiongraph.chain import Chain
 from decisiongraph.cell import NULL_HASH
 from decisiongraph.precedent_registry import PrecedentRegistry
 from decisiongraph.aml_seed_generator import generate_all_banking_seeds
+from decisiongraph.aml_fingerprint import AMLFingerprintSchemaRegistry, apply_aml_banding
 from decisiongraph.judgment import create_judgment_cell
 
 # Import routers
@@ -78,6 +79,10 @@ DG_DOMAIN = os.getenv("DG_DOMAIN", "banking_aml")
 DG_LOG_LEVEL = os.getenv("DG_LOG_LEVEL", "INFO")
 DG_DOCS_ENABLED = os.getenv("DG_DOCS_ENABLED", "true").lower() == "true"
 DG_MAX_REQUEST_SIZE = int(os.getenv("DG_MAX_REQUEST_SIZE", "1048576"))  # 1MB default
+DG_PRECEDENT_CODE_WEIGHT = float(os.getenv("DG_PRECEDENT_CODE_WEIGHT", "0.6"))
+DG_PRECEDENT_FINGERPRINT_WEIGHT = float(os.getenv("DG_PRECEDENT_FINGERPRINT_WEIGHT", "0.4"))
+DG_PRECEDENT_MIN_SCORE = float(os.getenv("DG_PRECEDENT_MIN_SCORE", "0.6"))
+DG_PRECEDENT_SALT = os.getenv("DG_PRECEDENT_SALT", "decisiongraph-banking-seed-v1")
 
 # Get git commit: prefer env var (set at build time), fallback to git command
 DG_ENGINE_COMMIT = os.getenv("DG_ENGINE_COMMIT")
@@ -106,6 +111,7 @@ PRECEDENT_CHAIN: Optional[Chain] = None
 PRECEDENT_REGISTRY: Optional[PrecedentRegistry] = None
 PRECEDENTS_LOADED = False
 PRECEDENT_COUNT = 0
+FINGERPRINT_REGISTRY = AMLFingerprintSchemaRegistry()
 
 def load_precedent_seeds():
     """Load the 3,000 banking seed precedents into a Chain."""
@@ -622,6 +628,25 @@ async def decide(request: Request):
         decision_pack["meta"]["engine_commit"] = DG_ENGINE_COMMIT
         # Note: policy_hash and decision_id are computed by decision_pack.py with full SHA-256
 
+        # Build fingerprint facts for precedent similarity
+        fingerprint_facts = {}
+        if isinstance(body.get("facts"), dict):
+            fingerprint_facts.update(body.get("facts", {}))
+        fingerprint_facts.update(facts)
+        fingerprint_facts.setdefault("txn.type", instrument_type)
+        fingerprint_facts.setdefault(
+            "screening.sanctions_match",
+            True if facts.get("sanctions_result") == "MATCH" else False,
+        )
+        fingerprint_facts.setdefault(
+            "screening.adverse_media",
+            bool(facts.get("adverse_media_mltf")) or bool(facts.get("adverse_media")),
+        )
+        fingerprint_facts.setdefault("customer.pep", any("PEP" in str(o) for o in obligations))
+        fingerprint_facts.setdefault("customer.pep_type", "foreign" if any("FOREIGN" in str(o) for o in obligations) else "domestic")
+        fingerprint_facts["gate1_allowed"] = esc_result.decision == EscalationDecision.PERMITTED
+        fingerprint_facts["gate2_str_required"] = final_decision.get("str_required", False)
+
         # Query similar precedents and add to decision pack
         reason_codes = extract_reason_codes(facts, indicators, obligations)
         proposed_outcome = decision_pack["decision"]["verdict"].lower()
@@ -639,6 +664,8 @@ async def decide(request: Request):
             reason_codes=reason_codes,
             proposed_outcome=proposed_outcome,
             domain=decision_pack.get("meta", {}).get("domain"),
+            case_facts=fingerprint_facts,
+            jurisdiction=DG_JURISDICTION,
         )
         decision_pack["precedent_analysis"] = precedent_analysis
 
@@ -896,6 +923,215 @@ def normalize_outcome(raw: str) -> str:
     return "escalate"
 
 
+def map_aml_outcome_label(normalized: str) -> str:
+    """Map normalized outcome to AML report label."""
+    if normalized == "pay":
+        return "NO_REPORT"
+    if normalized == "deny":
+        return "FILE_STR"
+    if normalized == "escalate":
+        return "EDD_REQUIRED"
+    return normalized.upper()
+
+
+AML_SIMILARITY_WEIGHTS = {
+    "rules_overlap": 0.25,
+    "gate_match": 0.20,
+    "typology_overlap": 0.15,
+    "amount_bucket": 0.10,
+    "channel_method": 0.07,
+    "corridor_match": 0.08,
+    "pep_match": 0.06,
+    "customer_profile": 0.05,
+    "geo_risk": 0.04,
+}
+
+
+def _code_weight(code: str) -> float:
+    """Weight reason codes by AML materiality for similarity scoring."""
+    c = code.upper()
+    if "SANCTION" in c or c.startswith("RC-SCR-"):
+        return 1.0
+    if c.startswith("RC-RPT-") or "STR" in c or "TPR" in c or "LCTR" in c:
+        return 0.95
+    if "STRUCT" in c:
+        return 0.9
+    if "PEP" in c:
+        return 0.85
+    if "LAYER" in c or "RAPID" in c or "ROUNDTRIP" in c:
+        return 0.8
+    if "CRYPTO" in c:
+        return 0.75
+    if "FATF" in c or "CORRESP" in c:
+        return 0.75
+    if "SAR" in c:
+        return 0.7
+    if "UNUSUAL" in c or "DEVIATION" in c:
+        return 0.6
+    return 0.5
+
+
+def _decision_level_weight(level: Optional[str]) -> float:
+    """Weight precedents by decision authority level."""
+    if not level:
+        return 1.0
+    level = level.lower()
+    return {
+        "adjuster": 0.9,
+        "manager": 1.0,
+        "tribunal": 1.1,
+        "court": 1.15,
+    }.get(level, 1.0)
+
+
+def _recency_weight(decided_at: Optional[str]) -> float:
+    """Weight precedents by recency (newer = higher weight)."""
+    if not decided_at:
+        return 1.0
+    try:
+        decided_dt = datetime.strptime(decided_at, "%Y-%m-%dT%H:%M:%SZ")
+        age_days = max(0, (datetime.utcnow() - decided_dt).days)
+        # 0.5 to 1.0 over ~1 year half-life
+        return 0.5 + 0.5 * (2.71828 ** (-age_days / 365))
+    except Exception:
+        return 1.0
+
+
+def _jurisdiction_weight(case_jurisdiction: Optional[str], precedent_jurisdiction: Optional[str]) -> float:
+    """Down-weight cross-jurisdiction matches."""
+    if not case_jurisdiction or not precedent_jurisdiction:
+        return 1.0
+    if case_jurisdiction == precedent_jurisdiction:
+        return 1.0
+    case_country = case_jurisdiction.split("-")[0]
+    prec_country = precedent_jurisdiction.split("-")[0]
+    return 0.9 if case_country == prec_country else 0.85
+
+
+def _select_schema_id_for_codes(reason_codes: list[str]) -> str:
+    """Select AML fingerprint schema based on reason code families."""
+    prefixes = {code.split("-")[1] for code in reason_codes if code.startswith("RC-") and "-" in code}
+    if "RPT" in prefixes:
+        return "decisiongraph:aml:report:v1"
+    if "SCR" in prefixes:
+        return "decisiongraph:aml:screening:v1"
+    if "KYC" in prefixes:
+        return "decisiongraph:aml:kyc:v1"
+    if "MON" in prefixes:
+        return "decisiongraph:aml:monitoring:v1"
+    return "decisiongraph:aml:txn:v1"
+
+
+def _compute_case_banded_facts(facts: dict, schema_id: str) -> dict:
+    """Compute banded facts for fingerprint similarity."""
+    schema = FINGERPRINT_REGISTRY.get_schema_by_id(schema_id)
+    return apply_aml_banding(facts, schema)
+
+
+def _compute_fingerprint_similarity(case_banded: dict, payload) -> float:
+    """Compute similarity between banded case facts and precedent anchor facts."""
+    if not payload.anchor_facts:
+        return 0.0
+    precedent_facts = {af.field_id: af.value for af in payload.anchor_facts}
+    if not case_banded:
+        return 0.0
+
+    matches = 0
+    total = 0
+    for field_id, value in case_banded.items():
+        if value in [None, "unknown"]:
+            continue
+        total += 1
+        if str(precedent_facts.get(field_id)) == str(value):
+            matches += 1
+
+    return matches / total if total > 0 else 0.0
+
+
+def _anchor_value(payload, field_id: str) -> Optional[str]:
+    for anchor in payload.anchor_facts:
+        if anchor.field_id == field_id:
+            return str(anchor.value)
+    return None
+
+
+def _truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).lower() in {"true", "yes", "1"}
+
+
+def _typology_tokens_from_codes(codes: list[str]) -> set[str]:
+    tokens = set()
+    for code in codes:
+        c = code.upper()
+        if "STRUCT" in c:
+            tokens.add("structuring")
+        if "LAYER" in c or "RAPID" in c or "ROUNDTRIP" in c:
+            tokens.add("layering")
+        if "CRYPTO" in c:
+            tokens.add("crypto")
+        if "FATF" in c or "CORRESP" in c:
+            tokens.add("geo_risk")
+        if "PEP" in c:
+            tokens.add("pep")
+        if "SANCTION" in c or c.startswith("RC-SCR-"):
+            tokens.add("sanctions")
+        if "UNUSUAL" in c or "DEVIATION" in c:
+            tokens.add("unusual")
+        if "ADVERSE" in c:
+            tokens.add("adverse_media")
+    return tokens
+
+
+def _bucket_similarity(case_bucket: Optional[str], precedent_bucket: Optional[str]) -> float:
+    if not case_bucket or not precedent_bucket:
+        return 0.0
+    if case_bucket == precedent_bucket:
+        return 1.0
+
+    ordered_bands = [
+        "under_3k",
+        "3k_10k",
+        "10k_25k",
+        "25k_50k",
+        "25k_100k",
+        "50k_plus",
+        "100k_500k",
+        "500k_1m",
+        "over_1m",
+    ]
+    if case_bucket in ordered_bands and precedent_bucket in ordered_bands:
+        return 0.5 if abs(ordered_bands.index(case_bucket) - ordered_bands.index(precedent_bucket)) == 1 else 0.0
+
+    return 0.0
+
+
+def _channel_group(value: Optional[str]) -> str:
+    if not value:
+        return "unknown"
+    value = value.lower()
+    if "wire" in value:
+        return "wire"
+    if "cash" in value:
+        return "cash"
+    if "crypto" in value:
+        return "crypto"
+    if "ach" in value:
+        return "ach"
+    if "check" in value or "cheque" in value:
+        return "check"
+    return value
+
+
+def _channel_similarity(case_channel: Optional[str], precedent_channel: Optional[str]) -> float:
+    if not case_channel or not precedent_channel:
+        return 0.0
+    if case_channel == precedent_channel:
+        return 1.0
+    return 0.5 if _channel_group(case_channel) == _channel_group(precedent_channel) else 0.0
+
+
 # =============================================================================
 # Precedent Domain Resolution
 # =============================================================================
@@ -977,15 +1213,24 @@ def stratified_precedent_sample(
     neutral = []
 
     # Classify all matches
-    for payload, overlap in matches:
+    for match in matches:
+        if len(match) >= 4:
+            payload, overlap, score, component_scores = match[0], match[1], match[2], match[3]
+        elif len(match) >= 3:
+            payload, overlap, score = match[0], match[1], match[2]
+            component_scores = {}
+        else:
+            payload, overlap = match
+            score = overlap
+            component_scores = {}
         classification = classify_precedent_match(payload.outcome_code, proposed_outcome)
 
         if classification == "supporting" and len(supporting) < max_supporting:
-            supporting.append((payload, overlap, classification))
+            supporting.append((payload, overlap, classification, score, component_scores))
         elif classification == "contrary" and len(contrary) < max_contrary:
-            contrary.append((payload, overlap, classification))
+            contrary.append((payload, overlap, classification, score, component_scores))
         elif classification == "neutral" and len(neutral) < max_neutral:
-            neutral.append((payload, overlap, classification))
+            neutral.append((payload, overlap, classification, score, component_scores))
 
         # Stop if we have enough in all buckets
         if (len(supporting) >= max_supporting and
@@ -995,7 +1240,7 @@ def stratified_precedent_sample(
 
     # Combine and sort by overlap (highest first) for consistent ordering
     sampled = supporting + contrary + neutral
-    sampled.sort(key=lambda x: x[1], reverse=True)
+    sampled.sort(key=lambda x: x[3], reverse=True)
 
     # Trim to max_total if needed
     sampled = sampled[:max_total]
@@ -1014,6 +1259,8 @@ def query_similar_precedents(
     proposed_outcome: str,
     namespace_prefix: str = "banking.aml",
     domain: Optional[str] = None,
+    case_facts: Optional[dict] = None,
+    jurisdiction: Optional[str] = None,
 ) -> dict:
     """
     Query precedent registry for similar cases and return analysis.
@@ -1049,6 +1296,20 @@ def query_similar_precedents(
         # Normalize proposed outcome first
         proposed_normalized = normalize_outcome(proposed_outcome)
 
+        # Select schema for fingerprint comparison
+        schema_id = _select_schema_id_for_codes(reason_codes)
+        case_banded = _compute_case_banded_facts(case_facts or {}, schema_id)
+        case_reason_codes = list(set(reason_codes))
+        case_typologies = _typology_tokens_from_codes(case_reason_codes)
+        case_channel = (case_facts or {}).get("txn.type")
+        case_amount_band = case_banded.get("txn.amount_band") or case_banded.get("txn.cash_amount_band")
+        case_cross_border = case_banded.get("txn.cross_border")
+        case_destination_risk = case_banded.get("txn.destination_country_risk")
+        case_pep = (case_facts or {}).get("customer.pep")
+        case_customer_type = (case_facts or {}).get("customer.type")
+        case_relationship = (case_facts or {}).get("customer.relationship_length")
+        case_sanctions_match = _truthy((case_facts or {}).get("screening.sanctions_match"))
+
         # Get statistics by reason codes
         stats = PRECEDENT_REGISTRY.get_statistics_by_codes(
             exclusion_codes=reason_codes,
@@ -1064,9 +1325,114 @@ def query_similar_precedents(
             min_overlap=1,
         )
 
+        # Score matches with layered similarity
+        scored_matches = []
+        case_code_weights = sum(_code_weight(code) for code in case_reason_codes) or 1.0
+        for payload, overlap in matches:
+            # Stage A hard filters
+            if payload.fingerprint_schema_id != schema_id:
+                continue
+            if jurisdiction and payload.jurisdiction_code and not _jurisdiction_weight(jurisdiction, payload.jurisdiction_code) == 1.0:
+                continue
+
+            precedent_customer_type = _anchor_value(payload, "customer.type") or _anchor_value(payload, "entity.type")
+            if case_customer_type and precedent_customer_type and str(case_customer_type) != str(precedent_customer_type):
+                continue
+
+            precedent_sanctions = _truthy(_anchor_value(payload, "screening.sanctions_match"))
+            if case_sanctions_match and not precedent_sanctions:
+                continue
+
+            overlap_codes = set(case_reason_codes).intersection(payload.reason_codes)
+            weighted_overlap = sum(_code_weight(code) for code in overlap_codes)
+            rules_overlap = weighted_overlap / case_code_weights
+
+            outcome_normalized = normalize_outcome(payload.outcome_code)
+            gate1_allowed_prec = outcome_normalized != "pay"
+            gate2_str_prec = outcome_normalized in {"escalate", "deny"}
+            gate1_allowed_case = bool(case_facts.get("gate1_allowed")) if case_facts else False
+            gate2_str_case = bool(case_facts.get("gate2_str_required")) if case_facts else False
+            gate_matches = int(gate1_allowed_case == gate1_allowed_prec) + int(gate2_str_case == gate2_str_prec)
+            gate_match_score = 1.0 if gate_matches == 2 else 0.5 if gate_matches == 1 else 0.0
+
+            precedent_typologies = _typology_tokens_from_codes(payload.reason_codes)
+            typology_overlap = (
+                len(case_typologies.intersection(precedent_typologies)) / len(case_typologies.union(precedent_typologies))
+                if case_typologies or precedent_typologies
+                else 0.0
+            )
+
+            precedent_amount_band = _anchor_value(payload, "txn.amount_band") or _anchor_value(payload, "txn.cash_amount_band")
+            amount_bucket_score = _bucket_similarity(case_amount_band, precedent_amount_band)
+
+            precedent_channel = _anchor_value(payload, "txn.type")
+            channel_score = _channel_similarity(case_channel, precedent_channel)
+
+            precedent_cross_border = _anchor_value(payload, "txn.cross_border")
+            corridor_score = 0.0
+            if case_cross_border is not None and precedent_cross_border is not None:
+                corridor_score = 1.0 if str(case_cross_border) == str(precedent_cross_border) else 0.0
+            elif case_destination_risk is not None:
+                precedent_destination_risk = _anchor_value(payload, "txn.destination_country_risk")
+                if precedent_destination_risk is not None:
+                    corridor_score = 1.0 if str(case_destination_risk) == str(precedent_destination_risk) else 0.0
+
+            precedent_pep = _anchor_value(payload, "customer.pep")
+            pep_score = 0.0
+            if case_pep is not None and precedent_pep is not None:
+                pep_score = 1.0 if str(case_pep).lower() == str(precedent_pep).lower() else 0.0
+
+            precedent_relationship = _anchor_value(payload, "customer.relationship_length")
+            customer_profile_score = 0.0
+            matches = 0
+            if case_customer_type and precedent_customer_type and str(case_customer_type) == str(precedent_customer_type):
+                matches += 1
+            if case_relationship and precedent_relationship and str(case_relationship) == str(precedent_relationship):
+                matches += 1
+            customer_profile_score = 1.0 if matches == 2 else 0.5 if matches == 1 else 0.0
+
+            precedent_geo_risk = _anchor_value(payload, "txn.destination_country_risk")
+            case_geo_risk = case_destination_risk
+            geo_risk_score = 0.0
+            if case_geo_risk is not None and precedent_geo_risk is not None:
+                geo_risk_score = 1.0 if str(case_geo_risk) == str(precedent_geo_risk) else 0.0
+
+            component_scores = {
+                "rules_overlap": rules_overlap,
+                "gate_match": gate_match_score,
+                "typology_overlap": typology_overlap,
+                "amount_bucket": amount_bucket_score,
+                "channel_method": channel_score,
+                "corridor_match": corridor_score,
+                "pep_match": pep_score,
+                "customer_profile": customer_profile_score,
+                "geo_risk": geo_risk_score,
+            }
+
+            combined = sum(
+                AML_SIMILARITY_WEIGHTS[key] * component_scores.get(key, 0.0)
+                for key in AML_SIMILARITY_WEIGHTS
+            )
+
+            decision_weight = _decision_level_weight(payload.decision_level)
+            recency_weight = _recency_weight(payload.decided_at)
+            combined *= decision_weight * recency_weight
+
+            if combined >= DG_PRECEDENT_MIN_SCORE:
+                scored_matches.append(
+                    (
+                        payload,
+                        overlap,
+                        combined,
+                        component_scores,
+                        decision_weight,
+                        recency_weight,
+                    )
+                )
+
         # Get stratified sample for balanced analysis
         sampled, counts = stratified_precedent_sample(
-            matches=matches,
+            matches=scored_matches,
             proposed_outcome=proposed_normalized,
             max_total=50,
             max_supporting=35,
@@ -1076,7 +1442,7 @@ def query_similar_precedents(
 
         # Track caution precedents (overturned cases)
         caution_precedents = []
-        for payload, overlap, classification in sampled:
+        for payload, overlap, classification, score, _component_scores in sampled:
             if payload.appealed and payload.appeal_outcome == "overturned":
                 caution_precedents.append({
                     "precedent_id": payload.precedent_id[:8] + "...",
@@ -1086,6 +1452,50 @@ def query_similar_precedents(
                     "appeal_outcome": payload.appeal_outcome,
                     "reason_codes": payload.reason_codes[:3],
                 })
+
+        # Build sample cases for report display
+        sample_cases = []
+        exact_match_count = 0
+        reason_code_count = max(len(reason_codes), 1)
+        for payload, overlap, classification, score, component_scores in sampled:
+            overlap_codes = set(case_reason_codes).intersection(payload.reason_codes)
+            weighted_overlap = sum(_code_weight(code) for code in overlap_codes)
+            code_similarity = weighted_overlap / (sum(_code_weight(code) for code in case_reason_codes) or 1.0)
+            fingerprint_similarity = _compute_fingerprint_similarity(case_banded, payload)
+            exact_match = code_similarity >= 0.9 and fingerprint_similarity >= 0.9
+            if exact_match:
+                exact_match_count += 1
+
+            normalized_outcome = normalize_outcome(payload.outcome_code)
+            similarity_components = {
+                "rules_overlap": int(round(component_scores.get("rules_overlap", 0) * 100)),
+                "gate_match": int(round(component_scores.get("gate_match", 0) * 100)),
+                "typology_overlap": int(round(component_scores.get("typology_overlap", 0) * 100)),
+                "amount_bucket": int(round(component_scores.get("amount_bucket", 0) * 100)),
+                "channel_method": int(round(component_scores.get("channel_method", 0) * 100)),
+                "corridor_match": int(round(component_scores.get("corridor_match", 0) * 100)),
+                "pep_match": int(round(component_scores.get("pep_match", 0) * 100)),
+                "customer_profile": int(round(component_scores.get("customer_profile", 0) * 100)),
+                "geo_risk": int(round(component_scores.get("geo_risk", 0) * 100)),
+            }
+            sample_cases.append({
+                "precedent_id": payload.precedent_id[:8] + "...",
+                "decision_level": payload.decision_level,
+                "decided_at": payload.decided_at,
+                "classification": classification,
+                "overlap": overlap,
+                "similarity_pct": int(round(score * 100)),
+                "exact_match": exact_match,
+                "outcome": payload.outcome_code,
+                "outcome_normalized": normalized_outcome,
+                "outcome_label": map_aml_outcome_label(normalized_outcome),
+                "reason_codes": payload.reason_codes[:4],
+                "appealed": payload.appealed,
+                "appeal_outcome": payload.appeal_outcome,
+                "code_similarity_pct": int(round(code_similarity * 100)),
+                "fingerprint_similarity_pct": int(round(fingerprint_similarity * 100)),
+                "similarity_components": similarity_components,
+            })
 
         # Calculate confidence score
         # Only supporting and contrary factor into consistency (neutral is excluded)
@@ -1101,7 +1511,7 @@ def query_similar_precedents(
 
         return {
             "available": True,
-            "match_count": stats.total_matched,
+            "match_count": len(scored_matches),
             "sample_size": len(sampled),
             "outcome_distribution": stats.by_outcome,
             "appeal_statistics": {
@@ -1114,9 +1524,13 @@ def query_similar_precedents(
             "supporting_precedents": counts["supporting"],
             "contrary_precedents": counts["contrary"],
             "neutral_precedents": counts["neutral"],
+            "exact_match_count": exact_match_count,
             "caution_precedents": caution_precedents[:5],
+            "sample_cases": sample_cases[:10],
             "reason_codes_searched": reason_codes,
             "proposed_outcome_normalized": proposed_normalized,
+            "proposed_outcome_label": map_aml_outcome_label(proposed_normalized),
+            "min_similarity_pct": int(round(DG_PRECEDENT_MIN_SCORE * 100)),
         }
 
     except Exception as e:

@@ -307,14 +307,42 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 
     sample_size = precedent_analysis.get('sample_size', 50)
     neutral = precedent_analysis.get('neutral_precedents', 0)
+    min_similarity_pct = precedent_analysis.get("min_similarity_pct", 50)
+
+    sample_cases = precedent_analysis.get("sample_cases", []) or []
+    exact_match_count = precedent_analysis.get("exact_match_count", 0)
+
+    matches_md = ""
+    if sample_cases:
+        matches_md = "\n### Precedent Evidence (Top Matches)\n\n| Precedent | Outcome | Similarity | Decision Level | Reason Codes | Similarity Drivers |\n|---|---|---|---|---|---|\n"
+        for match in sample_cases:
+            outcome_label = match.get("outcome_label") or match.get("outcome", "N/A").upper()
+            similarity = f"{match.get('similarity_pct', 0)}%"
+            if match.get("exact_match"):
+                similarity += " (EXACT)"
+            reason_codes = ", ".join(match.get("reason_codes", []) or [])
+            components = match.get("similarity_components", {}) or {}
+            drivers = (
+                f"Rules {components.get('rules_overlap', 0)}% (25%), "
+                f"Gates {components.get('gate_match', 0)}% (20%), "
+                f"Typologies {components.get('typology_overlap', 0)}% (15%), "
+                f"Amount {components.get('amount_bucket', 0)}% (10%), "
+                f"Channel {components.get('channel_method', 0)}% (7%), "
+                f"Corridor {components.get('corridor_match', 0)}% (8%), "
+                f"PEP {components.get('pep_match', 0)}% (6%), "
+                f"Customer {components.get('customer_profile', 0)}% (5%), "
+                f"Geo {components.get('geo_risk', 0)}% (4%)"
+            )
+            matches_md += f"| {match.get('precedent_id', 'N/A')} | {outcome_label} | {similarity} | {match.get('decision_level', 'N/A')} | {reason_codes} | {drivers} |\n"
 
     return f"""## Precedent Analysis
 
 | Metric | Value |
 |--------|-------|
 | Similar Cases Found | {precedent_analysis.get('match_count', 0)} |
-| Sample Size Analyzed | {sample_size} |
+| Sample Size Analyzed | {sample_size} (≥{min_similarity_pct}% similarity — rules+gates weighted) |
 | Precedent Confidence | {confidence_pct}% |
+| Exact Matches | {exact_match_count} |
 | Supporting Precedents | {precedent_analysis.get('supporting_precedents', 0)} |
 | Contrary Precedents | {precedent_analysis.get('contrary_precedents', 0)} |
 | Neutral Precedents | {neutral} |
@@ -336,6 +364,7 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 | Overturned | {appeal.get('overturned', 0)} |
 | Upheld Rate | {upheld_rate_pct}% |
 {caution_section}
+{matches_md}
 ---
 
 """

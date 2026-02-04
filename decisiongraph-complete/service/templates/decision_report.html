@@ -55,6 +55,9 @@
     .regulatory{ background:#fefce8; border:1px solid #fde047; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
     .foot{ margin-top:24px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; text-align:center; }
     .break{ break-inside:avoid; page-break-inside:avoid; }
+    .bar{ height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
+    .bar > span{ display:block; height:100%; background:#1f2937; }
+    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; background:#ecfdf5; color:#065f46; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -270,9 +273,11 @@
         <div class="label">Comparable Cases Evaluated</div>
         <div class="value">{{ precedent_analysis.match_count }}</div>
         <div class="label">Representative Sample</div>
-        <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (similarity ≥70%)</div>
+        <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (≥{{ precedent_analysis.min_similarity_pct | default(50) }}% similarity — rules+gates weighted)</div>
         <div class="label">Precedent Alignment</div>
         <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
+        <div class="label">Exact Matches</div>
+        <div class="value">{{ precedent_analysis.exact_match_count | default(0) }}</div>
       </div>
       {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
       {% if total_decisive > 0 %}
@@ -304,20 +309,72 @@
     </div>
 
     <h3>Historical Outcome Distribution</h3>
+    {% set outcome_total = precedent_analysis.outcome_distribution.values()|sum %}
     <table class="break">
       <thead>
         <tr>
           <th>Outcome</th>
           <th>Count</th>
+          <th style="width:220px;">Distribution</th>
         </tr>
       </thead>
       <tbody>
         {% for outcome, count in precedent_analysis.outcome_distribution.items() %}
+        {% set pct = (count / outcome_total * 100) if outcome_total else 0 %}
         <tr>
           <td>{% if outcome|lower == 'pay' %}NO_REPORT{% elif outcome|lower == 'deny' %}FILE_STR{% elif outcome|lower == 'escalate' %}EDD_REQUIRED{% else %}{{ outcome|upper }}{% endif %}</td>
           <td class="mono">{{ count }}</td>
+          <td>
+            <div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div>
+          </td>
         </tr>
         {% endfor %}
+      </tbody>
+    </table>
+
+    <h3>Precedent Evidence (Top Matches)</h3>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Precedent</th>
+          <th>Outcome</th>
+          <th>Similarity</th>
+          <th>Decision Level</th>
+          <th>Reason Codes</th>
+          <th>Similarity Drivers</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in precedent_analysis.sample_cases %}
+        <tr>
+          <td class="mono">{{ match.precedent_id }}</td>
+          <td>{{ match.outcome_label }}</td>
+          <td>
+            {{ match.similarity_pct }}%
+            {% if match.exact_match %}
+              <span class="badge">EXACT</span>
+            {% endif %}
+          </td>
+          <td>{{ match.decision_level | default('N/A') }}</td>
+          <td class="mono">{{ match.reason_codes | join(', ') }}</td>
+          <td class="small">
+            Rules: {{ match.similarity_components.rules_overlap }}% (25%)<br>
+            Gates: {{ match.similarity_components.gate_match }}% (20%)<br>
+            Typologies: {{ match.similarity_components.typology_overlap }}% (15%)<br>
+            Amount: {{ match.similarity_components.amount_bucket }}% (10%)<br>
+            Channel: {{ match.similarity_components.channel_method }}% (7%)<br>
+            Corridor: {{ match.similarity_components.corridor_match }}% (8%)<br>
+            PEP: {{ match.similarity_components.pep_match }}% (6%)<br>
+            Customer: {{ match.similarity_components.customer_profile }}% (5%)<br>
+            Geo Risk: {{ match.similarity_components.geo_risk }}% (4%)
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not precedent_analysis.sample_cases %}
+        <tr>
+          <td colspan="6" class="small">No precedent matches available</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
 
