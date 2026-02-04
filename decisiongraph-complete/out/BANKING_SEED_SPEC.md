@@ -2,7 +2,7 @@
 
 ## Overview
 
-Generate 2,000 seed precedents for DecisionGraph Banking/AML — full enterprise coverage for:
+Generate 3,000 seed precedents for DecisionGraph Banking/AML — full enterprise coverage for:
 - Transaction monitoring
 - KYC onboarding
 - Reporting decisions
@@ -15,15 +15,12 @@ Generate 2,000 seed precedents for DecisionGraph Banking/AML — full enterprise
 
 | Category | Precedents |
 |----------|------------|
-| Transaction Monitoring | 700 |
-
-
-| KYC Onboarding | 450 |
-| Reporting | 200 |
-| San
-
-oing Monitoring | 300 |
-| **Total** | **2,000** |
+| Transaction Monitoring | 1,050 |
+| KYC Onboarding | 675 |
+| Reporting | 300 |
+| Sanctions/Screening | 525 |
+| Ongoing Monitoring | 450 |
+| **Total** | **3,000** |
 
 ---
 
@@ -32,8 +29,8 @@ oing Monitoring | 300 |
 | Product | Precedents |
 |---------|------------|
 | ClaimPilot (Insurance) | 2,150 |
-| DecisionGraph (Banking) | 2,000 |
-| **Grand Total** | **4,150** |
+| DecisionGraph (Banking) | 3,000 |
+| **Grand Total** | **5,150** |
 
 ---
 
@@ -54,6 +51,47 @@ oing Monitoring | 300 |
 | Compliance Officer | 10% |
 | MLRO/BSA Officer | 3% |
 | Regulator Review | 2% |
+
+---
+
+## Expansion Addendum (v3,000)
+
+The tables below reflect the original v2,000 baseline. The following scenarios were added to reach 3,000 total precedents while preserving AML audit balance and decision weighting.
+
+### Additional Scenarios (Delta +1,000)
+
+**Transaction Monitoring (+350)**
+- TXN-CORRESP — Correspondent Banking Risk (80)
+- TXN-ROUNDTRIP — Round‑Trip Transactions (60)
+- TXN-CRYPTO-MIX — Crypto Mixer Indicators (60)
+- TXN-SAR-HIST — Prior SAR History (50)
+- TXN-PRIOR-CLOSURE — Prior Account Closure (50)
+- TXN-PEP-RCA — PEP Related Party (50)
+
+**KYC Onboarding (+225)**
+- KYC-ID-EXPIRED — Expired/Missing ID (60)
+- KYC-SOW-PENDING — Source of Wealth Pending (50)
+- KYC-APPETITE — Outside Risk Appetite (40)
+- KYC-PEP-DECLINE — PEP Declined (35)
+- KYC-SAR-HIST — Prior SAR History (40)
+
+**Reporting (+100)**
+- RPT-STR-LAYER — STR Layering (50)
+- RPT-STR-3RD — STR Third‑Party (30)
+- RPT-APPROVE — Approve with Reporting (20)
+
+**Sanctions/Screening (+175)**
+- SCR-ALIAS — Alias/Partial Match (70)
+- SCR-ADVERSE — Adverse Media Screening (55)
+- SCR-CLEAR — Cleared After Review (50)
+
+**Ongoing Monitoring (+150)**
+- MON-NEW-JURIS — New Jurisdiction Activity (50)
+- MON-REVIEW-DOWN — Review Downgrade (40)
+- MON-KYC-REFRESH — KYC Refresh Needed (40)
+- MON-EXIT-REG — Exit Regulatory (20)
+
+These additions expand coverage for correspondent banking, round‑trip flows, crypto mixing, prior SAR history, enhanced KYC deficiencies, AML reporting nuances, alias screening, and monitoring escalation triggers.
 
 ---
 
