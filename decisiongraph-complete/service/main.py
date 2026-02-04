@@ -61,7 +61,11 @@ from decisiongraph.chain import Chain
 from decisiongraph.cell import NULL_HASH
 from decisiongraph.precedent_registry import PrecedentRegistry
 from decisiongraph.aml_seed_generator import generate_all_banking_seeds
-from decisiongraph.aml_fingerprint import AMLFingerprintSchemaRegistry, apply_aml_banding
+from decisiongraph.aml_fingerprint import (
+    AMLFingerprintSchemaRegistry,
+    apply_aml_banding,
+    create_txn_amount_banding,
+)
 from decisiongraph.judgment import create_judgment_cell
 
 # Import routers
@@ -647,6 +651,78 @@ async def decide(request: Request):
         fingerprint_facts["gate1_allowed"] = esc_result.decision == EscalationDecision.PERMITTED
         fingerprint_facts["gate2_str_required"] = final_decision.get("str_required", False)
 
+        # Enrich fingerprint facts from input payload when available
+        primary_txn = None
+        if isinstance(body.get("transaction"), dict):
+            primary_txn = body.get("transaction")
+        elif isinstance(body.get("events"), list):
+            for event in body.get("events", []):
+                if isinstance(event, dict) and event.get("event_type") == "transaction":
+                    primary_txn = event
+                    break
+
+        if primary_txn:
+            txn_method = (
+                primary_txn.get("payment_method")
+                or primary_txn.get("method")
+                or primary_txn.get("type")
+            )
+            if txn_method:
+                fingerprint_facts.setdefault("txn.type", txn_method)
+
+            txn_amount = (
+                primary_txn.get("amount_cad")
+                or primary_txn.get("amount")
+                or primary_txn.get("amount_value")
+            )
+            if txn_amount is not None and "txn.amount_band" not in fingerprint_facts:
+                try:
+                    amount_band = create_txn_amount_banding().apply(txn_amount)
+                    fingerprint_facts["txn.amount_band"] = amount_band
+                except Exception:
+                    pass
+
+            destination_country = (
+                primary_txn.get("destination_country")
+                or primary_txn.get("counterparty_country")
+            )
+            if destination_country and "txn.cross_border" not in fingerprint_facts:
+                case_jurisdiction = (
+                    (body.get("meta") or {}).get("jurisdiction")
+                    or DG_JURISDICTION
+                )
+                fingerprint_facts["txn.cross_border"] = str(destination_country) != str(case_jurisdiction)
+
+            if primary_txn.get("destination_country_risk") is not None:
+                fingerprint_facts.setdefault(
+                    "txn.destination_country_risk",
+                    primary_txn.get("destination_country_risk"),
+                )
+
+        if "customer.type" not in fingerprint_facts:
+            primary_entity_type = (body.get("meta") or {}).get("primary_entity_type")
+            if primary_entity_type:
+                fingerprint_facts["customer.type"] = primary_entity_type
+            else:
+                has_orgs = bool(body.get("organizations"))
+                has_inds = bool(body.get("individuals"))
+                if has_orgs and not has_inds:
+                    fingerprint_facts["customer.type"] = "corporation"
+                elif has_inds and not has_orgs:
+                    fingerprint_facts["customer.type"] = "individual"
+                elif has_orgs and has_inds:
+                    fingerprint_facts["customer.type"] = "mixed"
+
+        if "customer.relationship_length" not in fingerprint_facts and isinstance(body.get("assertions"), list):
+            for assertion in body.get("assertions", []):
+                if not isinstance(assertion, dict):
+                    continue
+                if assertion.get("predicate") in {"relationship_tenure", "relationship_length"}:
+                    value = assertion.get("value")
+                    if value is not None:
+                        fingerprint_facts["customer.relationship_length"] = value
+                        break
+
         # Query similar precedents and add to decision pack
         reason_codes = extract_reason_codes(facts, indicators, obligations)
         proposed_outcome = decision_pack["decision"]["verdict"].lower()
@@ -1008,6 +1084,8 @@ def _jurisdiction_weight(case_jurisdiction: Optional[str], precedent_jurisdictio
     return 0.9 if case_country == prec_country else 0.85
 
 
+
+
 def _select_schema_id_for_codes(reason_codes: list[str]) -> str:
     """Select AML fingerprint schema based on reason code families."""
     prefixes = {code.split("-")[1] for code in reason_codes if code.startswith("RC-") and "-" in code}
@@ -1130,6 +1208,14 @@ def _channel_similarity(case_channel: Optional[str], precedent_channel: Optional
     if case_channel == precedent_channel:
         return 1.0
     return 0.5 if _channel_group(case_channel) == _channel_group(precedent_channel) else 0.0
+
+
+def _build_outcome_distribution(payloads: list) -> dict[str, int]:
+    distribution: dict[str, int] = {}
+    for payload in payloads:
+        outcome = normalize_outcome(payload.outcome_code)
+        distribution[outcome] = distribution.get(outcome, 0) + 1
+    return distribution
 
 
 # =============================================================================
@@ -1430,6 +1516,14 @@ def query_similar_precedents(
                     )
                 )
 
+        raw_overlap_count = len(matches)
+        overlap_outcome_distribution = _build_outcome_distribution(
+            [payload for payload, _overlap in matches]
+        )
+        match_outcome_distribution = _build_outcome_distribution(
+            [payload for payload, _overlap, _score, _components, _dw, _rw in scored_matches]
+        )
+
         # Get stratified sample for balanced analysis
         sampled, counts = stratified_precedent_sample(
             matches=scored_matches,
@@ -1513,7 +1607,11 @@ def query_similar_precedents(
             "available": True,
             "match_count": len(scored_matches),
             "sample_size": len(sampled),
-            "outcome_distribution": stats.by_outcome,
+            "raw_overlap_count": raw_overlap_count,
+            "overlap_outcome_distribution": overlap_outcome_distribution,
+            "raw_outcome_distribution": overlap_outcome_distribution,
+            "match_outcome_distribution": match_outcome_distribution,
+            "outcome_distribution": match_outcome_distribution,
             "appeal_statistics": {
                 "total_appealed": stats.appeal_stats.total_appealed,
                 "upheld": stats.appeal_stats.upheld,

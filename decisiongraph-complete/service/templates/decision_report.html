@@ -270,8 +270,10 @@
     <div class="gate-block break" style="background: #f8fafc;">
       <h4 style="margin-bottom:8px;">Precedent Alignment Summary</h4>
       <div class="kv" style="font-size:13px;">
-        <div class="label">Comparable Cases Evaluated</div>
+        <div class="label">Comparable Matches (Scored)</div>
         <div class="value">{{ precedent_analysis.match_count }}</div>
+        <div class="label">Raw Overlaps Found</div>
+        <div class="value">{{ precedent_analysis.raw_overlap_count | default(0) }}</div>
         <div class="label">Representative Sample</div>
         <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (≥{{ precedent_analysis.min_similarity_pct | default(50) }}% similarity — rules+gates weighted)</div>
         <div class="label">Precedent Alignment</div>
@@ -291,6 +293,12 @@
         <span class="small">Current recommendation diverges from majority of historical cases. Senior compliance review advised before finalization.</span>
       </div>
       {% endif %}
+      {% if precedent_analysis.raw_overlap_count | default(0) > 0 and precedent_analysis.match_count == 0 %}
+      <div class="status warn" style="margin-top:12px; padding:12px;">
+        <strong>Limited Matching Evidence</strong><br>
+        <span class="small">Raw overlaps were found based on limited features, but no precedents met the similarity threshold. Provide transaction shape and customer profile facts to enable scoring.</span>
+      </div>
+      {% endif %}
     </div>
 
     <h3>Precedent Classification</h3>
@@ -308,8 +316,9 @@
       </p>
     </div>
 
-    <h3>Historical Outcome Distribution</h3>
-    {% set outcome_total = precedent_analysis.outcome_distribution.values()|sum %}
+    <h3>Scored Match Outcome Distribution</h3>
+    {% set scored_distribution = precedent_analysis.match_outcome_distribution or precedent_analysis.outcome_distribution %}
+    {% set outcome_total = scored_distribution.values()|sum %}
     <table class="break">
       <thead>
         <tr>
@@ -319,7 +328,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for outcome, count in precedent_analysis.outcome_distribution.items() %}
+        {% for outcome, count in scored_distribution.items() %}
         {% set pct = (count / outcome_total * 100) if outcome_total else 0 %}
         <tr>
           <td>{% if outcome|lower == 'pay' %}NO_REPORT{% elif outcome|lower == 'deny' %}FILE_STR{% elif outcome|lower == 'escalate' %}EDD_REQUIRED{% else %}{{ outcome|upper }}{% endif %}</td>
@@ -329,6 +338,41 @@
           </td>
         </tr>
         {% endfor %}
+        {% if not scored_distribution %}
+        <tr>
+          <td colspan="3" class="small">No data</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <h3>Raw Overlap Outcome Distribution</h3>
+    {% set overlap_distribution = precedent_analysis.raw_outcome_distribution or precedent_analysis.overlap_outcome_distribution | default({}) %}
+    {% set overlap_total = overlap_distribution.values()|sum %}
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Outcome</th>
+          <th>Count</th>
+          <th style="width:220px;">Distribution</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for outcome, count in overlap_distribution.items() %}
+        {% set pct = (count / overlap_total * 100) if overlap_total else 0 %}
+        <tr>
+          <td>{% if outcome|lower == 'pay' %}NO_REPORT{% elif outcome|lower == 'deny' %}FILE_STR{% elif outcome|lower == 'escalate' %}EDD_REQUIRED{% else %}{{ outcome|upper }}{% endif %}</td>
+          <td class="mono">{{ count }}</td>
+          <td>
+            <div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not overlap_distribution %}
+        <tr>
+          <td colspan="3" class="small">No data</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
 

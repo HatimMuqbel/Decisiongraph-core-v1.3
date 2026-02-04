@@ -280,10 +280,36 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
     if not precedent_analysis or not precedent_analysis.get("available"):
         return ""
 
+    def _label(value: object) -> str:
+        return str(value).upper() if value is not None else "N/A"
+
+    def _pct(value: object) -> int:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return 0
+        pct = int(round(numeric * 100)) if numeric <= 1.0 else int(round(numeric))
+        return max(0, min(100, pct))
+
     # Outcome distribution rows
-    outcome_rows = ""
-    for outcome, count in precedent_analysis.get("outcome_distribution", {}).items():
-        outcome_rows += f"| {outcome.upper()} | {count} |\n"
+    match_distribution = (
+        precedent_analysis.get("match_outcome_distribution")
+        or precedent_analysis.get("outcome_distribution", {})
+        or {}
+    )
+    overlap_distribution = (
+        precedent_analysis.get("raw_outcome_distribution")
+        or precedent_analysis.get("overlap_outcome_distribution", {})
+        or {}
+    )
+
+    match_rows = ""
+    for outcome, count in match_distribution.items():
+        match_rows += f"| {_label(outcome)} | {count} |\n"
+
+    overlap_rows = ""
+    for outcome, count in overlap_distribution.items():
+        overlap_rows += f"| {_label(outcome)} | {count} |\n"
 
     # Appeal stats
     appeal = precedent_analysis.get("appeal_statistics", {})
@@ -295,52 +321,91 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
         caution_section = "\n### Caution Precedents (Overturned Cases)\n\n"
         caution_section += f"**{len(caution)}** similar cases were later overturned on appeal:\n\n"
         for prec in caution[:5]:
-            caution_section += f"- **{prec.get('case_ref', 'N/A')}** — {prec.get('outcome', 'N/A').upper()}"
+            caution_section += f"- **{prec.get('case_ref', 'N/A')}** — {_label(prec.get('outcome'))}"
             if prec.get("appeal_result"):
                 caution_section += f" (Appeal: {prec['appeal_result']})"
             caution_section += "\n"
         if len(caution) > 5:
             caution_section += f"- ... and {len(caution) - 5} more\n"
 
-    confidence_pct = int(precedent_analysis.get("precedent_confidence", 0) * 100)
-    upheld_rate_pct = int(appeal.get("upheld_rate", 0) * 100)
+    confidence_pct = int((precedent_analysis.get("precedent_confidence", 0) or 0) * 100)
+    upheld_rate_pct = int((appeal.get("upheld_rate", 0) or 0) * 100)
 
-    sample_size = precedent_analysis.get('sample_size', 50)
-    neutral = precedent_analysis.get('neutral_precedents', 0)
-    min_similarity_pct = precedent_analysis.get("min_similarity_pct", 50)
+    sample_size = int(precedent_analysis.get("sample_size", 0) or 0)
+    neutral = int(precedent_analysis.get("neutral_precedents", 0) or 0)
+    min_similarity_pct = int(precedent_analysis.get("min_similarity_pct", 50) or 50)
+    raw_overlap_count = (
+        precedent_analysis.get("raw_overlap_count")
+        or precedent_analysis.get("overlap_count")
+        or precedent_analysis.get("raw_count")
+        or 0
+    )
+    raw_overlap_count = int(raw_overlap_count or 0)
 
     sample_cases = precedent_analysis.get("sample_cases", []) or []
-    exact_match_count = precedent_analysis.get("exact_match_count", 0)
+    exact_match_count = int(precedent_analysis.get("exact_match_count", 0) or 0)
+    match_count = int(precedent_analysis.get("match_count", 0) or 0)
+    weights = precedent_analysis.get("weights", {}) or {}
+
+    def _weight(key: str, default: int) -> int:
+        value = weights.get(key, default)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     matches_md = ""
     if sample_cases:
         matches_md = "\n### Precedent Evidence (Top Matches)\n\n| Precedent | Outcome | Similarity | Decision Level | Reason Codes | Similarity Drivers |\n|---|---|---|---|---|---|\n"
         for match in sample_cases:
-            outcome_label = match.get("outcome_label") or match.get("outcome", "N/A").upper()
-            similarity = f"{match.get('similarity_pct', 0)}%"
+            outcome_label = match.get("outcome_label") or _label(match.get("outcome"))
+            similarity = f"{int(match.get('similarity_pct', 0) or 0)}%"
             if match.get("exact_match"):
                 similarity += " (EXACT)"
             reason_codes = ", ".join(match.get("reason_codes", []) or [])
             components = match.get("similarity_components", {}) or {}
             drivers = (
-                f"Rules {components.get('rules_overlap', 0)}% (25%), "
-                f"Gates {components.get('gate_match', 0)}% (20%), "
-                f"Typologies {components.get('typology_overlap', 0)}% (15%), "
-                f"Amount {components.get('amount_bucket', 0)}% (10%), "
-                f"Channel {components.get('channel_method', 0)}% (7%), "
-                f"Corridor {components.get('corridor_match', 0)}% (8%), "
-                f"PEP {components.get('pep_match', 0)}% (6%), "
-                f"Customer {components.get('customer_profile', 0)}% (5%), "
-                f"Geo {components.get('geo_risk', 0)}% (4%)"
+                f"Rules {_pct(components.get('rules_overlap'))}% ({_weight('rules_overlap', 25)}%), "
+                f"Gates {_pct(components.get('gate_match'))}% ({_weight('gate_match', 20)}%), "
+                f"Typologies {_pct(components.get('typology_overlap'))}% ({_weight('typology_overlap', 15)}%), "
+                f"Amount {_pct(components.get('amount_bucket'))}% ({_weight('amount_bucket', 10)}%), "
+                f"Channel {_pct(components.get('channel_method'))}% ({_weight('channel_method', 7)}%), "
+                f"Corridor {_pct(components.get('corridor_match'))}% ({_weight('corridor_match', 8)}%), "
+                f"PEP {_pct(components.get('pep_match'))}% ({_weight('pep_match', 6)}%), "
+                f"Customer {_pct(components.get('customer_profile'))}% ({_weight('customer_profile', 5)}%), "
+                f"Geo {_pct(components.get('geo_risk'))}% ({_weight('geo_risk', 4)}%)"
             )
             matches_md += f"| {match.get('precedent_id', 'N/A')} | {outcome_label} | {similarity} | {match.get('decision_level', 'N/A')} | {reason_codes} | {drivers} |\n"
+
+    note_md = ""
+    if raw_overlap_count > 0 and match_count == 0 and not sample_cases:
+        note_md = (
+            "\n> Raw overlaps were found based on limited features, "
+            "but no precedents met the similarity threshold. "
+            "Provide transaction shape and customer profile facts (amount bucket, channel, corridor, customer type, "
+            "relationship length, PEP) to enable scoring.\n"
+        )
+
+    candidates_scored = int(precedent_analysis.get("candidates_scored", sample_size) or 0)
+    show_overlap = bool(overlap_distribution) and overlap_distribution != match_distribution
+
+    overlap_section = ""
+    if show_overlap:
+        overlap_section = f"""
+### Raw Overlap Outcome Distribution
+
+| Outcome | Count |
+|---------|-------|
+{overlap_rows or "| No data | - |"}
+"""
 
     return f"""## Precedent Analysis
 
 | Metric | Value |
 |--------|-------|
-| Similar Cases Found | {precedent_analysis.get('match_count', 0)} |
-| Sample Size Analyzed | {sample_size} (≥{min_similarity_pct}% similarity — rules+gates weighted) |
+| Comparable Matches (Scored) | {match_count} |
+| Raw Overlaps Found | {raw_overlap_count} |
+| Candidates Scored | {candidates_scored} (≥{min_similarity_pct}% similarity threshold) |
 | Precedent Confidence | {confidence_pct}% |
 | Exact Matches | {exact_match_count} |
 | Supporting Precedents | {precedent_analysis.get('supporting_precedents', 0)} |
@@ -349,11 +414,15 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 
 *Neutral indicates precedents where the outcome is a review/escalation state rather than a final pay/deny decision.*
 
-### Outcome Distribution
+### Scored Match Outcome Distribution
 
 | Outcome | Count |
 |---------|-------|
-{outcome_rows or "| No data | - |"}
+{match_rows or "| No data | - |"}
+
+{overlap_section}
+
+{note_md}
 
 ### Appeal Statistics
 
