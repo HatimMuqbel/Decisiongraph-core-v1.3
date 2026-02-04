@@ -163,6 +163,14 @@ def build_report_context(decision: dict) -> dict:
     input_hash = meta.get("input_hash", "") or ""
     policy_hash = meta.get("policy_hash", "") or ""
 
+    domain = meta.get("domain")
+    precedent_analysis = decision.get("precedent_analysis", {})
+    if domain and str(domain).lower() not in {"banking_aml", "banking", "aml", "bank"}:
+        precedent_analysis = {
+            "available": False,
+            "message": "Precedent analysis is not enabled for this domain",
+        }
+
     return {
         # Administrative Details
         "decision_id": decision_id,
@@ -172,6 +180,7 @@ def build_report_context(decision: dict) -> dict:
         "jurisdiction": meta.get("jurisdiction", "CA") or "CA",
         "engine_version": meta.get("engine_version", "") or "N/A",
         "policy_version": meta.get("policy_version", "") or "N/A",
+        "domain": domain or "unknown",
 
         # Input/Policy hashes
         "input_hash": input_hash,
@@ -207,7 +216,7 @@ def build_report_context(decision: dict) -> dict:
         "summary": rationale.get("summary", "") or "No summary available",
 
         # Precedent Analysis
-        "precedent_analysis": decision.get("precedent_analysis", {}),
+        "precedent_analysis": precedent_analysis,
     }
 
 

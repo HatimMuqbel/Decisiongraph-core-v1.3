@@ -74,6 +74,7 @@ from service.template_loader import TemplateLoader, set_cache_decision, set_prec
 DG_ENGINE_VERSION = os.getenv("DG_ENGINE_VERSION", ENGINE_VERSION)
 DG_POLICY_VERSION = os.getenv("DG_POLICY_VERSION", POLICY_VERSION)
 DG_JURISDICTION = os.getenv("DG_JURISDICTION", "CA")
+DG_DOMAIN = os.getenv("DG_DOMAIN", "banking_aml")
 DG_LOG_LEVEL = os.getenv("DG_LOG_LEVEL", "INFO")
 DG_DOCS_ENABLED = os.getenv("DG_DOCS_ENABLED", "true").lower() == "true"
 DG_MAX_REQUEST_SIZE = int(os.getenv("DG_MAX_REQUEST_SIZE", "1048576"))  # 1MB default
@@ -614,6 +615,7 @@ async def decide(request: Request):
             final_decision=final_decision,
             jurisdiction=DG_JURISDICTION,
             fintrac_indicators=fintrac_indicators,
+            domain=DG_DOMAIN,
         )
 
         # Add engine commit (decision_pack.py doesn't know about git)
@@ -636,6 +638,7 @@ async def decide(request: Request):
         precedent_analysis = query_similar_precedents(
             reason_codes=reason_codes,
             proposed_outcome=proposed_outcome,
+            domain=decision_pack.get("meta", {}).get("domain"),
         )
         decision_pack["precedent_analysis"] = precedent_analysis
 
@@ -893,6 +896,25 @@ def normalize_outcome(raw: str) -> str:
     return "escalate"
 
 
+# =============================================================================
+# Precedent Domain Resolution
+# =============================================================================
+
+BANKING_DOMAINS = {"banking_aml", "banking", "aml", "bank"}
+
+
+def resolve_precedent_namespace(domain: Optional[str], fallback: str) -> Optional[str]:
+    """Resolve a precedent namespace based on decision domain."""
+    if domain is None:
+        return fallback
+
+    domain_norm = str(domain).strip().lower()
+    if domain_norm in BANKING_DOMAINS:
+        return "banking.aml"
+
+    return None
+
+
 def classify_precedent_match(precedent_outcome: str, proposed_outcome: str) -> str:
     """
     Classify a precedent match as supporting, contrary, or neutral.
@@ -991,6 +1013,7 @@ def query_similar_precedents(
     reason_codes: list,
     proposed_outcome: str,
     namespace_prefix: str = "banking.aml",
+    domain: Optional[str] = None,
 ) -> dict:
     """
     Query precedent registry for similar cases and return analysis.
@@ -1016,13 +1039,20 @@ def query_similar_precedents(
         }
 
     try:
+        resolved_prefix = resolve_precedent_namespace(domain, namespace_prefix)
+        if not resolved_prefix:
+            return {
+                "available": False,
+                "message": "Precedent system not enabled for this domain"
+            }
+
         # Normalize proposed outcome first
         proposed_normalized = normalize_outcome(proposed_outcome)
 
         # Get statistics by reason codes
         stats = PRECEDENT_REGISTRY.get_statistics_by_codes(
             exclusion_codes=reason_codes,
-            namespace_prefix=namespace_prefix,
+            namespace_prefix=resolved_prefix,
             min_overlap=1,
         )
 
@@ -1030,7 +1060,7 @@ def query_similar_precedents(
         # Returns list sorted by overlap descending
         matches = PRECEDENT_REGISTRY.find_by_exclusion_codes(
             codes=reason_codes,
-            namespace_prefix=namespace_prefix,
+            namespace_prefix=resolved_prefix,
             min_overlap=1,
         )
 

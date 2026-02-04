@@ -229,6 +229,7 @@ class TemplateLoader:
                     "jurisdiction": "CA",
                     "engine_version": "2.1.1",
                     "policy_version": template.get("template_version"),
+                    "domain": template.get("domain", "unknown"),
                 },
                 "decision": {
                     "verdict": matched_outcome.get("label"),
@@ -268,7 +269,11 @@ class TemplateLoader:
                     reason_codes = ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"]
                     # Pass raw outcome - query_similar_precedents will normalize it
                     raw_outcome = matched_outcome.get("decision", "approve")
-                    precedent_analysis = _query_precedents(reason_codes, raw_outcome)
+                    precedent_analysis = _query_precedents(
+                        reason_codes,
+                        raw_outcome,
+                        domain=template.get("domain"),
+                    )
                     report_pack["precedent_analysis"] = precedent_analysis
                 except Exception as e:
                     report_pack["precedent_analysis"] = {"available": False, "error": str(e)}

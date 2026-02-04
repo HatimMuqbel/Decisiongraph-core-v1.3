@@ -182,6 +182,7 @@ def build_decision_pack(
     final_decision: Dict[str, Any],
     jurisdiction: str = "CA",
     fintrac_indicators: List[str] = None,
+    domain: str = "banking_aml",
 ) -> Dict[str, Any]:
     """
     Build a complete decision pack with all layers and gates.
@@ -411,6 +412,7 @@ def build_decision_pack(
             "report_timestamp_utc": timestamp,
             "case_id": case_id,
             "jurisdiction": jurisdiction,
+            "domain": domain,
         },
         "decision": {
             "verdict": verdict,
