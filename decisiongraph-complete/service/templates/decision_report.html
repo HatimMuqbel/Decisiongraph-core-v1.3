@@ -300,6 +300,36 @@
         <span class="small">Raw overlaps were found based on limited features, but no precedents met the similarity threshold. Provide transaction shape and customer profile facts to enable scoring.</span>
       </div>
       {% endif %}
+      {% set threshold_used = precedent_analysis.threshold_used if precedent_analysis.threshold_used is defined else (precedent_analysis.min_similarity_pct | default(50)) / 100 %}
+      {% set avg_similarity = precedent_analysis.avg_top_k_similarity | default(0) %}
+      {% set show_why = (precedent_analysis.match_count == 0) or (precedent_analysis.precedent_confidence < 0.4) or (avg_similarity < threshold_used) %}
+      {% if show_why and precedent_analysis.why_low_match and precedent_analysis.why_low_match|length > 0 %}
+      <div class="status warn" style="margin-top:12px; padding:12px;">
+        <strong>Why precedent confidence is limited</strong><br>
+        <ul class="small">
+          {% set ns = namespace(missing=[], gate=[], rule=[], typo=[]) %}
+          {% for item in precedent_analysis.why_low_match %}
+            {% if item.missing_features is defined %}{% set ns.missing = item.missing_features %}{% endif %}
+            {% if item.gate_mismatch is defined %}{% set ns.gate = item.gate_mismatch %}{% endif %}
+            {% if item.rule_mismatch is defined %}{% set ns.rule = item.rule_mismatch %}{% endif %}
+            {% if item.typology_mismatch is defined %}{% set ns.typo = item.typology_mismatch %}{% endif %}
+          {% endfor %}
+          {% if ns.missing|length > 0 %}
+          <li>Missing features: {{ ns.missing | join(', ') | replace('_', ' ') }}</li>
+          {% endif %}
+          {% if ns.gate|length > 0 %}
+          <li>Gate mismatch or missing gate data: {{ ns.gate | join(', ') }}</li>
+          {% endif %}
+          {% if ns.rule|length > 0 %}
+          <li>Rule mismatch: {{ ns.rule | join(', ') | replace('_', ' ') }}</li>
+          {% endif %}
+          {% if ns.typo|length > 0 %}
+          <li>Typology mismatch: {{ ns.typo | join(', ') | replace('_', ' ') }}</li>
+          {% endif %}
+        </ul>
+        <span class="small"><strong>How to improve matching:</strong> provide amount bucket, channel/method, corridor, customer type, relationship length, and PEP status.</span>
+      </div>
+      {% endif %}
     </div>
 
     <h3>Precedent Classification</h3>

@@ -1544,6 +1544,13 @@ def query_similar_precedents(
             max_neutral=15,
         )
 
+        sorted_scores = sorted(
+            (score for _payload, _overlap, score, _components, _dw, _rw in scored_matches),
+            reverse=True,
+        )
+        top_scores = sorted_scores[:5]
+        avg_top_k_similarity = round(sum(top_scores) / len(top_scores), 2) if top_scores else 0.0
+
         # Track caution precedents (overturned cases)
         caution_precedents = []
         for payload, overlap, classification, score, _component_scores in sampled:
@@ -1675,6 +1682,7 @@ def query_similar_precedents(
             "weights_version": AML_SIMILARITY_VERSION,
             "weights": AML_SIMILARITY_WEIGHTS_V1,
             "why_low_match": why_low_match,
+            "avg_top_k_similarity": avg_top_k_similarity,
         }
 
         if len(scored_matches) == 0:
