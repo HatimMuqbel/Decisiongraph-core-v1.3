@@ -78,6 +78,7 @@ from service.template_loader import TemplateLoader, set_cache_decision, set_prec
 
 # Log module versions at import time so deploy logs confirm the correct code shipped
 print(f"[startup] report module version: {report.REPORT_MODULE_VERSION}")
+print(f"[startup] narrative compiler: {report.NARRATIVE_COMPILER_VERSION}")
 
 # =============================================================================
 # Configuration
@@ -307,6 +308,7 @@ class HealthResponse(BaseModel):
     timestamp: str
     engine_version: str
     policy_version: str
+    narrative_compiler: str = ""
 
 class ReadyResponse(BaseModel):
     """Readiness probe response."""
@@ -409,6 +411,7 @@ async def health_check():
         timestamp=datetime.now(timezone.utc).isoformat(),
         engine_version=DG_ENGINE_VERSION,
         policy_version=DG_POLICY_VERSION,
+        narrative_compiler=report.NARRATIVE_COMPILER_VERSION,
     )
 
 @app.get("/ready", response_model=ReadyResponse, tags=["Health"])

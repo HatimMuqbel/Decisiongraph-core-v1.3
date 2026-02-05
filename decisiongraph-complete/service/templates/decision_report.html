@@ -115,9 +115,17 @@
         <div class="value">{{ investigation_state }}</div>
         <div class="label">Primary Typology</div>
         <div class="value">{{ primary_typology }}</div>
+        {% if regulatory_obligation %}
+        <div class="label">Regulatory Obligation</div>
+        <div class="value">{{ regulatory_obligation }}</div>
+        {% endif %}
+        {% if regulatory_position %}
+        <div class="label">Regulatory Position</div>
+        <div class="value">{{ regulatory_position }}</div>
+        {% endif %}
         {% if decision_confidence %}
         <div class="label">Confidence</div>
-        <div class="value">{{ decision_confidence }}</div>
+        <div class="value">{{ decision_confidence }}{% if decision_confidence_score is defined %} ({{ decision_confidence_score }}%){% endif %}</div>
         {% endif %}
       </div>
       <p class="small" style="margin-top:10px;">{{ decision_explainer }}</p>

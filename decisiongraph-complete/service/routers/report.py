@@ -9,7 +9,8 @@ All formats produce regulator-grade, audit-safe output.
 """
 
 # ── Module identity (visible in /health and deploy logs) ──
-REPORT_MODULE_VERSION = "2026-02-05.v7"
+REPORT_MODULE_VERSION = "2026-02-05.v9"
+NARRATIVE_COMPILER_VERSION = "DecisionNarrativeCompiler v1"
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -18,6 +19,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 from typing import Optional
+import re
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
@@ -107,10 +109,213 @@ def _derive_decision_confidence(precedent_analysis: dict) -> tuple[Optional[str]
     except (TypeError, ValueError):
         return None, None
     if confidence_value >= 0.75:
-        return "High", "Deterministic rule activation with strong precedent alignment."
+        return "High", "Deterministic rule activation with corroborating precedent alignment."
     if confidence_value >= 0.45:
         return "Medium", "Deterministic rule activation with moderate precedent alignment."
     return "Low", "Deterministic rule activation with limited precedent alignment."
+
+
+# ── DecisionNarrativeCompiler v1 ──────────────────────────────────────────────
+# Deterministic compiler layer between decision output and report.
+# No creativity. No hedging. Just rules.
+# Treat narrative like policy — version it, freeze it, govern it.
+
+# ── STEP 1: Typology Resolver ─────────────────────────────────────────────────
+# Typology ≠ verdict. Never derive typology from outcome.
+
+_TYPOLOGY_CODE_MAP: dict[str, str] = {
+    "aml_inv_struct": "Structuring",
+    "aml_str_layer": "Layering",
+    "aml_tpr_associated": "Third-party funneling",
+    "aml_round_trip": "Round-trip transactions",
+    "aml_trade": "Trade-based laundering",
+    "aml_shell": "Shell entity layering",
+    "aml_crypto": "Virtual asset laundering",
+    "sanctions_block": "Sanctions exposure",
+    "structuring": "Structuring",
+    "layering": "Layering",
+    "round_trip": "Round-trip transactions",
+    "trade_based": "Trade-based laundering",
+    "shell_entity": "Shell entity layering",
+    "virtual_asset": "Virtual asset laundering",
+    "third_party": "Third-party funneling",
+    "smurfing": "Structuring (smurfing)",
+    "funnel_account": "Funnel account activity",
+    "terrorist_financing": "Terrorist financing",
+}
+
+# Workflow words — never valid as typology labels
+_WORKFLOW_WORDS = frozenset({
+    "investigate", "escalate", "review", "monitor",
+    "unknown", "pass", "fail", "hard_stop", "str",
+    "no report", "edd required", "under review",
+})
+
+
+def _resolve_typology(
+    layer4_typologies: dict,
+    rules_fired: list,
+    layer6_suspicion: dict,
+) -> str:
+    """Resolve primary typology from decision layers. Never from verdict."""
+
+    # Priority 1: Layer 4 typology tags
+    typologies = layer4_typologies.get("typologies", []) or []
+    for typ in typologies:
+        raw = typ.get("name") if isinstance(typ, dict) else str(typ)
+        if not raw:
+            continue
+        # Extract from parens: "INVESTIGATE (Structuring)" → "Structuring"
+        paren_match = re.search(r'\(([^)]+)\)', raw)
+        if paren_match:
+            raw = paren_match.group(1).strip()
+        # Strip leading workflow words
+        tokens = raw.split(None, 1)
+        if tokens and tokens[0].lower() in _WORKFLOW_WORDS:
+            raw = tokens[1] if len(tokens) > 1 else ""
+        if raw and raw.lower() not in _WORKFLOW_WORDS:
+            # Check code map first
+            mapped = _TYPOLOGY_CODE_MAP.get(raw.lower().replace(" ", "_").replace("-", "_"))
+            return mapped or raw
+
+    # Priority 2: Rule family codes
+    for rule in rules_fired:
+        code = str(rule.get("code", "")).lower().replace("-", "_")
+        if code in _TYPOLOGY_CODE_MAP:
+            return _TYPOLOGY_CODE_MAP[code]
+        # Check partial matches
+        for key, label in _TYPOLOGY_CODE_MAP.items():
+            if key in code:
+                return label
+
+    # Priority 3: Suspicion elements
+    elements = layer6_suspicion.get("elements", {}) or {}
+    for element, active in elements.items():
+        if active:
+            code = element.lower().replace(" ", "_").replace("-", "_")
+            if code in _TYPOLOGY_CODE_MAP:
+                return _TYPOLOGY_CODE_MAP[code]
+            mapped = _map_driver_label(element)
+            if mapped:
+                return mapped.split(" (")[0]  # Strip parenthetical detail
+
+    # Frozen fallback — regulators trust this phrase
+    return "No suspicious typology identified"
+
+
+# ── STEP 5: Confidence Generator (Deterministic) ─────────────────────────────
+
+def _compute_confidence_score(
+    rules_fired: list,
+    evidence_used: list,
+    precedent_analysis: dict,
+    risk_factors: list,
+) -> tuple[str, str, int]:
+    """Compute deterministic confidence. Returns (label, reason, score)."""
+    score = 0
+
+    # Rule determinism: Did rules fire clearly? (0–30)
+    triggered = [
+        r for r in rules_fired
+        if str(r.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
+    ]
+    if len(triggered) >= 3:
+        score += 30
+    elif len(triggered) >= 1:
+        score += 20
+    elif rules_fired:
+        score += 10
+
+    # Evidence completeness: How many evidence fields? (0–25)
+    ev_count = len(evidence_used or [])
+    if ev_count >= 10:
+        score += 25
+    elif ev_count >= 5:
+        score += 18
+    elif ev_count >= 1:
+        score += 10
+
+    # Precedent alignment (0–30)
+    if precedent_analysis and precedent_analysis.get("available"):
+        try:
+            conf = float(precedent_analysis.get("precedent_confidence", 0) or 0)
+        except (TypeError, ValueError):
+            conf = 0.0
+        if conf >= 0.75:
+            score += 30
+        elif conf >= 0.45:
+            score += 20
+        elif conf > 0:
+            score += 10
+
+    # Absence of conflict: No contrary precedents (0–15)
+    contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0) if precedent_analysis else 0
+    if contrary == 0:
+        score += 15
+    elif contrary <= 2:
+        score += 8
+
+    # Clamp
+    score = min(100, max(0, score))
+
+    if score >= 90:
+        return "High", "Deterministic rule activation with corroborating precedent alignment.", score
+    if score >= 70:
+        return "Moderate", "Deterministic rule activation with moderate precedent alignment.", score
+    return "Elevated Review Recommended", "Evidence completeness or precedent alignment below standard threshold.", score
+
+
+# ── STEP 6: Language Sanitizer ────────────────────────────────────────────────
+
+_FORBIDDEN_WORDS = {
+    "appears": "indicators present",
+    "appears to": "indicators present",
+    "suggests": "indicators present",
+    "may indicate": "threshold met",
+    "potentially": "",  # remove
+    "seems": "indicators present",
+    "likely": "",  # remove
+    "it seems": "indicators present",
+    "possibly": "",  # remove
+}
+
+# Duplicate uncertainty phrases killed when investigation_state already set
+_UNCERTAINTY_PHRASES = [
+    "Additional review required",
+    "Final determination pending",
+    "Investigation ongoing",
+    "Further review needed",
+    "Pending final determination",
+]
+
+
+def _sanitize_narrative(text: str) -> str:
+    """Final-pass language sanitizer. Declarative only — never speculative."""
+    if not text:
+        return text
+    result = text
+    for forbidden, replacement in _FORBIDDEN_WORDS.items():
+        # Case-insensitive replacement
+        pattern = re.compile(re.escape(forbidden), re.IGNORECASE)
+        result = pattern.sub(replacement, result)
+    # Clean up double spaces from removals
+    result = re.sub(r"  +", " ", result).strip()
+    # Kill trailing periods after empty replacement
+    result = re.sub(r"\s+\.", ".", result)
+    return result
+
+
+def _kill_duplicate_uncertainty(text: str) -> str:
+    """Remove uncertainty phrases when investigation_state already communicates status."""
+    if not text:
+        return text
+    result = text
+    for phrase in _UNCERTAINTY_PHRASES:
+        result = result.replace(phrase + ".", "").replace(phrase, "")
+    return re.sub(r"  +", " ", result).strip() or text
+
+
+# ── END DecisionNarrativeCompiler v1 core functions ───────────────────────────
 
 
 def _map_driver_label(text: str) -> str:
@@ -152,29 +357,12 @@ def _derive_decision_drivers(
     evidence_used: list | None = None,
     layer1_facts: dict | None = None,
 ) -> list[str]:
-    candidates: list[str] = []
+    """Generate 3-5 decision driver bullets. Ordered by regulatory weight.
 
-    # 1. Typology-driven bullets (primary)
-    typologies = layer4_typologies.get("typologies", []) or []
-    typology_names = []
-    for typology in typologies:
-        if isinstance(typology, dict):
-            name = typology.get("name") or ""
-        else:
-            name = str(typology)
-        if name:
-            typology_names.append(name)
-    for name in sorted(set(typology_names)):
-        mapped = _map_driver_label(name) or f"{name} indicators"
-        candidates.append(mapped)
-
-    # 2. Suspicion elements
-    elements = layer6_suspicion.get("elements", {}) or {}
-    for element in sorted(k for k, active in elements.items() if active):
-        mapped = _map_driver_label(element) or f"Suspicion element: {element}"
-        candidates.append(mapped)
-
-    # 3. Evidence-based contextual bullets
+    Order: typology → suspicion → transaction risk → customer risk → mitigating absence.
+    Amount alone is never a driver.
+    """
+    # ── Collect raw signals ──
     ev_map: dict[str, object] = {}
     for ev in (evidence_used or []):
         field = str(ev.get("field", "")).lower()
@@ -184,61 +372,98 @@ def _derive_decision_drivers(
     txn = facts.get("transaction", {}) or {}
     customer = facts.get("customer", {}) or {}
 
+    typologies = layer4_typologies.get("typologies", []) or []
+    elements = layer6_suspicion.get("elements", {}) or {}
+
+    # ── CASE A: Suspicion threshold MET (STR required) ──
+    if str_required:
+        drivers: list[str] = []
+
+        # 1. Triggered typology
+        for typ in typologies:
+            name = typ.get("name") if isinstance(typ, dict) else str(typ)
+            if name:
+                mapped = _map_driver_label(name)
+                if mapped:
+                    drivers.append(mapped)
+        if not drivers:
+            drivers.append("Suspicion indicators detected")
+
+        # 2. Suspicion elements
+        for element in sorted(k for k, active in elements.items() if active):
+            mapped = _map_driver_label(element)
+            if mapped and mapped not in drivers:
+                drivers.append(mapped)
+
+        # 3. Transaction risk context
+        if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
+            drivers.append("Cross-border transaction with elevated corridor risk")
+        method = txn.get("method") or ev_map.get("txn.method") or ""
+        if method and str(method).lower() in {"wire", "wire_transfer", "swift", "eft"}:
+            drivers.append(f"Wire transfer channel ({str(method).upper()})")
+
+        # 4. Customer risk context
+        cust_type = customer.get("type") or ev_map.get("customer.type") or ""
+        if cust_type and str(cust_type).lower() in {"corporation", "corporate", "business", "entity"}:
+            drivers.append("Corporate customer profile")
+
+        # 5. Absence of mitigating factors (always last)
+        drivers.append("No mitigating evidence sufficient to negate suspicion threshold")
+
+        # Dedupe and cap
+        return _dedupe_drivers(drivers, cap=5)
+
+    # ── CASE B: Suspicion NOT met ──
+    drivers = []
+
+    # 1. Typology (if any detected)
+    for typ in typologies:
+        name = typ.get("name") if isinstance(typ, dict) else str(typ)
+        if name:
+            mapped = _map_driver_label(name)
+            if mapped:
+                drivers.append(mapped)
+
+    # 2. Suspicion elements
+    for element in sorted(k for k, active in elements.items() if active):
+        mapped = _map_driver_label(element)
+        if mapped and mapped not in drivers:
+            drivers.append(mapped)
+
+    # If nothing triggered, use controlled non-alarmist language
+    if not drivers:
+        drivers.append("No indicators meeting suspicion threshold identified")
+
+    # 3. Transaction risk context
     if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
-        candidates.append("Cross-border transaction with elevated corridor risk")
+        drivers.append("Cross-border transaction with elevated corridor risk")
     method = txn.get("method") or ev_map.get("txn.method") or ""
     if method and str(method).lower() in {"wire", "wire_transfer", "swift", "eft"}:
-        candidates.append(f"Wire transfer channel ({str(method).upper()})")
+        drivers.append(f"Wire transfer channel ({str(method).upper()})")
+
+    # 4. Customer risk context
     cust_type = customer.get("type") or ev_map.get("customer.type") or ""
     if cust_type and str(cust_type).lower() in {"corporation", "corporate", "business", "entity"}:
-        candidates.append("Corporate customer profile")
-    amount_band = ev_map.get("txn.amount_band") or txn.get("amount_band") or ""
-    if amount_band:
-        band_display = str(amount_band).replace("_", "\u2013")
-        candidates.append(f"Amount band: {band_display}")
+        drivers.append("Corporate customer profile")
+    if customer.get("pep_flag") or ev_map.get("flag.pep"):
+        drivers.append("PEP exposure")
 
-    # 4. STR / gate blockers
-    if str_required:
-        candidates.append("No mitigating evidence sufficient to negate suspicion threshold (STR required)")
+    # 5. Gate status
     if not gate1_passed:
-        candidates.append("Escalation blocked by Gate 1 legal basis")
+        drivers.append("Escalation blocked by Gate 1 legal basis")
 
-    # 5. Triggered rules
-    triggered_rules = [
-        rule for rule in rules_fired
-        if str(rule.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
-    ]
-    triggered_rules = sorted(
-        triggered_rules,
-        key=lambda rule: str(rule.get("code", "")),
-    )
-    for rule in triggered_rules:
-        code = str(rule.get("code", ""))
-        reason = str(rule.get("reason", ""))
-        mapped = _map_driver_label(code) or _map_driver_label(reason) or _map_driver_label(f"{code} {reason}")
-        if mapped:
-            candidates.append(mapped)
+    return _dedupe_drivers(drivers, cap=5)
 
-    # 6. Risk factor labels
-    for item in sorted(
-        risk_factors,
-        key=lambda entry: (str(entry.get("field", "")), str(entry.get("value", ""))),
-    ):
-        mapped = _map_driver_label(str(item.get("field", ""))) or _map_driver_label(str(item.get("value", "")))
-        if mapped:
-            candidates.append(mapped)
 
-    deduped = []
-    seen = set()
-    for label in candidates:
+def _dedupe_drivers(drivers: list[str], cap: int = 5) -> list[str]:
+    """Deduplicate and cap driver list."""
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for label in drivers:
         if label not in seen:
             deduped.append(label)
             seen.add(label)
-
-    if not deduped:
-        return ["Deterministic rule activation requiring review"]
-
-    return deduped[:6]
+    return deduped[:cap] if deduped else ["Deterministic rule activation requiring review"]
 
 
 def _find_decision_or_raise(decision_id: str) -> dict:
@@ -327,7 +552,7 @@ def build_report_context(decision: dict) -> dict:
         decision_explainer = rationale.get("summary", "") or "Suspicious indicators detected requiring escalation."
     else:
         decision_status = "review"
-        decision_explainer = "Additional review required before final determination."
+        decision_explainer = rationale.get("summary", "") or "Transaction under enhanced due diligence review."
 
     # Derive top-line regulatory status (single headline)
     str_required_raw = dec.get("str_required", False)
@@ -354,18 +579,12 @@ def build_report_context(decision: dict) -> dict:
     else:
         investigation_state = "UNDER REVIEW"
 
-    # Primary typology (first named typology or verdict label)
-    _typologies = (layers.get("layer4_typologies", {}) or {}).get("typologies", []) or []
-    primary_typology = ""
-    for _typ in _typologies:
-        if isinstance(_typ, dict):
-            primary_typology = _typ.get("name") or ""
-        else:
-            primary_typology = str(_typ)
-        if primary_typology:
-            break
-    if not primary_typology:
-        primary_typology = verdict
+    # Primary typology — resolved via compiler, never from verdict
+    primary_typology = _resolve_typology(
+        layer4_typologies=layers.get("layer4_typologies", {}) or {},
+        rules_fired=eval_trace.get("rules_fired", []) or [],
+        layer6_suspicion=layers.get("layer6_suspicion", {}) or {},
+    )
 
     # Handle str_required - convert bool to proper format
     str_required_raw = dec.get("str_required", False)
@@ -564,7 +783,7 @@ def build_report_context(decision: dict) -> dict:
     # Fallback: mine evidence_used for risk-relevant booleans/values
     if not risk_factors:
         _flag_labels = {
-            "flag.structuring_suspected": "Structuring suspected",
+            "flag.structuring_suspected": "Structuring indicators",
             "flag.cross_border": "Cross-border transaction",
             "flag.pep": "PEP exposure",
             "flag.sanctions_proximity": "Sanctions screening proximity",
@@ -631,6 +850,19 @@ def build_report_context(decision: dict) -> dict:
 
     similarity_summary = _derive_similarity_summary(precedent_analysis)
     confidence_label, confidence_reason = _derive_decision_confidence(precedent_analysis)
+
+    # Deterministic confidence score (compiler STEP 5)
+    conf_label_computed, conf_reason_computed, conf_score = _compute_confidence_score(
+        rules_fired=rules_fired,
+        evidence_used=evidence_used,
+        precedent_analysis=precedent_analysis,
+        risk_factors=risk_factors,
+    )
+    # Use computed confidence; fall back to precedent-only if available
+    if conf_score > 0:
+        confidence_label = conf_label_computed
+        confidence_reason = conf_reason_computed
+
     if similarity_summary:
         precedent_analysis = dict(precedent_analysis)
         precedent_analysis["similarity_summary"] = similarity_summary
@@ -653,6 +885,14 @@ def build_report_context(decision: dict) -> dict:
             "Escalation is required to complete the investigation and determine any reporting obligations."
         )
 
+    # ── Regulatory Position (compiler STEP 4) ──
+    if str_required:
+        regulatory_position = "Reporting threshold met under applicable regulatory guidance."
+    elif decision_status == "pass":
+        regulatory_position = "Suspicion threshold not met based on available indicators."
+    else:
+        regulatory_position = "Suspicion threshold not met based on available indicators."
+
     decision_drivers = _derive_decision_drivers(
         rules_fired=rules_fired,
         risk_factors=risk_factors,
@@ -663,6 +903,12 @@ def build_report_context(decision: dict) -> dict:
         evidence_used=evidence_used,
         layer1_facts=layer1_facts,
     )
+
+    # ── Language Sanitizer (compiler STEP 6) — final pass ──
+    decision_explainer = _sanitize_narrative(decision_explainer)
+    decision_explainer = _kill_duplicate_uncertainty(decision_explainer)
+    escalation_summary = _sanitize_narrative(escalation_summary)
+    escalation_summary = _kill_duplicate_uncertainty(escalation_summary)
 
     report_sections = [
         "Administrative Details",
@@ -689,6 +935,7 @@ def build_report_context(decision: dict) -> dict:
         "policy_version": meta.get("policy_version", "") or "N/A",
         "domain": domain or "unknown",
         "report_schema_version": "DecisionReportSchema v1",
+        "narrative_compiler_version": NARRATIVE_COMPILER_VERSION,
         "report_sections": report_sections,
 
         # Input/Policy hashes
@@ -705,6 +952,7 @@ def build_report_context(decision: dict) -> dict:
         "escalation_summary": escalation_summary,
         "decision_confidence": confidence_label,
         "decision_confidence_reason": confidence_reason,
+        "decision_confidence_score": conf_score,
         "similarity_summary": similarity_summary,
         "decision_drivers": decision_drivers,
 
@@ -721,6 +969,12 @@ def build_report_context(decision: dict) -> dict:
         "regulatory_status": regulatory_status,
         "investigation_state": investigation_state,
         "primary_typology": primary_typology,
+        "regulatory_obligation": (
+            "STR filing required under FINTRAC guidance"
+            if str_required
+            else ""
+        ),
+        "regulatory_position": regulatory_position,
 
         # Gates
         "gate1_passed": gate1_passed,
@@ -1092,6 +1346,8 @@ async def get_report_markdown(decision_id: str):
 | Regulatory Status | **{regulatory_status}** |
 | Investigation State | {investigation_state} |
 | Primary Typology | {primary_typology} |
+| Regulatory Obligation | {regulatory_obligation} |
+| Regulatory Position | {regulatory_position} |
 | STR Required | {str_required_label} |
 
 {decision_explainer}
@@ -1243,6 +1499,8 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         policy_version=ctx.get("policy_version"),
         precedent_markdown=precedent_markdown,
         primary_typology=_md_escape(ctx.get("primary_typology", "")),
+        regulatory_obligation=ctx.get("regulatory_obligation", "\u2014"),
+        regulatory_position=ctx.get("regulatory_position", ""),
         regulatory_status=ctx.get("regulatory_status", ""),
         report_schema_version=ctx.get("report_schema_version"),
         risk_factors_md=risk_factors_md,
