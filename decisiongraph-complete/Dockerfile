@@ -1,10 +1,9 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+# Build 2026-02-05-v2: Force cache invalidation
+RUN echo "build-stamp-20260205-v2"
 
-# Cache bust to avoid stale COPY layers on rebuilds.
-ARG CACHE_BUST=1
-RUN echo "Cache bust: ${CACHE_BUST}"
+WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
