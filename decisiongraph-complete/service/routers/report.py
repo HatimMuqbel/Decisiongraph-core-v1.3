@@ -9,7 +9,7 @@ All formats produce regulator-grade, audit-safe output.
 """
 
 # ── Module identity (visible in /health and deploy logs) ──
-REPORT_MODULE_VERSION = "2026-02-05.v9"
+REPORT_MODULE_VERSION = "2026-02-05.v10"
 NARRATIVE_COMPILER_VERSION = "DecisionNarrativeCompiler v1"
 
 from fastapi import APIRouter, HTTPException, Request
@@ -20,6 +20,8 @@ import os
 from pathlib import Path
 from typing import Optional
 import re
+
+from service.suspicion_classifier import classify as classify_suspicion, CLASSIFIER_VERSION
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
@@ -851,6 +853,16 @@ def build_report_context(decision: dict) -> dict:
     similarity_summary = _derive_similarity_summary(precedent_analysis)
     confidence_label, confidence_reason = _derive_decision_confidence(precedent_analysis)
 
+    # ── SuspicionClassifier v1 ──
+    classification = classify_suspicion(
+        evidence_used=evidence_used,
+        rules_fired=rules_fired,
+        layer4_typologies=layer4_typologies,
+        layer6_suspicion=layer6_suspicion,
+        layer1_facts=layer1_facts,
+        precedent_analysis=precedent_analysis,
+    )
+
     # Deterministic confidence score (compiler STEP 5)
     conf_label_computed, conf_reason_computed, conf_score = _compute_confidence_score(
         rules_fired=rules_fired,
@@ -915,6 +927,7 @@ def build_report_context(decision: dict) -> dict:
         "Investigation Outcome Summary",
         "Case Classification",
         "Regulatory Determination",
+        "Suspicion Classification",
         "Decision Drivers",
         "Gate Evaluation",
         "Rules Evaluated",
@@ -936,6 +949,7 @@ def build_report_context(decision: dict) -> dict:
         "domain": domain or "unknown",
         "report_schema_version": "DecisionReportSchema v1",
         "narrative_compiler_version": NARRATIVE_COMPILER_VERSION,
+        "classifier_version": CLASSIFIER_VERSION,
         "report_sections": report_sections,
 
         # Input/Policy hashes
@@ -995,6 +1009,17 @@ def build_report_context(decision: dict) -> dict:
 
         # Precedent Analysis
         "precedent_analysis": precedent_analysis,
+
+        # Suspicion Classification
+        "classification": classification.to_dict(),
+        "classification_outcome": classification.outcome,
+        "classification_reason": classification.outcome_reason,
+        "tier1_signals": classification.tier1_signals,
+        "tier2_signals": classification.tier2_signals,
+        "suspicion_count": classification.suspicion_count,
+        "investigative_count": classification.investigative_count,
+        "precedent_consistency_alert": classification.precedent_consistency_alert,
+        "precedent_consistency_detail": classification.precedent_consistency_detail,
     }
 
 
@@ -1319,6 +1344,23 @@ async def get_report_markdown(decision_id: str):
     evidence_rows_output = evidence_rows or "| No evidence recorded | - |"
     precedent_markdown = _build_precedent_markdown(ctx.get("precedent_analysis", {}))
 
+    # Build classification markdown blocks
+    tier1_signals = ctx.get("tier1_signals", [])
+    tier2_signals = ctx.get("tier2_signals", [])
+    tier1_md = ""
+    if tier1_signals:
+        tier1_md = "### Tier 1 — Suspicion Indicators (RGS Contributors)\n\n| Code | Source | Detail |\n|------|--------|--------|\n"
+        for sig in tier1_signals:
+            tier1_md += f"| `{_md_escape(sig.get('code', ''))}` | {_md_escape(sig.get('source', ''))} | {_md_escape(sig.get('detail', ''))} |\n"
+    tier2_md = ""
+    if tier2_signals:
+        tier2_md = "### Tier 2 — Investigative Signals (EDD Triggers)\n\n| Code | Source | Detail |\n|------|--------|--------|\n"
+        for sig in tier2_signals:
+            tier2_md += f"| `{_md_escape(sig.get('code', ''))}` | {_md_escape(sig.get('source', ''))} | {_md_escape(sig.get('detail', ''))} |\n"
+    consistency_alert_md = ""
+    if ctx.get("precedent_consistency_alert"):
+        consistency_alert_md = f"> ⚠️ **PRECEDENT CONSISTENCY ALERT:** {_md_escape(ctx.get('precedent_consistency_detail', ''))}\n"
+
     md_template = """# AML/KYC Decision Report
 
 **Deterministic Regulatory Decision Engine (Zero LLM)**
@@ -1385,6 +1427,25 @@ async def get_report_markdown(decision_id: str):
 {escalation_summary}
 
 {decision_confidence_block}
+
+---
+
+## Suspicion Classification
+
+| Field | Value |
+|-------|-------|
+| Classifier Outcome | **{classification_outcome}** |
+| Suspicion Indicators (Tier 1) | {suspicion_count} |
+| Investigative Signals (Tier 2) | {investigative_count} |
+| Classifier Version | `{classifier_version}` |
+
+{classification_reason}
+
+{tier1_md}
+
+{tier2_md}
+
+{consistency_alert_md}
 
 ---
 
@@ -1478,6 +1539,10 @@ The decision may be independently verified using the `/verify` endpoint. Complet
     md = md_template.format(
         action=ctx.get("action"),
         case_id=ctx.get("case_id"),
+        classification_outcome=ctx.get("classification_outcome", ""),
+        classification_reason=ctx.get("classification_reason", ""),
+        classifier_version=CLASSIFIER_VERSION,
+        consistency_alert_md=consistency_alert_md,
         decision_explainer=ctx.get("decision_explainer"),
         decision_header=decision_header,
         decision_id=ctx.get("decision_id"),
@@ -1493,6 +1558,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         gate2_rows_output=gate2_rows_output,
         governance_note=governance_note,
         input_hash=ctx.get("input_hash"),
+        investigative_count=ctx.get("investigative_count", 0),
         investigation_state=ctx.get("investigation_state", ""),
         jurisdiction=ctx.get("jurisdiction"),
         policy_hash=ctx.get("policy_hash"),
@@ -1511,6 +1577,9 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         seed_notice=seed_notice,
         source_type=ctx.get("source_type"),
         str_required_label=str_required_label,
+        suspicion_count=ctx.get("suspicion_count", 0),
+        tier1_md=tier1_md,
+        tier2_md=tier2_md,
         timestamp=ctx.get("timestamp"),
         verdict=ctx.get("verdict"),
         escalation_summary=ctx.get("escalation_summary"),

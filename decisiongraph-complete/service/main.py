@@ -75,10 +75,12 @@ from decisiongraph.judgment import (
 # Import routers
 from service.routers import demo, report, verify, templates
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
+from service.suspicion_classifier import CLASSIFIER_VERSION
 
 # Log module versions at import time so deploy logs confirm the correct code shipped
 print(f"[startup] report module version: {report.REPORT_MODULE_VERSION}")
 print(f"[startup] narrative compiler: {report.NARRATIVE_COMPILER_VERSION}")
+print(f"[startup] suspicion classifier: {CLASSIFIER_VERSION}")
 
 # =============================================================================
 # Configuration
@@ -309,6 +311,7 @@ class HealthResponse(BaseModel):
     engine_version: str
     policy_version: str
     narrative_compiler: str = ""
+    suspicion_classifier: str = ""
 
 class ReadyResponse(BaseModel):
     """Readiness probe response."""
@@ -412,6 +415,7 @@ async def health_check():
         engine_version=DG_ENGINE_VERSION,
         policy_version=DG_POLICY_VERSION,
         narrative_compiler=report.NARRATIVE_COMPILER_VERSION,
+        suspicion_classifier=CLASSIFIER_VERSION,
     )
 
 @app.get("/ready", response_model=ReadyResponse, tags=["Health"])

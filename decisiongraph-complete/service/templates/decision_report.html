@@ -220,6 +220,55 @@
       {% endif %}
     </div>
 
+    <h2>Suspicion Classification</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Classifier Outcome</div>
+        <div class="value"><strong>{{ classification_outcome }}</strong></div>
+        <div class="label">Suspicion Indicators (Tier 1)</div>
+        <div class="value">{{ suspicion_count }}</div>
+        <div class="label">Investigative Signals (Tier 2)</div>
+        <div class="value">{{ investigative_count }}</div>
+        <div class="label">Classifier Version</div>
+        <div class="value mono">{{ classification.classifier_version }}</div>
+      </div>
+      <p class="small" style="margin-top:10px;">{{ classification_reason }}</p>
+      {% if tier1_signals and tier1_signals|length > 0 %}
+      <h4 style="margin-top:14px; margin-bottom:6px; color:#b91c1c;">Tier 1 — Suspicion Indicators (RGS Contributors)</h4>
+      <table style="font-size:12px;">
+        <thead><tr><th>Code</th><th>Source</th><th>Detail</th></tr></thead>
+        <tbody>
+          {% for sig in tier1_signals %}
+          <tr><td class="mono">{{ sig.code }}</td><td>{{ sig.source }}</td><td>{{ sig.detail }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if tier2_signals and tier2_signals|length > 0 %}
+      <h4 style="margin-top:14px; margin-bottom:6px; color:#92400e;">Tier 2 — Investigative Signals (EDD Triggers)</h4>
+      <table style="font-size:12px;">
+        <thead><tr><th>Code</th><th>Source</th><th>Detail</th></tr></thead>
+        <tbody>
+          {% for sig in tier2_signals %}
+          <tr><td class="mono">{{ sig.code }}</td><td>{{ sig.source }}</td><td>{{ sig.detail }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if classification.mitigation_applied %}
+      <div class="status warn" style="margin-top:12px; padding:12px;">
+        <strong>Mitigation Applied</strong><br>
+        <span class="small">{{ classification.mitigation_reason }}</span>
+      </div>
+      {% endif %}
+      {% if precedent_consistency_alert %}
+      <div class="status warn" style="margin-top:12px; padding:12px;">
+        <strong>⚠️ PRECEDENT CONSISTENCY ALERT</strong><br>
+        <span class="small">{{ precedent_consistency_detail }}</span>
+      </div>
+      {% endif %}
+    </div>
+
     <h2>Decision Drivers</h2>
     <div class="card break">
       {% if decision_drivers and decision_drivers|length > 0 %}
