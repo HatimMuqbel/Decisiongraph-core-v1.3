@@ -1,7 +1,7 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# v5: Clean build with .dockerignore and pycache purge — 2026-02-05
-ARG CACHEBUST=5
+# v6: Python 3.12 — PEP 701 removes f-string backslash restriction
+ARG CACHEBUST=6
 RUN echo "Build version: ${CACHEBUST} - $(date)"
 
 WORKDIR /app
