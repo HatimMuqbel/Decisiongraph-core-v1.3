@@ -1,16 +1,19 @@
 FROM python:3.11-slim
 
-# Build 2026-02-05-v2: Force cache invalidation
-RUN echo "build-stamp-20260205-v2"
+# v3: Force complete rebuild 2026-02-05
+ARG CACHEBUST=3
+RUN echo "Build version: ${CACHEBUST} - $(date)"
 
 WORKDIR /app
 
+# Copy everything first to bust cache on any file change
+COPY . .
+
 # Install dependencies
-COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY . .
+# Verify report.py is the fixed version (no f-string backslash)
+RUN python -c "import ast; ast.parse(open('service/routers/report.py').read()); print('report.py syntax OK')"
 
 # Set Python path for src imports
 ENV PYTHONPATH=/app:/app/src
