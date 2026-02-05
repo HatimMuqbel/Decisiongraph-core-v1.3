@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from decisiongraph.judgment import normalize_scenario_code, normalize_seed_category
+
 # Import report cache function (will be set by main.py)
 _cache_decision = None
 _query_precedents = None
@@ -230,6 +232,9 @@ class TemplateLoader:
                     "engine_version": "2.1.1",
                     "policy_version": template.get("template_version"),
                     "domain": template.get("domain", "unknown"),
+                    "source_type": "byoc",
+                    "scenario_code": normalize_scenario_code(template.get("template_id")),
+                    "seed_category": normalize_seed_category(None),
                 },
                 "decision": {
                     "verdict": matched_outcome.get("label"),
@@ -266,7 +271,7 @@ class TemplateLoader:
             if _query_precedents:
                 try:
                     # Extract reason codes from matched outcome
-                    reason_codes = ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"]
+                    reason_codes = _infer_reason_codes(matched_outcome.get("code", ""), facts)
                     # Pass raw outcome - query_similar_precedents will normalize it
                     raw_outcome = matched_outcome.get("decision", "approve")
                     # Normalize BYOC facts to precedent schema fields
@@ -355,3 +360,37 @@ class TemplateLoader:
             return condition["default"]
 
         return False
+
+
+def _infer_reason_codes(rule_code: str, facts: dict) -> list[str]:
+    codes: list[str] = []
+    rule_upper = str(rule_code).upper()
+
+    if "STRUCT" in rule_upper or facts.get("flag.structuring_suspected"):
+        codes.extend(["RC-TXN-STRUCT", "RC-TXN-STRUCT-MULTI"])
+
+    if "PEP" in rule_upper or facts.get("risk.pep") or facts.get("screen.pep_match"):
+        codes.append("RC-TXN-PEP")
+
+    if "SANCTIONS" in rule_upper or facts.get("screen.sanctions_match"):
+        codes.extend(["RC-SCR-SANCTION", "RC-SCR-OFAC"])
+
+    if facts.get("risk.high_risk_jurisdiction") or facts.get("txn.destination_country") == "high_risk_country":
+        codes.append("RC-TXN-FATF-GREY")
+
+    if facts.get("flag.layering_indicators"):
+        codes.append("RC-TXN-LAYER")
+
+    if facts.get("flag.rapid_movement"):
+        codes.append("RC-TXN-RAPID")
+
+    if facts.get("flag.unusual_for_profile"):
+        codes.append("RC-TXN-UNUSUAL")
+
+    if facts.get("screen.adverse_media"):
+        codes.append("RC-KYC-ADVERSE-MINOR")
+
+    if not codes:
+        codes = ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"]
+
+    return list(dict.fromkeys(codes))

@@ -90,6 +90,23 @@
       </div>
     </div>
 
+    <h2>Case Classification</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Source</div>
+        <div class="value">{{ source_type }}</div>
+        <div class="label">Seed Category</div>
+        <div class="value">{{ seed_category }}</div>
+        <div class="label">Scenario Code</div>
+        <div class="value mono">{{ scenario_code }}</div>
+      </div>
+      {% if is_seed %}
+        <p class="small" style="margin-top:10px;">
+          Synthetic training case (seeded).
+        </p>
+      {% endif %}
+    </div>
+
     <h2>Case Facts</h2>
     <table class="break">
       <thead>

@@ -311,6 +311,21 @@ def build_report_context(decision: dict) -> dict:
     input_hash = meta.get("input_hash", "") or ""
     policy_hash = meta.get("policy_hash", "") or ""
 
+    source_type_raw = meta.get("source_type") or "prod"
+    source_type = str(source_type_raw).lower()
+    source_labels = {
+        "seed": "Seed",
+        "seeded": "Seed",
+        "byoc": "BYOC",
+        "prod": "Production",
+        "system_generated": "System",
+        "imported": "Imported",
+        "tribunal": "Tribunal",
+    }
+    source_label = source_labels.get(source_type, source_type.title())
+    seed_category = meta.get("seed_category") or "N/A"
+    scenario_code = meta.get("scenario_code") or "N/A"
+
     domain = meta.get("domain")
     precedent_analysis = decision.get("precedent_analysis", {}) or {}
     domain_allowed = str(domain).lower() in {"banking_aml", "banking", "aml", "bank"} if domain else True
@@ -341,6 +356,12 @@ def build_report_context(decision: dict) -> dict:
         "input_hash_short": input_hash[:16] if input_hash else "N/A",
         "policy_hash": policy_hash,
         "policy_hash_short": policy_hash[:16] if policy_hash else "N/A",
+
+        # Case classification
+        "source_type": source_label,
+        "seed_category": seed_category,
+        "scenario_code": scenario_code,
+        "is_seed": source_type in {"seed", "seeded"},
 
         # Transaction Facts
         "transaction_facts": transaction_facts,
@@ -675,6 +696,18 @@ async def get_report_markdown(decision_id: str):
 | Jurisdiction | {ctx['jurisdiction']} |
 | Engine Version | `{ctx['engine_version']}` |
 | Policy Version | `{ctx['policy_version']}` |
+
+---
+
+## Case Classification
+
+| Field | Value |
+|-------|-------|
+| Source | {ctx['source_type']} |
+| Seed Category | {ctx['seed_category']} |
+| Scenario Code | `{_md_escape(ctx['scenario_code'])}` |
+
+{"> Synthetic training case (seeded)." if ctx['is_seed'] else ""}
 
 ---
 

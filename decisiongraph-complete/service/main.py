@@ -66,7 +66,11 @@ from decisiongraph.aml_fingerprint import (
     apply_aml_banding,
     create_txn_amount_banding,
 )
-from decisiongraph.judgment import create_judgment_cell
+from decisiongraph.judgment import (
+    create_judgment_cell,
+    normalize_scenario_code,
+    normalize_seed_category,
+)
 
 # Import routers
 from service.routers import demo, report, verify, templates
@@ -634,6 +638,15 @@ async def decide(request: Request):
         # Add engine commit (decision_pack.py doesn't know about git)
         decision_pack["meta"]["engine_commit"] = DG_ENGINE_COMMIT
         # Note: policy_hash and decision_id are computed by decision_pack.py with full SHA-256
+
+        # Attach optional classification metadata for audit/reporting
+        meta_block = body.get("meta") or {}
+        source_type = meta_block.get("source_type") or body.get("source_type") or "prod"
+        scenario_code = meta_block.get("scenario_code") or body.get("scenario_code")
+        seed_category = meta_block.get("seed_category") or body.get("seed_category")
+        decision_pack["meta"]["source_type"] = str(source_type).lower()
+        decision_pack["meta"]["scenario_code"] = normalize_scenario_code(scenario_code)
+        decision_pack["meta"]["seed_category"] = normalize_seed_category(seed_category)
 
         # Build fingerprint facts for precedent similarity
         fingerprint_facts = {}

@@ -39,7 +39,13 @@ from typing import Any, Optional
 
 from .aml_fingerprint import AMLFingerprintSchemaRegistry
 from .aml_reason_codes import AMLReasonCodeRegistry
-from .judgment import JudgmentPayload, AnchorFact, compute_case_id_hash
+from .judgment import (
+    JudgmentPayload,
+    AnchorFact,
+    compute_case_id_hash,
+    normalize_scenario_code,
+    normalize_seed_category,
+)
 
 
 # =============================================================================
@@ -333,6 +339,18 @@ class SeedGenerator:
         pack_hash_input = f"{config.category}:{config.registry_id}:v1"
         policy_pack_hash = hashlib.sha256(pack_hash_input.encode()).hexdigest()
 
+        scenario_code = normalize_scenario_code(scenario.code)
+        seed_category_map = {
+            "txn": "txn_monitoring",
+            "kyc": "kyc_onboarding",
+            "report": "reporting",
+            "screening": "screening",
+            "monitoring": "ongoing_monitoring",
+        }
+        seed_category = normalize_seed_category(
+            seed_category_map.get(config.category, config.category)
+        )
+
         # Create the judgment payload
         return JudgmentPayload(
             # Identity
@@ -364,7 +382,9 @@ class SeedGenerator:
             appeal_decided_at=appeal_decided_at,
             appeal_level="manager" if is_appealed else None,
             # Metadata
-            source_type="seeded",
+            source_type="seed",
+            scenario_code=scenario_code,
+            seed_category=seed_category,
             outcome_notable=outcome_notable,
         )
 

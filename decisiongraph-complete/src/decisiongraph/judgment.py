@@ -183,6 +183,8 @@ class JudgmentPayload:
         appeal_level: Appeal authority level
 
         source_type: How this precedent was created
+        scenario_code: Scenario identifier for audit/analytics
+        seed_category: Seed category when source_type is seed/seeded
         outcome_notable: Notable outcome marker (boundary_case, landmark, overturned)
 
         authority_hashes: Hashes of policy wording cited
@@ -224,6 +226,8 @@ class JudgmentPayload:
 
     # Metadata
     source_type: str = "system_generated"
+    scenario_code: Optional[str] = None
+    seed_category: Optional[str] = None
     outcome_notable: Optional[str] = None
 
     # Provenance
@@ -281,12 +285,26 @@ class JudgmentPayload:
             )
 
         # Validate source_type
-        valid_sources = {"seeded", "system_generated", "imported", "tribunal"}
+        valid_sources = {
+            "seed",
+            "seeded",
+            "system_generated",
+            "prod",
+            "byoc",
+            "imported",
+            "tribunal",
+        }
         if self.source_type not in valid_sources:
             raise JudgmentValidationError(
                 f"Invalid source_type '{self.source_type}'. "
                 f"Must be one of: {valid_sources}"
             )
+
+        if self.scenario_code is not None and not self.scenario_code:
+            raise JudgmentValidationError("scenario_code cannot be empty")
+
+        if self.seed_category is not None and not self.seed_category:
+            raise JudgmentValidationError("seed_category cannot be empty")
 
         # Validate timestamp format
         if not validate_timestamp(self.decided_at):
@@ -403,6 +421,8 @@ class JudgmentPayload:
             "decided_by_role": self.decided_by_role,
             "appealed": self.appealed,
             "source_type": self.source_type,
+            "scenario_code": self.scenario_code,
+            "seed_category": self.seed_category,
             "authority_hashes": self.authority_hashes,
         }
 
@@ -448,6 +468,8 @@ class JudgmentPayload:
             appeal_decided_at=data.get("appeal_decided_at"),
             appeal_level=data.get("appeal_level"),
             source_type=data.get("source_type", "system_generated"),
+            scenario_code=data.get("scenario_code"),
+            seed_category=data.get("seed_category"),
             outcome_notable=data.get("outcome_notable"),
             authority_hashes=data.get("authority_hashes", []),
         )
@@ -475,6 +497,26 @@ def compute_case_id_hash(case_id: str, salt: str) -> str:
 
     combined = f"{salt}{case_id}"
     return hashlib.sha256(combined.encode("utf-8")).hexdigest()
+
+
+def normalize_scenario_code(code: Optional[str]) -> Optional[str]:
+    """Normalize scenario codes into a canonical uppercase identifier."""
+    if code is None:
+        return None
+    cleaned = "".join(ch if ch.isalnum() else "_" for ch in str(code).strip().upper())
+    while "__" in cleaned:
+        cleaned = cleaned.replace("__", "_")
+    return cleaned.strip("_") or None
+
+
+def normalize_seed_category(category: Optional[str]) -> Optional[str]:
+    """Normalize seed category labels into a canonical lowercase identifier."""
+    if category is None:
+        return None
+    cleaned = "".join(ch if ch.isalnum() else "_" for ch in str(category).strip().lower())
+    while "__" in cleaned:
+        cleaned = cleaned.replace("__", "_")
+    return cleaned.strip("_") or None
 
 
 def validate_judgment_payload(payload: JudgmentPayload) -> None:
