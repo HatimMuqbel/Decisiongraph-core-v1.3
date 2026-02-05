@@ -8,6 +8,9 @@ Generates formal decision reports in multiple formats:
 All formats produce regulator-grade, audit-safe output.
 """
 
+# ── Module identity (visible in /health and deploy logs) ──
+REPORT_MODULE_VERSION = "2026-02-05.v5"
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates

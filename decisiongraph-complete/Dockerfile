@@ -1,19 +1,33 @@
 FROM python:3.11-slim
 
-# v4: Force complete rebuild 2026-02-05
-ARG CACHEBUST=4
+# v5: Clean build with .dockerignore and pycache purge — 2026-02-05
+ARG CACHEBUST=5
 RUN echo "Build version: ${CACHEBUST} - $(date)"
 
 WORKDIR /app
 
-# Copy everything first to bust cache on any file change
+# Copy application (filtered by .dockerignore)
 COPY . .
+
+# Purge any stale bytecode that survived
+RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -name '*.pyc' -delete 2>/dev/null || true
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Verify report.py is the fixed version (no f-string backslash)
-RUN python -c "import ast; ast.parse(open('service/routers/report.py').read()); print('report.py syntax OK')"
+# ── Build-time syntax gate ──
+# If report.py has ANY syntax error, the build fails and nothing deploys.
+RUN python -c "\
+import ast, sys; \
+src = open('service/routers/report.py').read(); \
+tree = ast.parse(src); \
+lines = src.count(chr(10)) + 1; \
+print(f'report.py: {lines} lines, syntax OK'); \
+sys.exit(0)"
+
+# Print file identity so deploy logs show exactly what shipped
+RUN head -1 service/routers/report.py && wc -l service/routers/report.py
 
 # Set Python path for src imports
 ENV PYTHONPATH=/app:/app/src

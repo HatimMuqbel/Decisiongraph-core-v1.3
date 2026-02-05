@@ -76,6 +76,9 @@ from decisiongraph.judgment import (
 from service.routers import demo, report, verify, templates
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
 
+# Log module versions at import time so deploy logs confirm the correct code shipped
+print(f"[startup] report module version: {report.REPORT_MODULE_VERSION}")
+
 # =============================================================================
 # Configuration
 # =============================================================================
