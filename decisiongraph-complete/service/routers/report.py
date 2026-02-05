@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from datetime import datetime
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +25,8 @@ templates = Jinja2Templates(directory=str(templates_dir))
 # In-memory cache of recent decisions for report generation
 # In production, this would be a proper cache/database
 decision_cache: dict[str, dict] = {}
+MIN_DECISION_PREFIX = int(os.getenv("DG_DECISION_PREFIX_MIN", "12"))
+ALLOW_RAW_DECISION = os.getenv("DG_ALLOW_RAW_DECISION", "false").lower() == "true"
 
 
 def cache_decision(decision_id: str, decision_pack: dict):
@@ -38,6 +41,77 @@ def cache_decision(decision_id: str, decision_pack: dict):
 def get_cached_decision(decision_id: str) -> Optional[dict]:
     """Get a cached decision by ID."""
     return decision_cache.get(decision_id)
+
+
+def _md_escape(value: object) -> str:
+    if value is None:
+        return ""
+    text = str(value)
+    return text.replace("\r", " ").replace("\n", " ").replace("|", "\\|").replace("`", "\\`")
+
+
+def _find_decision_or_raise(decision_id: str) -> dict:
+    if decision_id in decision_cache:
+        return decision_cache[decision_id]
+
+    if len(decision_id) < MIN_DECISION_PREFIX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Decision id prefix must be at least {MIN_DECISION_PREFIX} characters.",
+        )
+
+    matches = [
+        cached_decision
+        for cached_id, cached_decision in decision_cache.items()
+        if cached_id.startswith(decision_id)
+    ]
+
+    if not matches:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Decision '{decision_id}' not found. Decisions are cached briefly. "
+                   f"Re-run the decision and immediately request the report.",
+        )
+    if len(matches) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Decision id prefix is ambiguous. Provide a longer prefix or the full id.",
+        )
+
+    return matches[0]
+
+
+def _redact_decision(decision: dict) -> dict:
+    meta = decision.get("meta", {}) or {}
+    decision_data = decision.get("decision", {}) or {}
+    gates = decision.get("gates", {}) or {}
+    layers = decision.get("layers", {}) or {}
+    rationale = decision.get("rationale", {}) or {}
+    compliance = decision.get("compliance", {}) or {}
+    eval_trace = decision.get("evaluation_trace", {}) or {}
+
+    redacted_meta = {
+        "decision_id": meta.get("decision_id"),
+        "case_id": meta.get("case_id"),
+        "timestamp": meta.get("timestamp"),
+        "jurisdiction": meta.get("jurisdiction"),
+        "engine_version": meta.get("engine_version"),
+        "policy_version": meta.get("policy_version"),
+        "domain": meta.get("domain"),
+        "input_hash": meta.get("input_hash"),
+        "policy_hash": meta.get("policy_hash"),
+    }
+
+    return {
+        "meta": redacted_meta,
+        "decision": decision_data,
+        "gates": gates,
+        "layers": layers,
+        "rationale": rationale,
+        "compliance": compliance,
+        "evaluation_trace": eval_trace,
+        "redacted": True,
+    }
 
 
 def build_report_context(decision: dict) -> dict:
@@ -82,7 +156,8 @@ def build_report_context(decision: dict) -> dict:
     gate1_sections = []
     sections1 = gate1.get("sections", {}) or {}
     if isinstance(sections1, dict):
-        for section_id, section_data in sections1.items():
+        for section_id in sorted(sections1.keys()):
+            section_data = sections1.get(section_id, {})
             if isinstance(section_data, dict):
                 gate1_sections.append({
                     "id": section_id,
@@ -91,12 +166,19 @@ def build_report_context(decision: dict) -> dict:
                     "reason": section_data.get("reason", "")
                 })
     elif isinstance(sections1, list):
-        gate1_sections = sections1
+        gate1_sections = sorted(
+            sections1,
+            key=lambda section: (
+                str(section.get("name", "")),
+                str(section.get("id", "")),
+            ),
+        )
 
     gate2_sections = []
     sections2 = gate2.get("sections", {}) or {}
     if isinstance(sections2, dict):
-        for section_id, section_data in sections2.items():
+        for section_id in sorted(sections2.keys()):
+            section_data = sections2.get(section_id, {})
             if isinstance(section_data, dict):
                 gate2_sections.append({
                     "id": section_id,
@@ -105,7 +187,13 @@ def build_report_context(decision: dict) -> dict:
                     "reason": section_data.get("reason", "")
                 })
     elif isinstance(sections2, list):
-        gate2_sections = sections2
+        gate2_sections = sorted(
+            sections2,
+            key=lambda section: (
+                str(section.get("name", "")),
+                str(section.get("id", "")),
+            ),
+        )
 
     # Build transaction facts from layers
     transaction_facts = []
@@ -122,7 +210,7 @@ def build_report_context(decision: dict) -> dict:
 
     # Transaction facts
     txn = layer1.get("transaction", {}) or {}
-    if txn.get("amount_cad"):
+    if txn.get("amount_cad") is not None:
         transaction_facts.append({"field": "Amount (CAD)", "value": f"${txn.get('amount_cad'):,.2f}"})
     if txn.get("method"):
         transaction_facts.append({"field": "Payment Method", "value": txn.get("method")})
@@ -153,10 +241,16 @@ def build_report_context(decision: dict) -> dict:
         escalation_reasons.append(f"Decision path: {dec.get('path')}")
 
     # Rules fired
-    rules_fired = eval_trace.get("rules_fired", []) or []
+    rules_fired = sorted(
+        eval_trace.get("rules_fired", []) or [],
+        key=lambda rule: str(rule.get("code", "")),
+    )
 
     # Evidence used (raw evaluation trace)
-    evidence_used = eval_trace.get("evidence_used", []) or []
+    evidence_used = sorted(
+        eval_trace.get("evidence_used", []) or [],
+        key=lambda ev: str(ev.get("field", "")),
+    )
 
     # Risk factor assessment (derived from decision layers)
     risk_factors = []
@@ -313,11 +407,11 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
     )
 
     match_rows = ""
-    for outcome, count in match_distribution.items():
+    for outcome, count in sorted(match_distribution.items(), key=lambda item: str(item[0])):
         match_rows += f"| {_label(outcome)} | {count} |\n"
 
     overlap_rows = ""
-    for outcome, count in overlap_distribution.items():
+    for outcome, count in sorted(overlap_distribution.items(), key=lambda item: str(item[0])):
         overlap_rows += f"| {_label(outcome)} | {count} |\n"
 
     # Appeal stats
@@ -384,7 +478,10 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
                 f"Customer {_pct(components.get('customer_profile'))}% ({_weight('customer_profile', 5)}%), "
                 f"Geo {_pct(components.get('geo_risk'))}% ({_weight('geo_risk', 4)}%)"
             )
-            matches_md += f"| {match.get('precedent_id', 'N/A')} | {outcome_label} | {similarity} | {match.get('decision_level', 'N/A')} | {reason_codes} | {drivers} |\n"
+            matches_md += (
+                f"| {_md_escape(match.get('precedent_id', 'N/A'))} | {_md_escape(outcome_label)} | {similarity} | "
+                f"{_md_escape(match.get('decision_level', 'N/A'))} | {_md_escape(reason_codes)} | {_md_escape(drivers)} |\n"
+            )
 
     note_md = ""
     if raw_overlap_count > 0 and match_count == 0 and not sample_cases:
@@ -459,19 +556,7 @@ async def get_report_html(request: Request, decision_id: str):
     - Audit records
     - Regulatory review
     """
-    # Try short ID match first
-    decision = None
-    for cached_id, cached_decision in decision_cache.items():
-        if cached_id.startswith(decision_id) or decision_id in cached_id:
-            decision = cached_decision
-            break
-
-    if not decision:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Decision '{decision_id}' not found. Decisions are cached briefly. "
-                   f"Re-run the decision and immediately request the report."
-        )
+    decision = _find_decision_or_raise(decision_id)
 
     try:
         context = build_report_context(decision)
@@ -493,33 +578,32 @@ async def get_report_html(request: Request, decision_id: str):
 
 
 @router.get("/{decision_id}/json")
-async def get_report_json(decision_id: str):
+async def get_report_json(decision_id: str, include_raw: bool = False):
     """
     Get decision report as structured JSON.
 
     Returns the same content as the HTML report but in JSON format,
     suitable for systems integration.
     """
-    decision = None
-    for cached_id, cached_decision in decision_cache.items():
-        if cached_id.startswith(decision_id) or decision_id in cached_id:
-            decision = cached_decision
-            break
-
-    if not decision:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Decision '{decision_id}' not found."
-        )
+    decision = _find_decision_or_raise(decision_id)
 
     ctx = build_report_context(decision)
 
-    return {
+    response = {
         "format": "json",
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "report": ctx,
-        "raw_decision": decision
     }
+
+    if include_raw:
+        if not ALLOW_RAW_DECISION:
+            raise HTTPException(
+                status_code=403,
+                detail="Raw decision output is disabled in this environment.",
+            )
+        response["raw_decision"] = _redact_decision(decision)
+
+    return response
 
 
 @router.get("/{decision_id}/markdown")
@@ -527,41 +611,31 @@ async def get_report_markdown(decision_id: str):
     """
     Generate a Markdown decision report.
     """
-    decision = None
-    for cached_id, cached_decision in decision_cache.items():
-        if cached_id.startswith(decision_id) or decision_id in cached_id:
-            decision = cached_decision
-            break
-
-    if not decision:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Decision '{decision_id}' not found."
-        )
+    decision = _find_decision_or_raise(decision_id)
 
     ctx = build_report_context(decision)
 
     # Build transaction facts table
     facts_rows = ""
     for fact in ctx.get('transaction_facts', []):
-        facts_rows += f"| {fact['field']} | `{fact['value']}` |\n"
+        facts_rows += f"| {_md_escape(fact['field'])} | `{_md_escape(fact['value'])}` |\n"
 
     # Build gate1 sections
     gate1_rows = ""
     for section in ctx.get('gate1_sections', []):
         status = "PASS" if section.get('passed') else "FAIL"
-        gate1_rows += f"| {section.get('name', 'N/A')} | {status} | {section.get('reason', '')} |\n"
+        gate1_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {_md_escape(section.get('reason', ''))} |\n"
 
     # Build gate2 sections
     gate2_rows = ""
     for section in ctx.get('gate2_sections', []):
         status = "PASS" if section.get('passed') else "REVIEW"
-        gate2_rows += f"| {section.get('name', 'N/A')} | {status} | {section.get('reason', '')} |\n"
+        gate2_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {_md_escape(section.get('reason', ''))} |\n"
 
     # Build rules fired table
     rules_rows = ""
     for rule in ctx.get('rules_fired', []):
-        rules_rows += f"| `{rule.get('code', 'N/A')}` | {rule.get('result', 'N/A')} | {rule.get('reason', '')} |\n"
+        rules_rows += f"| `{_md_escape(rule.get('code', 'N/A'))}` | {_md_escape(rule.get('result', 'N/A'))} | {_md_escape(rule.get('reason', ''))} |\n"
 
     # Build evidence table
     evidence_rows = ""
@@ -569,7 +643,7 @@ async def get_report_markdown(decision_id: str):
         value = ev.get('value', 'N/A')
         if isinstance(value, bool):
             value = "Yes" if value else "No"
-        evidence_rows += f"| `{ev.get('field', 'N/A')}` | {value} |\n"
+        evidence_rows += f"| `{_md_escape(ev.get('field', 'N/A'))}` | {_md_escape(value)} |\n"
 
     # Decision header
     if ctx['decision_status'] == "pass":
@@ -579,6 +653,7 @@ async def get_report_markdown(decision_id: str):
     else:
         decision_header = "### **REVIEW REQUIRED**"
 
+    safe_path = _md_escape(ctx['decision_path_trace'] or 'N/A')
     md = f"""# AML/KYC Decision Report
 
 **Bank-Grade Dual-Gate Engine (Zero LLM)**
@@ -661,7 +736,7 @@ async def get_report_markdown(decision_id: str):
 | Decision Hash | `{ctx['decision_id']}` |
 | Input Hash | `{ctx['input_hash']}` |
 | Policy Hash | `{ctx['policy_hash']}` |
-| Decision Path | `{ctx['decision_path_trace'] or 'N/A'}` |
+| Decision Path | `{safe_path}` |
 
 This decision is cryptographically bound to the exact input and policy evaluated.
 
