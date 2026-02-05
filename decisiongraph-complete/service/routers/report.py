@@ -929,6 +929,13 @@ async def get_report_markdown(decision_id: str):
         decision_header = "### **REVIEW REQUIRED**"
 
     safe_path = _md_escape(ctx['decision_path_trace'] or 'N/A')
+    governance_note = ""
+    if ctx['str_required']:
+        governance_note = (
+            "### Governance Note\n\n"
+            "A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.\n"
+            "This report must be filed within 30 days of the suspicion being formed.\n"
+        )
     md = f"""# AML/KYC Decision Report
 
 **Deterministic Regulatory Decision Engine (Zero LLM)**
@@ -1071,12 +1078,7 @@ Re-evaluation using identical inputs and the same policy version will produce id
 
 The decision may be independently verified using the `/verify` endpoint. Complete decision lineage, rule sequencing, and evidentiary artifacts are preserved within the immutable audit record and available for supervisory review.
 
-{"
-### Governance Note
-
-A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.
-This report must be filed within 30 days of the suspicion being formed.
-" if ctx['str_required'] else ""}
+{governance_note}
 
 ---
 
