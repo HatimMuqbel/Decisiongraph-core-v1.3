@@ -109,14 +109,16 @@
     <h2>Investigation Outcome Summary</h2>
     <div class="card break">
       <div class="kv">
-        <div class="label">Verdict</div>
-        <div class="value">{{ verdict }}</div>
-        <div class="label">Action</div>
-        <div class="value">{{ action }}</div>
-        <div class="label">STR Required</div>
-        <div class="value">{{ 'Yes' if str_required else 'No' }}</div>
-        <div class="label">Decision Status</div>
-        <div class="value">{{ decision_status | upper }}</div>
+        <div class="label">Regulatory Status</div>
+        <div class="value">{{ regulatory_status }}</div>
+        <div class="label">Investigation State</div>
+        <div class="value">{{ investigation_state }}</div>
+        <div class="label">Primary Typology</div>
+        <div class="value">{{ primary_typology }}</div>
+        {% if decision_confidence %}
+        <div class="label">Confidence</div>
+        <div class="value">{{ decision_confidence }}</div>
+        {% endif %}
       </div>
       <p class="small" style="margin-top:10px;">{{ decision_explainer }}</p>
     </div>
@@ -212,7 +214,6 @@
 
     <h2>Decision Drivers</h2>
     <div class="card break">
-      <h3>Decision Drivers</h3>
       {% if decision_drivers and decision_drivers|length > 0 %}
       <ul class="small">
         {% for driver in decision_drivers %}
@@ -424,11 +425,11 @@
         <div class="value" style="color: var(--ok);">{{ precedent_analysis.supporting_precedents }} <span class="small">(same outcome as recommendation)</span></div>
         <div class="label">Contrary Precedents</div>
         <div class="value" style="color: var(--bad);">{{ precedent_analysis.contrary_precedents }} <span class="small">(different outcome)</span></div>
-        <div class="label">Neutral Precedents</div>
+        <div class="label">Neutral / Procedural Outcomes</div>
         <div class="value" style="color: var(--muted);">{{ precedent_analysis.neutral_precedents | default(0) }} <span class="small">(resolved via enhanced review)</span></div>
       </div>
       <p class="small" style="margin-top:12px;">
-        <em>Neutral precedents reflect cases resolved through enhanced review processes rather than immediate determination. Their inclusion demonstrates balanced historical analysis.</em>
+        <em>Procedural outcomes reflect cases resolved through enhanced review processes (EDD/review states) rather than immediate determination.</em>
       </p>
     </div>
 
@@ -518,15 +519,15 @@
           <td>{{ match.decision_level | default('N/A') }}</td>
           <td class="mono">{{ match.reason_codes | join(', ') }}</td>
           <td class="small">
-            Rules: {{ match.similarity_components.rules_overlap }}% (25%)<br>
-            Gates: {{ match.similarity_components.gate_match }}% (20%)<br>
-            Typologies: {{ match.similarity_components.typology_overlap }}% (15%)<br>
-            Amount: {{ match.similarity_components.amount_bucket }}% (10%)<br>
-            Channel: {{ match.similarity_components.channel_method }}% (7%)<br>
-            Corridor: {{ match.similarity_components.corridor_match }}% (8%)<br>
-            PEP: {{ match.similarity_components.pep_match }}% (6%)<br>
-            Customer: {{ match.similarity_components.customer_profile }}% (5%)<br>
-            Geo Risk: {{ match.similarity_components.geo_risk }}% (4%)
+            Rules: {% if match.similarity_components.rules_overlap %}{{ match.similarity_components.rules_overlap }}% (25%){% else %}Not material{% endif %}<br>
+            Gates: {% if match.similarity_components.gate_match %}{{ match.similarity_components.gate_match }}% (20%){% else %}Not material{% endif %}<br>
+            Typologies: {% if match.similarity_components.typology_overlap %}{{ match.similarity_components.typology_overlap }}% (15%){% else %}Not material{% endif %}<br>
+            Amount: {% if match.similarity_components.amount_bucket %}{{ match.similarity_components.amount_bucket }}% (10%){% else %}Not material{% endif %}<br>
+            Channel: {% if match.similarity_components.channel_method %}{{ match.similarity_components.channel_method }}% (7%){% else %}Not material{% endif %}<br>
+            Corridor: {% if match.similarity_components.corridor_match %}{{ match.similarity_components.corridor_match }}% (8%){% else %}Not material{% endif %}<br>
+            PEP: {% if match.similarity_components.pep_match %}{{ match.similarity_components.pep_match }}% (6%){% else %}Not material{% endif %}<br>
+            Customer: {% if match.similarity_components.customer_profile %}{{ match.similarity_components.customer_profile }}% (5%){% else %}Not material{% endif %}<br>
+            Geo Risk: {% if match.similarity_components.geo_risk %}{{ match.similarity_components.geo_risk }}% (4%){% else %}Not material{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -609,6 +610,7 @@
     </table>
 
     <h2>Evidence Considered</h2>
+    <p class="small" style="margin-bottom:8px;">Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.</p>
     <table class="break">
       <thead>
         <tr>
@@ -642,7 +644,9 @@
         <div class="label">Policy Hash</div>
         <div class="value mono hash">{{ policy_hash }}</div>
         <div class="label">Decision Path</div>
-        <div class="value mono">{{ decision_path_trace or 'N/A' }}</div>
+        <div class="value mono">{{ decision_path_trace or action or 'N/A' }}</div>
+        <div class="label">Primary Trigger</div>
+        <div class="value mono">{{ action or 'N/A' }}</div>
       </div>
       <p class="small" style="margin-top:12px;">
         This decision is cryptographically bound to the exact input and policy evaluated at decision time.
@@ -660,7 +664,7 @@
     <div class="regulatory break">
       <strong>Regulatory Note</strong><br><br>
       A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.
-      This report must be filed within 30 days of the suspicion being formed.
+      File within applicable statutory timeframe per regulatory guidance (policy version: {{ policy_version }}).
     </div>
     {% endif %}
 

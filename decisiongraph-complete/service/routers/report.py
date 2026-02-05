@@ -9,7 +9,7 @@ All formats produce regulator-grade, audit-safe output.
 """
 
 # ── Module identity (visible in /health and deploy logs) ──
-REPORT_MODULE_VERSION = "2026-02-05.v6"
+REPORT_MODULE_VERSION = "2026-02-05.v7"
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -149,9 +149,12 @@ def _derive_decision_drivers(
     layer6_suspicion: dict,
     gate1_passed: bool,
     str_required: bool,
+    evidence_used: list | None = None,
+    layer1_facts: dict | None = None,
 ) -> list[str]:
     candidates: list[str] = []
 
+    # 1. Typology-driven bullets (primary)
     typologies = layer4_typologies.get("typologies", []) or []
     typology_names = []
     for typology in typologies:
@@ -165,16 +168,42 @@ def _derive_decision_drivers(
         mapped = _map_driver_label(name) or f"{name} indicators"
         candidates.append(mapped)
 
+    # 2. Suspicion elements
     elements = layer6_suspicion.get("elements", {}) or {}
     for element in sorted(k for k, active in elements.items() if active):
         mapped = _map_driver_label(element) or f"Suspicion element: {element}"
         candidates.append(mapped)
 
+    # 3. Evidence-based contextual bullets
+    ev_map: dict[str, object] = {}
+    for ev in (evidence_used or []):
+        field = str(ev.get("field", "")).lower()
+        ev_map[field] = ev.get("value")
+
+    facts = layer1_facts or {}
+    txn = facts.get("transaction", {}) or {}
+    customer = facts.get("customer", {}) or {}
+
+    if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
+        candidates.append("Cross-border transaction with elevated corridor risk")
+    method = txn.get("method") or ev_map.get("txn.method") or ""
+    if method and str(method).lower() in {"wire", "wire_transfer", "swift", "eft"}:
+        candidates.append(f"Wire transfer channel ({str(method).upper()})")
+    cust_type = customer.get("type") or ev_map.get("customer.type") or ""
+    if cust_type and str(cust_type).lower() in {"corporation", "corporate", "business", "entity"}:
+        candidates.append("Corporate customer profile")
+    amount_band = ev_map.get("txn.amount_band") or txn.get("amount_band") or ""
+    if amount_band:
+        band_display = str(amount_band).replace("_", "\u2013")
+        candidates.append(f"Amount band: {band_display}")
+
+    # 4. STR / gate blockers
     if str_required:
-        candidates.append("Reporting threshold met (STR required)")
+        candidates.append("No mitigating evidence sufficient to negate suspicion threshold (STR required)")
     if not gate1_passed:
         candidates.append("Escalation blocked by Gate 1 legal basis")
 
+    # 5. Triggered rules
     triggered_rules = [
         rule for rule in rules_fired
         if str(rule.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
@@ -190,6 +219,7 @@ def _derive_decision_drivers(
         if mapped:
             candidates.append(mapped)
 
+    # 6. Risk factor labels
     for item in sorted(
         risk_factors,
         key=lambda entry: (str(entry.get("field", "")), str(entry.get("value", ""))),
@@ -208,7 +238,7 @@ def _derive_decision_drivers(
     if not deduped:
         return ["Deterministic rule activation requiring review"]
 
-    return deduped[:5]
+    return deduped[:6]
 
 
 def _find_decision_or_raise(decision_id: str) -> dict:
@@ -298,6 +328,44 @@ def build_report_context(decision: dict) -> dict:
     else:
         decision_status = "review"
         decision_explainer = "Additional review required before final determination."
+
+    # Derive top-line regulatory status (single headline)
+    str_required_raw = dec.get("str_required", False)
+    _str_check = (
+        str_required_raw is True
+        or str_required_raw in ["YES", "yes", "Y", "y"]
+    )
+    if _str_check:
+        regulatory_status = "STR REQUIRED"
+    elif decision_status == "escalate":
+        regulatory_status = "ESCALATE"
+    elif decision_status == "pass":
+        regulatory_status = "NO REPORT"
+    else:
+        regulatory_status = "EDD REQUIRED"
+
+    # Investigation workflow state
+    if decision_status == "pass":
+        investigation_state = "CLEARED"
+    elif _str_check:
+        investigation_state = "EDD REQUIRED"
+    elif decision_status == "escalate":
+        investigation_state = "EDD REQUIRED"
+    else:
+        investigation_state = "UNDER REVIEW"
+
+    # Primary typology (first named typology or verdict label)
+    _typologies = (layers.get("layer4_typologies", {}) or {}).get("typologies", []) or []
+    primary_typology = ""
+    for _typ in _typologies:
+        if isinstance(_typ, dict):
+            primary_typology = _typ.get("name") or ""
+        else:
+            primary_typology = str(_typ)
+        if primary_typology:
+            break
+    if not primary_typology:
+        primary_typology = verdict
 
     # Handle str_required - convert bool to proper format
     str_required_raw = dec.get("str_required", False)
@@ -493,10 +561,38 @@ def build_report_context(decision: dict) -> dict:
             "value": dec.get("path"),
         })
 
+    # Fallback: mine evidence_used for risk-relevant booleans/values
+    if not risk_factors:
+        _flag_labels = {
+            "flag.structuring_suspected": "Structuring suspected",
+            "flag.cross_border": "Cross-border transaction",
+            "flag.pep": "PEP exposure",
+            "flag.sanctions_proximity": "Sanctions screening proximity",
+            "flag.adverse_media": "Adverse media exposure",
+            "flag.rapid_movement": "Rapid fund movement",
+            "flag.shell_entity": "Shell entity indicators",
+        }
+        _value_labels = {
+            "txn.cross_border": ("Cross-border wire transfer", lambda v: v is True or str(v).lower() == "true"),
+            "txn.amount_band": ("Amount band", lambda v: bool(v)),
+            "customer.type": ("Customer type", lambda v: bool(v)),
+            "txn.method": ("Payment method", lambda v: bool(v)),
+        }
+        for ev in evidence_used:
+            field = str(ev.get("field", ""))
+            value = ev.get("value")
+            if field in _flag_labels and (value is True or str(value).lower() == "true"):
+                risk_factors.append({"field": _flag_labels[field], "value": "Present"})
+            elif field in _value_labels:
+                label, predicate = _value_labels[field]
+                if predicate(value):
+                    display = str(value).replace("_", "\u2013") if "band" in field else str(value)
+                    risk_factors.append({"field": label, "value": display})
+
     if not risk_factors:
         risk_factors.append({
-            "field": "Regulatory indicators",
-            "value": "Indicators not captured in this record",
+            "field": "Assessment",
+            "value": "No material risk indicators identified in evaluated evidence",
         })
 
     # Safe string extraction
@@ -564,6 +660,8 @@ def build_report_context(decision: dict) -> dict:
         layer6_suspicion=layer6_suspicion,
         gate1_passed=gate1_passed,
         str_required=str_required,
+        evidence_used=evidence_used,
+        layer1_facts=layer1_facts,
     )
 
     report_sections = [
@@ -620,6 +718,9 @@ def build_report_context(decision: dict) -> dict:
         "decision_explainer": decision_explainer,
         "str_required": str_required,
         "escalation_reasons": escalation_reasons,
+        "regulatory_status": regulatory_status,
+        "investigation_state": investigation_state,
+        "primary_typology": primary_typology,
 
         # Gates
         "gate1_passed": gate1_passed,
@@ -952,7 +1053,8 @@ async def get_report_markdown(decision_id: str):
         governance_note = (
             "### Governance Note\n\n"
             "A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.\n"
-            "This report must be filed within 30 days of the suspicion being formed.\n"
+            "File within applicable statutory timeframe per regulatory guidance "
+            f"(policy version: {ctx.get('policy_version', 'N/A')}).\n"
         )
     seed_notice = "> Synthetic training case (seeded)." if ctx.get("is_seed") else ""
     str_required_label = "Yes" if ctx.get("str_required") else "No"
@@ -987,10 +1089,10 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-| Verdict | {verdict} |
-| Action | {action} |
+| Regulatory Status | **{regulatory_status}** |
+| Investigation State | {investigation_state} |
+| Primary Typology | {primary_typology} |
 | STR Required | {str_required_label} |
-| Decision Status | {decision_status_upper} |
 
 {decision_explainer}
 
@@ -1079,6 +1181,8 @@ async def get_report_markdown(decision_id: str):
 
 ## Evidence Considered
 
+*Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.*
+
 | Field | Value |
 |-------|-------|
 {evidence_rows_output}
@@ -1095,6 +1199,7 @@ async def get_report_markdown(decision_id: str):
 | Input Hash | `{input_hash}` |
 | Policy Hash | `{policy_hash}` |
 | Decision Path | `{safe_path}` |
+| Primary Trigger | `{action}` |
 
 This decision is cryptographically bound to the exact input and policy evaluated.
 
@@ -1132,10 +1237,13 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         gate2_rows_output=gate2_rows_output,
         governance_note=governance_note,
         input_hash=ctx.get("input_hash"),
+        investigation_state=ctx.get("investigation_state", ""),
         jurisdiction=ctx.get("jurisdiction"),
         policy_hash=ctx.get("policy_hash"),
         policy_version=ctx.get("policy_version"),
         precedent_markdown=precedent_markdown,
+        primary_typology=_md_escape(ctx.get("primary_typology", "")),
+        regulatory_status=ctx.get("regulatory_status", ""),
         report_schema_version=ctx.get("report_schema_version"),
         risk_factors_md=risk_factors_md,
         rules_rows_output=rules_rows_output,
