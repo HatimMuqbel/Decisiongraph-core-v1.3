@@ -453,6 +453,12 @@
       </ul>
     </div>
     {% endif %}
+    {% elif precedent_analysis %}
+    <h2>Precedent Intelligence</h2>
+    <div class="status warn" style="margin-top:12px; padding:12px;">
+      <strong>Precedent Analysis Unavailable</strong><br>
+      <span class="small">{{ precedent_analysis.message or precedent_analysis.error or 'Precedent analysis unavailable.' }}</span>
+    </div>
     {% endif %}
 
     <h2>Risk Factor Assessment</h2>

@@ -171,14 +171,15 @@ class Engine:
             self._validate_rfa_fields(canonical_rfa)
 
             # Step 4: Query Scholar
+            default_time = self.chain.head.header.system_time
             query_result = self.scholar.query_facts(
                 requester_namespace=canonical_rfa['requester_namespace'],
                 namespace=canonical_rfa['namespace'],
                 subject=canonical_rfa.get('subject'),
                 predicate=canonical_rfa.get('predicate'),
                 object_value=canonical_rfa.get('object'),
-                at_valid_time=canonical_rfa.get('at_valid_time'),
-                as_of_system_time=canonical_rfa.get('as_of_system_time'),
+                at_valid_time=canonical_rfa.get('at_valid_time') or default_time,
+                as_of_system_time=canonical_rfa.get('as_of_system_time') or default_time,
                 requester_id=canonical_rfa['requester_id']
             )
 

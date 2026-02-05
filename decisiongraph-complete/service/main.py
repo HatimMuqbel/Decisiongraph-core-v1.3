@@ -1405,7 +1405,7 @@ def query_similar_precedents(
 
         # Find matching precedents (Tier 1 - overlapping codes)
         # Returns list sorted by overlap descending
-        matches = PRECEDENT_REGISTRY.find_by_exclusion_codes(
+        precedent_matches = PRECEDENT_REGISTRY.find_by_exclusion_codes(
             codes=reason_codes,
             namespace_prefix=resolved_prefix,
             min_overlap=1,
@@ -1414,7 +1414,7 @@ def query_similar_precedents(
         # Score matches with layered similarity
         scored_matches = []
         case_code_weights = sum(_code_weight(code) for code in case_reason_codes) or 1.0
-        for payload, overlap in matches:
+        for payload, overlap in precedent_matches:
             # Stage A hard filters
             if payload.fingerprint_schema_id != schema_id:
                 continue
@@ -1434,7 +1434,7 @@ def query_similar_precedents(
             rules_overlap = weighted_overlap / case_code_weights
 
             outcome_normalized = normalize_outcome(payload.outcome_code)
-            gate1_allowed_prec = outcome_normalized != "pay"
+            gate1_allowed_prec = outcome_normalized != "deny"
             gate2_str_prec = outcome_normalized in {"escalate", "deny"}
             gate1_allowed_case = bool(case_facts.get("gate1_allowed")) if case_facts else False
             gate2_str_case = bool(case_facts.get("gate2_str_required")) if case_facts else False
@@ -1470,12 +1470,12 @@ def query_similar_precedents(
 
             precedent_relationship = _anchor_value(payload, "customer.relationship_length")
             customer_profile_score = 0.0
-            matches = 0
+            profile_matches = 0
             if case_customer_type and precedent_customer_type and str(case_customer_type) == str(precedent_customer_type):
-                matches += 1
+                profile_matches += 1
             if case_relationship and precedent_relationship and str(case_relationship) == str(precedent_relationship):
-                matches += 1
-            customer_profile_score = 1.0 if matches == 2 else 0.5 if matches == 1 else 0.0
+                profile_matches += 1
+            customer_profile_score = 1.0 if profile_matches == 2 else 0.5 if profile_matches == 1 else 0.0
 
             precedent_geo_risk = _anchor_value(payload, "txn.destination_country_risk")
             case_geo_risk = case_destination_risk
@@ -1516,9 +1516,9 @@ def query_similar_precedents(
                     )
                 )
 
-        raw_overlap_count = len(matches)
+        raw_overlap_count = len(precedent_matches)
         overlap_outcome_distribution = _build_outcome_distribution(
-            [payload for payload, _overlap in matches]
+            [payload for payload, _overlap in precedent_matches]
         )
         match_outcome_distribution = _build_outcome_distribution(
             [payload for payload, _overlap, _score, _components, _dw, _rw in scored_matches]

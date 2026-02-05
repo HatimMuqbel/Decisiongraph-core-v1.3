@@ -218,11 +218,17 @@ def build_report_context(decision: dict) -> dict:
     policy_hash = meta.get("policy_hash", "") or ""
 
     domain = meta.get("domain")
-    precedent_analysis = decision.get("precedent_analysis", {})
-    if domain and str(domain).lower() not in {"banking_aml", "banking", "aml", "bank"}:
+    precedent_analysis = decision.get("precedent_analysis", {}) or {}
+    domain_allowed = str(domain).lower() in {"banking_aml", "banking", "aml", "bank"} if domain else True
+    if not domain_allowed:
         precedent_analysis = {
             "available": False,
             "message": "Precedent analysis is not enabled for this domain",
+        }
+    elif not precedent_analysis:
+        precedent_analysis = {
+            "available": False,
+            "message": "Precedent analysis missing from decision cache. Re-run the decision and refresh the report.",
         }
 
     return {
@@ -277,8 +283,11 @@ def build_report_context(decision: dict) -> dict:
 
 def _build_precedent_markdown(precedent_analysis: dict) -> str:
     """Build markdown section for precedent analysis."""
-    if not precedent_analysis or not precedent_analysis.get("available"):
+    if not precedent_analysis:
         return ""
+    if not precedent_analysis.get("available"):
+        message = precedent_analysis.get("message") or precedent_analysis.get("error") or "Precedent analysis unavailable."
+        return f"""## Precedent Analysis\n\n> {message}\n\n---\n\n"""
 
     def _label(value: object) -> str:
         return str(value).upper() if value is not None else "N/A"

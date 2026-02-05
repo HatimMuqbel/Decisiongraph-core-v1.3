@@ -269,11 +269,42 @@ class TemplateLoader:
                     reason_codes = ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"]
                     # Pass raw outcome - query_similar_precedents will normalize it
                     raw_outcome = matched_outcome.get("decision", "approve")
+                    # Normalize BYOC facts to precedent schema fields
+                    precedent_facts = dict(facts)
+                    customer_type = precedent_facts.get("customer.type")
+                    if customer_type in {"sole_prop", "individual"}:
+                        precedent_facts["customer.type"] = "individual"
+                    elif customer_type in {"partnership", "trust", "non_profit", "corporation"}:
+                        precedent_facts["customer.type"] = "corporation"
+
+                    if "customer.relationship_length" not in precedent_facts:
+                        precedent_facts["customer.relationship_length"] = facts.get("customer.relationship_length")
+
+                    if "customer.pep" not in precedent_facts:
+                        precedent_facts["customer.pep"] = facts.get("risk.pep") or facts.get("screen.pep_match")
+
+                    precedent_facts.setdefault(
+                        "screening.sanctions_match",
+                        facts.get("screen.sanctions_match"),
+                    )
+                    precedent_facts.setdefault(
+                        "screening.adverse_media",
+                        facts.get("screen.adverse_media"),
+                    )
+
+                    destination = facts.get("txn.destination_country")
+                    if destination and "txn.destination_country_risk" not in precedent_facts:
+                        destination_risk = "high" if destination == "high_risk_country" else "low"
+                        precedent_facts["txn.destination_country_risk"] = destination_risk
+
+                    decision_code = (matched_outcome.get("decision") or "").lower()
+                    precedent_facts["gate1_allowed"] = decision_code != "block"
+                    precedent_facts["gate2_str_required"] = decision_code in {"block", "escalate", "investigate"}
                     precedent_analysis = _query_precedents(
                         reason_codes,
                         raw_outcome,
                         domain=template.get("domain"),
-                        case_facts=facts,
+                        case_facts=precedent_facts,
                         jurisdiction="CA",
                     )
                     report_pack["precedent_analysis"] = precedent_analysis

@@ -237,9 +237,21 @@ def compute_policy_hash(promoted_rule_ids: List[str]) -> str:
     return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
 
 
+_LAST_TIMESTAMP_MS = 0
+
+
 def get_current_timestamp() -> str:
-    """Get current UTC timestamp in ISO-8601 format with Z suffix"""
-    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+    """Get current UTC timestamp in ISO-8601 format with Z suffix.
+
+    Ensures monotonic millisecond precision to avoid duplicate timestamps
+    within the same process.
+    """
+    global _LAST_TIMESTAMP_MS
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    if now_ms <= _LAST_TIMESTAMP_MS:
+        now_ms = _LAST_TIMESTAMP_MS + 1
+    _LAST_TIMESTAMP_MS = now_ms
+    return datetime.fromtimestamp(now_ms / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
 
 
 # ============================================================================
