@@ -157,7 +157,6 @@
     </div>
 
     <h2>Regulatory Determination</h2>
-    <h2>Regulatory Determination</h2>
     {% if decision_status == "pass" %}
       <div class="status ok break">
         <h3>NO_REPORT — Alert Cleared</h3>
@@ -455,25 +454,7 @@
           </td>
         </tr>
         {% endfor %}
-            {% set comp = match.similarity_components %}
-            {% set rule_label = 'Not material' if comp.rules_overlap == 0 else comp.rules_overlap ~ '% (25%)' %}
-            {% set gate_label = 'Not material' if comp.gate_match == 0 else comp.gate_match ~ '% (20%)' %}
-            {% set typo_label = 'Not material' if comp.typology_overlap == 0 else comp.typology_overlap ~ '% (15%)' %}
-            {% set amt_label = 'Not material' if comp.amount_bucket == 0 else comp.amount_bucket ~ '% (10%)' %}
-            {% set chan_label = 'Not material' if comp.channel_method == 0 else comp.channel_method ~ '% (7%)' %}
-            {% set corr_label = 'Not material' if comp.corridor_match == 0 else comp.corridor_match ~ '% (8%)' %}
-            {% set pep_label = 'Not material' if comp.pep_match == 0 else comp.pep_match ~ '% (6%)' %}
-            {% set cust_label = 'Not material' if comp.customer_profile == 0 else comp.customer_profile ~ '% (5%)' %}
-            {% set geo_label = 'Not material' if comp.geo_risk == 0 else comp.geo_risk ~ '% (4%)' %}
-            Rules: {{ rule_label }}<br>
-            Gates: {{ gate_label }}<br>
-            Typologies: {{ typo_label }}<br>
-            Amount: {{ amt_label }}<br>
-            Channel: {{ chan_label }}<br>
-            Corridor: {{ corr_label }}<br>
-            PEP: {{ pep_label }}<br>
-            Customer: {{ cust_label }}<br>
-            Geo: {{ geo_label }}
+        {% if not scored_distribution %}
         <tr>
           <td colspan="3" class="small">No data</td>
         </tr>
