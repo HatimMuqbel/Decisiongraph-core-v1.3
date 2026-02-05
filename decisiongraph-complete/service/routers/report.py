@@ -50,6 +50,66 @@ def _md_escape(value: object) -> str:
     return text.replace("\r", " ").replace("\n", " ").replace("|", "\\|").replace("`", "\\`")
 
 
+def _format_component_score(value: object, weight: int) -> str:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        numeric = 0.0
+    pct = int(round(numeric * 100)) if numeric <= 1.0 else int(round(numeric))
+    if pct <= 0:
+        return "Not material"
+    return f"{pct}% ({weight}%)"
+
+
+def _derive_similarity_summary(precedent_analysis: dict) -> str:
+    sample_cases = precedent_analysis.get("sample_cases", []) or []
+    if not sample_cases:
+        return ""
+    top = sample_cases[0]
+    components = top.get("similarity_components", {}) or {}
+    labels = {
+        "rules_overlap": "rule activation",
+        "gate_match": "gate outcomes",
+        "typology_overlap": "typology overlap",
+        "amount_bucket": "amount band",
+        "channel_method": "channel/method",
+        "corridor_match": "corridor risk",
+        "pep_match": "PEP status",
+        "customer_profile": "customer profile",
+        "geo_risk": "geographic risk",
+    }
+    scored = []
+    for key, label in labels.items():
+        try:
+            value = float(components.get(key, 0) or 0)
+        except (TypeError, ValueError):
+            value = 0.0
+        if value > 0:
+            scored.append((value, label))
+    if not scored:
+        return ""
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    top_labels = [label for _value, label in scored[:3]]
+    return "Primary similarity drivers: " + ", ".join(top_labels) + "."
+
+
+def _derive_decision_confidence(precedent_analysis: dict) -> tuple[Optional[str], Optional[str]]:
+    if not precedent_analysis or not precedent_analysis.get("available"):
+        return None, None
+    confidence = precedent_analysis.get("precedent_confidence")
+    if confidence is None:
+        return None, None
+    try:
+        confidence_value = float(confidence)
+    except (TypeError, ValueError):
+        return None, None
+    if confidence_value >= 0.75:
+        return "High", "Deterministic rule activation with strong precedent alignment."
+    if confidence_value >= 0.45:
+        return "Medium", "Deterministic rule activation with moderate precedent alignment."
+    return "Low", "Deterministic rule activation with limited precedent alignment."
+
+
 def _find_decision_or_raise(decision_id: str) -> dict:
     if decision_id in decision_cache:
         return decision_cache[decision_id]
@@ -306,6 +366,38 @@ def build_report_context(decision: dict) -> dict:
                 "value": element,
             })
 
+    if not risk_factors:
+        triggered = [
+            rule for rule in rules_fired
+            if str(rule.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
+        ]
+        for rule in triggered:
+            code = rule.get("code") or "Rule"
+            reason = rule.get("reason") or "Triggered"
+            risk_factors.append({
+                "field": code,
+                "value": reason,
+            })
+
+    if not risk_factors and escalation_reasons:
+        for reason in escalation_reasons[:3]:
+            risk_factors.append({
+                "field": "Escalation driver",
+                "value": reason,
+            })
+
+    if not risk_factors and dec.get("path"):
+        risk_factors.append({
+            "field": "Decision path",
+            "value": dec.get("path"),
+        })
+
+    if not risk_factors:
+        risk_factors.append({
+            "field": "Regulatory indicators",
+            "value": "Indicators not captured in this record",
+        })
+
     # Safe string extraction
     decision_id = meta.get("decision_id", "") or ""
     input_hash = meta.get("input_hash", "") or ""
@@ -340,6 +432,45 @@ def build_report_context(decision: dict) -> dict:
             "message": "Precedent analysis missing from decision cache. Re-run the decision and refresh the report.",
         }
 
+    similarity_summary = _derive_similarity_summary(precedent_analysis)
+    confidence_label, confidence_reason = _derive_decision_confidence(precedent_analysis)
+    if similarity_summary:
+        precedent_analysis = dict(precedent_analysis)
+        precedent_analysis["similarity_summary"] = similarity_summary
+
+    escalation_summary = ""
+    if str_required:
+        escalation_summary = (
+            "Suspicion indicators triggered reporting thresholds under FINTRAC guidance. "
+            "While Enhanced Due Diligence is required to complete the investigation, "
+            "the current suspicion level independently meets the reporting threshold."
+        )
+    elif decision_status == "review":
+        escalation_summary = (
+            "Enhanced Due Diligence is required to complete the investigation and finalize the regulatory outcome."
+        )
+    elif decision_status == "pass":
+        escalation_summary = "No escalation or reporting obligation was triggered based on available indicators."
+    else:
+        escalation_summary = (
+            "Escalation is required to complete the investigation and determine any reporting obligations."
+        )
+
+    decision_drivers = []
+    for reason in escalation_reasons:
+        if reason and reason not in decision_drivers:
+            decision_drivers.append(reason)
+    for item in risk_factors:
+        label = item.get("field")
+        value = item.get("value")
+        if label and value:
+            driver = f"{label}: {value}"
+        else:
+            driver = label or value
+        if driver and driver not in decision_drivers:
+            decision_drivers.append(driver)
+    decision_drivers = decision_drivers[:4]
+
     return {
         # Administrative Details
         "decision_id": decision_id,
@@ -362,6 +493,11 @@ def build_report_context(decision: dict) -> dict:
         "seed_category": seed_category,
         "scenario_code": scenario_code,
         "is_seed": source_type in {"seed", "seeded"},
+        "escalation_summary": escalation_summary,
+        "decision_confidence": confidence_label,
+        "decision_confidence_reason": confidence_reason,
+        "similarity_summary": similarity_summary,
+        "decision_drivers": decision_drivers,
 
         # Transaction Facts
         "transaction_facts": transaction_facts,
@@ -489,15 +625,15 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
             reason_codes = ", ".join(match.get("reason_codes", []) or [])
             components = match.get("similarity_components", {}) or {}
             drivers = (
-                f"Rules {_pct(components.get('rules_overlap'))}% ({_weight('rules_overlap', 25)}%), "
-                f"Gates {_pct(components.get('gate_match'))}% ({_weight('gate_match', 20)}%), "
-                f"Typologies {_pct(components.get('typology_overlap'))}% ({_weight('typology_overlap', 15)}%), "
-                f"Amount {_pct(components.get('amount_bucket'))}% ({_weight('amount_bucket', 10)}%), "
-                f"Channel {_pct(components.get('channel_method'))}% ({_weight('channel_method', 7)}%), "
-                f"Corridor {_pct(components.get('corridor_match'))}% ({_weight('corridor_match', 8)}%), "
-                f"PEP {_pct(components.get('pep_match'))}% ({_weight('pep_match', 6)}%), "
-                f"Customer {_pct(components.get('customer_profile'))}% ({_weight('customer_profile', 5)}%), "
-                f"Geo {_pct(components.get('geo_risk'))}% ({_weight('geo_risk', 4)}%)"
+                f"Rules {_format_component_score(components.get('rules_overlap'), _weight('rules_overlap', 25))}, "
+                f"Gates {_format_component_score(components.get('gate_match'), _weight('gate_match', 20))}, "
+                f"Typologies {_format_component_score(components.get('typology_overlap'), _weight('typology_overlap', 15))}, "
+                f"Amount {_format_component_score(components.get('amount_bucket'), _weight('amount_bucket', 10))}, "
+                f"Channel {_format_component_score(components.get('channel_method'), _weight('channel_method', 7))}, "
+                f"Corridor {_format_component_score(components.get('corridor_match'), _weight('corridor_match', 8))}, "
+                f"PEP {_format_component_score(components.get('pep_match'), _weight('pep_match', 6))}, "
+                f"Customer {_format_component_score(components.get('customer_profile'), _weight('customer_profile', 5))}, "
+                f"Geo {_format_component_score(components.get('geo_risk'), _weight('geo_risk', 4))}"
             )
             matches_md += (
                 f"| {_md_escape(match.get('precedent_id', 'N/A'))} | {_md_escape(outcome_label)} | {similarity} | "
@@ -511,6 +647,13 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
             "but no precedents met the similarity threshold. "
             "Provide transaction shape and customer profile facts (amount bucket, channel, corridor, customer type, "
             "relationship length, PEP) to enable scoring.\n"
+            "> Raw overlaps reflect cases sharing one or more structural indicators but not meeting the "
+            "similarity threshold required for scored comparison.\n"
+        )
+    elif raw_overlap_count > 0:
+        note_md = (
+            "\n> Raw overlaps reflect cases sharing one or more structural indicators but not meeting the "
+            "similarity threshold required for scored comparison.\n"
         )
 
     candidates_scored = int(precedent_analysis.get("candidates_scored", sample_size) or 0)
@@ -545,6 +688,8 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 | Neutral Precedents | {neutral} |
 
 *Neutral indicates precedents where the outcome is a review/escalation state rather than a final pay/deny decision.*
+
+{_md_escape(precedent_analysis.get("similarity_summary", ""))}
 
 ### Scored Match Outcome Distribution
 
@@ -682,7 +827,7 @@ async def get_report_markdown(decision_id: str):
     safe_path = _md_escape(ctx['decision_path_trace'] or 'N/A')
     md = f"""# AML/KYC Decision Report
 
-**Bank-Grade Dual-Gate Engine (Zero LLM)**
+**Deterministic Regulatory Decision Engine (Zero LLM)**
 
 ---
 
@@ -726,6 +871,20 @@ async def get_report_markdown(decision_id: str):
 {ctx['decision_explainer']}
 
 **STR Required:** {'Yes' if ctx['str_required'] else 'No'}
+
+---
+
+## Regulatory Escalation Summary
+
+{ctx['escalation_summary']}
+
+{f"Decision Confidence: {ctx['decision_confidence']}\n\n{ctx['decision_confidence_reason']}" if ctx.get('decision_confidence') else ""}
+
+---
+
+## Decision Drivers
+
+{"\n".join([f"- {_md_escape(driver)}" for driver in ctx.get('decision_drivers', [])]) or "- Decision drivers derived from rule evaluation were not available in this record."}
 
 ---
 

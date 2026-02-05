@@ -69,7 +69,7 @@
   <div class="page">
     <div class="header">
       <h1>AML/KYC Investigation Report</h1>
-      <div class="subtitle">Bank-Grade Deterministic Engine</div>
+      <div class="subtitle">Deterministic Regulatory Decision Engine</div>
     </div>
 
     <h2>Administrative Details</h2>
@@ -106,6 +106,7 @@
         </p>
       {% endif %}
     </div>
+            {{ ev.value }}
 
     <h2>Case Facts</h2>
     <table class="break">
@@ -169,6 +170,28 @@
         </ul>
       </div>
     {% endif %}
+
+    <div class="card break">
+      <h3>Regulatory Escalation Summary</h3>
+      <p class="small">{{ escalation_summary }}</p>
+      {% if decision_confidence %}
+      <p class="small" style="margin-top:10px;"><strong>Decision Confidence:</strong> {{ decision_confidence }}</p>
+      <p class="small">{{ decision_confidence_reason }}</p>
+      {% endif %}
+    </div>
+
+    <div class="card break">
+      <h3>Decision Drivers</h3>
+      {% if decision_drivers and decision_drivers|length > 0 %}
+      <ul class="small">
+        {% for driver in decision_drivers %}
+          <li>{{ driver }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="small">Decision drivers derived from rule evaluation were not available in this record.</p>
+      {% endif %}
+    </div>
 
     <h2>Gate 1: Zero-False-Escalation Check</h2>
     <div class="gate-block break">
@@ -301,9 +324,17 @@
       </div>
       {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
       {% if total_decisive > 0 %}
+      {% set alignment_pct = (precedent_analysis.supporting_precedents / total_decisive * 100) %}
       <p class="small" style="margin-top:12px;">
-        <strong>{{ "%.0f"|format(precedent_analysis.supporting_precedents / total_decisive * 100) }}%</strong> of comparable cases resulted in the same regulatory outcome.
+        {% if alignment_pct >= 100 %}
+          <strong>All</strong> comparable precedents resulted in the same regulatory outcome.
+        {% else %}
+          <strong>{{ "%.0f"|format(alignment_pct) }}%</strong> of comparable cases resulted in the same regulatory outcome.
+        {% endif %}
       </p>
+      {% endif %}
+      {% if precedent_analysis.similarity_summary %}
+      <p class="small" style="margin-top:6px;"><strong>{{ precedent_analysis.similarity_summary }}</strong></p>
       {% endif %}
       {% if precedent_analysis.contrary_precedents > precedent_analysis.supporting_precedents %}
       <div class="status warn" style="margin-top:12px; padding:12px;">
@@ -316,6 +347,11 @@
         <strong>Limited Matching Evidence</strong><br>
         <span class="small">Raw overlaps were found based on limited features, but no precedents met the similarity threshold. Provide transaction shape and customer profile facts to enable scoring.</span>
       </div>
+      {% endif %}
+      {% if precedent_analysis.raw_overlap_count | default(0) > 0 %}
+      <p class="small" style="margin-top:10px;">
+        Raw overlaps reflect cases sharing one or more structural indicators but not meeting the similarity threshold required for scored comparison.
+      </p>
       {% endif %}
       {% set threshold_used = precedent_analysis.threshold_used if precedent_analysis.threshold_used is defined else (precedent_analysis.min_similarity_pct | default(50)) / 100 %}
       {% set avg_similarity = precedent_analysis.avg_top_k_similarity | default(0) %}
@@ -386,7 +422,25 @@
           </td>
         </tr>
         {% endfor %}
-        {% if not scored_distribution %}
+            {% set comp = match.similarity_components %}
+            {% set rule_label = 'Not material' if comp.rules_overlap == 0 else comp.rules_overlap ~ '% (25%)' %}
+            {% set gate_label = 'Not material' if comp.gate_match == 0 else comp.gate_match ~ '% (20%)' %}
+            {% set typo_label = 'Not material' if comp.typology_overlap == 0 else comp.typology_overlap ~ '% (15%)' %}
+            {% set amt_label = 'Not material' if comp.amount_bucket == 0 else comp.amount_bucket ~ '% (10%)' %}
+            {% set chan_label = 'Not material' if comp.channel_method == 0 else comp.channel_method ~ '% (7%)' %}
+            {% set corr_label = 'Not material' if comp.corridor_match == 0 else comp.corridor_match ~ '% (8%)' %}
+            {% set pep_label = 'Not material' if comp.pep_match == 0 else comp.pep_match ~ '% (6%)' %}
+            {% set cust_label = 'Not material' if comp.customer_profile == 0 else comp.customer_profile ~ '% (5%)' %}
+            {% set geo_label = 'Not material' if comp.geo_risk == 0 else comp.geo_risk ~ '% (4%)' %}
+            Rules: {{ rule_label }}<br>
+            Gates: {{ gate_label }}<br>
+            Typologies: {{ typo_label }}<br>
+            Amount: {{ amt_label }}<br>
+            Channel: {{ chan_label }}<br>
+            Corridor: {{ corr_label }}<br>
+            PEP: {{ pep_label }}<br>
+            Customer: {{ cust_label }}<br>
+            Geo: {{ geo_label }}
         <tr>
           <td colspan="3" class="small">No data</td>
         </tr>
@@ -561,7 +615,7 @@
       <strong>Determinism & Auditability Statement</strong><br><br>
       This decision was produced by a deterministic rule engine operating under CA-FINTRAC regulatory framework.
       Re-evaluation using identical inputs and the same policy version will produce identical results.<br><br>
-      The decision may be independently verified using the <code class="mono">/verify</code> endpoint. Complete decision lineage, rule evaluation sequence, and evidence chain are preserved in the immutable audit log and available for regulatory examination upon request.
+      The decision may be independently verified using the <code class="mono">/verify</code> endpoint. Complete decision lineage, rule sequencing, and evidentiary artifacts are preserved within the immutable audit record and available for supervisory review.
     </div>
 
     {% if str_required %}
