@@ -7,7 +7,7 @@ nixPkgs = ["python312", "python312Packages.pip"]
 [phases.install]
 cmds = [
   "echo '=== Python version ===' && python3 --version && which python3",
-  "pip install --no-cache-dir -r requirements.txt",
+  "pip install --no-cache-dir --break-system-packages -r requirements.txt",
   "python3 -c \"import ast; ast.parse(open('service/routers/report.py').read()); print('report.py syntax OK')\""
 ]
 
