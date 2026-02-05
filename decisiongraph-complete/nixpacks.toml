@@ -2,19 +2,18 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python312", "python312Packages.pip", "python312Packages.virtualenv"]
+nixPkgs = ["python312", "python312Packages.pip"]
 
 [phases.install]
 cmds = [
-  "python -m venv /opt/venv",
-  ". /opt/venv/bin/activate && pip install -r requirements.txt"
+  "echo '=== Python version ===' && python3 --version && which python3",
+  "pip install --no-cache-dir -r requirements.txt",
+  "python3 -c \"import ast; ast.parse(open('service/routers/report.py').read()); print('report.py syntax OK')\""
 ]
 
 [start]
-cmd = ". /opt/venv/bin/activate && uvicorn service.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "python3 -m uvicorn service.main:app --host 0.0.0.0 --port ${PORT:-8000}"
 
 [variables]
 PYTHONUNBUFFERED = "1"
 PYTHONPATH = "/app:/app/src"
-VIRTUAL_ENV = "/opt/venv"
-PATH = "/opt/venv/bin:$PATH"
