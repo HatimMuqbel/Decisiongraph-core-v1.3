@@ -951,7 +951,16 @@ async def get_report_markdown(decision_id: str):
             "A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.\n"
             "This report must be filed within 30 days of the suspicion being formed.\n"
         )
-    md = f"""# AML/KYC Decision Report
+    seed_notice = "> Synthetic training case (seeded)." if ctx.get("is_seed") else ""
+    str_required_label = "Yes" if ctx.get("str_required") else "No"
+    gate1_label = "ALLOWED" if ctx.get("gate1_passed") else "BLOCKED"
+    gate1_rows_output = gate1_rows or "| No sections evaluated | - | - |"
+    gate2_rows_output = gate2_rows or "| No sections evaluated | - | - |"
+    rules_rows_output = rules_rows or "| No rules evaluated | - | - |"
+    evidence_rows_output = evidence_rows or "| No evidence recorded | - |"
+    precedent_markdown = _build_precedent_markdown(ctx.get("precedent_analysis", {}))
+
+    md_template = """# AML/KYC Decision Report
 
 **Deterministic Regulatory Decision Engine (Zero LLM)**
 
@@ -961,13 +970,13 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-| Decision ID | `{ctx['decision_id_short']}...` |
-| Case ID | `{ctx['case_id']}` |
-| Timestamp | `{ctx['timestamp']}` |
-| Jurisdiction | {ctx['jurisdiction']} |
-| Engine Version | `{ctx['engine_version']}` |
-| Policy Version | `{ctx['policy_version']}` |
-| Report Schema | `{ctx['report_schema_version']}` |
+| Decision ID | `{decision_id_short}...` |
+| Case ID | `{case_id}` |
+| Timestamp | `{timestamp}` |
+| Jurisdiction | {jurisdiction} |
+| Engine Version | `{engine_version}` |
+| Policy Version | `{policy_version}` |
+| Report Schema | `{report_schema_version}` |
 
 ---
 
@@ -975,12 +984,12 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-| Verdict | {ctx['verdict']} |
-| Action | {ctx['action']} |
-| STR Required | {'Yes' if ctx['str_required'] else 'No'} |
-| Decision Status | {ctx['decision_status'].upper()} |
+| Verdict | {verdict} |
+| Action | {action} |
+| STR Required | {str_required_label} |
+| Decision Status | {decision_status_upper} |
 
-{ctx['decision_explainer']}
+{decision_explainer}
 
 ### Case Facts
 
@@ -994,11 +1003,11 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-| Source | {ctx['source_type']} |
-| Seed Category | {ctx['seed_category']} |
-| Scenario Code | `{_md_escape(ctx['scenario_code'])}` |
+| Source | {source_type} |
+| Seed Category | {seed_category} |
+| Scenario Code | `{scenario_code}` |
 
-{"> Synthetic training case (seeded)." if ctx['is_seed'] else ""}
+{seed_notice}
 
 ---
 
@@ -1006,13 +1015,13 @@ async def get_report_markdown(decision_id: str):
 
 {decision_header}
 
-{ctx['decision_explainer']}
+{decision_explainer}
 
-**STR Required:** {'Yes' if ctx['str_required'] else 'No'}
+**STR Required:** {str_required_label}
 
 ### Regulatory Escalation Summary
 
-{ctx['escalation_summary']}
+{escalation_summary}
 
 {decision_confidence_block}
 
@@ -1028,20 +1037,20 @@ async def get_report_markdown(decision_id: str):
 
 ### Gate 1: Zero-False-Escalation
 
-**Decision:** {'ALLOWED' if ctx['gate1_passed'] else 'BLOCKED'}
+**Decision:** {gate1_label}
 
 | Section | Status | Reason |
 |---------|--------|--------|
-{gate1_rows or "| No sections evaluated | - | - |"}
+{gate1_rows_output}
 
 
 ### Gate 2: STR Threshold
 
-**STR Required:** {'Yes' if ctx['str_required'] else 'No'}
+**STR Required:** {str_required_label}
 
 | Section | Status | Reason |
 |---------|--------|--------|
-{gate2_rows or "| No sections evaluated | - | - |"}
+{gate2_rows_output}
 
 
 ---
@@ -1050,12 +1059,12 @@ async def get_report_markdown(decision_id: str):
 
 | Rule Code | Result | Reason |
 |-----------|--------|--------|
-{rules_rows or "| No rules evaluated | - | - |"}
+{rules_rows_output}
 
 
 ## Precedent Intelligence
 
-{_build_precedent_markdown(ctx.get('precedent_analysis', {}))}
+{precedent_markdown}
 
 ## Risk Factors
 
@@ -1069,7 +1078,7 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-{evidence_rows or "| No evidence recorded | - |"}
+{evidence_rows_output}
 
 ---
 
@@ -1079,9 +1088,9 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-| Decision Hash | `{ctx['decision_id']}` |
-| Input Hash | `{ctx['input_hash']}` |
-| Policy Hash | `{ctx['policy_hash']}` |
+| Decision Hash | `{decision_id}` |
+| Input Hash | `{input_hash}` |
+| Policy Hash | `{policy_hash}` |
 | Decision Path | `{safe_path}` |
 
 This decision is cryptographically bound to the exact input and policy evaluated.
@@ -1099,8 +1108,44 @@ The decision may be independently verified using the `/verify` endpoint. Complet
 
 *DecisionGraph — Deterministic - Reproducible - Auditable*
 
-*Generated {ctx['timestamp']}*
+*Generated {timestamp}*
 """
+
+    md = md_template.format(
+        action=ctx.get("action"),
+        case_id=ctx.get("case_id"),
+        decision_explainer=ctx.get("decision_explainer"),
+        decision_header=decision_header,
+        decision_id=ctx.get("decision_id"),
+        decision_id_short=ctx.get("decision_id_short"),
+        decision_status_upper=ctx.get("decision_status", "").upper(),
+        decision_confidence_block=decision_confidence_block,
+        decision_drivers_md=decision_drivers_md,
+        engine_version=ctx.get("engine_version"),
+        evidence_rows_output=evidence_rows_output,
+        facts_rows=facts_rows,
+        gate1_label=gate1_label,
+        gate1_rows_output=gate1_rows_output,
+        gate2_rows_output=gate2_rows_output,
+        governance_note=governance_note,
+        input_hash=ctx.get("input_hash"),
+        jurisdiction=ctx.get("jurisdiction"),
+        policy_hash=ctx.get("policy_hash"),
+        policy_version=ctx.get("policy_version"),
+        precedent_markdown=precedent_markdown,
+        report_schema_version=ctx.get("report_schema_version"),
+        risk_factors_md=risk_factors_md,
+        rules_rows_output=rules_rows_output,
+        safe_path=safe_path,
+        scenario_code=_md_escape(ctx.get("scenario_code")),
+        seed_category=ctx.get("seed_category"),
+        seed_notice=seed_notice,
+        source_type=ctx.get("source_type"),
+        str_required_label=str_required_label,
+        timestamp=ctx.get("timestamp"),
+        verdict=ctx.get("verdict"),
+        escalation_summary=ctx.get("escalation_summary"),
+    )
 
     return {
         "decision_id": decision_id,
