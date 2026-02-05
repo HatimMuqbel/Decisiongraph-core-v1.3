@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
-# v3: Force complete rebuild 2026-02-05
-ARG CACHEBUST=3
+# v4: Force complete rebuild 2026-02-05
+ARG CACHEBUST=4
 RUN echo "Build version: ${CACHEBUST} - $(date)"
 
 WORKDIR /app
