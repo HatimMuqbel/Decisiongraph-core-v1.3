@@ -929,6 +929,21 @@ async def get_report_markdown(decision_id: str):
         decision_header = "### **REVIEW REQUIRED**"
 
     safe_path = _md_escape(ctx['decision_path_trace'] or 'N/A')
+    decision_confidence_block = ""
+    if ctx.get('decision_confidence'):
+        decision_confidence_block = (
+            f"Decision Confidence: {ctx['decision_confidence']}\n\n"
+            f"{ctx['decision_confidence_reason']}"
+        )
+    decision_drivers_md = "\n".join(
+        [f"- {_md_escape(driver)}" for driver in ctx.get('decision_drivers', [])]
+    ) or "- Decision drivers derived from rule evaluation were not available in this record."
+    risk_factors_md = "\n".join(
+        [
+            f"| {_md_escape(item.get('field', 'N/A'))} | {_md_escape(item.get('value', 'N/A'))} |"
+            for item in ctx.get('risk_factors', [])
+        ]
+    ) or "| No risk factors recorded | - |"
     governance_note = ""
     if ctx['str_required']:
         governance_note = (
@@ -999,13 +1014,13 @@ async def get_report_markdown(decision_id: str):
 
 {ctx['escalation_summary']}
 
-{f"Decision Confidence: {ctx['decision_confidence']}\n\n{ctx['decision_confidence_reason']}" if ctx.get('decision_confidence') else ""}
+{decision_confidence_block}
 
 ---
 
 ## Decision Drivers
 
-{"\n".join([f"- {_md_escape(driver)}" for driver in ctx.get('decision_drivers', [])]) or "- Decision drivers derived from rule evaluation were not available in this record."}
+{decision_drivers_md}
 
 ---
 
@@ -1046,7 +1061,7 @@ async def get_report_markdown(decision_id: str):
 
 | Field | Value |
 |-------|-------|
-{"\n".join([f"| {_md_escape(item.get('field', 'N/A'))} | {_md_escape(item.get('value', 'N/A'))} |" for item in ctx.get('risk_factors', [])]) or "| No risk factors recorded | - |"}
+{risk_factors_md}
 
 ---
 
