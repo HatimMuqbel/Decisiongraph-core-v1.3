@@ -265,6 +265,7 @@
 
     {% if precedent_analysis and precedent_analysis.available %}
     <h2>Precedent Intelligence</h2>
+    <p class="small"><em>Precedent analysis is advisory and does not override the deterministic engine verdict. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
 
     <!-- Decision Intelligence Summary -->
     <div class="gate-block break" style="background: #f8fafc;">
@@ -275,7 +276,7 @@
         <div class="label">Raw Overlaps Found</div>
         <div class="value">{{ precedent_analysis.raw_overlap_count | default(0) }}</div>
         <div class="label">Representative Sample</div>
-        <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (≥{{ precedent_analysis.min_similarity_pct | default(50) }}% similarity — rules+gates weighted)</div>
+        <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (≥{{ (precedent_analysis.threshold_used * 100) | round | int if precedent_analysis.threshold_used is defined else (precedent_analysis.min_similarity_pct | default(50)) }}% similarity required; mode: {{ precedent_analysis.threshold_mode | default('prod') }})</div>
         <div class="label">Precedent Alignment</div>
         <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
         <div class="label">Exact Matches</div>

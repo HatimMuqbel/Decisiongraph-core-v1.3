@@ -493,6 +493,8 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
         )
 
     candidates_scored = int(precedent_analysis.get("candidates_scored", sample_size) or 0)
+    threshold_mode = precedent_analysis.get("threshold_mode", "prod")
+    threshold_pct = int(round((precedent_analysis.get("threshold_used") or 0) * 100))
     show_overlap = bool(overlap_distribution) and overlap_distribution != match_distribution
 
     overlap_section = ""
@@ -507,11 +509,14 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 
     return f"""## Precedent Analysis
 
+*Precedent analysis is advisory and does not override the deterministic engine verdict.*
+*Absence of precedent matches does not imply the recommendation is incorrect.*
+
 | Metric | Value |
 |--------|-------|
 | Comparable Matches (Scored) | {match_count} |
 | Raw Overlaps Found | {raw_overlap_count} |
-| Candidates Scored | {candidates_scored} (≥{min_similarity_pct}% similarity threshold) |
+| Candidates Scored | {candidates_scored} (≥{threshold_pct or min_similarity_pct}% similarity required; mode: {threshold_mode}) |
 | Precedent Confidence | {confidence_pct}% |
 | Exact Matches | {exact_match_count} |
 | Supporting Precedents | {precedent_analysis.get('supporting_precedents', 0)} |

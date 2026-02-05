@@ -85,6 +85,9 @@ DG_DOCS_ENABLED = os.getenv("DG_DOCS_ENABLED", "true").lower() == "true"
 DG_MAX_REQUEST_SIZE = int(os.getenv("DG_MAX_REQUEST_SIZE", "1048576"))  # 1MB default
 DG_PRECEDENT_CODE_WEIGHT = float(os.getenv("DG_PRECEDENT_CODE_WEIGHT", "0.6"))
 DG_PRECEDENT_FINGERPRINT_WEIGHT = float(os.getenv("DG_PRECEDENT_FINGERPRINT_WEIGHT", "0.4"))
+DG_MODE = os.getenv("DG_MODE", "prod").lower()
+DG_PRECEDENT_THRESHOLD_PROD = float(os.getenv("DG_PRECEDENT_THRESHOLD_PROD", "0.60"))
+DG_PRECEDENT_THRESHOLD_DEMO = float(os.getenv("DG_PRECEDENT_THRESHOLD_DEMO", "0.50"))
 DG_PRECEDENT_MIN_SCORE = float(os.getenv("DG_PRECEDENT_MIN_SCORE", "0.6"))
 DG_PRECEDENT_SALT = os.getenv("DG_PRECEDENT_SALT", "decisiongraph-banking-seed-v1")
 
@@ -1010,17 +1013,19 @@ def map_aml_outcome_label(normalized: str) -> str:
     return normalized.upper()
 
 
-AML_SIMILARITY_WEIGHTS = {
-    "rules_overlap": 0.25,
-    "gate_match": 0.20,
-    "typology_overlap": 0.15,
-    "amount_bucket": 0.10,
-    "channel_method": 0.07,
-    "corridor_match": 0.08,
-    "pep_match": 0.06,
-    "customer_profile": 0.05,
-    "geo_risk": 0.04,
+AML_SIMILARITY_WEIGHTS_V1 = {
+    "rules_overlap": 30,
+    "gate_match": 25,
+    "typology_overlap": 15,
+    "amount_bucket": 10,
+    "channel_method": 7,
+    "corridor_match": 8,
+    "pep_match": 5,
+    "customer_profile": 5,
+    "geo_risk": 5,
 }
+AML_SIMILARITY_WEIGHTS = {key: value / 100 for key, value in AML_SIMILARITY_WEIGHTS_V1.items()}
+AML_SIMILARITY_VERSION = "v1"
 
 
 def _code_weight(code: str) -> float:
@@ -1382,6 +1387,9 @@ def query_similar_precedents(
         # Normalize proposed outcome first
         proposed_normalized = normalize_outcome(proposed_outcome)
 
+        mode = "demo" if DG_MODE == "demo" else "prod"
+        threshold_used = DG_PRECEDENT_THRESHOLD_DEMO if mode == "demo" else DG_PRECEDENT_THRESHOLD_PROD
+
         # Select schema for fingerprint comparison
         schema_id = _select_schema_id_for_codes(reason_codes)
         case_banded = _compute_case_banded_facts(case_facts or {}, schema_id)
@@ -1395,6 +1403,8 @@ def query_similar_precedents(
         case_customer_type = (case_facts or {}).get("customer.type")
         case_relationship = (case_facts or {}).get("customer.relationship_length")
         case_sanctions_match = _truthy((case_facts or {}).get("screening.sanctions_match"))
+        case_gate1_allowed = (case_facts or {}).get("gate1_allowed")
+        case_gate2_str_required = (case_facts or {}).get("gate2_str_required")
 
         # Get statistics by reason codes
         stats = PRECEDENT_REGISTRY.get_statistics_by_codes(
@@ -1436,8 +1446,8 @@ def query_similar_precedents(
             outcome_normalized = normalize_outcome(payload.outcome_code)
             gate1_allowed_prec = outcome_normalized != "deny"
             gate2_str_prec = outcome_normalized in {"escalate", "deny"}
-            gate1_allowed_case = bool(case_facts.get("gate1_allowed")) if case_facts else False
-            gate2_str_case = bool(case_facts.get("gate2_str_required")) if case_facts else False
+            gate1_allowed_case = bool(case_gate1_allowed) if case_gate1_allowed is not None else False
+            gate2_str_case = bool(case_gate2_str_required) if case_gate2_str_required is not None else False
             gate_matches = int(gate1_allowed_case == gate1_allowed_prec) + int(gate2_str_case == gate2_str_prec)
             gate_match_score = 1.0 if gate_matches == 2 else 0.5 if gate_matches == 1 else 0.0
 
@@ -1504,7 +1514,7 @@ def query_similar_precedents(
             recency_weight = _recency_weight(payload.decided_at)
             combined *= decision_weight * recency_weight
 
-            if combined >= DG_PRECEDENT_MIN_SCORE:
+            if combined >= threshold_used:
                 scored_matches.append(
                     (
                         payload,
@@ -1592,18 +1602,48 @@ def query_similar_precedents(
             })
 
         # Calculate confidence score
-        # Only supporting and contrary factor into consistency (neutral is excluded)
         decisive_total = counts["supporting"] + counts["contrary"]
-        if decisive_total > 0:
+        if len(scored_matches) == 0:
+            precedent_confidence = 0.0
+        elif decisive_total > 0:
             consistency_rate = counts["supporting"] / decisive_total
-            # Factor in appeal statistics
             upheld_rate = stats.appeal_stats.upheld_rate if stats.appeal_stats.total_appealed > 0 else 1.0
             precedent_confidence = (consistency_rate * 0.7) + (upheld_rate * 0.3)
         else:
-            # No decisive precedents - use neutral confidence
             precedent_confidence = 0.5
 
-        return {
+        why_low_match = []
+        missing_features = []
+        if not case_amount_band:
+            missing_features.append("amount_bucket")
+        if not case_channel:
+            missing_features.append("channel")
+        if case_cross_border is None and case_destination_risk is None:
+            missing_features.append("corridor")
+        if not case_customer_type:
+            missing_features.append("customer_type")
+        if not case_relationship:
+            missing_features.append("relationship_length")
+        if case_pep is None:
+            missing_features.append("pep")
+        if missing_features:
+            why_low_match.append({"missing_features": missing_features})
+
+        gate_mismatch = []
+        if case_gate1_allowed is None:
+            gate_mismatch.append("gate1")
+        if case_gate2_str_required is None:
+            gate_mismatch.append("gate2")
+        if gate_mismatch:
+            why_low_match.append({"gate_mismatch": gate_mismatch})
+
+        if not case_reason_codes:
+            why_low_match.append({"rule_mismatch": ["reason_codes_missing"]})
+
+        if not case_typologies:
+            why_low_match.append({"typology_mismatch": ["typologies_missing"]})
+
+        response = {
             "available": True,
             "match_count": len(scored_matches),
             "sample_size": len(sampled),
@@ -1628,8 +1668,19 @@ def query_similar_precedents(
             "reason_codes_searched": reason_codes,
             "proposed_outcome_normalized": proposed_normalized,
             "proposed_outcome_label": map_aml_outcome_label(proposed_normalized),
-            "min_similarity_pct": int(round(DG_PRECEDENT_MIN_SCORE * 100)),
+            "min_similarity_pct": int(round(threshold_used * 100)),
+            "threshold_used": threshold_used,
+            "threshold_mode": mode,
+            "precedent_scoring_version": AML_SIMILARITY_VERSION,
+            "weights_version": AML_SIMILARITY_VERSION,
+            "weights": AML_SIMILARITY_WEIGHTS_V1,
+            "why_low_match": why_low_match,
         }
+
+        if len(scored_matches) == 0:
+            response["message"] = "No precedents met the similarity threshold"
+
+        return response
 
     except Exception as e:
         logger.warning(f"Precedent query failed: {e}")
