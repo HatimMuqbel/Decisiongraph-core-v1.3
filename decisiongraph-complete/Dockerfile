@@ -1,0 +1,42 @@
+FROM python:3.12-slim
+
+# v8: Proper Dockerfile (not Dockerfile.deploy) — 2026-02-05
+# Python 3.12 removes f-string backslash restriction (PEP 701)
+
+WORKDIR /app
+
+# Copy requirements first for caching
+COPY requirements.txt .
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Purge any stale bytecode
+RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -name '*.pyc' -delete 2>/dev/null || true
+
+# Build-time syntax gate — fails the build if report.py has errors
+RUN python -c "\
+import ast, sys; \
+src = open('service/routers/report.py').read(); \
+tree = ast.parse(src); \
+lines = src.count(chr(10)) + 1; \
+print(f'report.py: {lines} lines, syntax OK'); \
+sys.exit(0)"
+
+# Log what we actually shipped
+RUN echo "=== DEPLOYED FILE IDENTITY ===" && \
+    head -2 service/routers/report.py && \
+    wc -l service/routers/report.py && \
+    python -c "print('Python version:'); import sys; print(sys.version)"
+
+# Environment
+ENV PYTHONPATH=/app:/app/src
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn service.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
