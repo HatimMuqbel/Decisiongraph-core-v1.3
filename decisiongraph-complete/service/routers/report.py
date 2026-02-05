@@ -110,6 +110,104 @@ def _derive_decision_confidence(precedent_analysis: dict) -> tuple[Optional[str]
     return "Low", "Deterministic rule activation with limited precedent alignment."
 
 
+def _map_driver_label(text: str) -> str:
+    if not text:
+        return ""
+    lowered = text.lower()
+    if "structur" in lowered or "threshold" in lowered:
+        return "Structuring indicators (threshold-adjacent pattern)"
+    if "round" in lowered and "trip" in lowered:
+        return "Round-trip transaction pattern"
+    if "layer" in lowered or "rapid" in lowered:
+        return "Layering behavior (rapid movement pattern)"
+    if "crypto" in lowered or "virtual asset" in lowered:
+        return "Virtual asset exposure"
+    if "sanction" in lowered:
+        return "Sanctions screening proximity"
+    if "pep" in lowered:
+        return "PEP exposure"
+    if "corridor" in lowered or "fatf" in lowered or "high-risk jurisdiction" in lowered:
+        return "High-risk corridor exposure"
+    if "trade" in lowered:
+        return "Trade-based laundering indicators"
+    if "shell" in lowered:
+        return "Shell entity indicators"
+    if "adverse media" in lowered:
+        return "Adverse media exposure"
+    if "unusual" in lowered or "deviation" in lowered:
+        return "Unusual activity pattern"
+    return ""
+
+
+def _derive_decision_drivers(
+    rules_fired: list,
+    risk_factors: list,
+    layer4_typologies: dict,
+    layer6_suspicion: dict,
+    gate1_passed: bool,
+    str_required: bool,
+) -> list[str]:
+    candidates: list[str] = []
+
+    typologies = layer4_typologies.get("typologies", []) or []
+    typology_names = []
+    for typology in typologies:
+        if isinstance(typology, dict):
+            name = typology.get("name") or ""
+        else:
+            name = str(typology)
+        if name:
+            typology_names.append(name)
+    for name in sorted(set(typology_names)):
+        mapped = _map_driver_label(name) or f"{name} indicators"
+        candidates.append(mapped)
+
+    elements = layer6_suspicion.get("elements", {}) or {}
+    for element in sorted(k for k, active in elements.items() if active):
+        mapped = _map_driver_label(element) or f"Suspicion element: {element}"
+        candidates.append(mapped)
+
+    if str_required:
+        candidates.append("Reporting threshold met (STR required)")
+    if not gate1_passed:
+        candidates.append("Escalation blocked by Gate 1 legal basis")
+
+    triggered_rules = [
+        rule for rule in rules_fired
+        if str(rule.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
+    ]
+    triggered_rules = sorted(
+        triggered_rules,
+        key=lambda rule: str(rule.get("code", "")),
+    )
+    for rule in triggered_rules:
+        code = str(rule.get("code", ""))
+        reason = str(rule.get("reason", ""))
+        mapped = _map_driver_label(code) or _map_driver_label(reason) or _map_driver_label(f"{code} {reason}")
+        if mapped:
+            candidates.append(mapped)
+
+    for item in sorted(
+        risk_factors,
+        key=lambda entry: (str(entry.get("field", "")), str(entry.get("value", ""))),
+    ):
+        mapped = _map_driver_label(str(item.get("field", ""))) or _map_driver_label(str(item.get("value", "")))
+        if mapped:
+            candidates.append(mapped)
+
+    deduped = []
+    seen = set()
+    for label in candidates:
+        if label not in seen:
+            deduped.append(label)
+            seen.add(label)
+
+    if not deduped:
+        return ["Deterministic rule activation requiring review"]
+
+    return deduped[:5]
+
+
 def _find_decision_or_raise(decision_id: str) -> dict:
     if decision_id in decision_cache:
         return decision_cache[decision_id]
@@ -456,20 +554,28 @@ def build_report_context(decision: dict) -> dict:
             "Escalation is required to complete the investigation and determine any reporting obligations."
         )
 
-    decision_drivers = []
-    for reason in escalation_reasons:
-        if reason and reason not in decision_drivers:
-            decision_drivers.append(reason)
-    for item in risk_factors:
-        label = item.get("field")
-        value = item.get("value")
-        if label and value:
-            driver = f"{label}: {value}"
-        else:
-            driver = label or value
-        if driver and driver not in decision_drivers:
-            decision_drivers.append(driver)
-    decision_drivers = decision_drivers[:4]
+    decision_drivers = _derive_decision_drivers(
+        rules_fired=rules_fired,
+        risk_factors=risk_factors,
+        layer4_typologies=layer4_typologies,
+        layer6_suspicion=layer6_suspicion,
+        gate1_passed=gate1_passed,
+        str_required=str_required,
+    )
+
+    report_sections = [
+        "Administrative Details",
+        "Investigation Outcome Summary",
+        "Case Classification",
+        "Regulatory Determination",
+        "Decision Drivers",
+        "Gate Evaluation",
+        "Rules Evaluated",
+        "Precedent Intelligence",
+        "Risk Factors",
+        "Evidence Considered",
+        "Auditability & Governance",
+    ]
 
     return {
         # Administrative Details
@@ -481,6 +587,8 @@ def build_report_context(decision: dict) -> dict:
         "engine_version": meta.get("engine_version", "") or "N/A",
         "policy_version": meta.get("policy_version", "") or "N/A",
         "domain": domain or "unknown",
+        "report_schema_version": "DecisionReportSchema v1",
+        "report_sections": report_sections,
 
         # Input/Policy hashes
         "input_hash": input_hash,
@@ -538,7 +646,7 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
         return ""
     if not precedent_analysis.get("available"):
         message = precedent_analysis.get("message") or precedent_analysis.get("error") or "Precedent analysis unavailable."
-        return f"""## Precedent Analysis\n\n> {message}\n\n---\n\n"""
+        return f"""> {message}\n\n"""
 
     def _label(value: object) -> str:
         return str(value).upper() if value is not None else "N/A"
@@ -671,9 +779,7 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 {overlap_rows or "| No data | - |"}
 """
 
-    return f"""## Precedent Analysis
-
-*Precedent analysis is advisory and does not override the deterministic engine verdict.*
+    return f"""*Precedent analysis is advisory and does not override the deterministic engine verdict.*
 *Absence of precedent matches does not imply the recommendation is incorrect.*
 
 | Metric | Value |
@@ -711,8 +817,6 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 | Upheld Rate | {upheld_rate_pct}% |
 {caution_section}
 {matches_md}
----
-
 """
 
 
@@ -841,6 +945,26 @@ async def get_report_markdown(decision_id: str):
 | Jurisdiction | {ctx['jurisdiction']} |
 | Engine Version | `{ctx['engine_version']}` |
 | Policy Version | `{ctx['policy_version']}` |
+| Report Schema | `{ctx['report_schema_version']}` |
+
+---
+
+## Investigation Outcome Summary
+
+| Field | Value |
+|-------|-------|
+| Verdict | {ctx['verdict']} |
+| Action | {ctx['action']} |
+| STR Required | {'Yes' if ctx['str_required'] else 'No'} |
+| Decision Status | {ctx['decision_status'].upper()} |
+
+{ctx['decision_explainer']}
+
+### Case Facts
+
+| Field | Value |
+|-------|-------|
+{facts_rows}
 
 ---
 
@@ -856,15 +980,7 @@ async def get_report_markdown(decision_id: str):
 
 ---
 
-## Transaction Facts
-
-| Field | Value |
-|-------|-------|
-{facts_rows}
-
----
-
-## Decision
+## Regulatory Determination
 
 {decision_header}
 
@@ -872,9 +988,7 @@ async def get_report_markdown(decision_id: str):
 
 **STR Required:** {'Yes' if ctx['str_required'] else 'No'}
 
----
-
-## Regulatory Escalation Summary
+### Regulatory Escalation Summary
 
 {ctx['escalation_summary']}
 
@@ -888,7 +1002,9 @@ async def get_report_markdown(decision_id: str):
 
 ---
 
-## Gate 1: Zero-False-Escalation
+## Gate Evaluation
+
+### Gate 1: Zero-False-Escalation
 
 **Decision:** {'ALLOWED' if ctx['gate1_passed'] else 'BLOCKED'}
 
@@ -896,15 +1012,15 @@ async def get_report_markdown(decision_id: str):
 |---------|--------|--------|
 {gate1_rows or "| No sections evaluated | - | - |"}
 
----
 
-## Gate 2: STR Threshold
+### Gate 2: STR Threshold
 
 **STR Required:** {'Yes' if ctx['str_required'] else 'No'}
 
 | Section | Status | Reason |
 |---------|--------|--------|
 {gate2_rows or "| No sections evaluated | - | - |"}
+
 
 ---
 
@@ -914,9 +1030,18 @@ async def get_report_markdown(decision_id: str):
 |-----------|--------|--------|
 {rules_rows or "| No rules evaluated | - | - |"}
 
----
+
+## Precedent Intelligence
 
 {_build_precedent_markdown(ctx.get('precedent_analysis', {}))}
+
+## Risk Factors
+
+| Field | Value |
+|-------|-------|
+{"\n".join([f"| {_md_escape(item.get('field', 'N/A'))} | {_md_escape(item.get('value', 'N/A'))} |" for item in ctx.get('risk_factors', [])]) or "| No risk factors recorded | - |"}
+
+---
 
 ## Evidence Considered
 
@@ -926,7 +1051,9 @@ async def get_report_markdown(decision_id: str):
 
 ---
 
-## Decision Provenance
+## Auditability & Governance
+
+### Decision Provenance
 
 | Field | Value |
 |-------|-------|
@@ -937,18 +1064,21 @@ async def get_report_markdown(decision_id: str):
 
 This decision is cryptographically bound to the exact input and policy evaluated.
 
----
-
-## Determinism & Auditability Statement
+### Determinism & Auditability Statement
 
 This decision was produced by a deterministic rule engine.
 Re-evaluation using identical inputs and the same policy version will produce identical results.
 
-The decision may be independently verified using the `/verify` endpoint.
+The decision may be independently verified using the `/verify` endpoint. Complete decision lineage, rule sequencing, and evidentiary artifacts are preserved within the immutable audit record and available for supervisory review.
+
+{"
+### Governance Note
+
+A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines.
+This report must be filed within 30 days of the suspicion being formed.
+" if ctx['str_required'] else ""}
 
 ---
-
-{"## Regulatory Note" + chr(10) + chr(10) + "A Suspicious Transaction Report (STR) is required under PCMLTFA/FINTRAC guidelines." + chr(10) + "This report must be filed within 30 days of the suspicion being formed." + chr(10) + chr(10) + "---" + chr(10) if ctx['str_required'] else ''}
 
 *DecisionGraph — Deterministic - Reproducible - Auditable*
 

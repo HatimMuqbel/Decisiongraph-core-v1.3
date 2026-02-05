@@ -58,6 +58,9 @@
     .bar{ height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
     .bar > span{ display:block; height:100%; background:#1f2937; }
     .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; background:#ecfdf5; color:#065f46; }
+    .schema-panel{ border:1px solid var(--border); border-radius:8px; padding:12px; background:#f9fafb; font-size:12px; margin:16px 0; }
+    .schema-panel ul{ margin:8px 0 0 18px; padding:0; }
+    .schema-panel li{ margin:2px 0; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -70,6 +73,17 @@
     <div class="header">
       <h1>AML/KYC Investigation Report</h1>
       <div class="subtitle">Deterministic Regulatory Decision Engine</div>
+    </div>
+
+    <div class="schema-panel break">
+      <div><strong>{{ report_schema_version }}</strong></div>
+      <div class="small">Engine: {{ engine_version }} · Policy: {{ policy_version }}</div>
+      <div class="small">Change control: Report schema version v1 (frozen)</div>
+      <ul>
+        {% for section in report_sections %}
+          <li>{{ section }}</li>
+        {% endfor %}
+      </ul>
     </div>
 
     <h2>Administrative Details</h2>
@@ -87,28 +101,27 @@
         <div class="value mono">{{ engine_version }}</div>
         <div class="label">Policy Version</div>
         <div class="value mono">{{ policy_version }}</div>
+        <div class="label">Report Schema</div>
+        <div class="value mono">{{ report_schema_version }}</div>
       </div>
     </div>
 
-    <h2>Case Classification</h2>
+    <h2>Investigation Outcome Summary</h2>
     <div class="card break">
       <div class="kv">
-        <div class="label">Source</div>
-        <div class="value">{{ source_type }}</div>
-        <div class="label">Seed Category</div>
-        <div class="value">{{ seed_category }}</div>
-        <div class="label">Scenario Code</div>
-        <div class="value mono">{{ scenario_code }}</div>
+        <div class="label">Verdict</div>
+        <div class="value">{{ verdict }}</div>
+        <div class="label">Action</div>
+        <div class="value">{{ action }}</div>
+        <div class="label">STR Required</div>
+        <div class="value">{{ 'Yes' if str_required else 'No' }}</div>
+        <div class="label">Decision Status</div>
+        <div class="value">{{ decision_status | upper }}</div>
       </div>
-      {% if is_seed %}
-        <p class="small" style="margin-top:10px;">
-          Synthetic training case (seeded).
-        </p>
-      {% endif %}
+      <p class="small" style="margin-top:10px;">{{ decision_explainer }}</p>
     </div>
-            {{ ev.value }}
 
-    <h2>Case Facts</h2>
+    <h3>Case Facts</h3>
     <table class="break">
       <thead>
         <tr>
@@ -126,6 +139,24 @@
       </tbody>
     </table>
 
+    <h2>Case Classification</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Source</div>
+        <div class="value">{{ source_type }}</div>
+        <div class="label">Seed Category</div>
+        <div class="value">{{ seed_category }}</div>
+        <div class="label">Scenario Code</div>
+        <div class="value mono">{{ scenario_code }}</div>
+      </div>
+      {% if is_seed %}
+        <p class="small" style="margin-top:10px;">
+          Synthetic training case (seeded).
+        </p>
+      {% endif %}
+    </div>
+
+    <h2>Regulatory Determination</h2>
     <h2>Regulatory Determination</h2>
     {% if decision_status == "pass" %}
       <div class="status ok break">
@@ -180,6 +211,7 @@
       {% endif %}
     </div>
 
+    <h2>Decision Drivers</h2>
     <div class="card break">
       <h3>Decision Drivers</h3>
       {% if decision_drivers and decision_drivers|length > 0 %}
@@ -193,7 +225,8 @@
       {% endif %}
     </div>
 
-    <h2>Gate 1: Zero-False-Escalation Check</h2>
+    <h2>Gate Evaluation</h2>
+    <h3>Gate 1: Zero-False-Escalation Check</h3>
     <div class="gate-block break">
       <h4>
         {% if gate1_passed %}
@@ -228,7 +261,7 @@
       {% endif %}
     </div>
 
-    <h2>Gate 2: STR Threshold</h2>
+    <h3>Gate 2: STR Threshold</h3>
     <div class="gate-block break">
       <h4>
         STR Required:
@@ -563,7 +596,7 @@
     </div>
     {% endif %}
 
-    <h2>Risk Factor Assessment</h2>
+    <h2>Risk Factors</h2>
     <table class="break">
       <thead>
         <tr>
@@ -594,7 +627,31 @@
       </tbody>
     </table>
 
-    <h2>Decision Provenance</h2>
+    <h2>Evidence Considered</h2>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in evidence_used %}
+        <tr>
+          <td class="mono">{{ ev.field }}</td>
+          <td>{{ ev.value }}</td>
+        </tr>
+        {% endfor %}
+        {% if not evidence_used %}
+        <tr>
+          <td colspan="2" class="small">No evidence recorded</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <h2>Auditability &amp; Governance</h2>
+    <h3>Decision Provenance</h3>
     <div class="provenance break">
       <div class="kv">
         <div class="label">Decision Hash (SHA-256)</div>
