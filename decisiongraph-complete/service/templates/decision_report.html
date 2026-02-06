@@ -173,10 +173,26 @@
     </div>
 
     <h2>Investigation Outcome Summary</h2>
+
+    <!-- Disposition Ladder: governed is always the headline -->
+    <div class="card break" style="border-left:4px solid {% if governed_disposition == 'STR_REQUIRED' %}#dc2626{% elif governed_disposition == 'NO_REPORT' %}#059669{% else %}#d97706{% endif %};">
+      <div class="kv">
+        <div class="label">Final Disposition</div>
+        <div class="value" style="font-size:16px;">{{ governed_disposition | replace('_', ' ') }}</div>
+        <div class="label">&nbsp;</div>
+        <div class="value small" style="color:var(--muted);">Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}</div>
+        <div class="label">Engine Output (Rules)</div>
+        <div class="value mono" style="{% if engine_disposition != governed_disposition %}color:var(--muted);{% endif %}">{{ engine_disposition | replace('_', ' ') }}{% if action and action|lower != 'n/a' %} — {{ action }}{% endif %}</div>
+      </div>
+      {% if engine_disposition != governed_disposition %}
+      <p class="small" style="margin-top:10px; font-style:italic; color:var(--muted);">
+        Engine output differs from governed disposition. Classifier sovereignty enforced — governed outcome is authoritative.
+      </p>
+      {% endif %}
+    </div>
+
     <div class="card break">
       <div class="kv">
-        <div class="label">Regulatory Status</div>
-        <div class="value">{{ regulatory_status }}</div>
         <div class="label">Investigation State</div>
         <div class="value">{{ investigation_state }}</div>
         <div class="label">Primary Typology</div>
@@ -233,7 +249,7 @@
     </div>
 
     <h2>Regulatory Determination</h2>
-    {% if decision_status == "pass" %}
+    {% if governed_disposition == "NO_REPORT" %}
       <div class="status ok break">
         <h3>NO_REPORT — Alert Cleared</h3>
         <p>Based on available information at time of review, the totality of indicators does not meet the threshold for reasonable grounds to suspect money laundering or terrorist financing activity.</p>
@@ -244,7 +260,7 @@
           <li>No regulatory filing required at this time</li>
         </ul>
       </div>
-    {% elif decision_status == "escalate" %}
+    {% elif governed_disposition == "STR_REQUIRED" %}
       <div class="status bad break">
         <h3>FILE_STR — Suspicious Transaction Report Required</h3>
         <p>Suspicion threshold met under PCMLTFA/FINTRAC guidance. Reasonable grounds exist to suspect that the transaction or attempted transaction is related to the commission or attempted commission of a money laundering or terrorist financing offence.</p>
@@ -264,10 +280,35 @@
           <li>Document investigative rationale in case file</li>
         </ul>
       </div>
+    {% elif governed_disposition == "ESCALATE" %}
+      <div class="status bad break">
+        <h3>ESCALATE — Compliance Review Required</h3>
+        <p>Suspicion indicators are present and warrant escalation to senior compliance. Final regulatory determination pending review.</p>
+        {% if escalation_reasons and escalation_reasons|length > 0 %}
+          <p style="margin-top:12px;"><strong>Escalation Triggers:</strong></p>
+          <ul>
+            {% for reason in escalation_reasons[:4] %}
+              <li>{{ reason }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
+        <ul class="small">
+          <li>Escalate to Senior Analyst / Compliance Officer</li>
+          <li>Apply Enhanced Due Diligence measures</li>
+          <li>Document escalation rationale in case file</li>
+          <li>Determine if STR filing is warranted after review</li>
+        </ul>
+      </div>
     {% else %}
       <div class="status warn break">
         <h3>EDD_REQUIRED — Enhanced Due Diligence Required</h3>
         <p>Additional information required before regulatory determination can be finalized. Current indicators warrant enhanced scrutiny but do not independently establish reasonable grounds to suspect.</p>
+        {% if engine_disposition != governed_disposition %}
+        <p class="small" style="margin-top:8px; font-style:italic;">
+          Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Classifier sovereignty applied — EDD is the governed outcome.
+        </p>
+        {% endif %}
         <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
         <ul class="small">
           <li>Complete Enhanced Due Diligence review</li>
@@ -778,7 +819,7 @@
         <div class="value mono hash">{{ policy_hash }}</div>
         <div class="label">Decision Path</div>
         <div class="value mono">{{ decision_path_trace or action or 'N/A' }}</div>
-        <div class="label">Primary Trigger</div>
+        <div class="label">Engine Trigger (Rules)</div>
         <div class="value mono">{{ action or 'N/A' }}</div>
         <div class="label">Engine Disposition</div>
         <div class="value mono">{{ engine_disposition or 'N/A' }}</div>

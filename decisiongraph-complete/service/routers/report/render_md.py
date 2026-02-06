@@ -232,14 +232,31 @@ def render_markdown(ctx: dict) -> str:
             value = "Yes" if value else "No"
         evidence_rows += f"| `{_md_escape(ev.get('field', 'N/A'))}` | {_md_escape(value)} |\n"
 
-    # Decision header
-    if ctx["decision_status"] == "pass":
-        decision_header = "### **PASS** — Transaction Allowed"
-    elif ctx["decision_status"] == "escalate":
-        decision_header = f"### **ESCALATE** — {ctx['action']}"
+    # Decision header (governed — not engine)
+    governed = ctx.get("governed_disposition", "EDD_REQUIRED")
+    engine = ctx.get("engine_disposition", governed)
+    if governed == "NO_REPORT":
+        decision_header = "### **NO_REPORT** — Alert Cleared"
+    elif governed == "STR_REQUIRED":
+        decision_header = "### **FILE_STR** — Suspicious Transaction Report Required"
+    elif governed == "ESCALATE":
+        decision_header = "### **ESCALATE** — Compliance Review Required"
     else:
-        decision_header = "### **REVIEW REQUIRED**"
-
+        decision_header = "### **EDD_REQUIRED** — Enhanced Due Diligence Required"
+    if engine != governed:
+        decision_header += f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. Classifier sovereignty applied — governed outcome is authoritative.*"
+    # Disposition ladder display values
+    governed_display = governed.replace("_", " ")
+    action_val = ctx.get("action", "")
+    engine_display = engine.replace("_", " ")
+    if action_val and action_val.lower() != "n/a":
+        engine_display += f" \u2014 {action_val}"
+    disposition_note = ""
+    if engine != governed:
+        disposition_note = (
+            "\n> Engine output differs from governed disposition. "
+            "Classifier sovereignty enforced \u2014 governed outcome is authoritative.\n"
+        )
     safe_path = _md_escape(ctx["decision_path_trace"] or "N/A")
 
     decision_confidence_block = ""
@@ -355,9 +372,15 @@ def render_markdown(ctx: dict) -> str:
 
 ## Investigation Outcome Summary
 
+### Disposition Ladder
+
+| | |
+|---|---|
+| **Final Disposition (Classifier Sovereign)** | **{governed_disposition_display}** |
+| Engine Output (Rules Layer) | {engine_disposition_display} |
+{disposition_note}
 | Field | Value |
 |-------|-------|
-| Regulatory Status | **{regulatory_status}** |
 | Investigation State | {investigation_state} |
 | Primary Typology | {primary_typology} |
 | Regulatory Obligation | {regulatory_obligation} |
@@ -488,7 +511,7 @@ def render_markdown(ctx: dict) -> str:
 | Input Hash | `{input_hash}` |
 | Policy Hash | `{policy_hash}` |
 | Decision Path | `{safe_path}` |
-| Primary Trigger | `{action}` |
+| Engine Trigger (Rules) | `{action}` |
 | Engine Disposition | `{engine_disposition}` |
 | Governed Disposition | `{governed_disposition}` |
 
@@ -521,7 +544,6 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         decision_header=decision_header,
         decision_id=ctx.get("decision_id"),
         decision_id_short=ctx.get("decision_id_short"),
-        decision_status_upper=ctx.get("decision_status", "").upper(),
         decision_confidence_block=decision_confidence_block,
         decision_drivers_md=decision_drivers_md,
         deviation_alert_md=deviation_alert_md,
@@ -543,7 +565,6 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         primary_typology=_md_escape(ctx.get("primary_typology", "")),
         regulatory_obligation=ctx.get("regulatory_obligation", "\u2014"),
         regulatory_position=ctx.get("regulatory_position", ""),
-        regulatory_status=ctx.get("regulatory_status", ""),
         report_schema_version=ctx.get("report_schema_version"),
         risk_factors_md=risk_factors_md,
         rules_rows_output=rules_rows_output,
@@ -561,4 +582,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         escalation_summary=ctx.get("escalation_summary"),
         engine_disposition=ctx.get("engine_disposition", "N/A"),
         governed_disposition=ctx.get("governed_disposition", "N/A"),
+        governed_disposition_display=governed_display,
+        engine_disposition_display=engine_display,
+        disposition_note=disposition_note,
     )
