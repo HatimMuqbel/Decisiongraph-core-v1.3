@@ -16,18 +16,8 @@ RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true 
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Build-time syntax gate — fails the build if report package has errors
-RUN python -c "\
-import ast, sys, pathlib; \
-pkg = pathlib.Path('service/routers/report'); \
-total = 0; \
-for f in sorted(pkg.glob('*.py')): \
-    src = f.read_text(); \
-    ast.parse(src); \
-    n = src.count(chr(10)) + 1; \
-    total += n; \
-    print(f'  {f.name}: {n} lines, syntax OK'); \
-print(f'report package: {total} total lines'); \
-sys.exit(0)"
+RUN find service/routers/report -name '*.py' -exec python -m py_compile {} + && \
+    python -c "from service.routers.report import router, REPORT_MODULE_VERSION; print(f'report package OK — {REPORT_MODULE_VERSION}')"
 
 # Log what we actually shipped
 RUN echo "=== DEPLOYED FILE IDENTITY ===" && \
