@@ -276,18 +276,30 @@ class TemplateLoader:
                     raw_outcome = matched_outcome.get("decision", "approve")
                     # Normalize BYOC facts to precedent schema fields
                     precedent_facts = dict(facts)
+
+                    # --- customer.type normalization ---
                     customer_type = precedent_facts.get("customer.type")
                     if customer_type in {"sole_prop", "individual"}:
                         precedent_facts["customer.type"] = "individual"
                     elif customer_type in {"partnership", "trust", "non_profit", "corporation"}:
                         precedent_facts["customer.type"] = "corporation"
 
-                    if "customer.relationship_length" not in precedent_facts:
-                        precedent_facts["customer.relationship_length"] = facts.get("customer.relationship_length")
+                    # --- customer.pep: BYOC uses risk.pep / screen.pep_match, scoring expects customer.pep ---
+                    pep_value = facts.get("risk.pep") or facts.get("screen.pep_match") or facts.get("customer.pep")
+                    if pep_value is not None:
+                        precedent_facts["customer.pep"] = pep_value
 
-                    if "customer.pep" not in precedent_facts:
-                        precedent_facts["customer.pep"] = facts.get("risk.pep") or facts.get("screen.pep_match")
+                    # --- customer.relationship_length: BYOC uses verbose labels, seeds use short tokens ---
+                    _REL_MAP = {
+                        "new_lt_6mo": "new",
+                        "established_6mo_2yr": "recent",
+                        "long_term_2yr_plus": "established",
+                    }
+                    rel_raw = precedent_facts.get("customer.relationship_length")
+                    if rel_raw and rel_raw in _REL_MAP:
+                        precedent_facts["customer.relationship_length"] = _REL_MAP[rel_raw]
 
+                    # --- screening.* : BYOC uses screen.*, scoring/seeds expect screening.* ---
                     precedent_facts.setdefault(
                         "screening.sanctions_match",
                         facts.get("screen.sanctions_match"),
@@ -297,10 +309,40 @@ class TemplateLoader:
                         facts.get("screen.adverse_media"),
                     )
 
+                    # --- txn.destination_country_risk: BYOC uses txn.destination_country ---
                     destination = facts.get("txn.destination_country")
-                    if destination and "txn.destination_country_risk" not in precedent_facts:
-                        destination_risk = "high" if destination == "high_risk_country" else "low"
-                        precedent_facts["txn.destination_country_risk"] = destination_risk
+                    if destination:
+                        if destination == "high_risk_country":
+                            precedent_facts["txn.destination_country_risk"] = "high"
+                        elif destination in {"canada", "usa", "uk"}:
+                            precedent_facts["txn.destination_country_risk"] = "low"
+                        else:
+                            precedent_facts["txn.destination_country_risk"] = "high"
+
+                    # --- txn.amount_band: BYOC 100k_plus not in ordered_bands, map to closest ---
+                    amt = precedent_facts.get("txn.amount_band")
+                    if amt == "100k_plus":
+                        precedent_facts["txn.amount_band"] = "100k_500k"
+
+                    # --- txn.type: BYOC uses broader labels, scoring _channel_group does fuzzy match ---
+                    # but exact matches score 1.0 vs 0.5 so normalise where possible
+                    _TXN_TYPE_MAP = {
+                        "cash_deposit": "cash",
+                        "cash_withdrawal": "cash",
+                        "ach_eft": "ach",
+                        "crypto_purchase": "crypto",
+                        "crypto_sale": "crypto",
+                        "international_transfer": "wire_international",
+                    }
+                    txn_type = precedent_facts.get("txn.type")
+                    if txn_type in _TXN_TYPE_MAP:
+                        precedent_facts["txn.type"] = _TXN_TYPE_MAP[txn_type]
+                    elif txn_type == "wire_transfer":
+                        # Disambiguate based on cross_border flag
+                        if precedent_facts.get("txn.cross_border") in {True, "true", "True", "yes"}:
+                            precedent_facts["txn.type"] = "wire_international"
+                        else:
+                            precedent_facts["txn.type"] = "wire_domestic"
 
                     decision_code = (matched_outcome.get("decision") or "").lower()
                     precedent_facts["gate1_allowed"] = decision_code != "block"
