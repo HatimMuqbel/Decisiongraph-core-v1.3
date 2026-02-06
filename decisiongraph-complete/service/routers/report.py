@@ -546,12 +546,24 @@ def build_report_context(decision: dict) -> dict:
     verdict = dec.get("verdict", "UNKNOWN") or "UNKNOWN"
     action = dec.get("action", "") or "N/A"
 
-    if verdict in ["PASS", "PASS_WITH_EDD"]:
+    # Normalize verdict for both engine verdicts (PASS, HARD_STOP, STR)
+    # and BYOC labels (APPROVE, BLOCK (Exit Review), ESCALATE (Prior Closure), etc.)
+    verdict_upper = verdict.upper()
+    if verdict_upper in ("PASS", "PASS_WITH_EDD") or verdict_upper.startswith("APPROVE"):
         decision_status = "pass"
         decision_explainer = "No suspicious activity indicators detected. Transaction may proceed."
-    elif verdict in ["HARD_STOP", "STR", "ESCALATE"]:
+    elif (
+        verdict_upper in ("HARD_STOP", "STR", "ESCALATE")
+        or verdict_upper.startswith("BLOCK")
+        or verdict_upper.startswith("DECLINE")
+        or verdict_upper.startswith("ESCALATE")
+        or verdict_upper.startswith("INVESTIGATE")
+    ):
         decision_status = "escalate"
         decision_explainer = rationale.get("summary", "") or "Suspicious indicators detected requiring escalation."
+    elif verdict_upper.startswith("HOLD"):
+        decision_status = "review"
+        decision_explainer = rationale.get("summary", "") or "Transaction under enhanced due diligence review."
     else:
         decision_status = "review"
         decision_explainer = rationale.get("summary", "") or "Transaction under enhanced due diligence review."

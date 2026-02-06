@@ -185,6 +185,7 @@
       const [autoEvaluate, setAutoEvaluate] = useState(true);
       const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
       const [lastEvaluated, setLastEvaluated] = useState(null);
+      const [reportCtx, setReportCtx] = useState(null);
 
       // Debounced facts for auto-evaluate
       const debouncedFacts = useDebounce(facts, 300);
@@ -220,9 +221,23 @@
             });
             setEvidence(initialEvidence);
             setResult(null);
+            setReportCtx(null);
           })
           .catch(e => console.error('Failed to load template:', e));
       }, [selectedTemplateId]);
+
+      // Fetch full report context for a decision
+      const fetchReportContext = useCallback(async (decisionId) => {
+        try {
+          const res = await fetch(`${API_URL}/report/${decisionId}/json`);
+          if (res.ok) {
+            const data = await res.json();
+            setReportCtx(data.report || null);
+          }
+        } catch (e) {
+          console.error('Failed to fetch report context:', e);
+        }
+      }, []);
 
       // Auto-evaluate when facts change
       useEffect(() => {
@@ -247,6 +262,7 @@
             if (!cancelled) {
               setResult(data);
               setLastEvaluated(new Date());
+              if (data.decision_id) fetchReportContext(data.decision_id);
             }
           })
           .catch(e => console.error('Evaluation failed:', e))
@@ -273,6 +289,7 @@
           const data = await res.json();
           setResult(data);
           setLastEvaluated(new Date());
+          if (data.decision_id) await fetchReportContext(data.decision_id);
         } catch (e) {
           console.error('Evaluation failed:', e);
         }
@@ -306,13 +323,15 @@
       );
 
       const getDecisionStyle = (decision) => {
-        if (['approve'].includes(decision)) {
+        // Use report-consistent decision_status when available
+        const key = (decision || '').toLowerCase();
+        if (['approve', 'pass'].includes(key) || key === 'pass') {
           return { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', icon: 'check' };
         }
-        if (['block', 'decline'].includes(decision)) {
+        if (['block', 'decline', 'escalate', 'investigate'].includes(key) || key === 'escalate') {
           return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', icon: 'ban' };
         }
-        if (['investigate', 'escalate', 'hold'].includes(decision)) {
+        if (['hold', 'review'].includes(key)) {
           return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: 'alert' };
         }
         return { bg: 'bg-slate-500/10', border: 'border-slate-500/30', text: 'text-slate-400', icon: 'zap' };
@@ -356,11 +375,15 @@
                   <span className="text-xs text-slate-500 uppercase tracking-wider">Case:</span>
                   <span className="text-sm font-medium text-slate-200">{summary}</span>
                 </div>
-                {result && (
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDecisionStyle(result.decision).bg} ${getDecisionStyle(result.decision).text}`}>
-                    {result.decision_label}
-                  </span>
-                )}
+                {result && (() => {
+                  const displayDecision = reportCtx ? reportCtx.decision_status : result.decision;
+                  const displayLabel = reportCtx ? reportCtx.verdict : result.decision_label;
+                  return (
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDecisionStyle(displayDecision).bg} ${getDecisionStyle(displayDecision).text}`}>
+                      {displayLabel}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -497,25 +520,51 @@
                       <div className="space-y-4">
                         {/* Decision */}
                         {(() => {
-                          const style = getDecisionStyle(result.decision);
+                          // Use report context values when available for consistency with View Report
+                          const rpt = reportCtx;
+                          const displayLabel = rpt ? rpt.verdict : result.decision_label;
+                          const displayCode = rpt ? rpt.action : result.decision_code;
+                          const displayDecision = rpt ? rpt.decision_status : result.decision;
+                          const displayConfidence = rpt ? rpt.decision_confidence : result.certainty;
+                          const displayConfidenceScore = rpt ? rpt.decision_confidence_score : null;
+                          const confidenceKey = displayConfidence ? displayConfidence.toLowerCase() : '';
+                          const style = getDecisionStyle(displayDecision);
                           return (
                             <div className={`rounded-xl p-5 ${style.bg} border ${style.border}`}>
                               <div className="flex items-center gap-3 mb-2">
                                 <Icon name={style.icon} className={`w-8 h-8 ${style.text}`} />
-                                <div className={`text-2xl font-bold ${style.text}`}>{result.decision_label}</div>
+                                <div className={`text-2xl font-bold ${style.text}`}>{displayLabel}</div>
                               </div>
                               <div className="flex items-center gap-2 mt-2 flex-wrap">
                                 <span className="px-2 py-0.5 bg-slate-800/50 rounded text-xs text-slate-300">
-                                  Code: {result.decision_code}
+                                  Code: {displayCode}
                                 </span>
                                 <span className={`px-2 py-0.5 rounded text-xs ${
-                                  result.certainty === 'high' ? 'bg-emerald-500/20 text-emerald-400' :
-                                  result.certainty === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                  confidenceKey === 'high' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  confidenceKey === 'moderate' || confidenceKey === 'medium' ? 'bg-amber-500/20 text-amber-400' :
                                   'bg-red-500/20 text-red-400'
                                 }`}>
-                                  Certainty: {result.certainty}
+                                  Confidence: {displayConfidence}{displayConfidenceScore != null ? ` (${displayConfidenceScore}%)` : ''}
                                 </span>
                               </div>
+                              {/* Regulatory Status from report */}
+                              {rpt && (
+                                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                    rpt.regulatory_status === 'NO REPORT' ? 'bg-emerald-500/20 text-emerald-400' :
+                                    rpt.regulatory_status === 'STR REQUIRED' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-amber-500/20 text-amber-400'
+                                  }`}>
+                                    {rpt.regulatory_status}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded text-xs ${
+                                    rpt.investigation_state === 'CLEARED' ? 'bg-emerald-500/20 text-emerald-400' :
+                                    'bg-amber-500/20 text-amber-400'
+                                  }`}>
+                                    {rpt.investigation_state}
+                                  </span>
+                                </div>
+                              )}
 
                               {/* View Report Button */}
                               <a
@@ -545,34 +594,79 @@
                           </div>
                         )}
 
-                        {/* Reasoning Chain */}
-                        {result.reasoning_chain?.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-medium text-slate-400 mb-2">Reasoning Chain</h4>
-                            <div className="space-y-1">
-                              {result.reasoning_chain.map((step, i) => (
-                                <div key={i} className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 ${
-                                  step.status === 'pass' ? 'bg-emerald-500/10' :
-                                  step.status === 'fail' ? 'bg-red-500/10' : 'bg-amber-500/10'
-                                }`}>
-                                  {step.status === 'pass' ? (
-                                    <Icon name="check" className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                                  ) : step.status === 'fail' ? (
-                                    <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                                  ) : (
-                                    <Icon name="alert" className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                                  )}
-                                  <span className={
-                                    step.status === 'pass' ? 'text-emerald-300' :
-                                    step.status === 'fail' ? 'text-red-300' : 'text-amber-300'
-                                  }>
-                                    {step.text}
-                                  </span>
+                        {/* Reasoning Chain — use report decision_drivers + rules when available */}
+                        {(() => {
+                          const rpt = reportCtx;
+
+                          // Build reasoning items from report data when available
+                          if (rpt) {
+                            const items = [];
+                            // Decision drivers from report (most important)
+                            (rpt.decision_drivers || []).forEach((d, i) => {
+                              items.push({ key: `drv-${i}`, status: rpt.decision_status === 'pass' ? 'pass' : 'fail', text: d });
+                            });
+                            // Rules fired from report
+                            (rpt.rules_fired || []).forEach((r, i) => {
+                              const st = ['CLEAR', 'NOT_APPLICABLE', 'APPLIED', 'pass'].includes(r.result) ? 'pass' :
+                                         ['TRIGGERED', 'ACTIVATED', 'FAIL', 'FAILED', 'fail'].includes(r.result) ? 'fail' : 'warn';
+                              items.push({ key: `rule-${i}`, status: st, text: `${r.code || 'Rule'}: ${r.reason || r.result || ''}` });
+                            });
+                            if (items.length === 0) return null;
+                            return (
+                              <div>
+                                <h4 className="text-sm font-medium text-slate-400 mb-2">Reasoning Chain</h4>
+                                <div className="space-y-1">
+                                  {items.map(item => (
+                                    <div key={item.key} className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 ${
+                                      item.status === 'pass' ? 'bg-emerald-500/10' :
+                                      item.status === 'fail' ? 'bg-red-500/10' : 'bg-amber-500/10'
+                                    }`}>
+                                      {item.status === 'pass' ? (
+                                        <Icon name="check" className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                      ) : item.status === 'fail' ? (
+                                        <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                      ) : (
+                                        <Icon name="alert" className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                      )}
+                                      <span className={
+                                        item.status === 'pass' ? 'text-emerald-300' :
+                                        item.status === 'fail' ? 'text-red-300' : 'text-amber-300'
+                                      }>{item.text}</span>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
+                              </div>
+                            );
+                          }
+
+                          // Fallback to evaluate reasoning_chain
+                          if (!result.reasoning_chain?.length) return null;
+                          return (
+                            <div>
+                              <h4 className="text-sm font-medium text-slate-400 mb-2">Reasoning Chain</h4>
+                              <div className="space-y-1">
+                                {result.reasoning_chain.map((step, i) => (
+                                  <div key={i} className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 ${
+                                    step.status === 'pass' ? 'bg-emerald-500/10' :
+                                    step.status === 'fail' ? 'bg-red-500/10' : 'bg-amber-500/10'
+                                  }`}>
+                                    {step.status === 'pass' ? (
+                                      <Icon name="check" className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                    ) : step.status === 'fail' ? (
+                                      <Icon name="x" className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                    ) : (
+                                      <Icon name="alert" className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                    )}
+                                    <span className={
+                                      step.status === 'pass' ? 'text-emerald-300' :
+                                      step.status === 'fail' ? 'text-red-300' : 'text-amber-300'
+                                    }>{step.text}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         {/* Citations */}
                         {result.citations?.length > 0 && (
