@@ -75,7 +75,7 @@ from decisiongraph.judgment import (
 # Import routers
 from service.routers import demo, report, verify, templates
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
-from service.suspicion_classifier import CLASSIFIER_VERSION
+from service.suspicion_classifier import CLASSIFIER_VERSION, classify as classify_suspicion
 
 # Log module versions at import time so deploy logs confirm the correct code shipped
 print(f"[startup] report module version: {report.REPORT_MODULE_VERSION}")
@@ -627,6 +627,176 @@ async def decide(request: Request):
             str_result=str_result,
         )
 
+        # ── CLASSIFIER SOVEREIGNTY GATE ──────────────────────────────────
+        # The Suspicion Classifier is the SUPREME AUTHORITY.
+        # It runs BEFORE the verdict is finalized.
+        # If Tier 1 == 0, STR is IMPOSSIBLE. No rule, gate, or precedent
+        # can bypass this. This is non-negotiable regulatory architecture.
+        #
+        # Decision Hierarchy (frozen):
+        #   1. Suspicion Classifier (sovereign)
+        #   2. Rules / Gates (support the classifier, never contradict)
+        #   3. Narrative Engine (explains the classifier outcome)
+        #   4. Governance Engine (controls escalation path)
+        # ─────────────────────────────────────────────────────────────────
+
+        # Build evidence_used and rules_fired for the classifier
+        # (mirrors what decision_pack.py constructs, but available pre-pack)
+        hard_stop_triggered = any([
+            facts.get("sanctions_result") == "MATCH",
+            facts.get("document_status") == "FALSE",
+            facts.get("customer_response") == "REFUSAL",
+            facts.get("legal_prohibition", False),
+            facts.get("adverse_media_mltf", False),
+        ])
+        has_pep = "PEP_FOREIGN" in obligations or "PEP_DOMESTIC" in obligations
+        suspicion_activated = (
+            hard_stop_triggered or
+            suspicion_evidence.get("has_intent", False) or
+            suspicion_evidence.get("has_deception", False) or
+            suspicion_evidence.get("has_sustained_pattern", False)
+        )
+        suspicion_basis = (
+            "HARD_STOP" if hard_stop_triggered
+            else "BEHAVIORAL" if suspicion_activated
+            else "NONE"
+        )
+
+        pre_evidence_used = [
+            {"field": "facts.sanctions_result", "value": facts.get("sanctions_result", "NO_MATCH")},
+            {"field": "facts.adverse_media_mltf", "value": facts.get("adverse_media_mltf", False)},
+            {"field": "suspicion.has_intent", "value": suspicion_evidence.get("has_intent", False)},
+            {"field": "suspicion.has_deception", "value": suspicion_evidence.get("has_deception", False)},
+            {"field": "suspicion.has_sustained_pattern", "value": suspicion_evidence.get("has_sustained_pattern", False)},
+            {"field": "obligations.count", "value": len(obligations)},
+            {"field": "mitigations.count", "value": len(mitigations)},
+            {"field": "typology.maturity", "value": typology_maturity},
+        ]
+        pre_rules_fired = [
+            {"code": "HARD_STOP_CHECK", "result": "TRIGGERED" if hard_stop_triggered else "CLEAR",
+             "reason": "Hard stop conditions detected" if hard_stop_triggered else "No hard stop conditions"},
+            {"code": "PEP_ISOLATION", "result": "APPLIED" if has_pep else "NOT_APPLICABLE",
+             "reason": "PEP status alone cannot escalate" if has_pep else "Not a PEP"},
+            {"code": "SUSPICION_TEST", "result": "ACTIVATED" if suspicion_activated else "CLEAR",
+             "reason": suspicion_basis},
+        ]
+
+        # Also include any indicators from the input payload as evidence
+        for ind in indicators:
+            ind_field = f"indicator.{ind.get('code', 'unknown')}"
+            pre_evidence_used.append({"field": ind_field, "value": ind.get("corroborated", False)})
+
+        # Construct classifier inputs from layers
+        layer4_typologies_pre = {
+            "typologies": [{"name": "primary", "maturity": typology_maturity}],
+        }
+        layer6_suspicion_pre = {
+            "activated": suspicion_activated,
+            "basis": suspicion_basis,
+            "elements": {
+                "has_intent": suspicion_evidence.get("has_intent", False),
+                "has_deception": suspicion_evidence.get("has_deception", False),
+                "has_sustained_pattern": suspicion_evidence.get("has_sustained_pattern", False),
+            },
+        }
+
+        # Build layer1_facts for classifier (transaction + customer context)
+        layer1_facts_pre = {}
+        primary_txn_pre = None
+        if isinstance(body.get("transaction"), dict):
+            primary_txn_pre = body.get("transaction")
+        elif isinstance(body.get("events"), list):
+            for event in body.get("events", []):
+                if isinstance(event, dict) and event.get("event_type") == "transaction":
+                    primary_txn_pre = event
+                    break
+        if primary_txn_pre:
+            layer1_facts_pre["transaction"] = {
+                "cross_border": primary_txn_pre.get("cross_border", False),
+                "destination": primary_txn_pre.get("destination_country", ""),
+                "method": primary_txn_pre.get("payment_method") or primary_txn_pre.get("method", ""),
+            }
+        customer_record = body.get("customer_record", {})
+        layer1_facts_pre["customer"] = {
+            "pep_flag": customer_record.get("pep_flag") == "Y" or has_pep,
+        }
+
+        # Run classifier as SOVEREIGN AUTHORITY
+        classifier_result = classify_suspicion(
+            evidence_used=pre_evidence_used,
+            rules_fired=pre_rules_fired,
+            layer4_typologies=layer4_typologies_pre,
+            layer6_suspicion=layer6_suspicion_pre,
+            layer1_facts=layer1_facts_pre,
+            mitigations=mitigations or None,
+        )
+
+        # ── HARD GATE: Classifier Sovereignty ────────────────────────────
+        # IF Tier 1 == 0 → STR is impossible. Period.
+        classifier_override_applied = False
+        classifier_original_verdict = None
+
+        if classifier_result.suspicion_count == 0 and final_decision.get("str_required", False):
+            # CRITICAL: Rules engine tried to file STR without suspicion.
+            # This is a regulatory control violation. Override immediately.
+            classifier_override_applied = True
+            classifier_original_verdict = "STR"
+            logger.warning(
+                "CLASSIFIER SOVEREIGNTY: STR blocked — Tier 1 suspicion count is 0. "
+                "Rules engine verdict overridden to protect regulatory integrity.",
+                extra={"request_id": request_id, "external_id": external_id},
+            )
+            # Downgrade to EDD if investigative signals exist, else NO_REPORT
+            if classifier_result.investigative_count >= 1:
+                final_decision = {
+                    "verdict": "REVIEW",
+                    "action": "EDD_REQUIRED",
+                    "str_required": False,
+                    "escalation_blocked_by_classifier": True,
+                    "classifier_override_reason": (
+                        f"Tier 1 suspicion indicators: 0. "
+                        f"Tier 2 investigative signals: {classifier_result.investigative_count}. "
+                        "STR filing prohibited by classifier sovereignty. EDD required."
+                    ),
+                }
+            else:
+                final_decision = {
+                    "verdict": "PASS",
+                    "action": "CLOSE",
+                    "str_required": False,
+                    "escalation_blocked_by_classifier": True,
+                    "classifier_override_reason": (
+                        "Tier 1 suspicion indicators: 0. "
+                        "Tier 2 investigative signals: 0. "
+                        "No reporting or escalation obligation."
+                    ),
+                }
+
+        elif classifier_result.suspicion_count == 0 and (
+            esc_result.decision == EscalationDecision.PERMITTED
+            and not final_decision.get("str_required", False)
+        ):
+            # Escalation was permitted but no Tier 1 — downgrade to EDD
+            if classifier_result.investigative_count >= 1:
+                classifier_override_applied = True
+                classifier_original_verdict = final_decision.get("verdict", "ESCALATE")
+                logger.info(
+                    "CLASSIFIER SOVEREIGNTY: Escalation downgraded to EDD — "
+                    "no Tier 1 suspicion indicators.",
+                    extra={"request_id": request_id, "external_id": external_id},
+                )
+                final_decision = {
+                    "verdict": "REVIEW",
+                    "action": "EDD_REQUIRED",
+                    "str_required": False,
+                    "escalation_blocked_by_classifier": True,
+                    "classifier_override_reason": (
+                        f"Tier 1 suspicion indicators: 0. "
+                        f"Tier 2 investigative signals: {classifier_result.investigative_count}. "
+                        "Escalation downgraded to EDD by classifier sovereignty."
+                    ),
+                }
+
         # Build decision pack
         decision_pack = build_decision_pack(
             case_id=external_id,
@@ -657,6 +827,27 @@ async def decide(request: Request):
         decision_pack["meta"]["source_type"] = str(source_type).lower()
         decision_pack["meta"]["scenario_code"] = normalize_scenario_code(scenario_code)
         decision_pack["meta"]["seed_category"] = normalize_seed_category(seed_category)
+
+        # ── Attach classifier result to decision pack ──
+        decision_pack["classifier"] = classifier_result.to_dict()
+        decision_pack["classifier"]["sovereign"] = True
+        if classifier_override_applied:
+            decision_pack["classifier"]["override_applied"] = True
+            decision_pack["classifier"]["original_verdict"] = classifier_original_verdict
+            decision_pack["classifier"]["override_reason"] = final_decision.get(
+                "classifier_override_reason", "Classifier sovereignty enforced"
+            )
+            # Patch decision block to reflect override
+            decision_pack["decision"]["verdict"] = final_decision.get("verdict", "REVIEW")
+            decision_pack["decision"]["action"] = final_decision.get("action", "EDD_REQUIRED")
+            decision_pack["decision"]["str_required"] = "NO"
+            decision_pack["decision"]["classifier_override"] = True
+            # Update rationale
+            decision_pack["rationale"]["summary"] = (
+                f"Classifier sovereignty override: {classifier_result.outcome}. "
+                f"{classifier_result.outcome_reason}"
+            )
+            decision_pack["rationale"]["str_rationale"] = None
 
         # Build fingerprint facts for precedent similarity
         fingerprint_facts = {}

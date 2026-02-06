@@ -158,8 +158,50 @@ def _resolve_typology(
     layer4_typologies: dict,
     rules_fired: list,
     layer6_suspicion: dict,
+    classifier_result: dict | None = None,
 ) -> str:
-    """Resolve primary typology from decision layers. Never from verdict."""
+    """Resolve primary typology from decision layers. Never from verdict.
+
+    REGULATORY INVARIANT: Typology must only come from Tier 1 indicators.
+    If the classifier found 0 Tier 1 signals, no suspicious typology can
+    be assigned — even if layer4/rules/layer6 contain typology tags.
+    A typology label without suspicion is a regulatory contradiction.
+    """
+
+    # ── CLASSIFIER GATE: If Tier 1 == 0, typology is impossible ──────────
+    if classifier_result is not None:
+        tier1_count = classifier_result.get("suspicion_count", 0)
+        if tier1_count == 0:
+            return "No suspicious typology identified"
+
+        # When Tier 1 signals exist, derive typology FROM those signals
+        # to ensure perfect alignment between classifier and typology
+        tier1_codes = {s.get("code", "").upper() for s in classifier_result.get("tier1_signals", [])}
+        _T1_CODE_TO_TYPOLOGY = {
+            "STRUCTURING_PATTERN": "Structuring",
+            "LAYERING": "Layering",
+            "FUNNEL": "Funnel account activity",
+            "THIRD_PARTY_UNEXPLAINED": "Third-party funneling",
+            "FALSE_SOURCE": "False source of funds",
+            "SHELL_ENTITY": "Shell entity layering",
+            "EVASION_BEHAVIOR": "Evasion behavior",
+            "SAR_PATTERN": "SAR pattern",
+            "ROUND_TRIP": "Round-trip transactions",
+            "TRADE_BASED_LAUNDERING": "Trade-based laundering",
+            "VIRTUAL_ASSET_LAUNDERING": "Virtual asset laundering",
+            "TERRORIST_FINANCING": "Terrorist financing",
+            "SANCTIONS_SIGNAL": "Sanctions exposure",
+            "ADVERSE_MEDIA_CONFIRMED": "Adverse media (confirmed)",
+        }
+        for code in tier1_codes:
+            if code in _T1_CODE_TO_TYPOLOGY:
+                return _T1_CODE_TO_TYPOLOGY[code]
+        # Tier 1 exists but no recognizable typology code — use first code
+        if tier1_codes:
+            first_code = next(iter(tier1_codes))
+            return first_code.replace("_", " ").title()
+
+    # ── FALLBACK: Legacy path (no classifier available) ──────────────────
 
     # Priority 1: Layer 4 typology tags
     typologies = layer4_typologies.get("typologies", []) or []
@@ -593,12 +635,9 @@ def build_report_context(decision: dict) -> dict:
     else:
         investigation_state = "UNDER REVIEW"
 
-    # Primary typology — resolved via compiler, never from verdict
-    primary_typology = _resolve_typology(
-        layer4_typologies=layers.get("layer4_typologies", {}) or {},
-        rules_fired=eval_trace.get("rules_fired", []) or [],
-        layer6_suspicion=layers.get("layer6_suspicion", {}) or {},
-    )
+    # Primary typology — resolved AFTER classifier runs (see below)
+    # This ensures typology is gated through Tier 1 signals.
+    primary_typology = None  # Will be set after classifier runs
 
     # Handle str_required - convert bool to proper format
     str_required_raw = dec.get("str_required", False)
@@ -875,6 +914,128 @@ def build_report_context(decision: dict) -> dict:
         precedent_analysis=precedent_analysis,
     )
 
+    # ── TYPOLOGY RESOLUTION (gated through classifier) ──
+    # Typology is now resolved AFTER the classifier runs.
+    # If Tier 1 == 0, no suspicious typology can be assigned.
+    primary_typology = _resolve_typology(
+        layer4_typologies=layers.get("layer4_typologies", {}) or {},
+        rules_fired=eval_trace.get("rules_fired", []) or [],
+        layer6_suspicion=layers.get("layer6_suspicion", {}) or {},
+        classifier_result=classification.to_dict(),
+    )
+
+    # ── DECISION INTEGRITY ALERT ──
+    # If the gate/rules verdict conflicts with what the classifier says,
+    # emit a hard integrity alert. This is institutional-grade control logic.
+    # Confidence CANNOT exist when a hard contradiction is present.
+    decision_integrity_alert = None
+    classifier_override_data = decision.get("classifier", {})
+
+    if classifier_override_data.get("override_applied"):
+        # Override was already applied in main.py — record it for the report
+        decision_integrity_alert = {
+            "type": "CLASSIFIER_OVERRIDE",
+            "severity": "CRITICAL",
+            "message": (
+                f"Decision Integrity Alert: Rules engine produced "
+                f"{classifier_override_data.get('original_verdict', 'STR')} "
+                f"but classifier determined {classification.outcome}. "
+                "Classifier sovereignty enforced — verdict overridden."
+            ),
+            "original_verdict": classifier_override_data.get("original_verdict"),
+            "classifier_outcome": classification.outcome,
+            "override_reason": classifier_override_data.get("override_reason", ""),
+        }
+    elif classification.suspicion_count == 0 and str_required:
+        # Post-hoc detection: report sees STR but classifier says no Tier 1
+        # This should not happen if main.py is up to date, but acts as safety net
+        decision_integrity_alert = {
+            "type": "CONTROL_CONTRADICTION",
+            "severity": "CRITICAL",
+            "message": (
+                "Decision Integrity Alert: Regulatory status is STR REQUIRED "
+                "but Suspicion Classifier found 0 Tier 1 indicators. "
+                "These statements cannot legally coexist. "
+                "Suspicion threshold not met — STR filing would be unjustified."
+            ),
+            "original_verdict": verdict,
+            "classifier_outcome": classification.outcome,
+        }
+        # Force correct status
+        regulatory_status = "EDD REQUIRED" if classification.investigative_count > 0 else "NO REPORT"
+        str_required = False
+        decision_status = "review" if classification.investigative_count > 0 else "pass"
+        investigation_state = "EDD REQUIRED" if classification.investigative_count > 0 else "CLEARED"
+
+    elif classification.suspicion_count == 0 and decision_status == "escalate":
+        # Escalation without Tier 1 — not as severe but still a contradiction
+        decision_integrity_alert = {
+            "type": "ESCALATION_WITHOUT_SUSPICION",
+            "severity": "WARNING",
+            "message": (
+                "Decision Integrity Alert: Escalation triggered without "
+                f"Tier 1 suspicion indicators (Tier 2: {classification.investigative_count}). "
+                "Correct disposition: EDD REQUIRED — not escalation."
+            ),
+            "original_verdict": verdict,
+            "classifier_outcome": classification.outcome,
+        }
+        regulatory_status = "EDD REQUIRED" if classification.investigative_count > 0 else "NO REPORT"
+        str_required = False
+        decision_status = "review" if classification.investigative_count > 0 else "pass"
+        investigation_state = "EDD REQUIRED" if classification.investigative_count > 0 else "CLEARED"
+
+    # ── PRECEDENT DEVIATION ALERT ──
+    # When precedent distribution strongly disagrees with the decision,
+    # emit a governance signal. This is NOT an override — it's intelligence.
+    precedent_deviation_alert = None
+    if precedent_analysis and precedent_analysis.get("available"):
+        supporting = int(precedent_analysis.get("supporting_precedents", 0) or 0)
+        contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
+        total_scored = int(precedent_analysis.get("scored_matches", 0) or 0)
+
+        # Also check match_outcome_distribution for strong signals
+        outcome_dist = (
+            precedent_analysis.get("match_outcome_distribution")
+            or precedent_analysis.get("outcome_distribution", {})
+            or {}
+        )
+
+        if str_required and contrary > supporting and (supporting + contrary) >= 3:
+            deviation_pct = int(contrary / (supporting + contrary) * 100) if (supporting + contrary) else 0
+            precedent_deviation_alert = {
+                "type": "OVER_ESCALATION_RISK",
+                "severity": "WARNING",
+                "message": (
+                    f"Precedent Deviation: {deviation_pct}% of similar historical cases "
+                    f"({contrary} of {supporting + contrary}) did NOT result in STR. "
+                    "This pattern divergence warrants consistency review."
+                ),
+                "supporting": supporting,
+                "contrary": contrary,
+            }
+        elif not str_required and supporting > contrary and supporting >= 3:
+            precedent_deviation_alert = {
+                "type": "UNDER_ESCALATION_RISK",
+                "severity": "INFO",
+                "message": (
+                    f"Precedent Note: {supporting} of {supporting + contrary} similar cases "
+                    "resulted in escalation, but current decision is non-escalation. "
+                    "Consistency review may be warranted."
+                ),
+                "supporting": supporting,
+                "contrary": contrary,
+            }
+
+    # When a hard contradiction exists, confidence is meaningless
+    if decision_integrity_alert and decision_integrity_alert.get("severity") == "CRITICAL":
+        conf_label_computed = "Integrity Review Required"
+        conf_reason_computed = (
+            "Confidence cannot be computed when a control contradiction exists. "
+            "Rule outcome conflicts with suspicion classifier."
+        )
+        conf_score = 0
+
     # Deterministic confidence score (compiler STEP 5)
     conf_label_computed, conf_reason_computed, conf_score = _compute_confidence_score(
         rules_fired=rules_fired,
@@ -1032,6 +1193,11 @@ def build_report_context(decision: dict) -> dict:
         "investigative_count": classification.investigative_count,
         "precedent_consistency_alert": classification.precedent_consistency_alert,
         "precedent_consistency_detail": classification.precedent_consistency_detail,
+
+        # Decision Integrity & Governance Alerts
+        "decision_integrity_alert": decision_integrity_alert,
+        "precedent_deviation_alert": precedent_deviation_alert,
+        "classifier_is_sovereign": True,
     }
 
 
@@ -1383,6 +1549,34 @@ async def get_report_markdown(decision_id: str):
     if ctx.get("precedent_consistency_alert"):
         consistency_alert_md = f"> ⚠️ **PRECEDENT CONSISTENCY ALERT:** {_md_escape(ctx.get('precedent_consistency_detail', ''))}\n"
 
+    # Build Decision Integrity Alert markdown
+    integrity_alert_md = ""
+    dia = ctx.get("decision_integrity_alert")
+    if dia:
+        severity_icon = "🚨" if dia.get("severity") == "CRITICAL" else "⚠️"
+        override_label = " **[OVERRIDE APPLIED]**" if dia.get("type") == "CLASSIFIER_OVERRIDE" else ""
+        integrity_alert_md = (
+            f"\n> {severity_icon} **DECISION INTEGRITY ALERT**{override_label}\n>\n"
+            f"> {_md_escape(dia.get('message', ''))}\n"
+        )
+        if dia.get("original_verdict"):
+            integrity_alert_md += (
+                f">\n> Original verdict: `{dia['original_verdict']}` → "
+                f"Classifier outcome: `{dia.get('classifier_outcome', 'N/A')}`\n"
+            )
+        integrity_alert_md += "\n"
+
+    # Build Precedent Deviation Alert markdown
+    deviation_alert_md = ""
+    pda = ctx.get("precedent_deviation_alert")
+    if pda:
+        severity_icon = "⚠️" if pda.get("severity") == "WARNING" else "ℹ️"
+        deviation_alert_md = (
+            f"\n> {severity_icon} **PRECEDENT DEVIATION SIGNAL**\n>\n"
+            f"> {_md_escape(pda.get('message', ''))}\n"
+            f">\n> Supporting: {pda.get('supporting', 0)} · Contrary: {pda.get('contrary', 0)}\n\n"
+        )
+
     md_template = """# AML/KYC Decision Report
 
 **Deterministic Regulatory Decision Engine (Zero LLM)**
@@ -1401,6 +1595,8 @@ async def get_report_markdown(decision_id: str):
 | Policy Version | `{policy_version}` |
 | Report Schema | `{report_schema_version}` |
 
+{integrity_alert_md}
+{deviation_alert_md}
 ---
 
 ## Investigation Outcome Summary
@@ -1572,6 +1768,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         decision_status_upper=ctx.get("decision_status", "").upper(),
         decision_confidence_block=decision_confidence_block,
         decision_drivers_md=decision_drivers_md,
+        deviation_alert_md=deviation_alert_md,
         engine_version=ctx.get("engine_version"),
         evidence_rows_output=evidence_rows_output,
         facts_rows=facts_rows,
@@ -1580,6 +1777,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         gate2_rows_output=gate2_rows_output,
         governance_note=governance_note,
         input_hash=ctx.get("input_hash"),
+        integrity_alert_md=integrity_alert_md,
         investigative_count=ctx.get("investigative_count", 0),
         investigation_state=ctx.get("investigation_state", ""),
         jurisdiction=ctx.get("jurisdiction"),
