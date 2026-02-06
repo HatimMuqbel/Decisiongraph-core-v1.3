@@ -91,12 +91,17 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 
     matches_md = ""
     if sample_cases:
-        matches_md = "\n### Precedent Evidence (Top Matches)\n\n"
+        threshold_pct = int(round((precedent_analysis.get("threshold_used") or 0.5) * 100))
+        matches_md = f"\n### Precedent Evidence (Top Matches)\n\n"
+        matches_md += f"*Similarity threshold: \u2265{threshold_pct}%. Matches below threshold are nearest neighbors shown for analyst context only.*\n\n"
         for match in sample_cases:
             outcome_label = match.get("outcome_label") or _label(match.get("outcome"))
-            similarity = f"{int(match.get('similarity_pct', 0) or 0)}%"
+            sim_pct = int(match.get('similarity_pct', 0) or 0)
+            similarity = f"{sim_pct}%"
             if match.get("exact_match"):
                 similarity += " EXACT"
+            if sim_pct < threshold_pct:
+                similarity += " *(below threshold)*"
             reason_codes = " · ".join(match.get("reason_codes", []) or [])
             components = match.get("similarity_components", {}) or {}
             classification = match.get("classification", "neutral")
@@ -121,7 +126,7 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
             active_drivers = [(name, pct) for name, pct in driver_items if pct and pct > 0]
             if active_drivers:
                 driver_str = " · ".join(f"{name} {pct}%" for name, pct in active_drivers)
-                matches_md += f"Drivers: {driver_str}\n"
+                matches_md += f"Similarity features: {driver_str}\n"
             matches_md += f"`{reason_codes}`\n\n---\n\n"
 
     note_md = ""
@@ -318,8 +323,12 @@ def render_markdown(ctx: dict) -> str:
         deviation_alert_md = (
             f"\n> {severity_icon} **PRECEDENT DEVIATION SIGNAL**\n>\n"
             f"> {_md_escape(pda.get('message', ''))}\n"
-            f">\n> Supporting: {pda.get('supporting', 0)} · Contrary: {pda.get('contrary', 0)}\n\n"
+            f">\n> Supporting: {pda.get('supporting', 0)} \u00b7 Contrary: {pda.get('contrary', 0)}"
+            f" \u00b7 Evaluated: {pda.get('evaluated_disposition', 'N/A')}\n"
         )
+        if pda.get("engine_note"):
+            deviation_alert_md += f">\n> *{_md_escape(pda['engine_note'])}*\n"
+        deviation_alert_md += "\n"
 
     # ── Template ─────────────────────────────────────────────────────────
     md_template = """# AML/KYC Decision Report
@@ -480,6 +489,8 @@ def render_markdown(ctx: dict) -> str:
 | Policy Hash | `{policy_hash}` |
 | Decision Path | `{safe_path}` |
 | Primary Trigger | `{action}` |
+| Engine Disposition | `{engine_disposition}` |
+| Governed Disposition | `{governed_disposition}` |
 
 This decision is cryptographically bound to the exact input and policy evaluated.
 
@@ -548,4 +559,6 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         timestamp=ctx.get("timestamp"),
         verdict=ctx.get("verdict"),
         escalation_summary=ctx.get("escalation_summary"),
+        engine_disposition=ctx.get("engine_disposition", "N/A"),
+        governed_disposition=ctx.get("governed_disposition", "N/A"),
     )

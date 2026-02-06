@@ -64,6 +64,8 @@
     /* Precedent match cards */
     .match-grid{ display:grid; gap:12px; margin:12px 0; }
     .match-card{ border:1px solid var(--border); border-radius:8px; padding:16px; break-inside:avoid; }
+    .match-card.below-threshold{ opacity:0.65; border-style:dashed; }
+    .match-card.below-threshold::after{ content:'Below threshold — nearest neighbor'; display:block; text-align:center; font-size:11px; color:#888; margin-top:8px; font-style:italic; }
     .match-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
     .match-card-header .match-id{ font-family:var(--mono); font-size:13px; font-weight:600; }
     .match-card-header .match-sim{ font-size:20px; font-weight:700; }
@@ -140,8 +142,13 @@
       </div>
       <div class="alert-body">{{ precedent_deviation_alert.message }}</div>
       <div class="alert-detail">
-        Supporting: {{ precedent_deviation_alert.supporting }} · Contrary: {{ precedent_deviation_alert.contrary }}
+        Supporting: {{ precedent_deviation_alert.supporting }} · Contrary: {{ precedent_deviation_alert.contrary }} · Evaluated: {{ precedent_deviation_alert.evaluated_disposition | default('N/A') }}
       </div>
+      {% if precedent_deviation_alert.engine_note %}
+      <div class="alert-detail" style="font-style:italic; margin-top:4px;">
+        {{ precedent_deviation_alert.engine_note }}
+      </div>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -482,10 +489,11 @@
       {% set alignment_pct = (precedent_analysis.supporting_precedents / total_decisive * 100) %}
       <p class="small" style="margin-top:12px;">
         {% if alignment_pct >= 100 %}
-          <strong>All</strong> comparable precedents resulted in the same regulatory outcome.
+          <strong>All scored comparable precedents</strong> resulted in the same regulatory outcome.
         {% else %}
-          <strong>{{ "%.0f"|format(alignment_pct) }}%</strong> of comparable cases resulted in the same regulatory outcome.
+          <strong>{{ "%.0f"|format(alignment_pct) }}%</strong> of scored comparable cases resulted in the same regulatory outcome.
         {% endif %}
+        <em>(Based on {{ total_decisive }} scored matches above similarity threshold only.)</em>
       </p>
       {% endif %}
       {% if precedent_analysis.similarity_summary %}
@@ -616,14 +624,18 @@
     </table>
 
     <h3>Precedent Evidence (Top Matches)</h3>
+    {% set threshold_pct = ((precedent_analysis.threshold_used|default(0.5)) * 100)|int %}
+    <p class="small" style="margin-bottom:8px;"><em>Similarity threshold: ≥{{ threshold_pct }}%. Matches below threshold are shown as nearest neighbors for analyst context only.</em></p>
     <div class="match-grid">
       {% for match in precedent_analysis.sample_cases %}
       {% set sc = match.similarity_components %}
-      <div class="match-card break">
+      {% set below_threshold = match.similarity_pct < threshold_pct %}
+      <div class="match-card break{% if below_threshold %} below-threshold{% endif %}">
         <div class="match-card-header">
           <span class="match-id">{{ match.precedent_id }}</span>
           <span class="match-sim">{{ match.similarity_pct }}%
             {% if match.exact_match %}<span class="badge">EXACT</span>{% endif %}
+            {% if below_threshold %}<span class="badge" style="background:#888;">BELOW THRESHOLD</span>{% endif %}
           </span>
         </div>
 
@@ -768,6 +780,10 @@
         <div class="value mono">{{ decision_path_trace or action or 'N/A' }}</div>
         <div class="label">Primary Trigger</div>
         <div class="value mono">{{ action or 'N/A' }}</div>
+        <div class="label">Engine Disposition</div>
+        <div class="value mono">{{ engine_disposition or 'N/A' }}</div>
+        <div class="label">Governed Disposition</div>
+        <div class="value mono">{{ governed_disposition or 'N/A' }}</div>
       </div>
       <p class="small" style="margin-top:12px;">
         This decision is cryptographically bound to the exact input and policy evaluated at decision time.

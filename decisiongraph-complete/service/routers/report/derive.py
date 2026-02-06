@@ -112,6 +112,12 @@ def derive_regulatory_model(normalized: dict) -> dict:
         classifier_result=classification.to_dict(),
     )
 
+    # ── 4b. Engine vs Governed dispositions ───────────────────────────────
+    # Engine disposition = what the rules/verdict originally produced.
+    # Governed disposition = what the classifier sovereignty enforces.
+    # All downstream alerts & narrative compare against *governed*.
+    engine_disposition = _disposition_label(decision_status, str_required)
+
     # ── 5. Integrity alerts + governance corrections ─────────────────────
     integrity_alert, corrections = _detect_integrity_issues(
         classifier_override=classifier_override,
@@ -128,16 +134,22 @@ def derive_regulatory_model(normalized: dict) -> dict:
         decision_status = corrections.get("decision_status", decision_status)
         investigation_state = corrections.get("investigation_state", investigation_state)
 
+    # Governed disposition is computed AFTER corrections are applied.
+    governed_disposition = _disposition_label(decision_status, str_required)
+
     # ── 6. Precedent deviation alert ──────────────────────────────────────
     deviation_alert = _detect_precedent_deviation(
         precedent_analysis=precedent_analysis,
-        str_required=str_required,
+        governed_disposition=governed_disposition,
+        engine_disposition=engine_disposition,
     )
 
     # ── 7. Risk factors ──────────────────────────────────────────────────
     risk_factors = _build_risk_factors(normalized)
 
     # ── 8. Confidence ─────────────────────────────────────────────────────
+    # HARD-STOP CONTRACT: When a CRITICAL integrity alert exists,
+    # confidence is meaningless. Do NOT compute or overwrite.
     if integrity_alert and integrity_alert.get("severity") == "CRITICAL":
         conf_label = "Integrity Review Required"
         conf_reason = (
@@ -145,6 +157,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
             "Rule outcome conflicts with suspicion classifier."
         )
         conf_score = 0
+        # Intentionally skip _compute_confidence_score — not even for debug.
     else:
         conf_label, conf_reason, conf_score = _compute_confidence_score(
             rules_fired=rules_fired,
@@ -213,6 +226,10 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # Drivers
         "decision_drivers": decision_drivers,
+
+        # Engine vs Governed dispositions (for audit transparency)
+        "engine_disposition": engine_disposition,
+        "governed_disposition": governed_disposition,
 
         # Alerts (first-class objects)
         "decision_integrity_alert": integrity_alert,
@@ -482,40 +499,83 @@ def _detect_integrity_issues(
 
 # ── Precedent deviation ──────────────────────────────────────────────────────
 
+def _disposition_label(decision_status: str, str_required: bool) -> str:
+    """Map internal decision state to a human-readable disposition label."""
+    if str_required:
+        return "STR_REQUIRED"
+    if decision_status == "escalate":
+        return "ESCALATE"
+    if decision_status == "pass":
+        return "NO_REPORT"
+    return "EDD_REQUIRED"
+
+
 def _detect_precedent_deviation(
-    precedent_analysis: dict, str_required: bool,
+    precedent_analysis: dict,
+    governed_disposition: str,
+    engine_disposition: str,
 ) -> Optional[dict]:
+    """Detect deviation between governed outcome and precedent distribution.
+
+    RULE: The deviation signal always evaluates the *governed* disposition
+    (the official regulatory position after classifier sovereignty).
+    If engine disposition differs from governed, that is noted separately.
+    """
     if not precedent_analysis or not precedent_analysis.get("available"):
         return None
 
     supporting = int(precedent_analysis.get("supporting_precedents", 0) or 0)
     contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
+    total = supporting + contrary
 
-    if str_required and contrary > supporting and (supporting + contrary) >= 3:
-        deviation_pct = int(contrary / (supporting + contrary) * 100)
-        return {
+    if total < 3:
+        return None  # too few scored matches to signal deviation
+
+    is_escalation = governed_disposition in ("STR_REQUIRED", "ESCALATE")
+
+    if is_escalation and contrary > supporting:
+        deviation_pct = int(contrary / total * 100)
+        alert = {
             "type": "OVER_ESCALATION_RISK",
             "severity": "WARNING",
             "message": (
-                f"Precedent Deviation: {deviation_pct}% of similar historical cases "
-                f"({contrary} of {supporting + contrary}) did NOT result in STR. "
+                f"Deviation vs GOVERNED outcome ({governed_disposition}): "
+                f"{deviation_pct}% of scored comparable cases "
+                f"({contrary} of {total}) did NOT result in escalation/STR. "
                 "This pattern divergence warrants consistency review."
             ),
             "supporting": supporting,
             "contrary": contrary,
+            "evaluated_disposition": governed_disposition,
         }
-    if not str_required and supporting > contrary and supporting >= 3:
-        return {
+        if engine_disposition != governed_disposition:
+            alert["engine_note"] = (
+                f"Engine disposition ({engine_disposition}) differs from "
+                f"governed disposition ({governed_disposition})."
+            )
+        return alert
+
+    if not is_escalation and supporting > contrary:
+        alert = {
             "type": "UNDER_ESCALATION_RISK",
             "severity": "INFO",
             "message": (
-                f"Precedent Note: {supporting} of {supporting + contrary} similar cases "
-                "resulted in escalation, but current decision is non-escalation. "
+                f"Deviation vs GOVERNED outcome ({governed_disposition}): "
+                f"{supporting} of {total} scored comparable cases "
+                "resulted in escalation, but governed outcome is non-escalation. "
                 "Consistency review may be warranted."
             ),
             "supporting": supporting,
             "contrary": contrary,
+            "evaluated_disposition": governed_disposition,
         }
+        if engine_disposition != governed_disposition:
+            alert["engine_note"] = (
+                f"Engine disposition ({engine_disposition}) differs from "
+                f"governed disposition ({governed_disposition})."
+            )
+        return alert
+
     return None
 
 
@@ -550,7 +610,7 @@ def _derive_similarity_summary(precedent_analysis: dict) -> str:
         return ""
     scored.sort(key=lambda item: (-item[0], item[1]))
     top_labels = [label for _value, label in scored[:3]]
-    return "Primary similarity drivers: " + ", ".join(top_labels) + "."
+    return "Primary similarity features: " + ", ".join(top_labels) + "."
 
 
 # ── Decision drivers ─────────────────────────────────────────────────────────
@@ -654,17 +714,28 @@ def _derive_decision_drivers(
     if not drivers:
         drivers.append("No indicators meeting suspicion threshold identified")
 
+    # When Tier 1 = 0, frame remaining items as investigative triggers
+    # (Tier 2 context) — not suspicion indicators.
+    tier1_empty = not any(
+        _map_driver_label(typ.get("name") if isinstance(typ, dict) else str(typ))
+        for typ in typologies
+    ) and not any(
+        _map_driver_label(element)
+        for element, active in elements.items() if active
+    )
+    trigger_prefix = "Investigative trigger: " if tier1_empty else ""
+
     if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
-        drivers.append("Cross-border transaction with elevated corridor risk")
+        drivers.append(f"{trigger_prefix}Cross-border transfer with elevated corridor risk")
     method = txn.get("method") or ev_map.get("txn.method") or ""
     if method and str(method).lower() in {"wire", "wire_transfer", "swift", "eft"}:
-        drivers.append(f"Wire transfer channel ({str(method).upper()})")
+        drivers.append(f"{trigger_prefix}Wire transfer channel ({str(method).upper()})")
 
     cust_type = customer.get("type") or ev_map.get("customer.type") or ""
     if cust_type and str(cust_type).lower() in {"corporation", "corporate", "business", "entity"}:
-        drivers.append("Corporate customer profile")
+        drivers.append(f"{trigger_prefix}Corporate customer profile")
     if customer.get("pep_flag") or ev_map.get("flag.pep"):
-        drivers.append("PEP exposure")
+        drivers.append(f"{trigger_prefix}PEP exposure")
 
     if not gate1_passed:
         drivers.append("Escalation blocked by Gate 1 legal basis")

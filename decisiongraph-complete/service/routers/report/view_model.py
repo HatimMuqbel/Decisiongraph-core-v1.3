@@ -121,6 +121,10 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "regulatory_obligation": derived["regulatory_obligation"],
         "regulatory_position": derived["regulatory_position"],
 
+        # Engine vs Governed dispositions (audit + deviation clarity)
+        "engine_disposition": derived.get("engine_disposition", ""),
+        "governed_disposition": derived.get("governed_disposition", ""),
+
         # Gates
         "gate1_passed": normalized["gate1_passed"],
         "gate1_decision": normalized["gate1_decision"],
