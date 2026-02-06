@@ -1239,7 +1239,7 @@ AML_SIMILARITY_WEIGHTS_V1 = {
     "geo_risk": 5,
 }
 AML_SIMILARITY_WEIGHTS = {key: value / 100 for key, value in AML_SIMILARITY_WEIGHTS_V1.items()}
-AML_SIMILARITY_VERSION = "v1"
+AML_SIMILARITY_VERSION = "v1.1"  # v1.1: evaluable-component normalization
 
 
 def _code_weight(code: str) -> float:
@@ -1719,10 +1719,44 @@ def query_similar_precedents(
                 "geo_risk": geo_risk_score,
             }
 
-            similarity_score = sum(
+            # ── Evaluable-component normalization ─────────────────────
+            # Rules and gates are ALWAYS evaluable.  Optional components
+            # (amount, channel, corridor, pep, customer, geo) should only
+            # penalize the score when BOTH sides have data.  Otherwise the
+            # weight is excluded and the score is renormalized so that
+            # cases with sparse facts can still exceed the threshold when
+            # the available components match well.
+            evaluable = {"rules_overlap", "gate_match"}
+
+            # Typology: evaluable when either side has typology tokens
+            if case_typologies or precedent_typologies:
+                evaluable.add("typology_overlap")
+
+            # Remaining optional components — evaluable when BOTH sides present
+            if case_amount_band and precedent_amount_band:
+                evaluable.add("amount_bucket")
+            if case_channel and precedent_channel:
+                evaluable.add("channel_method")
+            if (case_cross_border is not None and precedent_cross_border is not None) or \
+               (case_destination_risk is not None and _anchor_value(payload, "txn.destination_country_risk") is not None):
+                evaluable.add("corridor_match")
+            if case_pep is not None and precedent_pep is not None:
+                evaluable.add("pep_match")
+            if (case_customer_type and precedent_customer_type) or \
+               (case_relationship and precedent_relationship):
+                evaluable.add("customer_profile")
+            if case_geo_risk is not None and precedent_geo_risk is not None:
+                evaluable.add("geo_risk")
+
+            evaluable_weight = sum(
+                AML_SIMILARITY_WEIGHTS[k] for k in evaluable
+            ) or 1.0  # guard against zero
+
+            raw_score = sum(
                 AML_SIMILARITY_WEIGHTS[key] * component_scores.get(key, 0.0)
-                for key in AML_SIMILARITY_WEIGHTS
+                for key in evaluable
             )
+            similarity_score = raw_score / evaluable_weight
 
             # decision_weight and recency_weight are rank-ordering factors
             # (prefer senior decisions, prefer recent precedents) — they
