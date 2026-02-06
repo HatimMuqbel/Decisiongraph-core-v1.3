@@ -99,6 +99,10 @@ class SeedScenario:
     appeal_rate: float = 0.10
     upheld_rate: float = 0.85
 
+    # v2 outcome model fields
+    disposition_basis: str = "DISCRETIONARY"   # MANDATORY | DISCRETIONARY | UNKNOWN
+    reporting: str = "UNKNOWN"                 # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | UNKNOWN
+
     def __post_init__(self) -> None:
         """Validate scenario on construction."""
         if not self.code:
@@ -233,26 +237,43 @@ class SeedGenerator:
         for field_id, possible_values in scenario.variable_facts.items():
             facts[field_id] = self.rng.choice(possible_values)
 
-        # Determine outcome - map to valid JudgmentPayload outcomes
+        # Determine outcome - map to v2 canonical dispositions
         is_denial = self.rng.random() < scenario.deny_rate
         if is_denial:
             outcome = "deny"
+            disposition_basis = scenario.disposition_basis
+            reporting = scenario.reporting
         else:
-            # Map scenario outcomes to valid JudgmentPayload outcomes
+            # Map scenario outcomes to canonical dispositions (v2)
             outcome_map = {
-                "approve": "pay",
-                "investigate": "escalate",
+                "approve": "approve",
+                "investigate": "investigate",
                 "escalate": "escalate",
                 "block": "deny",
                 "hold": "escalate",
-                "clear": "pay",
+                "clear": "approve",
                 "exit": "deny",
-                "report_lctr": "pay",
-                "report_str": "escalate",
-                "report_tpr": "escalate",
-                "no_report": "pay",
+                "report_lctr": "approve",
+                "report_str": "approve",  # v2: STR is reporting, not disposition
+                "report_tpr": "approve",  # v2: TPR is reporting, not disposition
+                "no_report": "approve",
             }
-            outcome = outcome_map.get(scenario.outcome, "escalate")
+            outcome = outcome_map.get(scenario.outcome, scenario.outcome)
+            disposition_basis = scenario.disposition_basis
+
+            # v2: derive reporting from scenario
+            reporting_map = {
+                "report_lctr": "FILE_LCTR",
+                "report_str": "FILE_STR",
+                "report_tpr": "FILE_TPR",
+                "no_report": "NO_REPORT",
+                "approve": "NO_REPORT",
+                "clear": "NO_REPORT",
+            }
+            if scenario.reporting != "UNKNOWN":
+                reporting = scenario.reporting
+            else:
+                reporting = reporting_map.get(scenario.outcome, "UNKNOWN")
 
         # Determine appeal status
         is_appealed = self.rng.random() < scenario.appeal_rate
@@ -386,6 +407,9 @@ class SeedGenerator:
             scenario_code=scenario_code,
             seed_category=seed_category,
             outcome_notable=outcome_notable,
+            # v2 outcome model
+            disposition_basis=disposition_basis,
+            reporting_obligation=reporting,
         )
 
     def _select_decision_level(self, weights: dict[str, float]) -> str:
@@ -519,6 +543,7 @@ def create_txn_monitoring_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.04,
                 upheld_rate=0.95,
+                reporting="NO_REPORT",
             ),
             # Structuring - 120
             SeedScenario(
@@ -812,6 +837,7 @@ def create_kyc_onboarding_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.04,
                 upheld_rate=0.95,
+                reporting="NO_REPORT",
             ),
             # PEP Handling - 80
             SeedScenario(
@@ -929,6 +955,7 @@ def create_kyc_onboarding_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.10,
                 upheld_rate=0.95,
+                disposition_basis="MANDATORY",
             ),
             # Expired / Missing ID - 60
             SeedScenario(
@@ -1062,6 +1089,8 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.05,
                 upheld_rate=0.95,
+                disposition_basis="MANDATORY",
+                reporting="FILE_LCTR",
             ),
             # STR - 100
             SeedScenario(
@@ -1083,6 +1112,7 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.15,
                 upheld_rate=0.85,
+                reporting="FILE_STR",
             ),
             # TPR - 20
             SeedScenario(
@@ -1101,6 +1131,8 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.10,
                 upheld_rate=0.95,
+                disposition_basis="MANDATORY",
+                reporting="FILE_TPR",
             ),
             # No Report - 20
             SeedScenario(
@@ -1119,6 +1151,7 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.20,
                 upheld_rate=0.75,
+                reporting="NO_REPORT",
             ),
             # STR - Layering - 50
             SeedScenario(
@@ -1139,6 +1172,7 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.16,
                 upheld_rate=0.84,
+                reporting="FILE_STR",
             ),
             # STR - Third Party - 30
             SeedScenario(
@@ -1158,6 +1192,7 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.16,
                 upheld_rate=0.84,
+                reporting="FILE_STR",
             ),
             # Approve with Reporting - 20
             SeedScenario(
@@ -1176,6 +1211,8 @@ def create_reporting_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.08,
                 upheld_rate=0.90,
+                disposition_basis="MANDATORY",
+                reporting="FILE_LCTR",
             ),
         ],
     )
@@ -1210,6 +1247,8 @@ def create_screening_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.08,
                 upheld_rate=0.95,
+                disposition_basis="MANDATORY",
+                reporting="FILE_STR",
             ),
             # False Positive - 120
             SeedScenario(
@@ -1227,6 +1266,7 @@ def create_screening_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.17,
                 upheld_rate=0.85,
+                reporting="NO_REPORT",
             ),
             # Ownership Chain - 60
             SeedScenario(
@@ -1259,6 +1299,7 @@ def create_screening_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.20,
                 upheld_rate=0.85,
+                reporting="NO_REPORT",
             ),
             # Secondary Sanctions - 40
             SeedScenario(
@@ -1276,6 +1317,7 @@ def create_screening_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.15,
                 upheld_rate=0.88,
+                disposition_basis="MANDATORY",
             ),
             # PEP Screening - 30
             SeedScenario(
@@ -1311,6 +1353,7 @@ def create_screening_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.18,
                 upheld_rate=0.84,
+                reporting="NO_REPORT",
             ),
             # Adverse Media Screening - 55
             SeedScenario(
@@ -1348,6 +1391,7 @@ def create_screening_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.15,
                 upheld_rate=0.88,
+                reporting="NO_REPORT",
             ),
         ],
     )
@@ -1397,6 +1441,7 @@ def create_monitoring_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.11,
                 upheld_rate=0.90,
+                reporting="NO_REPORT",
             ),
             # Profile Changes - 60
             SeedScenario(
@@ -1481,6 +1526,7 @@ def create_monitoring_seed_config() -> SeedConfig:
                 },
                 appeal_rate=0.10,
                 upheld_rate=0.90,
+                reporting="NO_REPORT",
             ),
             # KYC Refresh Needed - 40
             SeedScenario(

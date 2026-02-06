@@ -515,23 +515,153 @@ def _detect_precedent_deviation(
     governed_disposition: str,
     engine_disposition: str,
 ) -> Optional[dict]:
-    """Detect deviation between governed outcome and precedent distribution.
+    """Detect deviation using v2 dual deviation model.
 
-    RULE: The deviation signal always evaluates the *governed* disposition
-    (the official regulatory position after classifier sovereignty).
-    If engine disposition differs from governed, that is noted separately.
+    Implements Section 9 of PRECEDENT_OUTCOME_MODEL_V2.md.
+
+    Returns a deviation alert dict with one or both of:
+    - Disposition Deviation (Consistency Warning) — Section 9.1
+    - Reporting Deviation (Defensibility Alert) — Section 9.2
+
+    RULE: Only same-basis precedents participate.
+    INV-007: Disposition → Consistency; Reporting → Defensibility.
+    INV-008: Cross-basis precedents excluded.
     """
     if not precedent_analysis or not precedent_analysis.get("available"):
         return None
 
+    sample_cases = precedent_analysis.get("sample_cases", []) or []
+    if len(sample_cases) < 3:
+        return None  # too few to signal deviation
+
+    proposed_canonical = precedent_analysis.get("proposed_canonical", {})
+    case_basis = proposed_canonical.get("disposition_basis", "UNKNOWN")
+    case_disposition = proposed_canonical.get("disposition", "UNKNOWN")
+    case_reporting = proposed_canonical.get("reporting", "UNKNOWN")
+
+    # ── Disposition Deviation (Consistency Check) ─────────────────────
+    # Filter to same-basis, terminal-outcome precedents (INV-008)
+    comparable_dispositions = []
+    for sc in sample_cases:
+        prec_basis = sc.get("disposition_basis", "UNKNOWN")
+        prec_disp = sc.get("disposition", "UNKNOWN")
+
+        # INV-008: skip cross-basis
+        if case_basis != "UNKNOWN" and prec_basis != "UNKNOWN" and case_basis != prec_basis:
+            continue
+        # Only terminal dispositions matter for consistency (ALLOW/BLOCK)
+        if prec_disp in ("ALLOW", "BLOCK"):
+            comparable_dispositions.append(prec_disp)
+
+    disposition_alert = None
+    if len(comparable_dispositions) >= 3 and case_disposition in ("ALLOW", "BLOCK"):
+        from collections import Counter
+        disp_counts = Counter(comparable_dispositions)
+        majority_disp = disp_counts.most_common(1)[0][0]
+        majority_count = disp_counts[majority_disp]
+        total = len(comparable_dispositions)
+        majority_pct = int(majority_count / total * 100)
+
+        if case_disposition != majority_disp and majority_pct >= 60:
+            disposition_alert = {
+                "type": "DISPOSITION_DEVIATION",
+                "alert_class": "Consistency Warning",
+                "severity": "WARNING",
+                "message": (
+                    f"{majority_pct}% of comparable {case_basis} precedents "
+                    f"resulted in {majority_disp} while the current disposition "
+                    f"is {case_disposition}."
+                ),
+                "case_disposition": case_disposition,
+                "majority_disposition": majority_disp,
+                "majority_pct": majority_pct,
+                "comparable_count": total,
+                "evaluated_disposition": governed_disposition,
+            }
+            if engine_disposition != governed_disposition:
+                disposition_alert["engine_note"] = (
+                    f"Engine disposition ({engine_disposition}) differs from "
+                    f"governed disposition ({governed_disposition})."
+                )
+
+    # ── Reporting Deviation (Defensibility Check) ─────────────────────
+    # Severity ordering: FILE_STR > FILE_TPR > FILE_LCTR > NO_REPORT
+    _REPORTING_SEVERITY = {
+        "FILE_STR": 4,
+        "FILE_TPR": 3,
+        "FILE_LCTR": 2,
+        "NO_REPORT": 1,
+        "UNKNOWN": 0,
+    }
+
+    comparable_reporting = []
+    for sc in sample_cases:
+        prec_basis = sc.get("disposition_basis", "UNKNOWN")
+        prec_reporting = sc.get("reporting", "UNKNOWN")
+        # INV-008: skip cross-basis
+        if case_basis != "UNKNOWN" and prec_basis != "UNKNOWN" and case_basis != prec_basis:
+            continue
+        if prec_reporting != "UNKNOWN":
+            comparable_reporting.append(prec_reporting)
+
+    reporting_alert = None
+    if len(comparable_reporting) >= 3 and case_reporting != "UNKNOWN":
+        case_severity = _REPORTING_SEVERITY.get(case_reporting, 0)
+        # Count how many comparable precedents have MORE SEVERE reporting
+        more_severe = [r for r in comparable_reporting if _REPORTING_SEVERITY.get(r, 0) > case_severity]
+        if len(more_severe) >= len(comparable_reporting) * 0.6:
+            from collections import Counter
+            reporting_counts = Counter(more_severe)
+            dominant_report = reporting_counts.most_common(1)[0][0]
+            pct = int(len(more_severe) / len(comparable_reporting) * 100)
+
+            if dominant_report in ("FILE_STR", "FILE_TPR"):
+                reporting_alert = {
+                    "type": "REPORTING_DEVIATION",
+                    "alert_class": "Defensibility Alert",
+                    "severity": "CRITICAL",
+                    "message": (
+                        f"Current proposal to {case_reporting} contradicts "
+                        f"{pct}% historical {dominant_report} filing rate "
+                        f"for this typology."
+                    ),
+                    "case_reporting": case_reporting,
+                    "dominant_precedent_reporting": dominant_report,
+                    "more_severe_pct": pct,
+                    "comparable_count": len(comparable_reporting),
+                }
+
+    # ── Build combined deviation result ───────────────────────────────
+    if disposition_alert or reporting_alert:
+        result = {
+            "type": "DUAL_DEVIATION",
+            "severity": "CRITICAL" if reporting_alert else "WARNING",
+        }
+        if disposition_alert:
+            result["disposition_deviation"] = disposition_alert
+            result["type"] = disposition_alert["type"]
+            result["severity"] = disposition_alert["severity"]
+            result["message"] = disposition_alert["message"]
+            result["supporting"] = int(precedent_analysis.get("supporting_precedents", 0) or 0)
+            result["contrary"] = int(precedent_analysis.get("contrary_precedents", 0) or 0)
+            result["evaluated_disposition"] = governed_disposition
+        if reporting_alert:
+            result["reporting_deviation"] = reporting_alert
+            if not disposition_alert:
+                result["type"] = reporting_alert["type"]
+                result["message"] = reporting_alert["message"]
+            result["severity"] = "CRITICAL"  # reporting deviation always critical
+        return result
+
+    # ── Fallback: v1-style supporting/contrary check ──────────────────
     supporting = int(precedent_analysis.get("supporting_precedents", 0) or 0)
     contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
     total = supporting + contrary
 
     if total < 3:
-        return None  # too few scored matches to signal deviation
+        return None
 
-    is_escalation = governed_disposition in ("STR_REQUIRED", "ESCALATE")
+    is_escalation = governed_disposition in ("STR_REQUIRED", "ESCALATE", "STR REQUIRED")
 
     if is_escalation and contrary > supporting:
         deviation_pct = int(contrary / total * 100)

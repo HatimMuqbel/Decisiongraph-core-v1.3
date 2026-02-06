@@ -230,6 +230,11 @@ class JudgmentPayload:
     seed_category: Optional[str] = None
     outcome_notable: Optional[str] = None
 
+    # v2 outcome model — three-field canonicalization
+    # See docs/PRECEDENT_OUTCOME_MODEL_V2.md
+    disposition_basis: str = "UNKNOWN"       # MANDATORY | DISCRETIONARY | UNKNOWN
+    reporting_obligation: str = "UNKNOWN"    # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | UNKNOWN
+
     # Provenance
     authority_hashes: list[str] = field(default_factory=list)
 
@@ -423,6 +428,8 @@ class JudgmentPayload:
             "source_type": self.source_type,
             "scenario_code": self.scenario_code,
             "seed_category": self.seed_category,
+            "disposition_basis": self.disposition_basis,
+            "reporting_obligation": self.reporting_obligation,
             "authority_hashes": self.authority_hashes,
         }
 
@@ -471,6 +478,8 @@ class JudgmentPayload:
             scenario_code=data.get("scenario_code"),
             seed_category=data.get("seed_category"),
             outcome_notable=data.get("outcome_notable"),
+            disposition_basis=data.get("disposition_basis", "UNKNOWN"),
+            reporting_obligation=data.get("reporting_obligation", "UNKNOWN"),
             authority_hashes=data.get("authority_hashes", []),
         )
 

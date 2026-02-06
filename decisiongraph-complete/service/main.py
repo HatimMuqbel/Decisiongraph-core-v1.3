@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -1163,68 +1164,257 @@ def extract_reason_codes(facts: dict, indicators: list, obligations: list) -> li
 
 
 # =============================================================================
-# Precedent Outcome Normalization & Classification
+# Precedent Outcome Model v2 — Three-Field Canonicalization
 # =============================================================================
+# See docs/PRECEDENT_OUTCOME_MODEL_V2.md for full specification.
+#
+# Every precedent outcome is decomposed into three independent dimensions:
+#   disposition:       ALLOW | EDD | BLOCK | UNKNOWN
+#   disposition_basis: MANDATORY | DISCRETIONARY | UNKNOWN
+#   reporting:         NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | UNKNOWN
+#
+# Invariants (INV-001 through INV-009) are enforced inline.
+
+
+@dataclass(frozen=True)
+class CanonicalOutcome:
+    """Three-field precedent outcome (v2 model)."""
+    disposition: str       # ALLOW | EDD | BLOCK | UNKNOWN
+    disposition_basis: str  # MANDATORY | DISCRETIONARY | UNKNOWN
+    reporting: str          # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | UNKNOWN
+
+    def to_dict(self) -> dict:
+        return {
+            "disposition": self.disposition,
+            "disposition_basis": self.disposition_basis,
+            "reporting": self.reporting,
+        }
+
+
+# ── Disposition mapping ──────────────────────────────────────────────────────
+
+_ALLOW_TERMS = frozenset({
+    "pay", "paid", "approve", "approved", "accept", "accepted",
+    "clear", "cleared", "covered", "eligible", "pass", "passed",
+    "no report", "close", "closed", "no action",
+})
+
+_EDD_TERMS = frozenset({
+    "review", "investigate", "investigation", "hold", "pending",
+    "manual review", "needs info", "request more info", "pass with edd",
+    "escalate", "escalated",
+})
+
+_BLOCK_TERMS = frozenset({
+    "deny", "denied", "decline", "declined", "reject", "rejected",
+    "block", "blocked", "refuse", "refused", "hard stop", "exit",
+    "de-risk", "de risk",
+})
+
+# ── Reporting mapping ────────────────────────────────────────────────────────
+
+_STR_TERMS = frozenset({
+    "str", "report str", "suspicious transaction", "suspicious activity",
+})
+
+_LCTR_TERMS = frozenset({
+    "lctr", "large cash", "large cash transaction", "report lctr",
+})
+
+_TPR_TERMS = frozenset({
+    "tpr", "terrorist property", "terrorist property report", "report tpr",
+})
+
+# ── Basis indicators ─────────────────────────────────────────────────────────
+
+_MANDATORY_INDICATORS = frozenset({
+    "sanctions", "sanction", "sema", "una", "listed entity",
+    "court order", "statutory", "criminal code",
+})
+
+
+def normalize_outcome_v2(
+    raw_outcome: str,
+    reason_codes: list[str] | None = None,
+    case_facts: dict | None = None,
+) -> CanonicalOutcome:
+    """Normalize a raw outcome string into the three-field canonical model.
+
+    Implements Section 4 of PRECEDENT_OUTCOME_MODEL_V2.md.
+
+    INV-001: STR is NEVER inferred from disposition.
+    """
+    if not raw_outcome:
+        return CanonicalOutcome("UNKNOWN", "UNKNOWN", "UNKNOWN")
+
+    normalized = " ".join(raw_outcome.lower().strip().split()).replace("_", " ")
+
+    # ── Disposition ───────────────────────────────────────────────────
+    if normalized in _ALLOW_TERMS:
+        disposition = "ALLOW"
+    elif normalized in _EDD_TERMS:
+        disposition = "EDD"
+    elif normalized in _BLOCK_TERMS:
+        disposition = "BLOCK"
+    elif normalized in _STR_TERMS or normalized in _LCTR_TERMS or normalized in _TPR_TERMS:
+        # Compound outcomes like "report str", "report lctr", "report tpr"
+        # The filing obligation is explicit; disposition is ALLOW
+        # (the transaction/relationship proceeds, but a report is filed)
+        disposition = "ALLOW"
+    else:
+        disposition = "UNKNOWN"
+
+    # ── Reporting (INV-001: never inferred from disposition) ──────────
+    reporting = "UNKNOWN"
+    # Check explicit reporting markers in the raw outcome itself
+    if normalized in _STR_TERMS:
+        reporting = "FILE_STR"
+    elif normalized in _LCTR_TERMS:
+        reporting = "FILE_LCTR"
+    elif normalized in _TPR_TERMS:
+        reporting = "FILE_TPR"
+    elif disposition == "ALLOW":
+        # Explicit ALLOW terms with no filing marker → NO_REPORT
+        reporting = "NO_REPORT"
+
+    # Check reason codes for explicit reporting signals
+    if reason_codes and reporting == "UNKNOWN":
+        codes_upper = {c.upper() for c in reason_codes}
+        if any("RC-RPT-STR" in c or "RC-RPT-SAR" in c for c in codes_upper):
+            reporting = "FILE_STR"
+        elif any("RC-RPT-LCTR" in c for c in codes_upper):
+            reporting = "FILE_LCTR"
+        elif any("RC-RPT-TPR" in c for c in codes_upper):
+            reporting = "FILE_TPR"
+
+    # ── Disposition Basis ─────────────────────────────────────────────
+    basis = "UNKNOWN"
+    codes_for_basis = set()
+    if reason_codes:
+        codes_for_basis = {c.upper() for c in reason_codes}
+
+    if any(
+        indicator in " ".join(codes_for_basis).lower()
+        for indicator in _MANDATORY_INDICATORS
+    ):
+        basis = "MANDATORY"
+    elif case_facts:
+        sanctions = case_facts.get("screening.sanctions_match")
+        if _truthy(str(sanctions)) if sanctions is not None else False:
+            basis = "MANDATORY"
+
+    if basis == "UNKNOWN" and disposition in ("ALLOW", "BLOCK"):
+        # If we know it's a terminal decision but can't determine legal
+        # compulsion, assume discretionary (institutional risk appetite)
+        basis = "DISCRETIONARY"
+
+    return CanonicalOutcome(disposition, basis, reporting)
+
+
+# ── v1 backward compatibility wrapper (delegates to v2) ──────────────────────
 
 def normalize_outcome(raw: str) -> str:
+    """v1 API — returns canonical disposition string for backward compat.
+
+    Maps v2 dispositions to v1 labels:
+      ALLOW   → "pay"
+      EDD     → "escalate"
+      BLOCK   → "deny"
+      UNKNOWN → "escalate"
     """
-    Normalize any outcome string to canonical form: pay, deny, or escalate.
+    canonical = normalize_outcome_v2(raw)
+    return {
+        "ALLOW": "pay",
+        "EDD": "escalate",
+        "BLOCK": "deny",
+        "UNKNOWN": "escalate",
+    }.get(canonical.disposition, "escalate")
 
-    This is the SINGLE source of truth for outcome normalization.
-    All precedent comparisons must use this function first.
 
-    Args:
-        raw: Raw outcome string (any case, any format)
+def classify_precedent_match_v2(
+    precedent_outcome: CanonicalOutcome,
+    case_outcome: CanonicalOutcome,
+) -> str:
+    """Classify a precedent match using v2 three-field model.
 
-    Returns:
-        Canonical outcome: "pay", "deny", or "escalate"
+    Implements Section 10 of PRECEDENT_OUTCOME_MODEL_V2.md.
+
+    INV-004: Only ALLOW vs BLOCK is contrary.
+    INV-005: EDD is always neutral.
+    INV-008: Cross-basis comparisons are informational only (neutral).
     """
-    if not raw:
-        return "escalate"  # Unknown defaults to escalate (review state)
+    p_disp = precedent_outcome.disposition
+    c_disp = case_outcome.disposition
 
-    # Normalize: lowercase, strip whitespace, collapse spaces, replace underscores
-    normalized = " ".join(raw.lower().strip().split()).replace("_", " ")
+    # INV-003: UNKNOWN is always neutral
+    if p_disp == "UNKNOWN" or c_disp == "UNKNOWN":
+        return "neutral"
 
-    # PAY family (transaction approved, claim paid, account cleared)
-    pay_terms = {
-        "pay", "paid", "approve", "approved", "accept", "accepted",
-        "clear", "cleared", "covered", "eligible", "pass", "passed",
-        "no report", "report lctr", "close", "closed",
-    }
-    if normalized in pay_terms:
-        return "pay"
+    # INV-005: EDD is always neutral
+    if p_disp == "EDD" or c_disp == "EDD":
+        return "neutral"
 
-    # DENY family (transaction blocked, claim denied)
-    deny_terms = {
-        "deny", "denied", "decline", "declined", "reject", "rejected",
-        "block", "blocked", "refuse", "refused", "hard stop", "exit",
-    }
-    if normalized in deny_terms:
-        return "deny"
+    # INV-008: Cross-basis is neutral (mandatory vs discretionary)
+    p_basis = precedent_outcome.disposition_basis
+    c_basis = case_outcome.disposition_basis
+    if p_basis != "UNKNOWN" and c_basis != "UNKNOWN" and p_basis != c_basis:
+        return "neutral"
 
-    # ESCALATE family (review required, needs investigation)
-    escalate_terms = {
-        "escalate", "escalated", "investigate", "investigation",
-        "review", "review required", "hold", "pending", "manual review",
-        "needs info", "request more info", "str", "report str", "report tpr",
-        "pass with edd",
-    }
-    if normalized in escalate_terms:
-        return "escalate"
+    # Same terminal disposition → supporting
+    if p_disp == c_disp:
+        return "supporting"
 
-    # Default: unknown outcomes treated as escalate (safe default)
-    return "escalate"
+    # INV-004: ALLOW vs BLOCK → contrary
+    if {p_disp, c_disp} == {"ALLOW", "BLOCK"}:
+        return "contrary"
+
+    return "neutral"
 
 
 def map_aml_outcome_label(normalized: str) -> str:
-    """Map normalized outcome to AML report label."""
-    if normalized == "pay":
-        return "NO_REPORT"
-    if normalized == "deny":
-        return "FILE_STR"
-    if normalized == "escalate":
-        return "EDD_REQUIRED"
-    return normalized.upper()
+    """v1 label mapping — kept for backward compat, delegates to v2."""
+    canonical = normalize_outcome_v2(normalized)
+    return map_aml_outcome_label_v2(canonical)
+
+
+def map_aml_outcome_label_v2(canonical: CanonicalOutcome) -> str:
+    """Derive display label from three-field canonical outcome.
+
+    Implements Section 8 of PRECEDENT_OUTCOME_MODEL_V2.md —
+    Regulatory Status Label Derivation.
+    """
+    d = canonical.disposition
+    r = canonical.reporting
+
+    # Reporting takes precedence for STR/TPR (regulatory obligation)
+    if r == "FILE_STR":
+        return "STR REQUIRED"
+    if r == "FILE_TPR":
+        if d == "ALLOW":
+            return "TPR + ALLOW"
+        return "TPR REQUIRED"
+
+    # LCTR with ALLOW
+    if r == "FILE_LCTR" and d == "ALLOW":
+        return "LCTR + ALLOW"
+    if r == "FILE_LCTR":
+        return "LCTR REQUIRED"
+
+    # Disposition labels (no reporting obligation or unknown)
+    if d == "EDD":
+        return "EDD REQUIRED"
+    if d == "BLOCK" and r != "FILE_STR":
+        return "BLOCKED — NO STR"
+    if d == "ALLOW" and r == "NO_REPORT":
+        return "NO REPORT"
+    if d == "ALLOW":
+        return "NO REPORT"
+    if d == "BLOCK":
+        return "BLOCKED — NO STR"
+    if d == "UNKNOWN":
+        return "UNKNOWN"
+
+    return d
 
 
 AML_SIMILARITY_WEIGHTS_V1 = {
@@ -1432,8 +1622,12 @@ def _channel_similarity(case_channel: Optional[str], precedent_channel: Optional
 def _build_outcome_distribution(payloads: list) -> dict[str, int]:
     distribution: dict[str, int] = {}
     for payload in payloads:
-        outcome = normalize_outcome(payload.outcome_code)
-        distribution[outcome] = distribution.get(outcome, 0) + 1
+        canonical = normalize_outcome_v2(
+            payload.outcome_code,
+            reason_codes=getattr(payload, "reason_codes", None),
+        )
+        label = canonical.disposition
+        distribution[label] = distribution.get(label, 0) + 1
     return distribution
 
 
@@ -1458,12 +1652,9 @@ def resolve_precedent_namespace(domain: Optional[str], fallback: str) -> Optiona
 
 def classify_precedent_match(precedent_outcome: str, proposed_outcome: str) -> str:
     """
-    Classify a precedent match as supporting, contrary, or neutral.
+    v1 API — Classify a precedent match as supporting, contrary, or neutral.
 
-    Rules:
-    - Same canonical outcome = SUPPORTING
-    - pay vs deny = CONTRARY (opposite decisions)
-    - escalate vs (pay or deny) = NEUTRAL (escalate is a review state, not a final decision)
+    Delegates to classify_precedent_match_v2 internally.
 
     Args:
         precedent_outcome: The precedent's outcome (will be normalized)
@@ -1472,19 +1663,9 @@ def classify_precedent_match(precedent_outcome: str, proposed_outcome: str) -> s
     Returns:
         Classification: "supporting", "contrary", or "neutral"
     """
-    prec = normalize_outcome(precedent_outcome)
-    prop = normalize_outcome(proposed_outcome)
-
-    # Same outcome = supporting
-    if prec == prop:
-        return "supporting"
-
-    # Pay vs Deny = contrary (opposite final decisions)
-    if {prec, prop} == {"pay", "deny"}:
-        return "contrary"
-
-    # Everything else is neutral (escalate vs pay/deny)
-    return "neutral"
+    prec_canonical = normalize_outcome_v2(precedent_outcome)
+    prop_canonical = normalize_outcome_v2(proposed_outcome)
+    return classify_precedent_match_v2(prec_canonical, prop_canonical)
 
 
 def stratified_precedent_sample(
@@ -1517,18 +1698,28 @@ def stratified_precedent_sample(
     contrary = []
     neutral = []
 
+    # v2: build canonical outcome for proposed disposition
+    proposed_canonical = normalize_outcome_v2(proposed_outcome)
+
     # Classify all matches
     for match in matches:
-        if len(match) >= 4:
+        if len(match) >= 7:
             payload, overlap, score, component_scores = match[0], match[1], match[2], match[3]
+            prec_canonical = match[6]  # CanonicalOutcome stored at index 6
+        elif len(match) >= 4:
+            payload, overlap, score, component_scores = match[0], match[1], match[2], match[3]
+            prec_canonical = normalize_outcome_v2(payload.outcome_code, reason_codes=payload.reason_codes)
         elif len(match) >= 3:
             payload, overlap, score = match[0], match[1], match[2]
             component_scores = {}
+            prec_canonical = normalize_outcome_v2(payload.outcome_code, reason_codes=payload.reason_codes)
         else:
             payload, overlap = match
             score = overlap
             component_scores = {}
-        classification = classify_precedent_match(payload.outcome_code, proposed_outcome)
+            prec_canonical = normalize_outcome_v2(payload.outcome_code, reason_codes=payload.reason_codes)
+
+        classification = classify_precedent_match_v2(prec_canonical, proposed_canonical)
 
         if classification == "supporting" and len(supporting) < max_supporting:
             supporting.append((payload, overlap, classification, score, component_scores))
@@ -1657,9 +1848,24 @@ def query_similar_precedents(
             weighted_overlap = sum(_code_weight(code) for code in overlap_codes)
             rules_overlap = weighted_overlap / case_code_weights
 
-            outcome_normalized = normalize_outcome(payload.outcome_code)
-            gate1_allowed_prec = outcome_normalized != "deny"
-            gate2_str_prec = outcome_normalized in {"escalate", "deny"}
+            # v2: three-field canonical outcome for each precedent
+            # Prefer stored v2 fields from JudgmentPayload when available
+            prec_canonical = normalize_outcome_v2(
+                payload.outcome_code,
+                reason_codes=payload.reason_codes,
+            )
+            # Override with explicitly stored fields if present on the payload
+            stored_basis = getattr(payload, "disposition_basis", "UNKNOWN")
+            stored_reporting = getattr(payload, "reporting_obligation", "UNKNOWN")
+            if stored_basis != "UNKNOWN" or stored_reporting != "UNKNOWN":
+                prec_canonical = CanonicalOutcome(
+                    disposition=prec_canonical.disposition,
+                    disposition_basis=stored_basis if stored_basis != "UNKNOWN" else prec_canonical.disposition_basis,
+                    reporting=stored_reporting if stored_reporting != "UNKNOWN" else prec_canonical.reporting,
+                )
+            # INV-006: gate logic derives from reporting, not disposition
+            gate1_allowed_prec = prec_canonical.disposition != "BLOCK"
+            gate2_str_prec = prec_canonical.reporting == "FILE_STR"
             gate1_allowed_case = bool(case_gate1_allowed) if case_gate1_allowed is not None else False
             gate2_str_case = bool(case_gate2_str_required) if case_gate2_str_required is not None else False
             gate_matches = int(gate1_allowed_case == gate1_allowed_prec) + int(gate2_str_case == gate2_str_prec)
@@ -1774,6 +1980,7 @@ def query_similar_precedents(
                         component_scores,
                         decision_weight,
                         recency_weight,
+                        prec_canonical,
                     )
                 )
 
@@ -1782,7 +1989,7 @@ def query_similar_precedents(
             [payload for payload, _overlap in precedent_matches]
         )
         match_outcome_distribution = _build_outcome_distribution(
-            [payload for payload, _overlap, _score, _components, _dw, _rw in scored_matches]
+            [payload for payload, _overlap, _score, _components, _dw, _rw, _co in scored_matches]
         )
 
         # Get stratified sample for balanced analysis
@@ -1796,7 +2003,7 @@ def query_similar_precedents(
         )
 
         sorted_scores = sorted(
-            (score for _payload, _overlap, score, _components, _dw, _rw in scored_matches),
+            (score for _payload, _overlap, score, _components, _dw, _rw, _co in scored_matches),
             reverse=True,
         )
         top_scores = sorted_scores[:5]
@@ -1806,10 +2013,14 @@ def query_similar_precedents(
         caution_precedents = []
         for payload, overlap, classification, score, _component_scores in sampled:
             if payload.appealed and payload.appeal_outcome == "overturned":
+                prec_co = normalize_outcome_v2(payload.outcome_code, reason_codes=payload.reason_codes)
                 caution_precedents.append({
                     "precedent_id": payload.precedent_id[:8] + "...",
                     "outcome": payload.outcome_code,
-                    "outcome_normalized": normalize_outcome(payload.outcome_code),
+                    "outcome_normalized": prec_co.disposition,
+                    "disposition": prec_co.disposition,
+                    "disposition_basis": prec_co.disposition_basis,
+                    "reporting": prec_co.reporting,
                     "classification": classification,
                     "appeal_outcome": payload.appeal_outcome,
                     "reason_codes": payload.reason_codes[:3],
@@ -1828,7 +2039,8 @@ def query_similar_precedents(
             if exact_match:
                 exact_match_count += 1
 
-            normalized_outcome = normalize_outcome(payload.outcome_code)
+            prec_canonical = normalize_outcome_v2(payload.outcome_code, reason_codes=payload.reason_codes)
+            outcome_label = map_aml_outcome_label_v2(prec_canonical)
             similarity_components = {
                 "rules_overlap": int(round(component_scores.get("rules_overlap", 0) * 100)),
                 "gate_match": int(round(component_scores.get("gate_match", 0) * 100)),
@@ -1849,8 +2061,11 @@ def query_similar_precedents(
                 "similarity_pct": int(round(score * 100)),
                 "exact_match": exact_match,
                 "outcome": payload.outcome_code,
-                "outcome_normalized": normalized_outcome,
-                "outcome_label": map_aml_outcome_label(normalized_outcome),
+                "outcome_normalized": prec_canonical.disposition,
+                "outcome_label": outcome_label,
+                "disposition": prec_canonical.disposition,
+                "disposition_basis": prec_canonical.disposition_basis,
+                "reporting": prec_canonical.reporting,
                 "reason_codes": payload.reason_codes[:4],
                 "appealed": payload.appealed,
                 "appeal_outcome": payload.appeal_outcome,
@@ -1859,12 +2074,34 @@ def query_similar_precedents(
                 "similarity_components": similarity_components,
             })
 
-        # Calculate confidence score
-        decisive_total = counts["supporting"] + counts["contrary"]
+        # Calculate confidence score — v2 formula (Section 6)
+        # Only terminal outcomes (ALLOW/BLOCK) within same disposition_basis
+        # INV-003: UNKNOWN excluded from denominator
+        # INV-008: cross-basis excluded from denominator
+        proposed_canonical = normalize_outcome_v2(proposed_outcome, reason_codes=reason_codes, case_facts=case_facts)
+        case_basis = proposed_canonical.disposition_basis
+
+        decisive_supporting = 0
+        decisive_total = 0
+        for payload, _overlap, _score, _comps, _dw, _rw, prec_co in scored_matches:
+            prec_disp = prec_co.disposition
+            prec_basis = prec_co.disposition_basis
+
+            # Only terminal dispositions count
+            if prec_disp not in ("ALLOW", "BLOCK"):
+                continue
+            # INV-008: skip cross-basis precedents
+            if case_basis != "UNKNOWN" and prec_basis != "UNKNOWN" and case_basis != prec_basis:
+                continue
+
+            decisive_total += 1
+            if prec_disp == proposed_canonical.disposition:
+                decisive_supporting += 1
+
         if len(scored_matches) == 0:
             precedent_confidence = 0.0
         elif decisive_total > 0:
-            consistency_rate = counts["supporting"] / decisive_total
+            consistency_rate = decisive_supporting / decisive_total
             upheld_rate = stats.appeal_stats.upheld_rate if stats.appeal_stats.total_appealed > 0 else 1.0
             precedent_confidence = (consistency_rate * 0.7) + (upheld_rate * 0.3)
         else:
@@ -1925,7 +2162,9 @@ def query_similar_precedents(
             "sample_cases": sample_cases[:10],
             "reason_codes_searched": reason_codes,
             "proposed_outcome_normalized": proposed_normalized,
-            "proposed_outcome_label": map_aml_outcome_label(proposed_normalized),
+            "proposed_outcome_label": map_aml_outcome_label_v2(proposed_canonical),
+            "proposed_canonical": proposed_canonical.to_dict(),
+            "outcome_model_version": "v2",
             "min_similarity_pct": int(round(threshold_used * 100)),
             "threshold_used": threshold_used,
             "threshold_mode": mode,

@@ -332,17 +332,51 @@ def render_markdown(ctx: dict) -> str:
             )
         integrity_alert_md += "\n"
 
-    # Deviation alert
+    # Deviation alert — v2 dual deviation model
     deviation_alert_md = ""
     pda = ctx.get("precedent_deviation_alert")
     if pda:
-        severity_icon = "⚠️" if pda.get("severity") == "WARNING" else "ℹ️"
+        severity = pda.get("severity", "INFO")
+        severity_icon = "🚨" if severity == "CRITICAL" else "⚠️" if severity == "WARNING" else "ℹ️"
+
+        # Determine alert title based on v2 deviation type
+        if pda.get("reporting_deviation"):
+            alert_title = "PRECEDENT DEVIATION — DEFENSIBILITY ALERT"
+        elif pda.get("disposition_deviation"):
+            alert_title = "PRECEDENT DEVIATION — CONSISTENCY WARNING"
+        else:
+            alert_title = "PRECEDENT DEVIATION SIGNAL"
+
         deviation_alert_md = (
-            f"\n> {severity_icon} **PRECEDENT DEVIATION SIGNAL**\n>\n"
+            f"\n> {severity_icon} **{alert_title}**\n>\n"
             f"> {_md_escape(pda.get('message', ''))}\n"
-            f">\n> Supporting: {pda.get('supporting', 0)} \u00b7 Contrary: {pda.get('contrary', 0)}"
-            f" \u00b7 Evaluated: {pda.get('evaluated_disposition', 'N/A')}\n"
         )
+
+        # Disposition deviation detail
+        dd = pda.get("disposition_deviation")
+        if dd:
+            deviation_alert_md += (
+                f">\n> **Disposition:** {dd.get('case_disposition', 'N/A')} vs majority "
+                f"{dd.get('majority_disposition', 'N/A')} ({dd.get('majority_pct', 0)}% of "
+                f"{dd.get('comparable_count', 0)} comparable)\n"
+            )
+
+        # Reporting deviation detail
+        rd = pda.get("reporting_deviation")
+        if rd:
+            deviation_alert_md += (
+                f">\n> **Reporting:** {rd.get('case_reporting', 'N/A')} contradicts "
+                f"{rd.get('more_severe_pct', 0)}% historical "
+                f"{rd.get('dominant_precedent_reporting', 'N/A')} filing rate\n"
+            )
+
+        # Fallback to supporting/contrary counts
+        if pda.get("supporting") is not None:
+            deviation_alert_md += (
+                f">\n> Supporting: {pda.get('supporting', 0)} \u00b7 Contrary: {pda.get('contrary', 0)}"
+                f" \u00b7 Evaluated: {pda.get('evaluated_disposition', 'N/A')}\n"
+            )
+
         if pda.get("engine_note"):
             deviation_alert_md += f">\n> *{_md_escape(pda['engine_note'])}*\n"
         deviation_alert_md += "\n"

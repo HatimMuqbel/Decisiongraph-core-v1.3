@@ -86,6 +86,7 @@
     .match-codes{ font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:8px; }
     /* Decision Integrity & Governance Alerts */
     .integrity-alert{ border:2px solid #dc2626; border-radius:8px; padding:16px 20px; margin:16px 0; background:#fef2f2; }
+    .integrity-alert.critical{ border-color:#dc2626; background:#fef2f2; }
     .integrity-alert.warning{ border-color:#d97706; background:#fffbeb; }
     .integrity-alert.info{ border-color:#2563eb; background:#eff6ff; }
     .integrity-alert .alert-header{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:14px; margin-bottom:8px; }
@@ -136,14 +137,32 @@
     {% endif %}
 
     {% if precedent_deviation_alert %}
-    <div class="integrity-alert {% if precedent_deviation_alert.severity == 'WARNING' %}warning{% elif precedent_deviation_alert.severity == 'INFO' %}info{% endif %} break">
-      <div class="alert-header {% if precedent_deviation_alert.severity == 'WARNING' %}warning{% else %}info{% endif %}">
+    <div class="integrity-alert {% if precedent_deviation_alert.severity == 'CRITICAL' %}critical{% elif precedent_deviation_alert.severity == 'WARNING' %}warning{% elif precedent_deviation_alert.severity == 'INFO' %}info{% endif %} break">
+      <div class="alert-header {% if precedent_deviation_alert.severity == 'CRITICAL' %}critical{% elif precedent_deviation_alert.severity == 'WARNING' %}warning{% else %}info{% endif %}">
+        {% if precedent_deviation_alert.reporting_deviation %}
+        🚨 Precedent Deviation — Defensibility Alert
+        {% elif precedent_deviation_alert.disposition_deviation %}
+        📊 Precedent Deviation — Consistency Warning
+        {% else %}
         📊 Precedent Deviation Signal
+        {% endif %}
       </div>
       <div class="alert-body">{{ precedent_deviation_alert.message }}</div>
+      {% if precedent_deviation_alert.disposition_deviation %}
+      <div class="alert-detail">
+        Disposition: {{ precedent_deviation_alert.disposition_deviation.case_disposition }} vs majority {{ precedent_deviation_alert.disposition_deviation.majority_disposition }} ({{ precedent_deviation_alert.disposition_deviation.majority_pct }}% of {{ precedent_deviation_alert.disposition_deviation.comparable_count }} comparable)
+      </div>
+      {% endif %}
+      {% if precedent_deviation_alert.reporting_deviation %}
+      <div class="alert-detail" style="color:#c62828; font-weight:600;">
+        Reporting: {{ precedent_deviation_alert.reporting_deviation.case_reporting }} contradicts {{ precedent_deviation_alert.reporting_deviation.more_severe_pct }}% historical {{ precedent_deviation_alert.reporting_deviation.dominant_precedent_reporting }} filing rate
+      </div>
+      {% endif %}
+      {% if precedent_deviation_alert.supporting is defined %}
       <div class="alert-detail">
         Supporting: {{ precedent_deviation_alert.supporting }} · Contrary: {{ precedent_deviation_alert.contrary }} · Evaluated: {{ precedent_deviation_alert.evaluated_disposition | default('N/A') }}
       </div>
+      {% endif %}
       {% if precedent_deviation_alert.engine_note %}
       <div class="alert-detail" style="font-style:italic; margin-top:4px;">
         {{ precedent_deviation_alert.engine_note }}
@@ -619,7 +638,7 @@
         {% for outcome, count in scored_distribution.items() %}
         {% set pct = (count / outcome_total * 100) if outcome_total else 0 %}
         <tr>
-          <td>{% if outcome|lower == 'pay' %}NO_REPORT{% elif outcome|lower == 'deny' %}FILE_STR{% elif outcome|lower == 'escalate' %}EDD_REQUIRED{% else %}{{ outcome|upper }}{% endif %}</td>
+          <td>{{ outcome|upper }}</td>
           <td class="mono">{{ count }}</td>
           <td>
             <div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div>
@@ -649,7 +668,7 @@
         {% for outcome, count in overlap_distribution.items() %}
         {% set pct = (count / overlap_total * 100) if overlap_total else 0 %}
         <tr>
-          <td>{% if outcome|lower == 'pay' %}NO_REPORT{% elif outcome|lower == 'deny' %}FILE_STR{% elif outcome|lower == 'escalate' %}EDD_REQUIRED{% else %}{{ outcome|upper }}{% endif %}</td>
+          <td>{{ outcome|upper }}</td>
           <td class="mono">{{ count }}</td>
           <td>
             <div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div>
