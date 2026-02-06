@@ -61,6 +61,27 @@
     .schema-panel{ border:1px solid var(--border); border-radius:8px; padding:12px; background:#f9fafb; font-size:12px; margin:16px 0; }
     .schema-panel ul{ margin:8px 0 0 18px; padding:0; }
     .schema-panel li{ margin:2px 0; }
+    /* Precedent match cards */
+    .match-grid{ display:grid; gap:12px; margin:12px 0; }
+    .match-card{ border:1px solid var(--border); border-radius:8px; padding:16px; break-inside:avoid; }
+    .match-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .match-card-header .match-id{ font-family:var(--mono); font-size:13px; font-weight:600; }
+    .match-card-header .match-sim{ font-size:20px; font-weight:700; }
+    .match-meta{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; font-size:12px; }
+    .match-meta .meta-chip{ background:var(--chip); padding:3px 10px; border-radius:999px; }
+    .match-meta .meta-chip.supporting{ background:#ecfdf5; color:#065f46; }
+    .match-meta .meta-chip.contrary{ background:#fef2f2; color:#991b1b; }
+    .match-meta .meta-chip.neutral{ background:#fffbeb; color:#92400e; }
+    .sim-bars{ display:grid; grid-template-columns:100px 1fr 40px; gap:4px 8px; align-items:center; font-size:12px; }
+    .sim-bars .sim-label{ color:var(--muted); text-align:right; }
+    .sim-bars .sim-track{ height:8px; background:#f3f4f6; border-radius:999px; overflow:hidden; position:relative; }
+    .sim-bars .sim-fill{ height:100%; border-radius:999px; min-width:2px; }
+    .sim-bars .sim-fill.high{ background:#059669; }
+    .sim-bars .sim-fill.med{ background:#d97706; }
+    .sim-bars .sim-fill.low{ background:#e5e7eb; }
+    .sim-bars .sim-pct{ font-weight:600; font-size:11px; }
+    .sim-bars .sim-pct.zero{ color:#d1d5db; }
+    .match-codes{ font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:8px; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -551,50 +572,49 @@
     </table>
 
     <h3>Precedent Evidence (Top Matches)</h3>
-    <table class="break">
-      <thead>
-        <tr>
-          <th>Precedent</th>
-          <th>Outcome</th>
-          <th>Similarity</th>
-          <th>Decision Level</th>
-          <th>Reason Codes</th>
-          <th>Similarity Drivers</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for match in precedent_analysis.sample_cases %}
-        <tr>
-          <td class="mono">{{ match.precedent_id }}</td>
-          <td>{{ match.outcome_label }}</td>
-          <td>
-            {{ match.similarity_pct }}%
-            {% if match.exact_match %}
-              <span class="badge">EXACT</span>
-            {% endif %}
-          </td>
-          <td>{{ match.decision_level | default('N/A') }}</td>
-          <td class="mono">{{ match.reason_codes | join(', ') }}</td>
-          <td class="small">
-            Rules: {% if match.similarity_components.rules_overlap %}{{ match.similarity_components.rules_overlap }}% (25%){% else %}Not material{% endif %}<br>
-            Gates: {% if match.similarity_components.gate_match %}{{ match.similarity_components.gate_match }}% (20%){% else %}Not material{% endif %}<br>
-            Typologies: {% if match.similarity_components.typology_overlap %}{{ match.similarity_components.typology_overlap }}% (15%){% else %}Not material{% endif %}<br>
-            Amount: {% if match.similarity_components.amount_bucket %}{{ match.similarity_components.amount_bucket }}% (10%){% else %}Not material{% endif %}<br>
-            Channel: {% if match.similarity_components.channel_method %}{{ match.similarity_components.channel_method }}% (7%){% else %}Not material{% endif %}<br>
-            Corridor: {% if match.similarity_components.corridor_match %}{{ match.similarity_components.corridor_match }}% (8%){% else %}Not material{% endif %}<br>
-            PEP: {% if match.similarity_components.pep_match %}{{ match.similarity_components.pep_match }}% (6%){% else %}Not material{% endif %}<br>
-            Customer: {% if match.similarity_components.customer_profile %}{{ match.similarity_components.customer_profile }}% (5%){% else %}Not material{% endif %}<br>
-            Geo Risk: {% if match.similarity_components.geo_risk %}{{ match.similarity_components.geo_risk }}% (4%){% else %}Not material{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not precedent_analysis.sample_cases %}
-        <tr>
-          <td colspan="6" class="small">No precedent matches available</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
+    <div class="match-grid">
+      {% for match in precedent_analysis.sample_cases %}
+      {% set sc = match.similarity_components %}
+      <div class="match-card break">
+        <div class="match-card-header">
+          <span class="match-id">{{ match.precedent_id }}</span>
+          <span class="match-sim">{{ match.similarity_pct }}%
+            {% if match.exact_match %}<span class="badge">EXACT</span>{% endif %}
+          </span>
+        </div>
+
+        <div class="match-meta">
+          <span class="meta-chip {{ match.classification | default('neutral') }}">{{ match.outcome_label }}</span>
+          <span class="meta-chip">{{ match.decision_level | default('N/A') }}</span>
+          {% if match.appealed %}<span class="meta-chip contrary">Appealed{% if match.appeal_outcome %} · {{ match.appeal_outcome }}{% endif %}</span>{% endif %}
+        </div>
+
+        <div class="sim-bars">
+          {% set drivers = [
+            ("Rules", sc.rules_overlap|default(0), 30),
+            ("Gates", sc.gate_match|default(0), 25),
+            ("Typology", sc.typology_overlap|default(0), 15),
+            ("Amount", sc.amount_bucket|default(0), 10),
+            ("Corridor", sc.corridor_match|default(0), 8),
+            ("Channel", sc.channel_method|default(0), 7),
+            ("PEP", sc.pep_match|default(0), 5),
+            ("Customer", sc.customer_profile|default(0), 5),
+            ("Geo Risk", sc.geo_risk|default(0), 5)
+          ] %}
+          {% for label, pct, weight in drivers %}
+          <span class="sim-label">{{ label }}</span>
+          <span class="sim-track"><span class="sim-fill {% if pct >= 80 %}high{% elif pct >= 40 %}med{% else %}low{% endif %}" style="width:{{ pct }}%"></span></span>
+          <span class="sim-pct {% if pct == 0 %}zero{% endif %}">{% if pct > 0 %}{{ pct }}%{% else %}—{% endif %}</span>
+          {% endfor %}
+        </div>
+
+        <div class="match-codes">{{ match.reason_codes | join(' · ') }}</div>
+      </div>
+      {% endfor %}
+      {% if not precedent_analysis.sample_cases %}
+      <div class="card small">No precedent matches available</div>
+      {% endif %}
+    </div>
 
     <h3>Appeal Statistics</h3>
     <div class="card break">

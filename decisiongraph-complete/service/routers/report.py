@@ -1119,29 +1119,39 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 
     matches_md = ""
     if sample_cases:
-        matches_md = "\n### Precedent Evidence (Top Matches)\n\n| Precedent | Outcome | Similarity | Decision Level | Reason Codes | Similarity Drivers |\n|---|---|---|---|---|---|\n"
+        matches_md = "\n### Precedent Evidence (Top Matches)\n\n"
         for match in sample_cases:
             outcome_label = match.get("outcome_label") or _label(match.get("outcome"))
             similarity = f"{int(match.get('similarity_pct', 0) or 0)}%"
             if match.get("exact_match"):
-                similarity += " (EXACT)"
-            reason_codes = ", ".join(match.get("reason_codes", []) or [])
+                similarity += " EXACT"
+            reason_codes = " · ".join(match.get("reason_codes", []) or [])
             components = match.get("similarity_components", {}) or {}
-            drivers = (
-                f"Rules {_format_component_score(components.get('rules_overlap'), _weight('rules_overlap', 25))}, "
-                f"Gates {_format_component_score(components.get('gate_match'), _weight('gate_match', 20))}, "
-                f"Typologies {_format_component_score(components.get('typology_overlap'), _weight('typology_overlap', 15))}, "
-                f"Amount {_format_component_score(components.get('amount_bucket'), _weight('amount_bucket', 10))}, "
-                f"Channel {_format_component_score(components.get('channel_method'), _weight('channel_method', 7))}, "
-                f"Corridor {_format_component_score(components.get('corridor_match'), _weight('corridor_match', 8))}, "
-                f"PEP {_format_component_score(components.get('pep_match'), _weight('pep_match', 6))}, "
-                f"Customer {_format_component_score(components.get('customer_profile'), _weight('customer_profile', 5))}, "
-                f"Geo {_format_component_score(components.get('geo_risk'), _weight('geo_risk', 4))}"
-            )
-            matches_md += (
-                f"| {_md_escape(match.get('precedent_id', 'N/A'))} | {_md_escape(outcome_label)} | {similarity} | "
-                f"{_md_escape(match.get('decision_level', 'N/A'))} | {_md_escape(reason_codes)} | {_md_escape(drivers)} |\n"
-            )
+            classification = match.get("classification", "neutral")
+
+            matches_md += f"**{match.get('precedent_id', 'N/A')}** — {similarity} similarity\n"
+            matches_md += f"> {outcome_label} · {match.get('decision_level', 'N/A')}"
+            if match.get("appealed"):
+                matches_md += f" · Appealed ({match.get('appeal_outcome', 'pending')})"
+            matches_md += f" · _{classification}_\n\n"
+
+            # Similarity driver bars as compact list
+            driver_items = [
+                ("Rules", components.get("rules_overlap", 0)),
+                ("Gates", components.get("gate_match", 0)),
+                ("Typology", components.get("typology_overlap", 0)),
+                ("Amount", components.get("amount_bucket", 0)),
+                ("Corridor", components.get("corridor_match", 0)),
+                ("Channel", components.get("channel_method", 0)),
+                ("PEP", components.get("pep_match", 0)),
+                ("Customer", components.get("customer_profile", 0)),
+                ("Geo Risk", components.get("geo_risk", 0)),
+            ]
+            active_drivers = [(name, pct) for name, pct in driver_items if pct and pct > 0]
+            if active_drivers:
+                driver_str = " · ".join(f"{name} {pct}%" for name, pct in active_drivers)
+                matches_md += f"Drivers: {driver_str}\n"
+            matches_md += f"`{reason_codes}`\n\n---\n\n"
 
     note_md = ""
     if raw_overlap_count > 0 and match_count == 0 and not sample_cases:
