@@ -1490,11 +1490,11 @@ def query_similar_precedents(
             precedent_cross_border = _anchor_value(payload, "txn.cross_border")
             corridor_score = 0.0
             if case_cross_border is not None and precedent_cross_border is not None:
-                corridor_score = 1.0 if str(case_cross_border) == str(precedent_cross_border) else 0.0
+                corridor_score = 1.0 if str(case_cross_border).lower() == str(precedent_cross_border).lower() else 0.0
             elif case_destination_risk is not None:
                 precedent_destination_risk = _anchor_value(payload, "txn.destination_country_risk")
                 if precedent_destination_risk is not None:
-                    corridor_score = 1.0 if str(case_destination_risk) == str(precedent_destination_risk) else 0.0
+                    corridor_score = 1.0 if str(case_destination_risk).lower() == str(precedent_destination_risk).lower() else 0.0
 
             precedent_pep = _anchor_value(payload, "customer.pep")
             pep_score = 0.0
@@ -1514,7 +1514,7 @@ def query_similar_precedents(
             case_geo_risk = case_destination_risk
             geo_risk_score = 0.0
             if case_geo_risk is not None and precedent_geo_risk is not None:
-                geo_risk_score = 1.0 if str(case_geo_risk) == str(precedent_geo_risk) else 0.0
+                geo_risk_score = 1.0 if str(case_geo_risk).lower() == str(precedent_geo_risk).lower() else 0.0
 
             component_scores = {
                 "rules_overlap": rules_overlap,
@@ -1528,16 +1528,19 @@ def query_similar_precedents(
                 "geo_risk": geo_risk_score,
             }
 
-            combined = sum(
+            similarity_score = sum(
                 AML_SIMILARITY_WEIGHTS[key] * component_scores.get(key, 0.0)
                 for key in AML_SIMILARITY_WEIGHTS
             )
 
+            # decision_weight and recency_weight are rank-ordering factors
+            # (prefer senior decisions, prefer recent precedents) — they
+            # should NOT reduce scores below the similarity threshold.
             decision_weight = _decision_level_weight(payload.decision_level)
             recency_weight = _recency_weight(payload.decided_at)
-            combined *= decision_weight * recency_weight
+            combined = similarity_score * decision_weight * recency_weight
 
-            if combined >= threshold_used:
+            if similarity_score >= threshold_used:
                 scored_matches.append(
                     (
                         payload,
