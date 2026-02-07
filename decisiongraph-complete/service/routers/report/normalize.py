@@ -95,7 +95,7 @@ def normalize_decision(decision: dict) -> dict:
     }
     source_label = source_labels.get(source_type_raw, source_type_raw.title())
     import os as _os
-    if _os.environ.get("DG_ENVIRONMENT", "").lower() == "production" and source_label == "BYOC":
+    if _os.environ.get("DG_ENVIRONMENT", "").lower() == "production" and source_type_raw == "byoc":
         import logging as _logging
         _logging.getLogger(__name__).warning(
             "BYOC source type detected in production environment for case %s. "
@@ -103,7 +103,6 @@ def normalize_decision(decision: dict) -> dict:
             meta.get("case_id", "unknown"),
         )
         source_label = "ANALYST_REFERRAL"
-    source_label = source_labels.get(source_type_raw, source_type_raw.title())
 
     # ── Classifier override data (if main.py applied one) ────────────────
     classifier_override = decision.get("classifier", {}) or {}
