@@ -27,7 +27,8 @@ from .judgment import JudgmentPayload, AnchorFact
 
 # ─── Amount bands and channels for variety across copies ──────────────────
 
-AMOUNT_BANDS = ["under_10k", "10k_50k", "50k_100k", "100k_500k", "over_500k"]
+# Must match apply_aml_banding / create_txn_amount_banding() band names
+AMOUNT_BANDS = ["under_3k", "3k_10k", "10k_25k", "25k_100k", "100k_500k", "500k_1m", "over_1m"]
 CHANNELS = ["wire", "cash", "eft", "cheque", "crypto"]
 
 
@@ -181,7 +182,7 @@ SCENARIOS = [
             "customer.pep": False,
             "screening.sanctions_match": False,
             "txn.type": "cash",
-            "txn.amount_band": "10k_50k",
+            "txn.amount_band": "10k_25k",
             "txn.cross_border": False,
         },
         "count": 200,
@@ -492,7 +493,7 @@ def _make_seed(scenario: dict, idx: int, salt: str) -> JudgmentPayload:
     return JudgmentPayload(
         precedent_id=precedent_id,
         case_id_hash=case_id_hash,
-        jurisdiction_code="CA-ON",
+        jurisdiction_code="CA",
         fingerprint_hash=fingerprint_hash,
         fingerprint_schema_id=_schema_for_codes(scenario["codes"]),
         exclusion_codes=list(scenario["codes"]),
@@ -501,7 +502,7 @@ def _make_seed(scenario: dict, idx: int, salt: str) -> JudgmentPayload:
         outcome_code=scenario["outcome"],
         certainty="high",
         anchor_facts=anchor_facts,
-        policy_pack_hash=hashlib.sha256(b"fincrime_canada_v2026").hexdigest()[:16],
+        policy_pack_hash=hashlib.sha256(b"fincrime_canada_v2026").hexdigest(),
         policy_pack_id="fincrime_canada",
         policy_version="2026.02.01",
         decision_level="manager",
