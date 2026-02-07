@@ -1350,7 +1350,15 @@ def classify_precedent_match_v2(
     if p_disp == "UNKNOWN" or c_disp == "UNKNOWN":
         return "neutral"
 
-    # INV-005: EDD is always neutral
+    # Same disposition → supporting (including EDD == EDD)
+    # Must be checked BEFORE the EDD neutralization below,
+    # because Section 5.1 says same disposition is always supporting.
+    if p_disp == c_disp:
+        return "supporting"
+
+    # INV-005: EDD vs terminal (ALLOW/BLOCK) is neutral —
+    # EDD is procedural, not a final decision, so it cannot
+    # contradict or support a terminal disposition.
     if p_disp == "EDD" or c_disp == "EDD":
         return "neutral"
 
@@ -1359,10 +1367,6 @@ def classify_precedent_match_v2(
     c_basis = case_outcome.disposition_basis
     if p_basis != "UNKNOWN" and c_basis != "UNKNOWN" and p_basis != c_basis:
         return "neutral"
-
-    # Same terminal disposition → supporting
-    if p_disp == c_disp:
-        return "supporting"
 
     # INV-004: ALLOW vs BLOCK → contrary
     if {p_disp, c_disp} == {"ALLOW", "BLOCK"}:
