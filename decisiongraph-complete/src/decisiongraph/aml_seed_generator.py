@@ -244,19 +244,22 @@ class SeedGenerator:
             disposition_basis = scenario.disposition_basis
             reporting = scenario.reporting
         else:
-            # Map scenario outcomes to canonical dispositions (v2)
+            # Map scenario outcomes to JudgmentPayload valid outcome_codes:
+            #   {'pay', 'deny', 'escalate', 'partial'}
+            # "approve"/"clear"/"no_report" → "pay"
+            # "investigate"/"hold" → "escalate"
             outcome_map = {
-                "approve": "approve",
-                "investigate": "investigate",
+                "approve": "pay",
+                "investigate": "escalate",
                 "escalate": "escalate",
                 "block": "deny",
                 "hold": "escalate",
-                "clear": "approve",
+                "clear": "pay",
                 "exit": "deny",
-                "report_lctr": "approve",
-                "report_str": "approve",  # v2: STR is reporting, not disposition
-                "report_tpr": "approve",  # v2: TPR is reporting, not disposition
-                "no_report": "approve",
+                "report_lctr": "pay",
+                "report_str": "pay",  # v2: STR is reporting, not disposition
+                "report_tpr": "pay",  # v2: TPR is reporting, not disposition
+                "no_report": "pay",
             }
             outcome = outcome_map.get(scenario.outcome, scenario.outcome)
             disposition_basis = scenario.disposition_basis

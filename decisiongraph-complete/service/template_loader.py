@@ -412,7 +412,7 @@ def _infer_reason_codes(rule_code: str, facts: dict) -> list[str]:
         codes.extend(["RC-TXN-STRUCT", "RC-TXN-STRUCT-MULTI"])
 
     if "PEP" in rule_upper or facts.get("risk.pep") or facts.get("screen.pep_match"):
-        codes.append("RC-TXN-PEP")
+        codes.extend(["RC-TXN-PEP", "RC-TXN-PEP-EDD"])
 
     if "SANCTIONS" in rule_upper or facts.get("screen.sanctions_match"):
         codes.extend(["RC-SCR-SANCTION", "RC-SCR-OFAC"])
