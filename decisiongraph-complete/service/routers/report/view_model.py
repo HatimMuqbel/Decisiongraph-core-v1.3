@@ -60,6 +60,7 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
     report_sections = [
         "Administrative Details",
         "Investigation Outcome Summary",
+        "Canonical Outcome",
         "Case Classification",
         "Regulatory Determination",
         "Suspicion Classification",
@@ -67,8 +68,11 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "Gate Evaluation",
         "Rules Evaluated",
         "Precedent Intelligence",
+        "Defensibility Check",
         "Risk Factors",
         "Evidence Considered",
+        "Recommended Actions",
+        "Timeline",
         "Auditability & Governance",
     ]
 
@@ -161,6 +165,24 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "precedent_deviation_alert": derived["precedent_deviation_alert"],
         "corrections_applied": derived.get("corrections_applied", {}),
         "classifier_is_sovereign": True,
+
+        # FIX-001: Canonical outcome
+        "canonical_outcome": derived.get("canonical_outcome", {}),
+
+        # FIX-005: Distinct precedent metrics
+        "precedent_alignment_pct": derived.get("precedent_alignment_pct", 0),
+        "precedent_match_rate": derived.get("precedent_match_rate", 0),
+        "scored_precedent_count": derived.get("scored_precedent_count", 0),
+        "total_comparable_pool": derived.get("total_comparable_pool", 0),
+
+        # FIX-006: Defensibility check
+        "defensibility_check": derived.get("defensibility_check", {}),
+
+        # FIX-007: EDD recommendations
+        "edd_recommendations": derived.get("edd_recommendations", []),
+
+        # FIX-009: SLA timeline
+        "sla_timeline": derived.get("sla_timeline", {}),
     }
 
 

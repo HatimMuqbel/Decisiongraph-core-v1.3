@@ -5,16 +5,21 @@ Produces a DerivedRegulatoryModel with:
   - classification result
   - resolved typology
   - regulatory status + investigation state
+  - canonical outcome (disposition + disposition_basis + reporting)
   - decision drivers
   - confidence score
   - integrity & deviation alerts
   - governance corrections (explicit, never silent)
+  - defensibility check
+  - EDD recommendations (risk-proportionate)
+  - SLA timeline
 
 This layer may produce "recommended corrections" but never silently
 mutates the original decision; corrections are first-class objects.
 """
 
 import re
+from datetime import datetime, timedelta
 from typing import Optional
 
 from service.suspicion_classifier import classify as classify_suspicion, CLASSIFIER_VERSION
@@ -190,6 +195,53 @@ def derive_regulatory_model(normalized: dict) -> dict:
     else:
         regulatory_position = "Suspicion threshold not met based on available indicators."
 
+    # ── 13. FIX-001: Canonical outcome (three-field) ─────────────────────
+    disposition_basis = _derive_disposition_basis(rules_fired, governed_disposition)
+    reporting, reporting_note = _derive_reporting(governed_disposition, str_required)
+    canonical_outcome = {
+        "disposition": governed_disposition,
+        "disposition_basis": disposition_basis,
+        "reporting": reporting,
+        "reporting_note": reporting_note,
+    }
+
+    # ── 14. FIX-006: Defensibility check ─────────────────────────────────
+    defensibility_check = _build_defensibility_check(
+        reporting, reporting_note, deviation_alert,
+    )
+
+    # ── 15. FIX-007: EDD recommendations ─────────────────────────────────
+    edd_recommendations = _derive_edd_recommendations(
+        evidence_used=evidence_used,
+        rules_fired=rules_fired,
+        governed_disposition=governed_disposition,
+    )
+
+    # ── 16. FIX-009: SLA timeline ────────────────────────────────────────
+    timestamp = normalized.get("timestamp", "")
+    sla_timeline = _build_sla_timeline(timestamp, governed_disposition, reporting)
+
+    # ── 17. FIX-005: Precedent match rate ─────────────────────────────────
+    _pa = precedent_analysis or {}
+    scored_count = int(
+        (_pa.get("supporting_precedents", 0) or 0)
+        + (_pa.get("contrary_precedents", 0) or 0)
+        + (_pa.get("neutral_precedents", 0) or 0)
+    )
+    total_pool = int(
+        _pa.get("match_count", 0) or 0
+    )
+    precedent_match_rate = (
+        int(scored_count / total_pool * 100) if total_pool > 0 else 0
+    )
+    # Precedent alignment: supporting_decisive / decisive_count
+    _supporting = int(_pa.get("supporting_precedents", 0) or 0)
+    _contrary = int(_pa.get("contrary_precedents", 0) or 0)
+    decisive_count = _supporting + _contrary
+    precedent_alignment_pct = (
+        int(_supporting / decisive_count * 100) if decisive_count > 0 else 0
+    )
+
     return {
         # Classification
         "classification": classification.to_dict(),
@@ -219,10 +271,19 @@ def derive_regulatory_model(normalized: dict) -> dict:
         ),
         "escalation_summary": escalation_summary,
 
+        # FIX-001: Canonical outcome (three-field)
+        "canonical_outcome": canonical_outcome,
+
         # Confidence
         "decision_confidence": conf_label,
         "decision_confidence_reason": conf_reason,
         "decision_confidence_score": conf_score,
+
+        # FIX-005: Distinct precedent metrics
+        "precedent_alignment_pct": precedent_alignment_pct,
+        "precedent_match_rate": precedent_match_rate,
+        "scored_precedent_count": scored_count,
+        "total_comparable_pool": total_pool,
 
         # Drivers
         "decision_drivers": decision_drivers,
@@ -239,6 +300,15 @@ def derive_regulatory_model(normalized: dict) -> dict:
         # Risk & similarity
         "risk_factors": risk_factors,
         "similarity_summary": similarity_summary,
+
+        # FIX-006: Defensibility check
+        "defensibility_check": defensibility_check,
+
+        # FIX-007: EDD recommendations
+        "edd_recommendations": edd_recommendations,
+
+        # FIX-009: SLA timeline
+        "sla_timeline": sla_timeline,
     }
 
 
@@ -508,6 +578,245 @@ def _disposition_label(decision_status: str, str_required: bool) -> str:
     if decision_status == "pass":
         return "NO_REPORT"
     return "EDD_REQUIRED"
+
+
+# ── FIX-001: Disposition basis + reporting derivation ─────────────────────────
+
+_MANDATORY_RULE_PREFIXES = frozenset({
+    "AML_BLOCK_SANCTIONS", "SANCTIONS", "AML_BLOCK",
+})
+
+_DISCRETIONARY_RULE_PREFIXES = frozenset({
+    "AML_ESC_HR_COUNTRY", "AML_ESC_PEP_SCREEN", "AML_ESC_PEP",
+    "AML_ESC_STRUCT", "AML_ESC", "AML_INV",
+})
+
+
+def _derive_disposition_basis(rules_fired: list, governed_disposition: str) -> str:
+    """Derive disposition_basis from triggered rule context.
+
+    MANDATORY  — sanctions or hard-stop rule triggered.
+    DISCRETIONARY — risk-based escalation rule triggered.
+    UNKNOWN — not determinable.
+    """
+    if governed_disposition == "NO_REPORT":
+        return "DISCRETIONARY"
+
+    triggered = [
+        r for r in rules_fired
+        if str(r.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED", "WARN"}
+    ]
+    if not triggered:
+        return "UNKNOWN"
+
+    for rule in triggered:
+        code = str(rule.get("code", "")).upper()
+        for prefix in _MANDATORY_RULE_PREFIXES:
+            if code.startswith(prefix):
+                return "MANDATORY"
+
+    for rule in triggered:
+        code = str(rule.get("code", "")).upper()
+        for prefix in _DISCRETIONARY_RULE_PREFIXES:
+            if code.startswith(prefix):
+                return "DISCRETIONARY"
+
+    return "UNKNOWN"
+
+
+def _derive_reporting(governed_disposition: str, str_required: bool) -> tuple[str, str]:
+    """Derive reporting determination and parenthetical reason.
+
+    Returns (reporting_value, reporting_note).
+    Reporting is NEVER inferred from disposition — only from explicit signals.
+    """
+    if str_required:
+        return "FILE_STR", ""
+    if governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
+        return "UNKNOWN", "pending EDD completion"
+    if governed_disposition == "NO_REPORT":
+        return "NO_REPORT", ""
+    return "UNKNOWN", "not determinable"
+
+
+# ── FIX-007: EDD recommendations from risk factors ───────────────────────────
+
+def _derive_edd_recommendations(
+    evidence_used: list,
+    rules_fired: list,
+    governed_disposition: str,
+) -> list[dict]:
+    """Generate risk-proportionate EDD recommendations from evidence and rules.
+
+    Each recommendation is {action, reference} where reference is the
+    regulatory citation.
+    """
+    if governed_disposition not in ("EDD_REQUIRED", "ESCALATE"):
+        return []
+
+    ev_map: dict[str, object] = {}
+    for ev in (evidence_used or []):
+        field = str(ev.get("field", "")).lower()
+        ev_map[field] = ev.get("value")
+
+    recommendations: list[dict] = []
+
+    # PEP
+    pep = ev_map.get("flag.pep") or ev_map.get("customer.pep_flag")
+    if pep is True or str(pep).lower() == "true":
+        recommendations.append({
+            "action": "Verify source of wealth and source of funds.",
+            "reference": "PCMLTFA Regulations s. 67.1 — PEP enhanced measures",
+        })
+
+    # Cross-border to high-risk country
+    cross_border = ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border")
+    dest_country = ev_map.get("txn.destination_country") or ""
+    is_cross_border = cross_border is True or str(cross_border).lower() == "true"
+    is_hr_dest = "high_risk" in str(dest_country).lower()
+    if is_cross_border and is_hr_dest:
+        recommendations.append({
+            "action": (
+                "Obtain and document the stated purpose of the cross-border transfer. "
+                "Verify consistency with customer profile and relationship history."
+            ),
+            "reference": "FINTRAC Guideline 2 — Cross-border transactions to high-risk jurisdictions",
+        })
+    elif is_cross_border:
+        recommendations.append({
+            "action": "Document the business rationale for the cross-border transfer.",
+            "reference": "FINTRAC Guideline 2 — Cross-border transaction review",
+        })
+
+    # Amount band near LCTR threshold
+    amount_band = str(ev_map.get("txn.amount_band") or "").lower()
+    if amount_band in ("10k_25k", "10k-25k", "25k_50k", "25k-50k"):
+        recommendations.append({
+            "action": (
+                "Confirm whether transaction is part of a series. "
+                "Assess against LCTR threshold ($10,000 cash or 24-hour rule) if applicable."
+            ),
+            "reference": "PCMLTFA s. 7 / FINTRAC LCTR threshold guidance",
+        })
+
+    # Structuring indicators
+    structuring = ev_map.get("flag.structuring_suspected")
+    if structuring is True or str(structuring).lower() == "true":
+        recommendations.append({
+            "action": "Review 30-day transaction history for threshold-adjacent patterns.",
+            "reference": "FINTRAC Guideline 3 — Structuring indicators",
+        })
+
+    # Adverse media
+    adverse_media = ev_map.get("flag.adverse_media")
+    if adverse_media is True or str(adverse_media).lower() == "true":
+        recommendations.append({
+            "action": "Obtain and review adverse media sources. Document relevance assessment.",
+            "reference": "PCMLTFA Regulations s. 62(2) — Adverse media review",
+        })
+
+    # Generic fallback always appended
+    recommendations.append({
+        "action": (
+            "Complete enhanced customer due diligence review per institutional policy "
+            "and escalate to Senior Analyst / Compliance Officer within 5 business days."
+        ),
+        "reference": "Institutional EDD Policy",
+    })
+
+    return recommendations
+
+
+# ── FIX-006: Defensibility check ─────────────────────────────────────────────
+
+def _build_defensibility_check(
+    reporting: str,
+    reporting_note: str,
+    precedent_deviation_alert: Optional[dict],
+) -> dict:
+    """Build the defensibility check section.
+
+    Always present in the report (even if deferred for EDD cases).
+    """
+    if reporting == "UNKNOWN":
+        return {
+            "status": "DEFERRED",
+            "message": "Reporting determination pending EDD completion.",
+            "action": "Defensibility Alert will be evaluated upon final disposition.",
+            "note": (
+                "No historical filing pattern comparison performed. Reporting "
+                "obligation will be assessed when EDD is complete and a final "
+                "disposition is rendered."
+            ),
+        }
+
+    # Check if there's a reporting deviation alert
+    rd = None
+    if precedent_deviation_alert:
+        rd = precedent_deviation_alert.get("reporting_deviation")
+
+    if rd:
+        return {
+            "status": "ALERT",
+            "message": rd.get("message", "Reporting deviation detected."),
+            "action": "Immediate compliance review required.",
+            "note": (
+                f"Current proposal to {rd.get('case_reporting', 'N/A')} contradicts "
+                f"{rd.get('more_severe_pct', 0)}% historical "
+                f"{rd.get('dominant_precedent_reporting', 'N/A')} filing rate "
+                f"for this typology."
+            ),
+        }
+
+    return {
+        "status": "PASS",
+        "message": "No reporting deviation detected.",
+        "action": "",
+        "note": (
+            "Current reporting determination is consistent with precedent "
+            "filing patterns."
+        ),
+    }
+
+
+# ── FIX-009: SLA timeline ────────────────────────────────────────────────────
+
+def _build_sla_timeline(
+    timestamp: str,
+    governed_disposition: str,
+    reporting: str,
+) -> dict:
+    """Build SLA / timeline tracking section."""
+    try:
+        case_created = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        case_created = datetime.utcnow()
+
+    # 5 business days for EDD (skip weekends naively)
+    edd_deadline = None
+    if governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
+        bd = 0
+        d = case_created
+        while bd < 5:
+            d += timedelta(days=1)
+            if d.weekday() < 5:  # Mon-Fri
+                bd += 1
+        edd_deadline = d.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+
+    str_filing_window = "N/A (no STR determination)"
+    if reporting == "FILE_STR":
+        str_deadline = case_created + timedelta(days=30)
+        str_filing_window = f"{str_deadline.isoformat()}Z (30 days per PCMLTFA s. 7)"
+    elif reporting == "FILE_LCTR":
+        lctr_deadline = case_created + timedelta(days=15)
+        str_filing_window = f"{lctr_deadline.isoformat()}Z (15 days per PCMLTFA s. 12)"
+
+    return {
+        "case_created": case_created.isoformat() + "Z",
+        "edd_deadline": edd_deadline or "N/A",
+        "final_disposition_due": "Populated when EDD completes",
+        "str_filing_window": str_filing_window,
+    }
 
 
 def _detect_precedent_deviation(

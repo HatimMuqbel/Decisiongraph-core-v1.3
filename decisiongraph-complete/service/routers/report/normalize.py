@@ -82,12 +82,27 @@ def normalize_decision(decision: dict) -> dict:
         }
 
     # ── Source classification ─────────────────────────────────────────────
+    # FIX-010: BYOC → production-safe label
     source_type_raw = str(meta.get("source_type") or "prod").lower()
     source_labels = {
-        "seed": "Seed", "seeded": "Seed", "byoc": "BYOC",
+        "seed": "Seed", "seeded": "Seed",
+        "byoc": "ANALYST_REFERRAL",
+        "analyst_referral": "ANALYST_REFERRAL",
+        "branch_referral": "BRANCH_REFERRAL",
+        "manual_investigation": "MANUAL_INVESTIGATION",
         "prod": "Production", "system_generated": "System",
         "imported": "Imported", "tribunal": "Tribunal",
     }
+    source_label = source_labels.get(source_type_raw, source_type_raw.title())
+    import os as _os
+    if _os.environ.get("DG_ENVIRONMENT", "").lower() == "production" and source_label == "BYOC":
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "BYOC source type detected in production environment for case %s. "
+            "Relabelling to ANALYST_REFERRAL.",
+            meta.get("case_id", "unknown"),
+        )
+        source_label = "ANALYST_REFERRAL"
     source_label = source_labels.get(source_type_raw, source_type_raw.title())
 
     # ── Classifier override data (if main.py applied one) ────────────────

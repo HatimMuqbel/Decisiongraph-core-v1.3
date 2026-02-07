@@ -72,7 +72,15 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
             caution_section += f"- ... and {len(caution) - 5} more\n"
 
     confidence_pct = int((precedent_analysis.get("precedent_confidence", 0) or 0) * 100)
-    upheld_rate_pct = int((appeal.get("upheld_rate", 0) or 0) * 100)
+
+    # FIX-008: Upheld rate — N/A when no appeals
+    total_appealed = int(appeal.get("total_appealed", 0) or 0)
+    upheld_count = int(appeal.get("upheld", 0) or 0)
+    overturned_count = int(appeal.get("overturned", 0) or 0)
+    if total_appealed > 0:
+        upheld_rate_display = f"{int(upheld_count / total_appealed * 100)}%"
+    else:
+        upheld_rate_display = "N/A — No appeals filed"
     sample_size = int(precedent_analysis.get("sample_size", 0) or 0)
     neutral = int(precedent_analysis.get("neutral_precedents", 0) or 0)
     min_similarity_pct = int(precedent_analysis.get("min_similarity_pct", 50) or 50)
@@ -160,29 +168,45 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 {overlap_rows or "| No data | - |"}
 """
 
+    # FIX-002: Scored vs total pool
+    supporting = int(precedent_analysis.get("supporting_precedents", 0) or 0)
+    contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
+    scored_count = supporting + contrary + neutral
+    threshold_pct_global = int(round((precedent_analysis.get("threshold_used") or 0.5) * 100))
+
     return f"""*Precedent analysis is advisory and does not override the deterministic engine verdict.*
 *Absence of precedent matches does not imply the recommendation is incorrect.*
 
+### Tier 1 — Scored Matches (≥{threshold_pct_global}% Similarity)
+
+*Used for confidence scoring and deviation analysis.*
+
 | Metric | Value |
 |--------|-------|
-| Comparable Matches (Scored) | {match_count} |
-| Raw Overlaps Found | {raw_overlap_count} |
-| Candidates Scored | {candidates_scored} (≥{threshold_pct or min_similarity_pct}% similarity required; mode: {threshold_mode}) |
+| Scored Matches (Above Threshold) | {scored_count} |
+| Supporting Precedents | {supporting} |
+| Contrary Precedents | {contrary} |
+| Neutral Precedents | {neutral} |
 | Precedent Confidence | {confidence_pct}% |
 | Exact Matches | {exact_match_count} |
-| Supporting Precedents | {precedent_analysis.get('supporting_precedents', 0)} |
-| Contrary Precedents | {precedent_analysis.get('contrary_precedents', 0)} |
-| Neutral Precedents | {neutral} |
-
-*Neutral indicates precedents where the outcome is a review/escalation state rather than a final pay/deny decision.*
 
 {_md_escape(precedent_analysis.get("similarity_summary", ""))}
 
-### Scored Match Outcome Distribution
+#### Scored Match Outcome Distribution
 
 | Outcome | Count |
 |---------|-------|
 {match_rows or "| No data | - |"}
+
+### Tier 2 — Broader Comparable Pool
+
+*Contextual — not used in confidence scoring or deviation analysis.*
+
+| Metric | Value |
+|--------|-------|
+| Total Comparable Pool | {match_count} |
+| Raw Overlaps Found | {raw_overlap_count} |
+| Candidates Scored | {candidates_scored} (≥{threshold_pct_global or min_similarity_pct}% similarity required; mode: {threshold_mode}) |
 
 {overlap_section}
 
@@ -192,10 +216,10 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 
 | Metric | Value |
 |--------|-------|
-| Total Appealed | {appeal.get('total_appealed', 0)} |
-| Upheld | {appeal.get('upheld', 0)} |
-| Overturned | {appeal.get('overturned', 0)} |
-| Upheld Rate | {upheld_rate_pct}% |
+| Total Appealed | {total_appealed} |
+| Upheld | {upheld_count} |
+| Overturned | {overturned_count} |
+| Upheld Rate | {upheld_rate_display} |
 {caution_section}
 {matches_md}
 """
@@ -221,16 +245,6 @@ def render_markdown(ctx: dict) -> str:
         status = "PASS" if section.get("passed") else "REVIEW"
         gate2_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {_md_escape(section.get('reason', ''))} |\n"
 
-    rules_rows = ""
-    for rule in ctx.get("rules_fired", []):
-        rules_rows += f"| `{_md_escape(rule.get('code', 'N/A'))}` | {_md_escape(rule.get('result', 'N/A'))} | {_md_escape(rule.get('reason', ''))} |\n"
-
-    evidence_rows = ""
-    for ev in ctx.get("evidence_used", []):
-        value = ev.get("value", "N/A")
-        if isinstance(value, bool):
-            value = "Yes" if value else "No"
-        evidence_rows += f"| `{_md_escape(ev.get('field', 'N/A'))}` | {_md_escape(value)} |\n"
 
     # Decision header (governed — not engine)
     governed = ctx.get("governed_disposition", "EDD_REQUIRED")
@@ -255,15 +269,150 @@ def render_markdown(ctx: dict) -> str:
     if engine != governed:
         disposition_note = (
             "\n> Engine output differs from governed disposition. "
-            "Classifier sovereignty enforced \u2014 governed outcome is authoritative.\n"
+            "Governance correction applied \u2014 governed outcome is authoritative. "
+            "This correction prevents false escalation and preserves STR threshold integrity.\n"
         )
     safe_path = _md_escape(ctx["decision_path_trace"] or "N/A")
 
+    # ── FIX-001: Canonical outcome block ────────────────────────────────
+    canonical = ctx.get("canonical_outcome", {})
+    reporting_display = canonical.get("reporting", "UNKNOWN")
+    if canonical.get("reporting_note"):
+        reporting_display += f" ({canonical['reporting_note']})"
+    canonical_outcome_md = (
+        f"| Disposition | **{canonical.get('disposition', 'UNKNOWN')}** |\n"
+        f"| Disposition Basis | **{canonical.get('disposition_basis', 'UNKNOWN')}** |\n"
+        f"| Reporting | **{reporting_display}** |\n"
+    )
+
+    # ── FIX-005: Distinct confidence metrics ──────────────────────────────
     decision_confidence_block = ""
     if ctx.get("decision_confidence"):
+        prec_alignment = ctx.get("precedent_alignment_pct", 0)
+        match_rate = ctx.get("precedent_match_rate", 0)
+        scored_ct = ctx.get("scored_precedent_count", 0)
+        total_pool = ctx.get("total_comparable_pool", 0)
         decision_confidence_block = (
-            f"Decision Confidence: {ctx['decision_confidence']}\n\n"
+            f"### Confidence Metrics\n\n"
+            f"| Metric | Value | Definition |\n"
+            f"|--------|-------|------------|\n"
+            f"| Decision Confidence | {ctx['decision_confidence']} ({ctx.get('decision_confidence_score', 0)}%) | "
+            f"Composite score reflecting evidence completeness and rule alignment |\n"
+            f"| Precedent Alignment | {prec_alignment}% | "
+            f"supporting_decisive / count(decisive_precedents) within same basis |\n"
+            f"| Precedent Match Rate | {match_rate}% ({scored_ct} / {total_pool}) | "
+            f"Percentage of comparable pool meeting similarity threshold |\n\n"
             f"{ctx['decision_confidence_reason']}"
+        )
+
+    # ── FIX-003: Evidence with scope qualifiers ───────────────────────────
+    _EVIDENCE_SCOPE_LABELS: dict[str, str] = {
+        "risk.high_risk_jurisdiction": "Customer domicile jurisdiction risk",
+        "txn.destination_country": "Transaction destination jurisdiction",
+        "txn.cross_border": "Transaction cross-border indicator",
+        "flag.cross_border": "Cross-border flag (transaction-level)",
+        "customer.type": "Customer entity type",
+        "customer.pep_flag": "Customer PEP status",
+        "flag.pep": "PEP flag (customer-level)",
+        "txn.amount_band": "Transaction amount band",
+        "txn.method": "Payment method",
+        "flag.structuring_suspected": "Structuring indicator (transaction pattern)",
+        "flag.sanctions_proximity": "Sanctions screening proximity",
+        "flag.adverse_media": "Adverse media indicator",
+        "flag.rapid_movement": "Rapid fund movement indicator",
+        "flag.shell_entity": "Shell entity indicator",
+        "risk.risk_score": "Overall risk score",
+    }
+
+    evidence_rows = ""
+    for ev in ctx.get("evidence_used", []):
+        value = ev.get("value", "N/A")
+        if isinstance(value, bool):
+            value = "Yes" if value else "No"
+        field_raw = ev.get("field", "N/A")
+        # FIX-003: Use scope-qualified label if available
+        field_display = _EVIDENCE_SCOPE_LABELS.get(field_raw, field_raw)
+        evidence_rows += f"| `{_md_escape(field_raw)}` | {_md_escape(field_display)} | {_md_escape(value)} |\n"
+
+    # ── FIX-012: Rule-evidence linking ────────────────────────────────────
+    # Build map of triggered rules → evidence fields
+    ev_fields = {str(ev.get("field", "")): ev.get("value") for ev in ctx.get("evidence_used", [])}
+    _RULE_EVIDENCE_MAP: dict[str, list[str]] = {
+        "AML_ESC_HR_COUNTRY": ["txn.destination_country", "txn.cross_border"],
+        "AML_ESC_PEP_SCREEN": ["flag.pep", "customer.pep_flag"],
+        "AML_ESC_PEP": ["flag.pep", "customer.pep_flag"],
+        "AML_ESC_STRUCT": ["flag.structuring_suspected", "txn.amount_band"],
+        "AML_BLOCK_SANCTIONS": ["flag.sanctions_proximity"],
+        "AML_INV_STRUCT": ["flag.structuring_suspected", "txn.amount_band"],
+        "AML_STR_LAYER": ["flag.rapid_movement", "txn.method"],
+        "AML_ESC_ADVERSE_MEDIA": ["flag.adverse_media"],
+    }
+
+    rules_rows = ""
+    for rule in ctx.get("rules_fired", []):
+        code = rule.get("code", "N/A")
+        result = rule.get("result", "N/A")
+        reason = rule.get("reason", "")
+        triggered_by = ""
+
+        # FIX-012: For triggered rules, show which evidence fields activated them
+        if str(result).upper() in {"WARN", "FAIL", "TRIGGERED", "ACTIVATED", "FAILED"}:
+            code_upper = str(code).upper()
+            mapped_fields = _RULE_EVIDENCE_MAP.get(code_upper, [])
+            active = []
+            for f in mapped_fields:
+                if f in ev_fields:
+                    active.append(f"{f} = {ev_fields[f]}")
+            if not active:
+                # Try to find matching evidence by rule code prefix
+                for f, v in ev_fields.items():
+                    if code_upper.lower().replace("aml_", "").replace("esc_", "").replace("inv_", "") in f.lower():
+                        active.append(f"{f} = {v}")
+            if active:
+                triggered_by = " · Triggered by: " + ", ".join(active[:3])
+
+        rules_rows += f"| `{_md_escape(code)}` | {_md_escape(result)} | {_md_escape(reason)}{triggered_by} |\n"
+
+    # ── FIX-006: Defensibility check section ──────────────────────────────
+    defensibility = ctx.get("defensibility_check", {})
+    defensibility_md = ""
+    if defensibility:
+        status = defensibility.get("status", "UNKNOWN")
+        status_icon = "✅" if status == "PASS" else "⏳" if status == "DEFERRED" else "🚨"
+        defensibility_md = (
+            f"### Defensibility Check\n\n"
+            f"| | |\n|---|---|\n"
+            f"| Status | {status_icon} **{status}** — {_md_escape(defensibility.get('message', ''))} |\n"
+        )
+        if defensibility.get("action"):
+            defensibility_md += f"| Action | {_md_escape(defensibility['action'])} |\n"
+        if defensibility.get("note"):
+            defensibility_md += f"| Note | {_md_escape(defensibility['note'])} |\n"
+        defensibility_md += "\n"
+
+    # ── FIX-007: EDD recommendations ──────────────────────────────────────
+    edd_recommendations = ctx.get("edd_recommendations", [])
+    edd_md = ""
+    if edd_recommendations:
+        edd_md = "## Recommended Actions\n\n"
+        for i, rec in enumerate(edd_recommendations, 1):
+            edd_md += f"{i}. **{_md_escape(rec.get('action', ''))}**\n"
+            if rec.get("reference"):
+                edd_md += f"   *Ref: {_md_escape(rec['reference'])}*\n"
+            edd_md += "\n"
+
+    # ── FIX-009: SLA timeline ─────────────────────────────────────────────
+    sla = ctx.get("sla_timeline", {})
+    timeline_md = ""
+    if sla:
+        timeline_md = (
+            f"## Timeline\n\n"
+            f"| Field | Value |\n"
+            f"|-------|-------|\n"
+            f"| Case Created | `{sla.get('case_created', 'N/A')}` |\n"
+            f"| EDD Deadline | `{sla.get('edd_deadline', 'N/A')}` |\n"
+            f"| Final Disposition Due | {sla.get('final_disposition_due', 'N/A')} |\n"
+            f"| STR Filing Window | {sla.get('str_filing_window', 'N/A')} |\n\n"
         )
 
     decision_drivers_md = "\n".join(
@@ -292,7 +441,7 @@ def render_markdown(ctx: dict) -> str:
     gate1_rows_output = gate1_rows or "| No sections evaluated | - | - |"
     gate2_rows_output = gate2_rows or "| No sections evaluated | - | - |"
     rules_rows_output = rules_rows or "| No rules evaluated | - | - |"
-    evidence_rows_output = evidence_rows or "| No evidence recorded | - |"
+    evidence_rows_output = evidence_rows or "| No evidence recorded | - | - |"
 
     precedent_markdown = _build_precedent_markdown(ctx.get("precedent_analysis", {}))
 
@@ -315,71 +464,95 @@ def render_markdown(ctx: dict) -> str:
     if ctx.get("precedent_consistency_alert"):
         consistency_alert_md = f"> ⚠️ **PRECEDENT CONSISTENCY ALERT:** {_md_escape(ctx.get('precedent_consistency_detail', ''))}\n"
 
-    # Integrity alert
+    # FIX-004: Integrity alert — reframe classifier override narrative
     integrity_alert_md = ""
     dia = ctx.get("decision_integrity_alert")
     if dia:
         severity_icon = "🚨" if dia.get("severity") == "CRITICAL" else "⚠️"
-        override_label = " **[OVERRIDE APPLIED]**" if dia.get("type") == "CLASSIFIER_OVERRIDE" else ""
-        integrity_alert_md = (
-            f"\n> {severity_icon} **DECISION INTEGRITY ALERT**{override_label}\n>\n"
-            f"> {_md_escape(dia.get('message', ''))}\n"
-        )
-        if dia.get("original_verdict"):
-            integrity_alert_md += (
-                f">\n> Original verdict: `{dia['original_verdict']}` → "
-                f"Classifier outcome: `{dia.get('classifier_outcome', 'N/A')}`\n"
+        if dia.get("type") == "CLASSIFIER_OVERRIDE":
+            # FIX-004: Reframe as false-escalation prevention, not suppression
+            override_label = " **[GOVERNANCE CORRECTION]**"
+            original = dia.get("original_verdict", "STR")
+            classifier_outcome = dia.get("classifier_outcome", "N/A")
+            integrity_alert_md = (
+                f"\n> {severity_icon} **DECISION INTEGRITY ALERT**{override_label}\n>\n"
+                f"> Rule engine triggered {original} based on risk indicators. "
+                f"Suspicion Classifier determined that Tier 1 suspicion indicators are below "
+                f"the threshold required for escalation under the governance framework. "
+                f"Disposition corrected to {classifier_outcome} — enhanced review is warranted "
+                f"but escalation is not justified without suspicion indicators. "
+                f"This correction prevents false escalation and preserves STR threshold integrity "
+                f"(PCMLTFA s. 7).\n"
             )
+            if dia.get("original_verdict"):
+                integrity_alert_md += (
+                    f">\n> Original engine output: `{dia['original_verdict']}` → "
+                    f"Governed outcome: `{dia.get('classifier_outcome', 'N/A')}`\n"
+                )
+        else:
+            override_label = ""
+            integrity_alert_md = (
+                f"\n> {severity_icon} **DECISION INTEGRITY ALERT**{override_label}\n>\n"
+                f"> {_md_escape(dia.get('message', ''))}\n"
+            )
+            if dia.get("original_verdict"):
+                integrity_alert_md += (
+                    f">\n> Original verdict: `{dia['original_verdict']}` → "
+                    f"Classifier outcome: `{dia.get('classifier_outcome', 'N/A')}`\n"
+                )
         integrity_alert_md += "\n"
 
-    # Deviation alert — v2 dual deviation model
+    # FIX-011: Deviation alert — v2 dual deviation model (Consistency + Defensibility)
     deviation_alert_md = ""
     pda = ctx.get("precedent_deviation_alert")
     if pda:
         severity = pda.get("severity", "INFO")
         severity_icon = "🚨" if severity == "CRITICAL" else "⚠️" if severity == "WARNING" else "ℹ️"
 
-        # Determine alert title based on v2 deviation type
-        if pda.get("reporting_deviation"):
-            alert_title = "PRECEDENT DEVIATION — DEFENSIBILITY ALERT"
-        elif pda.get("disposition_deviation"):
-            alert_title = "PRECEDENT DEVIATION — CONSISTENCY WARNING"
-        else:
-            alert_title = "PRECEDENT DEVIATION SIGNAL"
-
-        deviation_alert_md = (
-            f"\n> {severity_icon} **{alert_title}**\n>\n"
-            f"> {_md_escape(pda.get('message', ''))}\n"
-        )
-
-        # Disposition deviation detail
+        # Disposition deviation → Consistency Check
         dd = pda.get("disposition_deviation")
         if dd:
             deviation_alert_md += (
-                f">\n> **Disposition:** {dd.get('case_disposition', 'N/A')} vs majority "
-                f"{dd.get('majority_disposition', 'N/A')} ({dd.get('majority_pct', 0)}% of "
-                f"{dd.get('comparable_count', 0)} comparable)\n"
+                f"\n### Consistency Check (Disposition Deviation)\n\n"
+                f"> {severity_icon} **CONSISTENCY WARNING**\n>\n"
+                f"> Current Disposition: **{dd.get('case_disposition', 'N/A')}**\n>\n"
+                f"> Scored Precedent Majority: **{dd.get('majority_disposition', 'N/A')}** "
+                f"({dd.get('majority_pct', 0)}% of {dd.get('comparable_count', 0)} comparable)\n>\n"
+                f"> Deviation Detected: **YES**\n>\n"
+                f"> {_md_escape(dd.get('message', ''))}\n\n"
+            )
+        elif pda.get("supporting") is not None:
+            # Fallback v1-style
+            evaluated_disp = pda.get("evaluated_disposition", "N/A")
+            deviation_alert_md += (
+                f"\n### Consistency Check (Disposition Deviation)\n\n"
+                f"> {severity_icon} **{_md_escape(pda.get('type', 'DEVIATION'))}**\n>\n"
+                f"> {_md_escape(pda.get('message', ''))}\n>\n"
+                f"> Supporting: {pda.get('supporting', 0)} · Contrary: {pda.get('contrary', 0)}"
+                f" · Evaluated: {evaluated_disp}\n\n"
             )
 
-        # Reporting deviation detail
+        # Reporting deviation → Defensibility Alert
         rd = pda.get("reporting_deviation")
         if rd:
             deviation_alert_md += (
-                f">\n> **Reporting:** {rd.get('case_reporting', 'N/A')} contradicts "
+                f"\n### Defensibility Alert (Reporting Deviation)\n\n"
+                f"> 🚨 **DEFENSIBILITY ALERT**\n>\n"
+                f"> Reporting: {rd.get('case_reporting', 'N/A')} contradicts "
                 f"{rd.get('more_severe_pct', 0)}% historical "
-                f"{rd.get('dominant_precedent_reporting', 'N/A')} filing rate\n"
-            )
-
-        # Fallback to supporting/contrary counts
-        if pda.get("supporting") is not None:
-            deviation_alert_md += (
-                f">\n> Supporting: {pda.get('supporting', 0)} \u00b7 Contrary: {pda.get('contrary', 0)}"
-                f" \u00b7 Evaluated: {pda.get('evaluated_disposition', 'N/A')}\n"
+                f"{rd.get('dominant_precedent_reporting', 'N/A')} filing rate\n\n"
             )
 
         if pda.get("engine_note"):
-            deviation_alert_md += f">\n> *{_md_escape(pda['engine_note'])}*\n"
+            deviation_alert_md += f"> *{_md_escape(pda['engine_note'])}*\n"
         deviation_alert_md += "\n"
+    else:
+        # No deviation — explicitly state
+        deviation_alert_md = (
+            "\n### Consistency Check (Disposition Deviation)\n\n"
+            "> No disposition deviation detected. Current governed outcome is "
+            "consistent with scored precedent patterns.\n\n"
+        )
 
     # ── Template ─────────────────────────────────────────────────────────
     md_template = """# AML/KYC Decision Report
@@ -400,8 +573,6 @@ def render_markdown(ctx: dict) -> str:
 | Policy Version | `{policy_version}` |
 | Report Schema | `{report_schema_version}` |
 
-{integrity_alert_md}
-{deviation_alert_md}
 ---
 
 ## Investigation Outcome Summary
@@ -428,6 +599,20 @@ def render_markdown(ctx: dict) -> str:
 | Field | Value |
 |-------|-------|
 {facts_rows}
+
+---
+
+## Canonical Outcome
+
+*Authoritative three-field outcome record per v2 specification. All other sections must be consistent with these values.*
+
+| Field | Value |
+|-------|-------|
+{canonical_outcome_md}
+
+---
+
+{integrity_alert_md}
 
 ---
 
@@ -512,10 +697,17 @@ def render_markdown(ctx: dict) -> str:
 |-----------|--------|--------|
 {rules_rows_output}
 
+---
 
 ## Precedent Intelligence
 
 {precedent_markdown}
+
+{deviation_alert_md}
+
+{defensibility_md}
+
+---
 
 ## Risk Factors
 
@@ -529,11 +721,15 @@ def render_markdown(ctx: dict) -> str:
 
 *Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.*
 
-| Field | Value |
-|-------|-------|
+| Field | Scope | Value |
+|-------|-------|-------|
 {evidence_rows_output}
 
 ---
+
+{edd_md}
+
+{timeline_md}
 
 ## Auditability & Governance
 
@@ -569,6 +765,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
 
     return md_template.format(
         action=ctx.get("action"),
+        canonical_outcome_md=canonical_outcome_md,
         case_id=ctx.get("case_id"),
         classification_outcome=ctx.get("classification_outcome", ""),
         classification_reason=ctx.get("classification_reason", ""),
@@ -580,7 +777,9 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         decision_id_short=ctx.get("decision_id_short"),
         decision_confidence_block=decision_confidence_block,
         decision_drivers_md=decision_drivers_md,
+        defensibility_md=defensibility_md,
         deviation_alert_md=deviation_alert_md,
+        edd_md=edd_md,
         engine_version=ctx.get("engine_version"),
         evidence_rows_output=evidence_rows_output,
         facts_rows=facts_rows,
@@ -611,6 +810,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         suspicion_count=ctx.get("suspicion_count", 0),
         tier1_md=tier1_md,
         tier2_md=tier2_md,
+        timeline_md=timeline_md,
         timestamp=ctx.get("timestamp"),
         verdict=ctx.get("verdict"),
         escalation_summary=ctx.get("escalation_summary"),
