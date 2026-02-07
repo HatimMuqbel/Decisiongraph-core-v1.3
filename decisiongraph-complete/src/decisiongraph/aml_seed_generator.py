@@ -1,1572 +1,517 @@
 """
-DecisionGraph Banking/AML Precedent System: Seed Generator Module
+DecisionGraph Banking/AML Seed Generator — Demo Edition
 
-This module generates realistic seed precedents for the AML/Banking
-domain based on YAML configuration files.
+Generates seed precedents for the precedent intelligence system.
+Each scenario is a resolved case type with explicit v2 outcome fields.
 
-Key components:
-- SeedConfig: Configuration for generating seeds for one scenario
-- SeedGenerator: Generates realistic seed precedents from configuration
-- SeedLoader: Loads seed precedents into a DecisionGraph chain
+Design philosophy: these are the bank's historical resolved cases.
+Simple data, explicit outcomes, no mapping layers.
 
-Design Principles:
-- Deterministic: Same seed + same config = same precedents
-- Configurable: YAML-driven scenario definitions
-- Realistic: Follows real-world distribution of outcomes and appeals
+All seeds comply with v2 three-field canonicalization
+(see docs/PRECEDENT_OUTCOME_MODEL_V2.md):
+  disposition:       ALLOW | EDD | BLOCK
+  disposition_basis: MANDATORY | DISCRETIONARY
+  reporting:         NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR
 
-Generated Precedent Counts (per BANKING_SEED_SPEC.md):
-- Transaction Monitoring: 1,050 precedents
-- KYC Onboarding: 675 precedents
-- Reporting: 300 precedents
-- Sanctions/Screening: 525 precedents
-- Ongoing Monitoring: 450 precedents
-- Total: 3,000 precedents
-
-Example:
-    >>> generator = SeedGenerator(fingerprint_registry, reason_registry, salt="seed-salt")
-    >>> precedents = generator.generate_from_config(config)
-    >>> loader = SeedLoader(chain, salt="seed-salt")
-    >>> count = loader.load_precedents(precedents)
+Total: ~4,000 seeds across 5 schema families.
 """
 
 from __future__ import annotations
 
 import hashlib
-import random
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from typing import Any, Optional
-
-from .aml_fingerprint import AMLFingerprintSchemaRegistry
-from .aml_reason_codes import AMLReasonCodeRegistry
-from .judgment import (
-    JudgmentPayload,
-    AnchorFact,
-    compute_case_id_hash,
-    normalize_scenario_code,
-    normalize_seed_category,
-)
-
-
-# =============================================================================
-# Exceptions
-# =============================================================================
-
-class SeedGeneratorError(Exception):
-    """Base exception for seed generator errors."""
-    pass
-
-
-class SeedConfigError(SeedGeneratorError):
-    """Raised when seed configuration is invalid."""
-    pass
-
-
-class SeedLoadError(SeedGeneratorError):
-    """Raised when seed loading fails."""
-    pass
-
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-@dataclass
-class SeedScenario:
-    """
-    Configuration for generating seeds for one scenario type.
-
-    Attributes:
-        code: Unique scenario code (e.g., "TXN-STRUCT-10K")
-        name: Human-readable name
-        reason_codes: List of reason codes for this scenario
-        count: Number of precedents to generate
-        outcome: Primary outcome (approve, deny, escalate, investigate, etc.)
-        base_facts: Facts that are constant for this scenario
-        variable_facts: Facts that vary (dict of field -> list of possible values)
-        deny_rate: Rate of denials (0.0-1.0)
-        appeal_rate: Rate of appeals (0.0-1.0)
-        upheld_rate: Rate of upheld appeals (0.0-1.0)
-    """
-    code: str
-    name: str
-    reason_codes: list[str]
-    count: int
-    outcome: str
-    base_facts: dict[str, Any] = field(default_factory=dict)
-    variable_facts: dict[str, list[Any]] = field(default_factory=dict)
-    deny_rate: float = 0.0
-    appeal_rate: float = 0.10
-    upheld_rate: float = 0.85
-
-    # v2 outcome model fields
-    disposition_basis: str = "DISCRETIONARY"   # MANDATORY | DISCRETIONARY | UNKNOWN
-    reporting: str = "UNKNOWN"                 # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | UNKNOWN
-
-    def __post_init__(self) -> None:
-        """Validate scenario on construction."""
-        if not self.code:
-            raise SeedConfigError("code cannot be empty")
-        if not self.name:
-            raise SeedConfigError("name cannot be empty")
-        if self.count < 1:
-            raise SeedConfigError("count must be at least 1")
-        if not 0.0 <= self.deny_rate <= 1.0:
-            raise SeedConfigError("deny_rate must be between 0.0 and 1.0")
-        if not 0.0 <= self.appeal_rate <= 1.0:
-            raise SeedConfigError("appeal_rate must be between 0.0 and 1.0")
-        if not 0.0 <= self.upheld_rate <= 1.0:
-            raise SeedConfigError("upheld_rate must be between 0.0 and 1.0")
-
-
-@dataclass
-class SeedConfig:
-    """
-    Configuration for generating seeds for one category.
-
-    Attributes:
-        category: Decision category (txn, kyc, report, screening, monitoring)
-        schema_id: Fingerprint schema ID
-        registry_id: Reason code registry ID
-        jurisdiction: Jurisdiction code
-        scenarios: List of scenarios to generate
-        decision_level_weights: Weights for decision level distribution
-    """
-    category: str
-    schema_id: str
-    registry_id: str
-    jurisdiction: str
-    scenarios: list[SeedScenario] = field(default_factory=list)
-    decision_level_weights: dict[str, float] = field(default_factory=lambda: {
-        "analyst": 0.45,
-        "senior_analyst": 0.25,
-        "manager": 0.15,
-        "compliance_officer": 0.10,
-        "mlro": 0.03,
-        "regulator": 0.02,
-    })
-
-    def __post_init__(self) -> None:
-        """Validate config on construction."""
-        if not self.category:
-            raise SeedConfigError("category cannot be empty")
-        if not self.schema_id:
-            raise SeedConfigError("schema_id cannot be empty")
-
-
-# =============================================================================
-# Seed Generator
-# =============================================================================
-
-class SeedGenerator:
-    """
-    Generates realistic seed precedents from configuration.
-
-    The generator creates JudgmentPayload objects that can be loaded
-    into a DecisionGraph chain for precedent matching.
-
-    Usage:
-        >>> generator = SeedGenerator(fp_registry, rc_registry, salt="seed-salt")
-        >>> precedents = generator.generate_from_config(config)
-    """
-
-    def __init__(
-        self,
-        fingerprint_registry: AMLFingerprintSchemaRegistry,
-        reason_registry: AMLReasonCodeRegistry,
-        salt: str,
-        random_seed: int = 42,
-    ) -> None:
-        """
-        Initialize the seed generator.
-
-        Args:
-            fingerprint_registry: Registry of fingerprint schemas
-            reason_registry: Registry of reason codes
-            salt: Salt for fingerprint hashing
-            random_seed: Seed for random number generation (for reproducibility)
-        """
-        self.fingerprint_registry = fingerprint_registry
-        self.reason_registry = reason_registry
-        self.salt = salt
-        self.rng = random.Random(random_seed)
-
-    def generate_from_config(self, config: SeedConfig) -> list[JudgmentPayload]:
-        """
-        Generate precedents from a configuration.
-
-        Args:
-            config: SeedConfig defining scenarios to generate
-
-        Returns:
-            List of JudgmentPayload objects
-        """
-        precedents = []
-
-        for scenario in config.scenarios:
-            scenario_precedents = self._generate_scenario(config, scenario)
-            precedents.extend(scenario_precedents)
-
-        return precedents
-
-    def _generate_scenario(
-        self,
-        config: SeedConfig,
-        scenario: SeedScenario,
-    ) -> list[JudgmentPayload]:
-        """Generate precedents for a single scenario."""
-        precedents = []
-
-        for i in range(scenario.count):
-            precedent = self._generate_single_precedent(config, scenario, i)
-            precedents.append(precedent)
-
-        return precedents
-
-    def _generate_single_precedent(
-        self,
-        config: SeedConfig,
-        scenario: SeedScenario,
-        index: int,
-    ) -> JudgmentPayload:
-        """Generate a single precedent."""
-        import uuid
-
-        # Generate facts by combining base and variable facts
-        facts = dict(scenario.base_facts)
-        for field_id, possible_values in scenario.variable_facts.items():
-            facts[field_id] = self.rng.choice(possible_values)
-
-        # Determine outcome - map to v2 canonical dispositions
-        is_denial = self.rng.random() < scenario.deny_rate
-        if is_denial:
-            outcome = "deny"
-            disposition_basis = scenario.disposition_basis
-            reporting = scenario.reporting
-        else:
-            # Map scenario outcomes to JudgmentPayload valid outcome_codes:
-            #   {'pay', 'deny', 'escalate', 'partial'}
-            # "approve"/"clear"/"no_report" → "pay"
-            # "investigate"/"hold" → "escalate"
-            outcome_map = {
-                "approve": "pay",
-                "investigate": "escalate",
-                "escalate": "escalate",
-                "block": "deny",
-                "hold": "escalate",
-                "clear": "pay",
-                "exit": "deny",
-                "report_lctr": "pay",
-                "report_str": "pay",  # v2: STR is reporting, not disposition
-                "report_tpr": "pay",  # v2: TPR is reporting, not disposition
-                "no_report": "pay",
-            }
-            outcome = outcome_map.get(scenario.outcome, scenario.outcome)
-            disposition_basis = scenario.disposition_basis
-
-            # v2: derive reporting from scenario
-            reporting_map = {
-                "report_lctr": "FILE_LCTR",
-                "report_str": "FILE_STR",
-                "report_tpr": "FILE_TPR",
-                "no_report": "NO_REPORT",
-                "approve": "NO_REPORT",
-                "clear": "NO_REPORT",
-            }
-            if scenario.reporting != "UNKNOWN":
-                reporting = scenario.reporting
-            else:
-                reporting = reporting_map.get(scenario.outcome, "UNKNOWN")
-
-        # Determine appeal status
-        is_appealed = self.rng.random() < scenario.appeal_rate
-        appeal_outcome = None
-        if is_appealed:
-            is_upheld = self.rng.random() < scenario.upheld_rate
-            if is_upheld:
-                appeal_outcome = "upheld"
-            else:
-                # 80% overturned, 20% settled
-                if self.rng.random() < 0.8:
-                    appeal_outcome = "overturned"
-                else:
-                    appeal_outcome = "settled"
-
-        # Determine decision level
-        decision_level = self._select_decision_level(config.decision_level_weights)
-
-        # Generate dates
-        decided_at = self._generate_decided_at()
-        appeal_decided_at = None
-        if is_appealed and appeal_outcome:
-            # Appeals typically decided 30-180 days after initial decision
-            appeal_days = self.rng.randint(30, 180)
-            # Parse without the Z suffix and add back
-            decided_dt = datetime.strptime(decided_at, "%Y-%m-%dT%H:%M:%SZ")
-            appeal_dt = decided_dt + timedelta(days=appeal_days)
-            appeal_decided_at = appeal_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        # Compute fingerprint
-        schema = self.fingerprint_registry.get_schema_by_id(config.schema_id)
-        fingerprint_hash = self.fingerprint_registry.compute_fingerprint(
-            schema, facts, self.salt
-        )
-
-        # Generate IDs
-        case_id = f"SEED-{config.category.upper()}-{scenario.code}-{index:05d}"
-        # Use deterministic UUID based on case_id for reproducibility
-        precedent_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, case_id))
-        case_id_hash = compute_case_id_hash(case_id, self.salt)
-
-        # Create anchor facts
-        anchor_facts = [
-            AnchorFact(field_id=k, value=str(v), label=self._field_to_label(k))
-            for k, v in facts.items()
-        ]
-
-        # Determine if this is a notable case (boundary case)
-        is_notable = appeal_outcome == "overturned"
-        outcome_notable = "boundary_case" if is_notable else None
-
-        # Determine certainty based on appeal status
-        if is_appealed and appeal_outcome == "overturned":
-            certainty = "low"
-        elif is_appealed:
-            certainty = "medium"
-        else:
-            certainty = "high"
-
-        # Map internal decision levels to valid JudgmentPayload levels
-        # Valid levels: adjuster, manager, tribunal, court
-        level_map = {
-            "analyst": "adjuster",
-            "senior_analyst": "adjuster",
-            "manager": "manager",
-            "compliance_officer": "manager",
-            "mlro": "manager",
-            "regulator": "tribunal",
-        }
-        mapped_level = level_map.get(decision_level, "adjuster")
-
-        # Determine decided_by_role based on original decision level
-        role_map = {
-            "analyst": "AML Analyst",
-            "senior_analyst": "Senior AML Analyst",
-            "manager": "AML Manager",
-            "compliance_officer": "Compliance Officer",
-            "mlro": "MLRO",
-            "regulator": "Regulator",
-        }
-        decided_by_role = role_map.get(decision_level, "Analyst")
-
-        # Generate deterministic policy_pack_hash (64-char hex)
-        pack_hash_input = f"{config.category}:{config.registry_id}:v1"
-        policy_pack_hash = hashlib.sha256(pack_hash_input.encode()).hexdigest()
-
-        scenario_code = normalize_scenario_code(scenario.code)
-        seed_category_map = {
-            "txn": "txn_monitoring",
-            "kyc": "kyc_onboarding",
-            "report": "reporting",
-            "screening": "screening",
-            "monitoring": "ongoing_monitoring",
-        }
-        seed_category = normalize_seed_category(
-            seed_category_map.get(config.category, config.category)
-        )
-
-        # Create the judgment payload
-        return JudgmentPayload(
-            # Identity
-            precedent_id=precedent_id,
-            case_id_hash=case_id_hash,
-            jurisdiction_code=config.jurisdiction,
-            # Fingerprint
-            fingerprint_hash=fingerprint_hash,
-            fingerprint_schema_id=config.schema_id,
-            # Decision codes
-            exclusion_codes=scenario.reason_codes,
-            reason_codes=scenario.reason_codes,
-            reason_code_registry_id=config.registry_id,
-            outcome_code=outcome,
-            certainty=certainty,
-            # Anchor facts
-            anchor_facts=anchor_facts,
-            # Policy context
-            policy_pack_hash=policy_pack_hash,
-            policy_pack_id=f"CA-FINTRAC-{config.category.upper()}",
-            policy_version="2025.1",
-            # Authority
-            decision_level=mapped_level,
-            decided_at=decided_at,
-            decided_by_role=decided_by_role,
-            # Appeals
-            appealed=is_appealed,
-            appeal_outcome=appeal_outcome,
-            appeal_decided_at=appeal_decided_at,
-            appeal_level="manager" if is_appealed else None,
-            # Metadata
-            source_type="seed",
-            scenario_code=scenario_code,
-            seed_category=seed_category,
-            outcome_notable=outcome_notable,
-            # v2 outcome model
-            disposition_basis=disposition_basis,
-            reporting_obligation=reporting,
-        )
-
-    def _select_decision_level(self, weights: dict[str, float]) -> str:
-        """Select a decision level based on weights."""
-        levels = list(weights.keys())
-        probs = list(weights.values())
-        return self.rng.choices(levels, weights=probs, k=1)[0]
-
-    def _generate_decided_at(self) -> str:
-        """Generate a random decision date in the past 2 years."""
-        days_ago = self.rng.randint(1, 730)  # 1 day to 2 years
-        dt = datetime.utcnow() - timedelta(days=days_ago)
-        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    def _field_to_label(self, field_id: str) -> str:
-        """Convert a field_id to a human-readable label."""
-        # Common field label mappings
-        label_map = {
-            "txn.type": "Transaction Type",
-            "txn.amount_band": "Amount Band",
-            "txn.cross_border": "Cross-Border",
-            "txn.destination_country_risk": "Destination Risk",
-            "txn.originator_country_risk": "Originator Risk",
-            "txn.round_amount": "Round Amount",
-            "txn.just_below_threshold": "Just Below Threshold",
-            "txn.multiple_same_day": "Multiple Same Day",
-            "txn.rapid_movement": "Rapid Movement",
-            "txn.pattern_matches_profile": "Pattern Matches Profile",
-            "txn.third_party_involved": "Third Party",
-            "txn.cash_involved": "Cash Involved",
-            "txn.cash_amount_band": "Cash Amount",
-            "customer.type": "Customer Type",
-            "customer.risk_level": "Risk Level",
-            "customer.pep": "PEP Status",
-            "customer.pep_type": "PEP Type",
-            "customer.high_risk_industry": "High-Risk Industry",
-            "customer.relationship_length": "Relationship Length",
-            "customer.industry_type": "Industry Type",
-            "crypto.exchange_regulated": "Exchange Regulated",
-            "crypto.wallet_type": "Wallet Type",
-            "crypto.mixer_indicators": "Mixer Indicators",
-            "screening.sanctions_match": "Sanctions Match",
-            "screening.adverse_media": "Adverse Media",
-            "screening.adverse_media_severity": "Adverse Severity",
-            "kyc.id_verified": "ID Verified",
-            "kyc.address_verified": "Address Verified",
-            "kyc.beneficial_owners_identified": "BO Identified",
-            "shell.nominee_directors": "Nominee Directors",
-            "shell.registered_agent_only": "Registered Agent Only",
-            "shell.no_physical_presence": "No Physical Presence",
-            "edd.complete": "EDD Complete",
-            "edd.senior_approval": "Senior Approval",
-            "suspicious.structuring": "Structuring",
-            "suspicious.unusual_pattern": "Unusual Pattern",
-            "suspicious.third_party": "Third Party",
-            "suspicious.layering": "Layering",
-            "suspicious.indicator_count": "Indicator Count",
-            "suspicious.unusual_explained": "Unusual Explained",
-            "terrorist.property_indicators": "Terrorist Property",
-            "terrorist.listed_entity": "Listed Entity",
-            "terrorist.associated_entity": "Associated Entity",
-            "match.name_match_type": "Match Type",
-            "match.list_source": "List Source",
-            "match.score_band": "Match Score",
-            "match.secondary_identifiers": "Secondary IDs",
-            "match.type": "Match Type",
-            "ownership.direct_pct_band": "Direct Ownership",
-            "ownership.aggregated_over_50": "Aggregated >50%",
-            "ownership.chain_depth": "Chain Depth",
-            "delisted.status": "Delisted",
-            "delisted.date_band": "Delisted Date",
-            "secondary.exposure": "Secondary Exposure",
-            "secondary.jurisdiction": "Secondary Jurisdiction",
-            "activity.volume_change_band": "Volume Change",
-            "activity.value_change_band": "Value Change",
-            "activity.new_pattern": "New Pattern",
-            "review.type": "Review Type",
-            "review.risk_change": "Risk Change",
-            "review.kyc_refresh_needed": "KYC Refresh Needed",
-            "profile.address_change": "Address Change",
-            "profile.bo_change": "BO Change",
-            "profile.industry_change": "Industry Change",
-            "dormant.months_inactive": "Months Inactive",
-            "dormant.reactivation_pattern": "Reactivation Pattern",
-            "exit.decision": "Exit Decision",
-            "exit.reason": "Exit Reason",
-            "exit.sar_related": "SAR-Related",
-        }
-
-        if field_id in label_map:
-            return label_map[field_id]
-
-        # Fall back to title-casing the field name
-        parts = field_id.split(".")
-        return " ".join(p.replace("_", " ").title() for p in parts)
-
-
-# =============================================================================
-# Pre-built Seed Configurations
-# =============================================================================
-
-def create_txn_monitoring_seed_config() -> SeedConfig:
-    """
-    Create seed configuration for Transaction Monitoring.
-
-    Generates 1,050 precedents across 14 scenario categories.
-    """
-    return SeedConfig(
-        category="txn",
-        schema_id="decisiongraph:aml:txn:v1",
-        registry_id="decisiongraph:aml:txn:v1",
-        jurisdiction="CA",
-        scenarios=[
-            # Normal Approvals - 200
-            SeedScenario(
-                code="TXN-NORMAL",
-                name="Normal Transaction",
-                reason_codes=["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"],
-                count=200,
-                outcome="approve",
-                base_facts={
-                    "txn.pattern_matches_profile": True,
-                    "screening.sanctions_match": False,
-                    "screening.adverse_media": False,
-                },
-                variable_facts={
-                    "txn.type": ["wire_domestic", "wire_international", "ach", "check"],
-                    "txn.amount_band": ["under_3k", "3k_10k", "10k_25k"],
-                    "customer.type": ["individual", "corporation"],
-                    "customer.risk_level": ["low", "medium"],
-                },
-                appeal_rate=0.04,
-                upheld_rate=0.95,
-                reporting="NO_REPORT",
-            ),
-            # Structuring - 120
-            SeedScenario(
-                code="TXN-STRUCT",
-                name="Structuring Indicators",
-                reason_codes=["RC-TXN-STRUCT", "RC-TXN-STRUCT-MULTI"],
-                count=120,
-                outcome="investigate",
-                deny_rate=0.15,
-                base_facts={
-                    "suspicious.structuring": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.just_below_threshold": [True, False],
-                    "txn.multiple_same_day": [True, False],
-                    "txn.round_amount": [True, False],
-                    "txn.amount_band": ["3k_10k", "10k_25k"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # High-Risk Jurisdiction - 100
-            SeedScenario(
-                code="TXN-FATF",
-                name="High-Risk Jurisdiction",
-                reason_codes=["RC-TXN-FATF-GREY", "RC-TXN-FATF-BLACK"],
-                count=100,
-                outcome="escalate",
-                deny_rate=0.10,
-                base_facts={
-                    "txn.cross_border": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.destination_country_risk": ["high", "prohibited"],
-                    "txn.amount_band": ["10k_25k", "25k_100k", "100k_500k"],
-                    "customer.pep": [True, False],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.88,
-            ),
-            # PEP Transactions - 80
-            SeedScenario(
-                code="TXN-PEP",
-                name="PEP Transaction",
-                reason_codes=["RC-TXN-PEP", "RC-TXN-PEP-EDD"],
-                count=80,
-                outcome="escalate",
-                deny_rate=0.05,
-                base_facts={
-                    "customer.pep": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "customer.pep_type": ["domestic", "foreign", "rca"],
-                    "txn.amount_band": ["25k_100k", "100k_500k", "over_1m"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.87,
-            ),
-            # Crypto - 70
-            SeedScenario(
-                code="TXN-CRYPTO",
-                name="Crypto Transaction",
-                reason_codes=["RC-TXN-CRYPTO-UNREG", "RC-TXN-CRYPTO-UNHOSTED"],
-                count=70,
-                outcome="investigate",
-                deny_rate=0.10,
-                base_facts={
-                    "txn.type": "crypto",
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "crypto.exchange_regulated": [True, False],
-                    "crypto.wallet_type": ["hosted", "unhosted"],
-                    "crypto.mixer_indicators": [True, False],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # Layering - 60
-            SeedScenario(
-                code="TXN-LAYER",
-                name="Layering Indicators",
-                reason_codes=["RC-TXN-LAYER", "RC-TXN-RAPID"],
-                count=60,
-                outcome="investigate",
-                deny_rate=0.15,
-                base_facts={
-                    "txn.rapid_movement": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.amount_band": ["25k_100k", "100k_500k"],
-                    "txn.cross_border": [True, False],
-                },
-                appeal_rate=0.17,
-                upheld_rate=0.90,
-            ),
-            # Unusual Patterns - 40
-            SeedScenario(
-                code="TXN-UNUSUAL",
-                name="Unusual Pattern",
-                reason_codes=["RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
-                count=40,
-                outcome="investigate",
-                deny_rate=0.08,
-                base_facts={
-                    "txn.pattern_matches_profile": False,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.amount_band": ["25k_100k", "100k_500k"],
-                    "customer.relationship_length": ["new", "recent"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.82,
-            ),
-            # Trade-Based ML - 30
-            SeedScenario(
-                code="TXN-TRADE",
-                name="Trade-Based ML",
-                reason_codes=["RC-TXN-TRADE-ML"],
-                count=30,
-                outcome="investigate",
-                deny_rate=0.12,
-                base_facts={
-                    "txn.type": "wire_international",
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.amount_band": ["100k_500k", "over_1m"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # Correspondent Banking - 80
-            SeedScenario(
-                code="TXN-CORRESP",
-                name="Correspondent Banking Risk",
-                reason_codes=["RC-TXN-CORRESP", "RC-TXN-FATF-GREY"],
-                count=80,
-                outcome="escalate",
-                deny_rate=0.12,
-                base_facts={
-                    "txn.cross_border": True,
-                    "txn.third_party_involved": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.destination_country_risk": ["high", "prohibited"],
-                    "txn.amount_band": ["100k_500k", "over_1m"],
-                    "customer.risk_level": ["medium", "high"],
-                    "customer.high_risk_industry": [True, False],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.88,
-            ),
-            # Round-Trip Transactions - 60
-            SeedScenario(
-                code="TXN-ROUNDTRIP",
-                name="Round-Trip Transaction",
-                reason_codes=["RC-TXN-ROUNDTRIP", "RC-TXN-RAPID"],
-                count=60,
-                outcome="investigate",
-                deny_rate=0.12,
-                base_facts={
-                    "txn.rapid_movement": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "txn.cross_border": [True, False],
-                    "txn.third_party_involved": [True, False],
-                    "txn.amount_band": ["25k_100k", "100k_500k"],
-                    "txn.pattern_matches_profile": [False, True],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.86,
-            ),
-            # Crypto Mixer Indicators - 60
-            SeedScenario(
-                code="TXN-CRYPTO-MIX",
-                name="Crypto Mixer Indicators",
-                reason_codes=["RC-TXN-CRYPTO-MIX", "RC-TXN-CRYPTO-UNHOSTED"],
-                count=60,
-                outcome="investigate",
-                deny_rate=0.12,
-                base_facts={
-                    "txn.type": "crypto",
-                    "crypto.mixer_indicators": True,
-                },
-                variable_facts={
-                    "crypto.wallet_type": ["unhosted", "hosted"],
-                    "crypto.exchange_regulated": [True, False],
-                    "txn.amount_band": ["10k_25k", "25k_100k"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # Prior SAR History - 50
-            SeedScenario(
-                code="TXN-SAR-HIST",
-                name="Prior SAR History",
-                reason_codes=["RC-TXN-SAR-HISTORY", "RC-TXN-UNUSUAL"],
-                count=50,
-                outcome="escalate",
-                deny_rate=0.10,
-                base_facts={
-                    "txn.pattern_matches_profile": False,
-                    "screening.adverse_media": False,
-                },
-                variable_facts={
-                    "customer.risk_level": ["medium", "high"],
-                    "txn.amount_band": ["25k_100k", "100k_500k"],
-                    "txn.third_party_involved": [True, False],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.86,
-            ),
-            # Prior Account Closure - 50
-            SeedScenario(
-                code="TXN-PRIOR-CLOSURE",
-                name="Prior Account Closure",
-                reason_codes=["RC-TXN-PRIOR-CLOSURE", "RC-TXN-STRUCT"],
-                count=50,
-                outcome="escalate",
-                deny_rate=0.15,
-                base_facts={
-                    "txn.just_below_threshold": True,
-                },
-                variable_facts={
-                    "txn.multiple_same_day": [True, False],
-                    "txn.amount_band": ["3k_10k", "10k_25k"],
-                    "customer.relationship_length": ["new", "recent"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # PEP Related Party - 50
-            SeedScenario(
-                code="TXN-PEP-RCA",
-                name="PEP Related Party",
-                reason_codes=["RC-TXN-PEP-RCA", "RC-TXN-PEP"],
-                count=50,
-                outcome="escalate",
-                deny_rate=0.08,
-                base_facts={
-                    "customer.pep": True,
-                },
-                variable_facts={
-                    "customer.pep_type": ["rca", "foreign"],
-                    "txn.amount_band": ["25k_100k", "100k_500k"],
-                    "customer.risk_level": ["medium", "high"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.87,
-            ),
-        ],
-    )
-
-
-def create_kyc_onboarding_seed_config() -> SeedConfig:
-    """
-    Create seed configuration for KYC Onboarding.
-
-    Generates 675 precedents across 12 scenario categories.
-    """
-    return SeedConfig(
-        category="kyc",
-        schema_id="decisiongraph:aml:kyc:v1",
-        registry_id="decisiongraph:aml:kyc:v1",
-        jurisdiction="CA",
-        scenarios=[
-            # Standard Approvals - 150
-            SeedScenario(
-                code="KYC-STANDARD",
-                name="Standard Approval",
-                reason_codes=["RC-KYC-COMPLETE", "RC-KYC-LOW-RISK"],
-                count=150,
-                outcome="approve",
-                base_facts={
-                    "kyc.id_verified": True,
-                    "kyc.address_verified": True,
-                    "screening.sanctions_match": False,
-                    "screening.adverse_media": False,
-                },
-                variable_facts={
-                    "customer.type": ["individual", "sole_prop", "corporation"],
-                    "customer.risk_level": ["low", "medium"],
-                },
-                appeal_rate=0.04,
-                upheld_rate=0.95,
-                reporting="NO_REPORT",
-            ),
-            # PEP Handling - 80
-            SeedScenario(
-                code="KYC-PEP",
-                name="PEP Onboarding",
-                reason_codes=["RC-KYC-PEP-APPROVED", "RC-KYC-PENDING-EDD"],
-                count=80,
-                outcome="escalate",
-                deny_rate=0.18,
-                base_facts={
-                    "customer.pep": True,
-                    "kyc.id_verified": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "customer.pep_type": ["domestic", "foreign", "international_org"],
-                    "edd.complete": [True, False],
-                    "edd.senior_approval": [True, False],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.87,
-            ),
-            # High-Risk Industry - 70
-            SeedScenario(
-                code="KYC-HRI",
-                name="High-Risk Industry",
-                reason_codes=["RC-KYC-MSB", "RC-KYC-CRYPTO-VASP"],
-                count=70,
-                outcome="escalate",
-                deny_rate=0.15,
-                base_facts={
-                    "customer.high_risk_industry": True,
-                    "kyc.id_verified": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "customer.industry_type": ["msb", "crypto", "gaming", "precious_metals"],
-                    "edd.complete": [True, False],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # Missing Documentation - 50
-            SeedScenario(
-                code="KYC-MISSING",
-                name="Missing Documentation",
-                reason_codes=["RC-KYC-PENDING-ID", "RC-KYC-PENDING-BO", "RC-KYC-PENDING-ADDR"],
-                count=50,
-                outcome="hold",
-                deny_rate=0.20,
-                base_facts={
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "kyc.id_verified": [True, False],
-                    "kyc.address_verified": [True, False],
-                    "kyc.beneficial_owners_identified": [True, False],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.80,
-            ),
-            # Adverse Media - 50
-            SeedScenario(
-                code="KYC-ADVERSE",
-                name="Adverse Media",
-                reason_codes=["RC-KYC-ADVERSE-MINOR", "RC-KYC-ADVERSE-MAJOR"],
-                count=50,
-                outcome="escalate",
-                deny_rate=0.40,
-                base_facts={
-                    "screening.adverse_media": True,
-                    "screening.sanctions_match": False,
-                    "kyc.id_verified": True,
-                },
-                variable_facts={
-                    "screening.adverse_media_severity": ["minor", "moderate", "major"],
-                },
-                appeal_rate=0.24,
-                upheld_rate=0.80,
-            ),
-            # Shell Company - 30
-            SeedScenario(
-                code="KYC-SHELL",
-                name="Shell Company Indicators",
-                reason_codes=["RC-KYC-SHELL", "RC-KYC-SHELL-DECLINE"],
-                count=30,
-                outcome="escalate",
-                deny_rate=0.60,
-                base_facts={
-                    "customer.type": "corporation",
-                    "kyc.id_verified": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "shell.nominee_directors": [True, False],
-                    "shell.registered_agent_only": [True, False],
-                    "shell.no_physical_presence": [True, False],
-                },
-                appeal_rate=0.27,
-                upheld_rate=0.85,
-            ),
-            # Sanctions Decline - 20
-            SeedScenario(
-                code="KYC-SANCTION",
-                name="Sanctions Match",
-                reason_codes=["RC-KYC-SANCTION"],
-                count=20,
-                outcome="deny",
-                deny_rate=1.0,
-                base_facts={
-                    "screening.sanctions_match": True,
-                },
-                variable_facts={
-                    "customer.type": ["individual", "corporation"],
-                },
-                appeal_rate=0.10,
-                upheld_rate=0.95,
-                disposition_basis="MANDATORY",
-            ),
-            # Expired / Missing ID - 60
-            SeedScenario(
-                code="KYC-ID-EXPIRED",
-                name="Expired or Missing ID",
-                reason_codes=["RC-KYC-EXPIRED-ID", "RC-KYC-MISSING-ID"],
-                count=60,
-                outcome="hold",
-                deny_rate=0.15,
-                base_facts={
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "kyc.id_verified": [True, False],
-                    "kyc.id_expired": [True, False],
-                    "kyc.id_type": ["passport", "driver_license", "national_id"],
-                    "kyc.address_verified": [True, False],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.82,
-            ),
-            # Source of Wealth Pending - 50
-            SeedScenario(
-                code="KYC-SOW-PENDING",
-                name="Source of Wealth Pending",
-                reason_codes=["RC-KYC-PENDING-SOW", "RC-KYC-PENDING-EDD"],
-                count=50,
-                outcome="hold",
-                deny_rate=0.12,
-                base_facts={
-                    "kyc.id_verified": True,
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "kyc.source_of_wealth_documented": [True, False],
-                    "kyc.source_of_funds_documented": [True, False],
-                    "edd.required": [True, False],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.84,
-            ),
-            # Outside Risk Appetite - 40
-            SeedScenario(
-                code="KYC-APPETITE",
-                name="Outside Risk Appetite",
-                reason_codes=["RC-KYC-OUTSIDE-APPETITE"],
-                count=40,
-                outcome="deny",
-                deny_rate=0.65,
-                base_facts={
-                    "customer.risk_level": "high",
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "customer.jurisdiction": ["high_risk", "offshore", "unknown"],
-                    "customer.cash_intensive": [True, False],
-                },
-                appeal_rate=0.22,
-                upheld_rate=0.80,
-            ),
-            # PEP Declined - 35
-            SeedScenario(
-                code="KYC-PEP-DECLINE",
-                name="PEP Declined",
-                reason_codes=["RC-KYC-PEP-DECLINED"],
-                count=35,
-                outcome="deny",
-                deny_rate=0.80,
-                base_facts={
-                    "customer.pep": True,
-                    "edd.complete": False,
-                    "edd.senior_approval": False,
-                },
-                variable_facts={
-                    "customer.pep_level": ["head_of_state", "senior_official"],
-                    "customer.pep_type": ["foreign", "international_org"],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.88,
-            ),
-            # Prior SAR History - 40
-            SeedScenario(
-                code="KYC-SAR-HIST",
-                name="Prior SAR History",
-                reason_codes=["RC-KYC-SAR-HISTORY", "RC-KYC-OUTSIDE-APPETITE"],
-                count=40,
-                outcome="escalate",
-                deny_rate=0.45,
-                base_facts={
-                    "customer.risk_level": "high",
-                    "screening.sanctions_match": False,
-                },
-                variable_facts={
-                    "customer.jurisdiction": ["high_risk", "offshore"],
-                    "customer.cash_intensive": [True, False],
-                    "edd.required": [True, False],
-                },
-                appeal_rate=0.22,
-                upheld_rate=0.83,
-            ),
-        ],
-    )
-
-
-def create_reporting_seed_config() -> SeedConfig:
-    """
-    Create seed configuration for Reporting.
-
-    Generates 300 precedents across 7 scenario categories.
-    """
-    return SeedConfig(
-        category="report",
-        schema_id="decisiongraph:aml:report:v1",
-        registry_id="decisiongraph:aml:report:v1",
-        jurisdiction="CA",
-        scenarios=[
-            # LCTR - 60
-            SeedScenario(
-                code="RPT-LCTR",
-                name="Large Cash Transaction",
-                reason_codes=["RC-RPT-LCTR", "RC-RPT-LCTR-MULTI"],
-                count=60,
-                outcome="report_lctr",
-                base_facts={
-                    "txn.cash_involved": True,
-                    "terrorist.listed_entity": False,
-                },
-                variable_facts={
-                    "txn.cash_amount_band": ["10k_25k", "25k_50k", "50k_plus"],
-                    "txn.multiple_cash_same_day": [True, False],
-                },
-                appeal_rate=0.05,
-                upheld_rate=0.95,
-                disposition_basis="MANDATORY",
-                reporting="FILE_LCTR",
-            ),
-            # STR - 100
-            SeedScenario(
-                code="RPT-STR",
-                name="Suspicious Transaction",
-                reason_codes=["RC-RPT-STR", "RC-RPT-STR-STRUCT", "RC-RPT-STR-UNUSUAL"],
-                count=100,
-                outcome="report_str",
-                deny_rate=0.03,
-                base_facts={
-                    "terrorist.listed_entity": False,
-                },
-                variable_facts={
-                    "suspicious.structuring": [True, False],
-                    "suspicious.unusual_pattern": [True, False],
-                    "suspicious.third_party": [True, False],
-                    "suspicious.layering": [True, False],
-                    "suspicious.indicator_count": [2, 3, 4, 5],
-                },
-                appeal_rate=0.15,
-                upheld_rate=0.85,
-                reporting="FILE_STR",
-            ),
-            # TPR - 20
-            SeedScenario(
-                code="RPT-TPR",
-                name="Terrorist Property",
-                reason_codes=["RC-RPT-TPR"],
-                count=20,
-                outcome="report_tpr",
-                deny_rate=0.0,
-                base_facts={
-                    "terrorist.property_indicators": True,
-                },
-                variable_facts={
-                    "terrorist.listed_entity": [True, False],
-                    "terrorist.associated_entity": [True, False],
-                },
-                appeal_rate=0.10,
-                upheld_rate=0.95,
-                disposition_basis="MANDATORY",
-                reporting="FILE_TPR",
-            ),
-            # No Report - 20
-            SeedScenario(
-                code="RPT-NONE",
-                name="No Report Required",
-                reason_codes=["RC-RPT-NONE", "RC-RPT-NONE-EXPLAINED"],
-                count=20,
-                outcome="no_report",
-                base_facts={
-                    "suspicious.unusual_explained": True,
-                    "terrorist.listed_entity": False,
-                    "txn.cash_involved": False,
-                },
-                variable_facts={
-                    "suspicious.indicator_count": [0, 1],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.75,
-                reporting="NO_REPORT",
-            ),
-            # STR - Layering - 50
-            SeedScenario(
-                code="RPT-STR-LAYER",
-                name="Suspicious Transaction - Layering",
-                reason_codes=["RC-RPT-STR-LAYER", "RC-RPT-STR-UNUSUAL"],
-                count=50,
-                outcome="report_str",
-                deny_rate=0.04,
-                base_facts={
-                    "suspicious.layering": True,
-                    "terrorist.listed_entity": False,
-                },
-                variable_facts={
-                    "suspicious.indicator_count": [3, 4, 5],
-                    "suspicious.source_unclear": [True, False],
-                    "suspicious.purpose_unclear": [True, False],
-                },
-                appeal_rate=0.16,
-                upheld_rate=0.84,
-                reporting="FILE_STR",
-            ),
-            # STR - Third Party - 30
-            SeedScenario(
-                code="RPT-STR-3RD",
-                name="Suspicious Transaction - Third Party",
-                reason_codes=["RC-RPT-STR-3RD", "RC-RPT-STR-STRUCT"],
-                count=30,
-                outcome="report_str",
-                deny_rate=0.03,
-                base_facts={
-                    "suspicious.third_party": True,
-                    "suspicious.structuring": True,
-                },
-                variable_facts={
-                    "suspicious.indicator_count": [2, 3, 4],
-                    "suspicious.unusual_pattern": [True, False],
-                },
-                appeal_rate=0.16,
-                upheld_rate=0.84,
-                reporting="FILE_STR",
-            ),
-            # Approve with Reporting - 20
-            SeedScenario(
-                code="RPT-APPROVE",
-                name="Approve with Reporting",
-                reason_codes=["RC-RPT-APPROVE-REPORT", "RC-RPT-LCTR"],
-                count=20,
-                outcome="report_lctr",
-                base_facts={
-                    "txn.cash_involved": True,
-                    "terrorist.listed_entity": False,
-                },
-                variable_facts={
-                    "txn.cash_amount_band": ["10k_25k", "25k_50k", "50k_plus"],
-                    "txn.multiple_cash_same_day": [True, False],
-                },
-                appeal_rate=0.08,
-                upheld_rate=0.90,
-                disposition_basis="MANDATORY",
-                reporting="FILE_LCTR",
-            ),
-        ],
-    )
-
-
-def create_screening_seed_config() -> SeedConfig:
-    """
-    Create seed configuration for Sanctions/Screening.
-
-    Generates 525 precedents across 9 scenario categories.
-    """
-    return SeedConfig(
-        category="screening",
-        schema_id="decisiongraph:aml:screening:v1",
-        registry_id="decisiongraph:aml:screening:v1",
-        jurisdiction="GLOBAL",
-        scenarios=[
-            # True Positive - 60
-            SeedScenario(
-                code="SCR-TP",
-                name="True Positive",
-                reason_codes=["RC-SCR-SANCTION", "RC-SCR-OFAC", "RC-SCR-SEMA"],
-                count=60,
-                outcome="block",
-                deny_rate=1.0,
-                base_facts={
-                    "match.name_match_type": "exact",
-                },
-                variable_facts={
-                    "match.list_source": ["ofac", "un", "ca_sema", "eu"],
-                    "match.score_band": ["high", "exact"],
-                },
-                appeal_rate=0.08,
-                upheld_rate=0.95,
-                disposition_basis="MANDATORY",
-                reporting="FILE_STR",
-            ),
-            # False Positive - 120
-            SeedScenario(
-                code="SCR-FP",
-                name="False Positive",
-                reason_codes=["RC-SCR-FP", "RC-SCR-FP-NAME", "RC-SCR-FP-DOB"],
-                count=120,
-                outcome="clear",
-                base_facts={
-                    "match.secondary_identifiers": False,
-                },
-                variable_facts={
-                    "match.name_match_type": ["fuzzy", "partial", "alias"],
-                    "match.score_band": ["low", "medium"],
-                },
-                appeal_rate=0.17,
-                upheld_rate=0.85,
-                reporting="NO_REPORT",
-            ),
-            # Ownership Chain - 60
-            SeedScenario(
-                code="SCR-OWN",
-                name="Ownership Chain",
-                reason_codes=["RC-SCR-OWN-50", "RC-SCR-OWN-CLEAR"],
-                count=60,
-                outcome="escalate",
-                deny_rate=0.40,
-                variable_facts={
-                    "ownership.direct_pct_band": ["minority", "significant", "controlling"],
-                    "ownership.aggregated_over_50": [True, False],
-                    "ownership.chain_depth": ["1", "2", "3"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # De-listed - 40
-            SeedScenario(
-                code="SCR-DELIST",
-                name="De-listed Entity",
-                reason_codes=["RC-SCR-DELIST-CLEAR", "RC-SCR-DELIST-MONITOR"],
-                count=40,
-                outcome="approve",
-                base_facts={
-                    "delisted.status": True,
-                },
-                variable_facts={
-                    "delisted.date_band": ["recent", "moderate", "old"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-                reporting="NO_REPORT",
-            ),
-            # Secondary Sanctions - 40
-            SeedScenario(
-                code="SCR-SECONDARY",
-                name="Secondary Sanctions",
-                reason_codes=["RC-SCR-SECONDARY"],
-                count=40,
-                outcome="escalate",
-                deny_rate=0.25,
-                base_facts={
-                    "secondary.exposure": True,
-                },
-                variable_facts={
-                    "secondary.jurisdiction": ["iran", "russia", "dprk"],
-                },
-                appeal_rate=0.15,
-                upheld_rate=0.88,
-                disposition_basis="MANDATORY",
-            ),
-            # PEP Screening - 30
-            SeedScenario(
-                code="SCR-PEP",
-                name="PEP Screening",
-                reason_codes=["RC-SCR-PEP-CONF", "RC-SCR-PEP-FP"],
-                count=30,
-                outcome="escalate",
-                base_facts={
-                    "match.type": "pep",
-                },
-                variable_facts={
-                    "match.score_band": ["medium", "high", "exact"],
-                },
-                appeal_rate=0.17,
-                upheld_rate=0.85,
-            ),
-            # Alias / Partial Match - 70
-            SeedScenario(
-                code="SCR-ALIAS",
-                name="Alias or Partial Match",
-                reason_codes=["RC-SCR-FP-PARTIAL", "RC-SCR-FP-NAME"],
-                count=70,
-                outcome="clear",
-                base_facts={
-                    "match.secondary_identifiers": False,
-                    "match.type": "sanctions",
-                },
-                variable_facts={
-                    "match.name_match_type": ["alias", "partial", "fuzzy"],
-                    "match.score_band": ["low", "medium"],
-                    "match.list_source": ["ofac", "un", "eu"],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.84,
-                reporting="NO_REPORT",
-            ),
-            # Adverse Media Screening - 55
-            SeedScenario(
-                code="SCR-ADVERSE",
-                name="Adverse Media Screening",
-                reason_codes=["RC-SCR-ADVERSE"],
-                count=55,
-                outcome="escalate",
-                deny_rate=0.18,
-                base_facts={
-                    "match.type": "adverse_media",
-                },
-                variable_facts={
-                    "match.score_band": ["medium", "high"],
-                    "match.name_match_type": ["fuzzy", "partial"],
-                    "entity.type": ["individual", "corporate"],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.83,
-            ),
-            # Cleared After Review - 50
-            SeedScenario(
-                code="SCR-CLEAR",
-                name="Cleared After Review",
-                reason_codes=["RC-SCR-CLEAR", "RC-SCR-DELIST-CLEAR"],
-                count=50,
-                outcome="approve",
-                base_facts={
-                    "match.secondary_identifiers": True,
-                },
-                variable_facts={
-                    "match.name_match_type": ["exact", "fuzzy"],
-                    "match.score_band": ["medium", "high"],
-                    "match.list_source": ["ofac", "un", "ca_sema", "eu"],
-                },
-                appeal_rate=0.15,
-                upheld_rate=0.88,
-                reporting="NO_REPORT",
-            ),
-        ],
-    )
-
-
-def create_monitoring_seed_config() -> SeedConfig:
-    """
-    Create seed configuration for Ongoing Monitoring.
-
-    Generates 450 precedents across 9 scenario categories.
-    """
-    return SeedConfig(
-        category="monitoring",
-        schema_id="decisiongraph:aml:monitoring:v1",
-        registry_id="decisiongraph:aml:monitoring:v1",
-        jurisdiction="CA",
-        scenarios=[
-            # Activity Triggers - 80
-            SeedScenario(
-                code="MON-ACTIVITY",
-                name="Activity Trigger",
-                reason_codes=["RC-MON-SPIKE", "RC-MON-NEW-PATTERN"],
-                count=80,
-                outcome="investigate",
-                deny_rate=0.05,
-                variable_facts={
-                    "activity.volume_change_band": ["moderate", "significant", "extreme"],
-                    "activity.value_change_band": ["moderate", "significant", "extreme"],
-                    "activity.new_pattern": [True, False],
-                },
-                appeal_rate=0.15,
-                upheld_rate=0.87,
-            ),
-            # Periodic Review - 70
-            SeedScenario(
-                code="MON-PERIODIC",
-                name="Periodic Review",
-                reason_codes=["RC-MON-REVIEW-CLEAR", "RC-MON-REVIEW-UPGRADE"],
-                count=70,
-                outcome="approve",
-                base_facts={
-                    "review.type": "annual",
-                },
-                variable_facts={
-                    "review.risk_change": ["unchanged", "upgraded", "downgraded"],
-                    "review.kyc_refresh_needed": [True, False],
-                },
-                appeal_rate=0.11,
-                upheld_rate=0.90,
-                reporting="NO_REPORT",
-            ),
-            # Profile Changes - 60
-            SeedScenario(
-                code="MON-PROFILE",
-                name="Profile Change",
-                reason_codes=["RC-MON-PROFILE-CHG", "RC-MON-BO-CHG"],
-                count=60,
-                outcome="escalate",
-                deny_rate=0.05,
-                variable_facts={
-                    "profile.address_change": [True, False],
-                    "profile.bo_change": [True, False],
-                    "profile.industry_change": [True, False],
-                },
-                appeal_rate=0.17,
-                upheld_rate=0.85,
-            ),
-            # Dormant Reactivation - 50
-            SeedScenario(
-                code="MON-DORMANT",
-                name="Dormant Reactivation",
-                reason_codes=["RC-MON-DORM-REACT", "RC-MON-DORM-SUSP"],
-                count=50,
-                outcome="investigate",
-                deny_rate=0.08,
-                variable_facts={
-                    "dormant.months_inactive": ["short", "medium", "long", "very_long"],
-                    "dormant.reactivation_pattern": ["normal", "unusual", "suspicious"],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.82,
-            ),
-            # Exit Decisions - 40
-            SeedScenario(
-                code="MON-EXIT",
-                name="Exit Decision",
-                reason_codes=["RC-MON-EXIT", "RC-MON-EXIT-RISK", "RC-MON-EXIT-SAR"],
-                count=40,
-                outcome="exit",
-                deny_rate=0.0,
-                base_facts={
-                    "exit.decision": "exit_recommended",
-                },
-                variable_facts={
-                    "exit.reason": ["risk", "sar", "regulatory"],
-                    "exit.sar_related": [True, False],
-                },
-                appeal_rate=0.20,
-                upheld_rate=0.85,
-            ),
-            # New Jurisdiction Activity - 50
-            SeedScenario(
-                code="MON-NEW-JURIS",
-                name="New Jurisdiction Activity",
-                reason_codes=["RC-MON-NEW-JURIS", "RC-MON-NEW-PATTERN"],
-                count=50,
-                outcome="investigate",
-                deny_rate=0.06,
-                base_facts={
-                    "activity.new_jurisdiction": True,
-                },
-                variable_facts={
-                    "activity.new_pattern": [True, False],
-                    "activity.new_counterparty_type": ["foreign", "unknown", "shell"],
-                },
-                appeal_rate=0.16,
-                upheld_rate=0.86,
-            ),
-            # Review Downgrade - 40
-            SeedScenario(
-                code="MON-REVIEW-DOWN",
-                name="Periodic Review Downgrade",
-                reason_codes=["RC-MON-REVIEW-DOWNGRADE"],
-                count=40,
-                outcome="approve",
-                base_facts={
-                    "review.type": "annual",
-                },
-                variable_facts={
-                    "review.risk_change": ["downgraded"],
-                    "review.kyc_refresh_needed": [False, True],
-                },
-                appeal_rate=0.10,
-                upheld_rate=0.90,
-                reporting="NO_REPORT",
-            ),
-            # KYC Refresh Needed - 40
-            SeedScenario(
-                code="MON-KYC-REFRESH",
-                name="KYC Refresh Needed",
-                reason_codes=["RC-MON-KYC-REFRESH", "RC-MON-REVIEW-UPGRADE"],
-                count=40,
-                outcome="investigate",
-                deny_rate=0.04,
-                base_facts={
-                    "review.kyc_refresh_needed": True,
-                },
-                variable_facts={
-                    "review.type": ["regulatory", "trigger_based"],
-                    "review.risk_change": ["upgraded", "unchanged"],
-                },
-                appeal_rate=0.15,
-                upheld_rate=0.86,
-            ),
-            # Exit Regulatory - 20
-            SeedScenario(
-                code="MON-EXIT-REG",
-                name="Exit Regulatory",
-                reason_codes=["RC-MON-EXIT-REG"],
-                count=20,
-                outcome="exit",
-                deny_rate=0.0,
-                base_facts={
-                    "exit.reason": "regulatory",
-                },
-                variable_facts={
-                    "exit.sar_related": [True, False],
-                },
-                appeal_rate=0.18,
-                upheld_rate=0.86,
-            ),
-        ],
+from datetime import datetime, timezone, timedelta
+from uuid import uuid4
+
+from .judgment import JudgmentPayload, AnchorFact
+
+
+# ─── Amount bands and channels for variety across copies ──────────────────
+
+AMOUNT_BANDS = ["under_10k", "10k_50k", "50k_100k", "100k_500k", "over_500k"]
+CHANNELS = ["wire", "cash", "eft", "cheque", "crypto"]
+
+
+# ─── Schema selection (mirrors service/main.py _select_schema_id_for_codes) ──
+
+def _schema_for_codes(codes: list[str]) -> str:
+    """Pick fingerprint schema from reason code prefixes."""
+    prefixes = {c.split("-")[1].upper() for c in codes if c.startswith("RC-") and "-" in c}
+    if "RPT" in prefixes:
+        return "decisiongraph:aml:report:v1"
+    if "SCR" in prefixes:
+        return "decisiongraph:aml:screening:v1"
+    if "KYC" in prefixes:
+        return "decisiongraph:aml:kyc:v1"
+    if "MON" in prefixes:
+        return "decisiongraph:aml:monitoring:v1"
+    return "decisiongraph:aml:txn:v1"
+
+
+# ─── The scenarios ───────────────────────────────────────────────────────────
+# Each dict = one type of resolved case from the bank's history.
+# Fields:
+#   name      — human label (becomes scenario_code)
+#   codes     — reason codes (determines schema + matching overlap)
+#   outcome   — pay | deny | escalate  (valid JudgmentPayload codes)
+#   basis     — MANDATORY | DISCRETIONARY
+#   reporting — NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR
+#   facts     — anchor facts for similarity scoring
+#   count     — how many historical cases of this type
+
+SCENARIOS = [
+    # ━━━ TXN: Normal transactions ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "normal_approved",
+        "codes": ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "customer.relationship_length": "established",
+            "screening.sanctions_match": False,
+            "txn.cross_border": False,
+            "txn.destination_country_risk": "low",
+        },
+        "count": 400,
+    },
+    {
+        "name": "normal_approved_corporate",
+        "codes": ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "corporation",
+            "customer.pep": False,
+            "customer.relationship_length": "established",
+            "screening.sanctions_match": False,
+            "txn.cross_border": False,
+            "txn.destination_country_risk": "low",
+        },
+        "count": 200,
+    },
+
+    # ━━━ TXN: Structuring ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "structuring_blocked_str",
+        "codes": ["RC-TXN-STRUCT", "RC-TXN-STRUCT-MULTI"],
+        "outcome": "deny",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.cross_border": False,
+        },
+        "count": 150,
+    },
+    {
+        "name": "structuring_edd",
+        "codes": ["RC-TXN-STRUCT", "RC-TXN-STRUCT-MULTI"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 100,
+    },
+
+    # ━━━ TXN: PEP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "pep_approved",
+        "codes": ["RC-TXN-PEP", "RC-TXN-PEP-EDD"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": True,
+            "customer.relationship_length": "established",
+            "screening.sanctions_match": False,
+            "txn.destination_country_risk": "low",
+        },
+        "count": 200,
+    },
+    {
+        "name": "pep_edd",
+        "codes": ["RC-TXN-PEP", "RC-TXN-PEP-EDD"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": True,
+            "customer.relationship_length": "new",
+            "screening.sanctions_match": False,
+            "txn.destination_country_risk": "medium",
+        },
+        "count": 200,
+    },
+    {
+        "name": "pep_blocked_str",
+        "codes": ["RC-TXN-PEP", "RC-TXN-PEP-EDD"],
+        "outcome": "deny",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": True,
+            "customer.relationship_length": "new",
+            "screening.sanctions_match": False,
+            "txn.destination_country_risk": "high",
+        },
+        "count": 100,
+    },
+
+    # ━━━ TXN: Large cash + LCTR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "large_cash_lctr",
+        "codes": ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_LCTR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.type": "cash",
+            "txn.amount_band": "10k_50k",
+            "txn.cross_border": False,
+        },
+        "count": 200,
+    },
+
+    # ━━━ TXN: FATF high-risk jurisdiction ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "fatf_grey_blocked",
+        "codes": ["RC-TXN-FATF-GREY"],
+        "outcome": "deny",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+        },
+        "count": 100,
+    },
+    {
+        "name": "fatf_grey_edd",
+        "codes": ["RC-TXN-FATF-GREY"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+        },
+        "count": 150,
+    },
+
+    # ━━━ TXN: Layering / Rapid movement ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "layering_blocked_str",
+        "codes": ["RC-TXN-LAYER", "RC-TXN-RAPID"],
+        "outcome": "deny",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 100,
+    },
+    {
+        "name": "layering_edd",
+        "codes": ["RC-TXN-LAYER", "RC-TXN-RAPID"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 100,
+    },
+
+    # ━━━ TXN: Crypto ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "crypto_edd",
+        "codes": ["RC-TXN-CRYPTO-UNREG", "RC-TXN-CRYPTO-UNHOSTED"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.type": "crypto",
+        },
+        "count": 100,
+    },
+    {
+        "name": "crypto_blocked",
+        "codes": ["RC-TXN-CRYPTO-UNREG", "RC-TXN-CRYPTO-UNHOSTED"],
+        "outcome": "deny",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.type": "crypto",
+        },
+        "count": 50,
+    },
+
+    # ━━━ TXN: Unusual activity ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "unusual_edd",
+        "codes": ["RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 150,
+    },
+
+    # ━━━ KYC: Onboarding & due diligence ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "kyc_pep_approved",
+        "codes": ["RC-KYC-PEP-APPROVED", "RC-TXN-PEP"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": True,
+            "customer.relationship_length": "established",
+            "screening.sanctions_match": False,
+        },
+        "count": 200,
+    },
+    {
+        "name": "kyc_adverse_minor",
+        "codes": ["RC-KYC-ADVERSE-MINOR"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 100,
+    },
+    {
+        "name": "kyc_adverse_major",
+        "codes": ["RC-KYC-ADVERSE-MAJOR"],
+        "outcome": "deny",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 50,
+    },
+    {
+        "name": "kyc_new_customer",
+        "codes": ["RC-KYC-ONBOARD", "RC-KYC-NEW"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "customer.relationship_length": "new",
+            "screening.sanctions_match": False,
+        },
+        "count": 200,
+    },
+
+    # ━━━ Screening: Sanctions ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "sanctions_confirmed",
+        "codes": ["RC-SCR-SANCTION", "RC-SCR-OFAC"],
+        "outcome": "deny",
+        "basis": "MANDATORY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": True,
+        },
+        "count": 200,
+    },
+    {
+        "name": "sanctions_false_positive",
+        "codes": ["RC-SCR-SANCTION", "RC-SCR-OFAC"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 200,
+    },
+
+    # ━━━ Monitoring: Ongoing alerts ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "monitoring_alert_edd",
+        "codes": ["RC-MON-ALERT", "RC-MON-UNUSUAL"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 200,
+    },
+    {
+        "name": "monitoring_velocity",
+        "codes": ["RC-MON-VELOCITY", "RC-MON-ALERT"],
+        "outcome": "escalate",
+        "basis": "DISCRETIONARY",
+        "reporting": "NO_REPORT",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 100,
+    },
+
+    # ━━━ Reporting: Filed reports ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {
+        "name": "str_filed",
+        "codes": ["RC-RPT-STR", "RC-RPT-SAR"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_STR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+        },
+        "count": 100,
+    },
+    {
+        "name": "lctr_filed",
+        "codes": ["RC-RPT-LCTR"],
+        "outcome": "pay",
+        "basis": "DISCRETIONARY",
+        "reporting": "FILE_LCTR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": False,
+            "txn.type": "cash",
+        },
+        "count": 100,
+    },
+    {
+        "name": "tpr_filed",
+        "codes": ["RC-RPT-TPR"],
+        "outcome": "deny",
+        "basis": "MANDATORY",
+        "reporting": "FILE_TPR",
+        "facts": {
+            "customer.type": "individual",
+            "customer.pep": False,
+            "screening.sanctions_match": True,
+        },
+        "count": 50,
+    },
+]
+
+
+# ─── Generator ───────────────────────────────────────────────────────────────
+
+def _build_anchor_facts(facts: dict, idx: int) -> list[AnchorFact]:
+    """Turn a flat dict into AnchorFact list, adding variety for amount/channel."""
+    result = []
+    for field_id, value in facts.items():
+        result.append(AnchorFact(
+            field_id=field_id,
+            value=value,
+            label=field_id.replace(".", " ").replace("_", " ").title(),
+        ))
+
+    # Add amount band variety if not pinned by the scenario
+    if "txn.amount_band" not in facts:
+        band = AMOUNT_BANDS[idx % len(AMOUNT_BANDS)]
+        result.append(AnchorFact(field_id="txn.amount_band", value=band, label="Txn Amount Band"))
+
+    # Add channel variety if not pinned by the scenario
+    if "txn.type" not in facts:
+        channel = CHANNELS[idx % len(CHANNELS)]
+        result.append(AnchorFact(field_id="txn.type", value=channel, label="Txn Type"))
+
+    return result
+
+
+def _make_seed(scenario: dict, idx: int, salt: str) -> JudgmentPayload:
+    """Create one JudgmentPayload from a scenario dict + index."""
+    precedent_id = str(uuid4())
+    case_id = f"SEED-{scenario['name']}-{idx:04d}"
+    case_id_hash = hashlib.sha256(f"{salt}:{case_id}".encode()).hexdigest()
+
+    anchor_facts = _build_anchor_facts(scenario["facts"], idx)
+    facts_str = "|".join(f"{af.field_id}={af.value}" for af in anchor_facts)
+    fingerprint_hash = hashlib.sha256(f"{salt}:{facts_str}".encode()).hexdigest()
+
+    # Spread decided_at over the last 12 months for recency variety
+    days_ago = (idx * 7) % 365
+    decided_at = (
+        datetime.now(timezone.utc) - timedelta(days=days_ago)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    return JudgmentPayload(
+        precedent_id=precedent_id,
+        case_id_hash=case_id_hash,
+        jurisdiction_code="CA-ON",
+        fingerprint_hash=fingerprint_hash,
+        fingerprint_schema_id=_schema_for_codes(scenario["codes"]),
+        exclusion_codes=list(scenario["codes"]),
+        reason_codes=list(scenario["codes"]),
+        reason_code_registry_id="decisiongraph:aml:reason_codes:v1",
+        outcome_code=scenario["outcome"],
+        certainty="high",
+        anchor_facts=anchor_facts,
+        policy_pack_hash=hashlib.sha256(b"fincrime_canada_v2026").hexdigest()[:16],
+        policy_pack_id="fincrime_canada",
+        policy_version="2026.02.01",
+        decision_level="manager",
+        decided_at=decided_at,
+        decided_by_role="aml_analyst",
+        source_type="seed",
+        scenario_code=scenario["name"],
+        seed_category="aml",
+        disposition_basis=scenario["basis"],
+        reporting_obligation=scenario["reporting"],
     )
 
 
@@ -1574,62 +519,61 @@ def generate_all_banking_seeds(
     salt: str = "decisiongraph-banking-seed-v1",
     random_seed: int = 42,
 ) -> list[JudgmentPayload]:
+    """Generate all banking seed precedents.
+
+    Returns ~4,000 JudgmentPayload objects covering every AML
+    scenario the BYOC system can produce.
     """
-    Generate all banking seed precedents.
-
-    Args:
-        salt: Salt for fingerprint hashing
-        random_seed: Seed for random number generation
-
-    Returns:
-        List of 3,000 JudgmentPayload objects
-    """
-    fp_registry = AMLFingerprintSchemaRegistry()
-    rc_registry = AMLReasonCodeRegistry()
-    generator = SeedGenerator(fp_registry, rc_registry, salt, random_seed)
-
-    all_precedents = []
-
-    # Generate for each category
-    configs = [
-        create_txn_monitoring_seed_config(),    # 1,050
-        create_kyc_onboarding_seed_config(),    # 675
-        create_reporting_seed_config(),          # 300
-        create_screening_seed_config(),          # 525
-        create_monitoring_seed_config(),         # 450
-    ]
-
-    for config in configs:
-        precedents = generator.generate_from_config(config)
-        all_precedents.extend(precedents)
-
-    return all_precedents
+    seeds = []
+    for scenario in SCENARIOS:
+        for i in range(scenario["count"]):
+            seeds.append(_make_seed(scenario, i, salt))
+    return seeds
 
 
-# =============================================================================
-# Exports
-# =============================================================================
+# Backward-compat stubs for imports that reference old class names
+class SeedGeneratorError(Exception):
+    pass
+
+class SeedConfigError(SeedGeneratorError):
+    pass
+
+class SeedLoadError(SeedGeneratorError):
+    pass
+
+SeedScenario = dict
+SeedConfig = dict
+SeedGenerator = None
+
+
+def create_txn_monitoring_seed_config():
+    return None
+
+def create_kyc_onboarding_seed_config():
+    return None
+
+def create_reporting_seed_config():
+    return None
+
+def create_screening_seed_config():
+    return None
+
+def create_monitoring_seed_config():
+    return None
+
 
 __all__ = [
-    # Exceptions
     "SeedGeneratorError",
     "SeedConfigError",
     "SeedLoadError",
-
-    # Configuration
     "SeedScenario",
     "SeedConfig",
-
-    # Generator
     "SeedGenerator",
-
-    # Pre-built configs
     "create_txn_monitoring_seed_config",
     "create_kyc_onboarding_seed_config",
     "create_reporting_seed_config",
     "create_screening_seed_config",
     "create_monitoring_seed_config",
-
-    # Convenience function
     "generate_all_banking_seeds",
+    "SCENARIOS",
 ]

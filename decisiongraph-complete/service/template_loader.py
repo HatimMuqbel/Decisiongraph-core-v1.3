@@ -239,7 +239,7 @@ class TemplateLoader:
                 "decision": {
                     "verdict": matched_outcome.get("label"),
                     "action": matched_outcome.get("code"),
-                    "str_required": matched_outcome.get("decision") in ["block", "escalate", "investigate"],
+                    "str_required": matched_outcome.get("decision") == "block",
                 },
                 "gates": {
                     "gate1": {
@@ -346,7 +346,7 @@ class TemplateLoader:
 
                     decision_code = (matched_outcome.get("decision") or "").lower()
                     precedent_facts["gate1_allowed"] = decision_code != "block"
-                    precedent_facts["gate2_str_required"] = decision_code in {"block", "escalate", "investigate"}
+                    precedent_facts["gate2_str_required"] = decision_code == "block"
                     precedent_analysis = _query_precedents(
                         reason_codes,
                         raw_outcome,
