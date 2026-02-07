@@ -18,19 +18,14 @@ REFINEMENTS APPLIED:
 
 import sys
 from pathlib import Path
-from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from decisiongraph.escalation_gate import run_escalation_gate, EscalationDecision
-from decisiongraph.str_gate import run_str_gate, dual_gate_decision, STRDecision
-from decisiongraph.report_standards import (
-    get_threshold_wording,
-    get_ubo_evidence,
-    get_suspicion_wording,
-    build_str_rationale,
-    get_fintrac_indicators,
-)
+from decisiongraph.str_gate import run_str_gate, dual_gate_decision
+from decisiongraph.decision_pack import build_decision_pack
+from service.routers.report.pipeline import compile_report
 
 
 def build_case_inputs():
@@ -108,301 +103,6 @@ def build_case_inputs():
     }
 
 
-def render_report(inputs, esc_result, str_result, final_decision):
-    """Render the full E2E report with standardized wording."""
-
-    w = 80
-    lines = []
-
-    # Get instrument-specific wording
-    instrument = inputs["instrument_type"]
-    threshold_wording = get_threshold_wording(instrument)
-
-    # Header
-    lines.append("=" * w)
-    lines.append("TRANSACTION MONITORING ALERT REPORT (v2.1.1)")
-    lines.append("Alert ID: CAN-STR-2026-X9")
-    lines.append("=" * w)
-    lines.append("")
-
-    # Banner
-    verdict = final_decision["final_decision"]
-    str_required = "YES" if final_decision["str_required"] else "NO"
-
-    if verdict == "STR":
-        banner = "ESCALATE - STR FILING REQUIRED"
-    else:
-        banner = f"{verdict}"
-
-    lines.append("=" * w)
-    lines.append(f"  {banner}  ")
-    lines.append("=" * w)
-    lines.append("Alert ID:       CAN-STR-2026-X9")
-    lines.append("Case ID:        struct-maple-2026-002")
-    lines.append("Priority:       CRITICAL")
-    lines.append("Jurisdiction:   CA (PCMLTFA)")
-    lines.append(f"Processed:      {datetime.now().strftime('%Y-%m-%d')}")
-    lines.append("")
-
-    # Case Summary
-    lines.append("=" * w)
-    lines.append("CASE SUMMARY")
-    lines.append("=" * w)
-    lines.append("Customer:       Maple Leaf Global Trading Ltd.")
-    lines.append("Customer ID:    CORP-MAPLE-77")
-    lines.append("Type:           CORPORATE")
-    lines.append("Industry:       Import/Export (HIGH RISK)")
-    lines.append("Country:        CA")
-    lines.append("Risk Rating:    HIGH")
-    lines.append("Relationship:   2 months (NEW ACCOUNT)")
-    lines.append("")
-    lines.append("RED FLAGS IDENTIFIED:")
-    lines.append("  * Very new account (2 months tenure)")
-    lines.append("  * UBO discrepancy detected")
-    lines.append("  * High-risk industry (Import/Export)")
-    lines.append("")
-
-    # Transaction Details
-    lines.append("=" * w)
-    lines.append("TRANSACTION DETAILS")
-    lines.append("=" * w)
-    lines.append("STRUCTURING PATTERN DETECTED:")
-    lines.append("")
-    lines.append("  Transaction 1:")
-    lines.append("    Amount:     CAD 9,500.00")
-    lines.append("    Time:       2026-01-28 09:00:00 UTC")
-    lines.append("    Type:       Branch Cash Deposit")
-    lines.append("    Method:     Cash")
-    lines.append("")
-    lines.append("  Transaction 2:")
-    lines.append("    Amount:     CAD 9,200.00")
-    lines.append("    Time:       2026-01-28 14:30:00 UTC")
-    lines.append("    Type:       Branch Cash Deposit")
-    lines.append("    Method:     Cash")
-    lines.append("")
-    lines.append("  TOTAL (24h):  CAD 18,700.00")
-    lines.append(f"  THRESHOLD:    {threshold_wording['threshold_name']}")
-    lines.append("")
-    lines.append(f"  PATTERN:      {threshold_wording['structuring_description']}")
-    lines.append("                within same business day = CLASSIC STRUCTURING")
-    lines.append("")
-
-    # Screening Results
-    lines.append("=" * w)
-    lines.append("SCREENING RESULTS")
-    lines.append("=" * w)
-    lines.append("Sanctions:      NO MATCH")
-    lines.append("Adverse Media:  NONE FOUND")
-    lines.append("PEP Status:     NOT PEP")
-    lines.append("")
-
-    # 6-Layer Taxonomy
-    lines.append("=" * w)
-    lines.append("6-LAYER DECISION TAXONOMY ANALYSIS (v2.1.1)")
-    lines.append("=" * w)
-    lines.append("")
-    lines.append("CRITICAL RULES ENFORCED:")
-    lines.append("  * Hard stops ONLY from Layer 1 facts (confirmed match, not screening)")
-    lines.append("  * Cash signals EXCLUDED from wire transactions")
-    lines.append("  * FORMING typologies = OBSERVE ONLY (not escalation)")
-    lines.append("  * Status alone is NEVER sufficient for suspicion")
-    lines.append("")
-
-    facts = inputs["facts"]
-    has_hard_stop = any([
-        facts.get("sanctions_result") == "MATCH",
-        facts.get("document_status") == "FALSE",
-        facts.get("customer_response") == "REFUSAL",
-        facts.get("legal_prohibition"),
-        facts.get("adverse_media_mltf")
-    ])
-
-    lines.append(f"INSTRUMENT: {instrument.upper()}")
-    lines.append(f"HARD STOP: {'YES' if has_hard_stop else 'NO'}")
-    lines.append(f"OBLIGATIONS: 0 (none)")
-    lines.append(f"INDICATORS: {len(inputs['indicators'])} (all corroborated)")
-    lines.append(f"TYPOLOGY MATURITY: {inputs['typology_maturity']}")
-    lines.append(f"MITIGATIONS: {len(inputs['mitigations'])}")
-
-    susp = inputs["suspicion_evidence"]
-    lines.append(f"SUSPICION: ACTIVATED (intent + deception + pattern)")
-    lines.append(f"TAXONOMY VERDICT: {banner}")
-    lines.append("")
-
-    # Dual-Gate Decision System
-    lines.append("=" * w)
-    lines.append("DUAL-GATE DECISION SYSTEM")
-    lines.append("=" * w)
-    lines.append("")
-    lines.append("Constitutional Rule:")
-    lines.append('"Escalation is prevented by default and permitted only when')
-    lines.append(' suspicion is affirmatively proven."')
-    lines.append("")
-
-    # Gate 1
-    lines.append("-" * w)
-    lines.append("GATE 1: ZERO-FALSE-ESCALATION CHECKLIST")
-    lines.append("Purpose: Are we ALLOWED to escalate?")
-    lines.append("-" * w)
-
-    for section in esc_result.sections:
-        status = "PASS" if section.passed else "FAIL"
-        lines.append(f"  Section {section.section_id} ({section.section_name}): {status}")
-
-    lines.append("")
-    esc_decision = "PERMITTED" if esc_result.decision == EscalationDecision.PERMITTED else "PROHIBITED"
-    lines.append(f"  GATE 1 DECISION: {esc_decision}")
-    lines.append(f"  Rationale: {esc_result.rationale}")
-    lines.append("")
-
-    # Gate 1 Detail - Section by Section
-    lines.append("  GATE 1 DETAIL (PATH 2 - BEHAVIORAL SUSPICION):")
-    lines.append("  -----------------------------------------------")
-    lines.append("  Section A: FAIL - No fact-level hard stop (sanctions=NO_MATCH)")
-    lines.append(f"  Section B: PASS - {instrument.upper()} instrument correctly classified")
-    lines.append("  Section C: PASS - No obligations used as suspicion")
-    lines.append("  Section D: PASS - 3 corroborated indicators (structuring, UBO, new account)")
-    lines.append("  Section E: PASS - Typology CONFIRMED (structuring pattern)")
-    lines.append("  Section F: FAIL - Mitigations insufficient (1 factor, new account)")
-    lines.append("  Section G: PASS - Intent + Deception + Pattern all present")
-    lines.append("")
-
-    # Gate 2
-    lines.append("-" * w)
-    lines.append("GATE 2: POSITIVE STR CHECKLIST")
-    lines.append("Purpose: Are we OBLIGATED to report?")
-    lines.append("-" * w)
-
-    for section in str_result.sections:
-        status = "PASS" if section.passed else "FAIL"
-        lines.append(f"  Section {section.section_id} ({section.section_name}): {status}")
-
-    lines.append("")
-    str_decision_text = str_result.decision.value.upper()
-    lines.append(f"  GATE 2 DECISION: {str_decision_text}")
-    lines.append(f"  Rationale: {str_result.rationale}")
-    lines.append("")
-
-    # Gate 2 Detail - using standardized suspicion wording
-    lines.append("  GATE 2 DETAIL:")
-    lines.append("  ---------------")
-    lines.append("  Section 1: PASS - Legal suspicion threshold met")
-    lines.append(f"    * Intent: {get_suspicion_wording('intent', 'structuring')}")
-    lines.append(f"    * Deception: {get_suspicion_wording('deception', 'ubo')}")
-    lines.append(f"    * Pattern: {get_suspicion_wording('pattern', 'structuring')}")
-    lines.append("  Section 2: PASS - Evidence is fact-based, specific, reproducible")
-    lines.append("  Section 3: PASS - Mitigations fail to explain behavior")
-    lines.append("    * Explanation insufficient: YES")
-    lines.append("    * Docs unsupportive: YES")
-    lines.append("    * History misaligned: YES (new account)")
-    lines.append("  Section 4: PASS - Typology CONFIRMED (structuring)")
-    lines.append("  Section 5: PASS - Regulator would expect STR")
-    lines.append("")
-
-    # STR Rationale - using standardized wording
-    lines.append("-" * w)
-    lines.append("STR RATIONALE STATEMENT (MANDATORY OUTPUT)")
-    lines.append("-" * w)
-    lines.append("  Based on the totality of evidence, reasonable grounds exist to suspect")
-    lines.append("  that the transaction(s) may be related to money laundering or terrorist")
-    lines.append("  financing. This determination is based on:")
-    lines.append("")
-    lines.append(f"  1. STRUCTURING PATTERN: {threshold_wording['structuring_description']}.")
-    lines.append("     Two cash deposits totaling CAD 18,700 executed within 5.5 hours,")
-    lines.append("     each deliberately structured just below CAD 10,000.")
-    lines.append("")
-    lines.append(f"  2. INTENT TO EVADE: {threshold_wording['evasion_intent']}.")
-    lines.append("     Transaction amounts (CAD 9,500 and CAD 9,200) demonstrate clear")
-    lines.append(f"     intent to avoid {threshold_wording['report_type']} requirements.")
-    lines.append("")
-    lines.append(f"  3. UBO DISCREPANCY: {get_ubo_evidence('detailed')}.")
-    lines.append("     This indicates potential deception regarding beneficial ownership.")
-    lines.append("")
-    lines.append("  4. NEW ACCOUNT: Customer relationship is only 2 months old,")
-    lines.append("     with no established pattern of legitimate activity to establish baseline.")
-    lines.append("")
-    lines.append("  5. HIGH-RISK PROFILE: Import/Export business with high inherent")
-    lines.append("     ML/TF risk and insufficient mitigating documentation.")
-    lines.append("")
-    lines.append("  This report is submitted in accordance with PCMLTFA s.7.")
-    lines.append("")
-
-    # Absolute Rules
-    lines.append("=" * w)
-    lines.append("ABSOLUTE RULES (NO EXCEPTIONS)")
-    lines.append("=" * w)
-    lines.append("  X PEP status alone can NEVER escalate")
-    lines.append("  X Cross-border alone can NEVER escalate")
-    lines.append("  X Risk score alone can NEVER escalate")
-    lines.append("  X 'High confidence' can NEVER override facts")
-    lines.append("  X 'Compliance comfort' is NOT a reason")
-    lines.append("")
-    lines.append("  NOTE: This escalation is based on OBSERVED BEHAVIOR (structuring),")
-    lines.append("        not status or score. The system correctly identified:")
-    lines.append("        - Factual transaction pattern")
-    lines.append("        - Confirmed typology (structuring)")
-    lines.append("        - Failed mitigations")
-    lines.append("        - Legal suspicion threshold met")
-    lines.append("")
-
-    # Final Decision
-    lines.append("=" * w)
-    lines.append("FINAL DECISION")
-    lines.append("=" * w)
-    lines.append(f"Verdict:        STR")
-    lines.append(f"Action:         FILE_STR")
-    lines.append(f"STR Required:   YES")
-    lines.append(f"Escalation:     PERMITTED")
-    lines.append("")
-    lines.append("Rationale:")
-    lines.append(f"  1. Gate 1 (Escalation): PERMITTED via Path 2 (Behavioral Suspicion)")
-    lines.append(f"  2. Gate 2 (STR): REQUIRED - All mandatory sections passed")
-    lines.append(f"  3. Typology: CONFIRMED (Structuring - CAD 10K threshold evasion)")
-    lines.append(f"  4. Suspicion Elements: Intent + Deception + Sustained Pattern")
-    lines.append(f"  5. Mitigations: INSUFFICIENT (new account, no SOF, UBO discrepancy)")
-    lines.append("")
-
-    # STR Basis (Audit Trail)
-    if str_result.str_basis:
-        lines.append("STR BASIS (AUDIT TRAIL):")
-        lines.append(f"  Primary:    {str_result.str_basis.primary}")
-        lines.append(f"  Supporting:")
-        for factor in str_result.str_basis.supporting:
-            lines.append(f"    - {factor}")
-        lines.append("")
-
-    # Regulatory Compliance
-    lines.append("=" * w)
-    lines.append("REGULATORY COMPLIANCE")
-    lines.append("=" * w)
-    lines.append("PCMLTFA s.7:    Reasonable grounds to suspect ML/TF")
-    lines.append("FINTRAC:        STR filing required within 30 days")
-    lines.append("STR Filing:     REQUIRED")
-    lines.append("LCTR Required:  NO (individual cash transactions below CAD 10,000 threshold)")
-    lines.append("                Note: Total CAD 18,700 in 24h indicates threshold evasion")
-    lines.append("")
-    # Get standardized FINTRAC indicators
-    fintrac_indicators = get_fintrac_indicators(
-        instrument=instrument,
-        has_structuring=True,
-        has_new_account=True,
-        has_ubo_discrepancy=True,
-        has_high_risk_profile=True,
-    )
-    lines.append("FINTRAC INDICATORS MATCHED:")
-    for indicator in fintrac_indicators:
-        lines.append(f"  * {indicator}")
-    lines.append("")
-
-    # Footer
-    lines.append("=" * w)
-    lines.append("END OF ALERT REPORT")
-    lines.append("=" * w)
-    lines.append("")
-
-    return "\n".join(lines)
-
-
 def main():
     """Run the E2E report for the structuring case."""
 
@@ -446,11 +146,49 @@ def main():
     print(f"  Final: {final_decision['final_decision']}, STR={final_decision['str_required']}")
     print()
 
-    # Render report
-    report = render_report(inputs, esc_result, str_result, final_decision)
+    # Build decision pack
+    input_data = {k: inputs[k] for k in (
+        "facts", "obligations", "indicators", "typology_maturity",
+        "mitigations", "suspicion_evidence", "instrument_type",
+    )}
+    decision_pack = build_decision_pack(
+        case_id="CAN-2026-002",
+        input_data=input_data,
+        facts=inputs["facts"],
+        obligations=inputs["obligations"],
+        indicators=inputs["indicators"],
+        typology_maturity=inputs["typology_maturity"],
+        mitigations=inputs["mitigations"],
+        suspicion_evidence=inputs["suspicion_evidence"],
+        esc_result=esc_result,
+        str_result=str_result,
+        final_decision=final_decision,
+        jurisdiction="CA",
+    )
 
-    # Save report
-    output_path = Path(__file__).parent / "validation_reports" / "04_STRUCTURING_Maple_Leaf_Corp.txt"
+    # Enrich with customer / transaction data
+    evidence = decision_pack.setdefault("evaluation_trace", {}).setdefault("evidence_used", [])
+    evidence.extend([
+        {"field": "customer.pep_flag", "value": False},
+        {"field": "customer.type", "value": "CORPORATE"},
+        {"field": "risk.high_risk_jurisdiction", "value": False},
+        {"field": "txn.amount_band", "value": "10K-50K"},
+        {"field": "txn.method", "value": "Cash Deposit"},
+        {"field": "txn.destination_country", "value": "CA"},
+        {"field": "txn.cross_border", "value": False},
+    ])
+    layer1 = decision_pack.setdefault("layers", {}).setdefault("layer1_facts", {})
+    facts_dict = layer1.setdefault("facts", {})
+    facts_dict["customer"] = {"pep_flag": False, "type": "CORPORATE", "residence": "CA"}
+    facts_dict["transaction"] = {"amount_cad": 18_700, "method": "Cash Deposit", "destination": "CA"}
+
+    # One pipeline, one path
+    report = compile_report(decision_pack)
+
+    # Save
+    output_dir = Path(__file__).parent / "validation_reports"
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / "04_STRUCTURING_Maple_Leaf_Corp.md"
     with open(output_path, "w") as f:
         f.write(report)
 

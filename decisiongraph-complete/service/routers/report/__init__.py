@@ -25,12 +25,9 @@ from .derive import derive_regulatory_model  # noqa: F401
 from .view_model import build_view_model  # noqa: F401
 from .render_md import render_markdown  # noqa: F401
 
-# ── Backward-compat: build_report_context ─────────────────────────────────────
-# Some callers may still reference the old god-function.  Provide it as a
-# thin wrapper around the pipeline so nothing breaks.
+# ── Single compile_report entry point ─────────────────────────────────────────
+from .pipeline import compile_report, compile_report_context  # noqa: F401
 
-def build_report_context(decision: dict) -> dict:
-    """Legacy shim — runs the full pipeline and returns a ReportViewModel."""
-    normalized = normalize_decision(decision)
-    derived = derive_regulatory_model(normalized)
-    return build_view_model(normalized, derived)
+# ── Backward-compat: build_report_context ─────────────────────────────────────
+# Alias kept for callers that used the old name.
+build_report_context = compile_report_context

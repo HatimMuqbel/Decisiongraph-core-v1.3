@@ -11,23 +11,13 @@ from datetime import datetime
 from pathlib import Path
 
 from .store import resolve, ALLOW_RAW_DECISION
-from .normalize import normalize_decision
-from .derive import derive_regulatory_model
-from .view_model import build_view_model
-from .render_md import render_markdown
+from .pipeline import compile_report, compile_report_context
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
 # Templates directory: service/templates/ (three levels up from this file)
 _templates_dir = Path(__file__).parent.parent.parent / "templates"
 _jinja = Jinja2Templates(directory=str(_templates_dir))
-
-
-def _compile(decision: dict) -> dict:
-    """Run the full report compiler pipeline.  Returns a ReportViewModel."""
-    normalized = normalize_decision(decision)
-    derived = derive_regulatory_model(normalized)
-    return build_view_model(normalized, derived)
 
 
 def _redact_decision(decision: dict) -> dict:
@@ -61,7 +51,7 @@ async def get_report_html(request: Request, decision_id: str):
     """Generate a regulator-grade HTML decision report."""
     decision = resolve(decision_id)
     try:
-        ctx = _compile(decision)
+        ctx = compile_report_context(decision)
         ctx["request"] = request
         return _jinja.TemplateResponse("decision_report.html", ctx)
     except Exception as e:
@@ -82,7 +72,7 @@ async def get_report_html(request: Request, decision_id: str):
 async def get_report_json(decision_id: str, include_raw: bool = False):
     """Get decision report as structured JSON."""
     decision = resolve(decision_id)
-    ctx = _compile(decision)
+    ctx = compile_report_context(decision)
 
     response = {
         "format": "json",
@@ -107,8 +97,7 @@ async def get_report_json(decision_id: str, include_raw: bool = False):
 async def get_report_markdown(decision_id: str):
     """Generate a Markdown decision report."""
     decision = resolve(decision_id)
-    ctx = _compile(decision)
-    md = render_markdown(ctx)
+    md = compile_report(decision)
 
     return {
         "decision_id": decision_id,
