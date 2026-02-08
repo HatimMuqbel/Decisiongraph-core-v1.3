@@ -549,10 +549,10 @@ def validate_input(data: dict) -> tuple:
 
 
 def _is_demo_format(body: dict) -> bool:
-    """Detect if the request body is in demo/facts-array format.
+    """Detect if the request body is in demo/facts-array format or seed format.
 
     Demo format: has 'case_id' or has 'facts' as a list of {field, value}
-    or has flat keys like 'customer.pep_flag' at top level.
+    or has flat registry keys like 'customer.pep_flag', 'screening.sanctions_match' etc.
     Schema format: has 'header', 'alert_details', 'customer_record', etc.
     """
     if "case_id" in body:
@@ -560,17 +560,24 @@ def _is_demo_format(body: dict) -> bool:
     facts = body.get("facts")
     if isinstance(facts, list) and facts and isinstance(facts[0], dict) and "field" in facts[0]:
         return True
-    # Also detect flat top-level keys from demo viewer
-    if any(k.startswith(("customer.", "transaction.", "screening.", "pattern.", "docs.")) for k in body):
+    # Also detect flat top-level keys from demo viewer or seed explorer
+    if any(k.startswith((
+        "customer.", "transaction.", "screening.", "pattern.", "docs.",
+        "flag.", "txn.", "prior.", "relationship.",
+    )) for k in body):
         return True
     return False
 
 
 def _convert_demo_facts(body: dict) -> dict:
-    """Convert demo facts-array format into engine-compatible inputs.
+    """Convert demo facts-array or seed base_facts into engine-compatible inputs.
+
+    Handles TWO field vocabularies:
+    1. Demo case format: screening.list_type, screening.match_score, customer.pep_flag, etc.
+    2. Seed/registry format: screening.sanctions_match, flag.structuring, customer.pep, etc.
 
     Extracts facts dict, obligations list, indicators, suspicion_evidence,
-    and instrument_type from the flat facts list.
+    and instrument_type from either format.
     """
     raw_facts = body.get("facts", [])
 
@@ -593,9 +600,12 @@ def _convert_demo_facts(body: dict) -> dict:
             if isinstance(f, dict) and "field" in f:
                 fmap[f["field"]] = f.get("value")
 
-    # Also merge any flat top-level keys (frontend sends these)
+    # Also merge flat top-level keys (SeedExplorer & DecisionViewer send these)
     for k, v in body.items():
-        if k.startswith(("customer.", "transaction.", "screening.", "pattern.", "docs.", "relationship.")):
+        if k.startswith((
+            "customer.", "transaction.", "screening.", "pattern.", "docs.",
+            "flag.", "txn.", "prior.", "relationship.",
+        )):
             fmap[k] = v
     # Also merge nested 'customer' and 'transaction' dicts from frontend
     if isinstance(body.get("customer"), dict):
@@ -607,26 +617,76 @@ def _convert_demo_facts(body: dict) -> dict:
             if k not in fmap:
                 fmap[k] = v
 
-    # ── Derive engine facts ─────────────────────────────────────────────
-    is_pep = fmap.get("customer.pep_flag", False)
-    list_type = str(fmap.get("screening.list_type", "")).upper()
-    match_score = fmap.get("screening.match_score", 0)
-    mltf_linked = fmap.get("screening.mltf_linked", False)
-    docs_complete = fmap.get("docs.complete", True)
-    source_verified = fmap.get("docs.source_verified", True)
-    structuring = fmap.get("pattern.structuring", False)
-    layering = fmap.get("pattern.layering", False)
-    velocity_spike = fmap.get("pattern.velocity_spike", False)
-    ownership_clear = fmap.get("docs.ownership_clear", True)
+    # ── Read BOTH vocabularies ──────────────────────────────────────────
 
-    # Sanctions result
+    # --- Demo case fields ---
+    demo_pep_flag = fmap.get("customer.pep_flag", None)     # bool
+    demo_list_type = str(fmap.get("screening.list_type", "")).upper()
+    demo_match_score = fmap.get("screening.match_score", 0)
+    demo_mltf_linked = fmap.get("screening.mltf_linked", False)
+    demo_docs_complete = fmap.get("docs.complete", None)
+    demo_source_verified = fmap.get("docs.source_verified", None)
+    demo_structuring = fmap.get("pattern.structuring", False)
+    demo_layering = fmap.get("pattern.layering", False)
+    demo_velocity_spike = fmap.get("pattern.velocity_spike", False)
+    demo_ownership_clear = fmap.get("docs.ownership_clear", None)
+
+    # --- Registry / seed fields ---
+    reg_sanctions_match = fmap.get("screening.sanctions_match", False)
+    reg_pep_match = fmap.get("screening.pep_match", False)
+    reg_pep = fmap.get("customer.pep", False)
+    reg_adverse_media = fmap.get("screening.adverse_media", False)
+    reg_structuring = fmap.get("flag.structuring", False)
+    reg_layering = fmap.get("flag.layering", False)
+    reg_rapid_movement = fmap.get("flag.rapid_movement", False)
+    reg_unusual_for_profile = fmap.get("flag.unusual_for_profile", False)
+    reg_third_party = fmap.get("flag.third_party", False)
+    reg_shell_company = fmap.get("flag.shell_company", False)
+    reg_sars_filed = fmap.get("prior.sars_filed", 0)
+    reg_account_closures = fmap.get("prior.account_closures", False)
+    reg_source_of_funds_clear = fmap.get("txn.source_of_funds_clear", None)
+    reg_amount_band = fmap.get("txn.amount_band", "")
+    reg_txn_type = fmap.get("txn.type", "")
+    reg_cross_border = fmap.get("txn.cross_border", False)
+    reg_dest_risk = fmap.get("txn.destination_country_risk", "")
+    reg_customer_type = fmap.get("customer.type", "")
+
+    # ── Derive engine facts (merge both vocabularies) ───────────────────
+
+    # Sanctions: either explicit registry flag OR demo screening match
     sanctions_result = "NO_MATCH"
-    if list_type in ("OFAC_SDN", "OFAC", "UN_SANCTIONS", "EU_SANCTIONS", "CA_SANCTIONS"):
-        if (isinstance(match_score, (int, float)) and match_score >= 85):
+    if reg_sanctions_match:
+        sanctions_result = "MATCH"
+    elif demo_list_type in ("OFAC_SDN", "OFAC", "UN_SANCTIONS", "EU_SANCTIONS", "CA_SANCTIONS"):
+        if isinstance(demo_match_score, (int, float)) and demo_match_score >= 85:
             sanctions_result = "MATCH"
 
-    # Adverse media
-    adverse_media_mltf = bool(mltf_linked) or (list_type == "ADVERSE_MEDIA" and bool(mltf_linked))
+    # Adverse media: registry flag OR demo MLTF link
+    adverse_media_mltf = bool(reg_adverse_media) or bool(demo_mltf_linked)
+
+    # PEP: registry flag OR demo flag
+    is_pep = bool(reg_pep) or bool(reg_pep_match) or bool(demo_pep_flag)
+
+    # Documents
+    docs_complete = True
+    if demo_docs_complete is not None:
+        docs_complete = bool(demo_docs_complete)
+    source_verified = True
+    if demo_source_verified is not None:
+        source_verified = bool(demo_source_verified)
+    elif reg_source_of_funds_clear is not None:
+        source_verified = bool(reg_source_of_funds_clear)
+    ownership_clear = True
+    if demo_ownership_clear is not None:
+        ownership_clear = bool(demo_ownership_clear)
+
+    # Structuring / layering / velocity
+    structuring = bool(demo_structuring) or bool(reg_structuring)
+    layering = bool(demo_layering) or bool(reg_layering)
+    velocity_spike = bool(demo_velocity_spike) or bool(reg_rapid_movement)
+
+    # Prior SARs
+    prior_sars = int(reg_sars_filed) if isinstance(reg_sars_filed, (int, float)) else 0
 
     facts = {
         "sanctions_result": sanctions_result,
@@ -652,13 +712,31 @@ def _convert_demo_facts(body: dict) -> dict:
         indicators.append({"code": "LAYERING", "type": "LAYERING", "corroborated": True})
     if velocity_spike:
         indicators.append({"code": "VELOCITY_SPIKE", "type": "UNUSUAL", "corroborated": True})
-    if list_type == "ADVERSE_MEDIA":
-        indicators.append({"code": "ADVERSE_MEDIA", "type": "ADVERSE_MEDIA", "corroborated": bool(mltf_linked)})
+    if adverse_media_mltf or demo_list_type == "ADVERSE_MEDIA":
+        indicators.append({"code": "ADVERSE_MEDIA", "type": "ADVERSE_MEDIA", "corroborated": adverse_media_mltf})
+    if reg_unusual_for_profile:
+        indicators.append({"code": "UNUSUAL_FOR_PROFILE", "type": "UNUSUAL", "corroborated": True})
+    if reg_third_party:
+        indicators.append({"code": "THIRD_PARTY", "type": "THIRD_PARTY", "corroborated": True})
+    if reg_shell_company:
+        indicators.append({"code": "SHELL_COMPANY", "type": "LAYERING", "corroborated": True})
+    if prior_sars >= 2:
+        indicators.append({"code": "PRIOR_SARS", "type": "HISTORY", "corroborated": True})
+    if reg_account_closures:
+        indicators.append({"code": "PRIOR_CLOSURE", "type": "HISTORY", "corroborated": True})
 
     # ── Suspicion evidence ──────────────────────────────────────────────
-    has_intent = bool(mltf_linked) or structuring
-    has_deception = layering or (not docs_complete and not source_verified and not ownership_clear)
-    has_sustained_pattern = structuring or velocity_spike
+    has_intent = (
+        sanctions_result == "MATCH"
+        or adverse_media_mltf
+        or structuring
+    )
+    has_deception = (
+        layering
+        or bool(reg_shell_company)
+        or (not docs_complete and not source_verified and not ownership_clear)
+    )
+    has_sustained_pattern = structuring or velocity_spike or prior_sars >= 2
 
     suspicion_evidence = {
         "has_intent": has_intent,
@@ -667,7 +745,7 @@ def _convert_demo_facts(body: dict) -> dict:
     }
 
     # ── Instrument type ─────────────────────────────────────────────────
-    method = str(fmap.get("transaction.method", "unknown")).lower()
+    method = str(fmap.get("transaction.method", reg_txn_type or "unknown")).lower()
     instrument_map = {"wire": "wire", "cash": "cash", "crypto": "crypto", "cheque": "cheque"}
     instrument_type = instrument_map.get(method, "unknown")
 
@@ -675,7 +753,7 @@ def _convert_demo_facts(body: dict) -> dict:
     typology_maturity = "FORMING"
     if sanctions_result == "MATCH" or adverse_media_mltf:
         typology_maturity = "CONFIRMED"
-    elif structuring or layering:
+    elif structuring or layering or prior_sars >= 4:
         typology_maturity = "EMERGING"
 
     return {
@@ -1031,6 +1109,11 @@ async def decide(request: Request):
         fingerprint_facts = {}
         if isinstance(body.get("facts"), dict):
             fingerprint_facts.update(body.get("facts", {}))
+        # For demo/seed cases, merge the original registry fields into fingerprint
+        if is_demo and isinstance(demo_inputs.get("_demo_facts"), dict):
+            for k, v in demo_inputs["_demo_facts"].items():
+                if "." in k:  # only registry-style fields
+                    fingerprint_facts.setdefault(k, v)
         fingerprint_facts.update(facts)
         fingerprint_facts.setdefault("txn.type", instrument_type)
         fingerprint_facts.setdefault(
