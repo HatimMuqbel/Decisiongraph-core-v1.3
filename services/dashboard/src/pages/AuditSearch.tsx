@@ -43,7 +43,7 @@ export default function AuditSearch() {
       const matchScenario = !scenario || c.category === scenario;
 
       // Date filtering (if the case has a date field)
-      const caseDate = (c as Record<string, unknown>).date as string | undefined;
+      const caseDate = (c as unknown as Record<string, unknown>).date as string | undefined;
       const matchDateFrom = !dateFrom || (caseDate && caseDate >= dateFrom);
       const matchDateTo = !dateTo || (caseDate && caseDate <= dateTo);
 

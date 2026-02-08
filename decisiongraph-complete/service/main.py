@@ -295,10 +295,15 @@ app.include_router(policy_shifts.router)
 
 # Static files for landing page
 STATIC_DIR = Path(__file__).parent / "static"
+DASHBOARD_DIR = STATIC_DIR / "dashboard"
 try:
     if STATIC_DIR.exists():
         from fastapi.staticfiles import StaticFiles
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    # Mount React dashboard assets at /assets  (built JS/CSS)
+    if DASHBOARD_DIR.exists() and (DASHBOARD_DIR / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(DASHBOARD_DIR / "assets")), name="dashboard-assets")
+        print(f"[startup] Dashboard SPA mounted from {DASHBOARD_DIR}")
 except Exception as e:
     print(f"Warning: Could not mount static files: {e}")
 
@@ -2211,9 +2216,9 @@ def query_similar_precedents(
 # Landing Page
 # =============================================================================
 
-@app.get("/", tags=["Landing"])
-async def landing_page():
-    """Serve the landing page."""
+@app.get("/landing", tags=["Landing"])
+async def legacy_landing_page():
+    """Serve the original interactive landing page."""
     try:
         from fastapi.responses import FileResponse
         index_path = STATIC_DIR / "index.html"
@@ -2221,18 +2226,25 @@ async def landing_page():
             return FileResponse(index_path)
     except Exception as e:
         pass
+    return JSONResponse(content={"error": "Landing page not found"}, status_code=404)
 
+
+@app.get("/", tags=["Dashboard"])
+async def serve_dashboard_root():
+    """Serve the React dashboard SPA."""
+    from fastapi.responses import FileResponse
+    spa_index = DASHBOARD_DIR / "index.html"
+    if spa_index.exists():
+        return FileResponse(spa_index, media_type="text/html")
+    # Fallback to old landing page
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
     return JSONResponse(content={
         "service": "DecisionGraph",
         "version": DG_ENGINE_VERSION,
         "description": "Bank-Grade AML/KYC Decision Engine",
-        "endpoints": {
-            "decide": "POST /decide - Run decision engine",
-            "demo_cases": "GET /demo/cases - List demo cases",
-            "report": "GET /report/{id} - Get decision report",
-            "verify": "POST /verify - Verify decision provenance",
-            "docs": "GET /docs - API documentation"
-        }
+        "docs": "/docs",
     })
 
 
@@ -2265,6 +2277,127 @@ async def startup_event():
 
     # Wire up precedent query for Build Your Own Case reports
     set_precedent_query(query_similar_precedents)
+
+# =============================================================================
+# Dashboard API endpoints (stats, fields, seeds, audit)
+# =============================================================================
+
+@app.get("/api/stats", tags=["Dashboard"])
+async def dashboard_stats():
+    """Return aggregate statistics for the dashboard."""
+    try:
+        from service.demo_cases import get_demo_cases
+        demo_cases = get_demo_cases()
+    except Exception:
+        demo_cases = []
+    return {
+        "total_seeds": PRECEDENT_COUNT,
+        "demo_cases": len(demo_cases),
+        "policy_shifts": 4,
+        "registry_fields": 28,
+        "precedents_loaded": PRECEDENTS_LOADED,
+        "engine_version": DG_ENGINE_VERSION,
+        "policy_version": DG_POLICY_VERSION,
+    }
+
+
+@app.get("/api/fields", tags=["Dashboard"])
+async def list_fields():
+    """Return the full banking field registry (28 fields)."""
+    try:
+        from decisiongraph.banking_field_registry import BANKING_FIELD_REGISTRY
+        return [
+            {
+                "name": name,
+                "label": defn.get("label", name),
+                "type": defn.get("type", "text"),
+                "description": defn.get("description", ""),
+                "category": defn.get("category", "general"),
+                "required": defn.get("required", False),
+            }
+            for name, defn in BANKING_FIELD_REGISTRY.items()
+        ]
+    except ImportError:
+        return JSONResponse(
+            content={"error": "Banking field registry not available"},
+            status_code=501,
+        )
+
+
+@app.get("/api/seeds", tags=["Dashboard"])
+async def list_seeds():
+    """Return seed scenarios overview."""
+    if not PRECEDENTS_LOADED:
+        return []
+    try:
+        seeds = generate_all_banking_seeds()
+        scenarios: dict = {}
+        for s in seeds:
+            sc = s.scenario_code or "unknown"
+            if sc not in scenarios:
+                scenarios[sc] = {"scenario_code": sc, "count": 0, "sample_id": s.precedent_id}
+            scenarios[sc]["count"] += 1
+        return list(scenarios.values())
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/seeds/{seed_id}", tags=["Dashboard"])
+async def get_seed(seed_id: str):
+    """Return a specific seed by precedent_id."""
+    try:
+        seeds = generate_all_banking_seeds()
+        for s in seeds:
+            if s.precedent_id == seed_id:
+                return s.to_dict()
+        raise HTTPException(status_code=404, detail=f"Seed {seed_id} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/audit", tags=["Dashboard"])
+async def search_audit(q: str = "", outcome: str = "", scenario: str = ""):
+    """Search audit log (returns demo cases as placeholder)."""
+    try:
+        from service.demo_cases import get_demo_cases
+        cases = get_demo_cases()
+        results = []
+        for c in cases:
+            if q and q.lower() not in json.dumps(c).lower():
+                continue
+            if outcome and c.get("expected_verdict", "").lower() != outcome.lower():
+                continue
+            if scenario and c.get("category", "").lower() != scenario.lower():
+                continue
+            results.append(c)
+        return results
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+# =============================================================================
+# SPA Catch-All — serves React dashboard for all frontend routes
+# MUST be the LAST route registered
+# =============================================================================
+
+_SPA_ROUTES = {"/cases", "/seeds", "/policy-shifts", "/audit", "/registry"}
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa_catchall(full_path: str):
+    """Catch-all: serve the React SPA index.html for frontend routes.
+
+    This handles client-side routing for paths like /cases, /reports/xyz,
+    /seeds, etc. that don't match any API endpoint.
+    """
+    from fastapi.responses import FileResponse
+    spa_index = DASHBOARD_DIR / "index.html"
+    if spa_index.exists():
+        return FileResponse(spa_index, media_type="text/html")
+    raise HTTPException(status_code=404, detail=f"Not found: /{full_path}")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():

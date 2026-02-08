@@ -28,6 +28,16 @@ RUN echo "=== DEPLOYED FILE IDENTITY ===" && \
     find service/routers/report -name '*.py' | xargs wc -l && \
     python -c "print('Python version:'); import sys; print(sys.version)"
 
+# Verify React dashboard is present
+RUN if [ -f service/static/dashboard/index.html ]; then \
+      echo "=== Dashboard SPA ===" && \
+      ls -la service/static/dashboard/ && \
+      ls -la service/static/dashboard/assets/ && \
+      echo "Dashboard SPA verified OK"; \
+    else \
+      echo "WARNING: Dashboard SPA not found at service/static/dashboard/"; \
+    fi
+
 # Environment
 ENV PYTHONPATH=/app:/app/src
 ENV PYTHONUNBUFFERED=1
