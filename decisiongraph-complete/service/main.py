@@ -1130,6 +1130,14 @@ async def decide(request: Request):
             domain=DG_DOMAIN,
         )
 
+        # ── Override evaluation_trace with enhanced evidence + rules ────────
+        # build_decision_pack() constructs a minimal 8-element evidence list.
+        # Replace with the full pre_evidence_used (27 registry fields + indicators)
+        # and pre_rules_fired (typology-specific rule codes) so the report
+        # pipeline and frontend Evidence Gap Tracker / Typology Map work.
+        decision_pack["evaluation_trace"]["evidence_used"] = pre_evidence_used
+        decision_pack["evaluation_trace"]["rules_fired"] = pre_rules_fired
+
         # Add engine commit (decision_pack.py doesn't know about git)
         decision_pack["meta"]["engine_commit"] = DG_ENGINE_COMMIT
         # Note: policy_hash and decision_id are computed by decision_pack.py with full SHA-256

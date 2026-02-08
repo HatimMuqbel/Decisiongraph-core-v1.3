@@ -583,7 +583,7 @@ def _disposition_label(decision_status: str, str_required: bool) -> str:
 # ── FIX-001: Disposition basis + reporting derivation ─────────────────────────
 
 _MANDATORY_RULE_PREFIXES = frozenset({
-    "AML_BLOCK_SANCTIONS", "SANCTIONS", "AML_BLOCK",
+    "AML_BLOCK_SANCTIONS", "SANCTIONS", "AML_BLOCK", "HARD_STOP",
 })
 
 _DISCRETIONARY_RULE_PREFIXES = frozenset({

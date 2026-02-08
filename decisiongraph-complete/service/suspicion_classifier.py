@@ -37,6 +37,13 @@ TIER1_SUSPICION_CODES: dict[str, str] = {
     "flag.shell_entity": "SHELL_ENTITY",
     "flag.evasion": "EVASION_BEHAVIOR",
     "flag.sar_pattern": "SAR_PATTERN",
+    # Registry-keyed evidence (from Evidence Gap Tracker fields)
+    "screening.sanctions_match": "SANCTIONS_SIGNAL",
+    "screening.adverse_media": "ADVERSE_MEDIA_CONFIRMED",
+    "flag.structuring": "STRUCTURING_PATTERN",
+    "flag.shell_company": "SHELL_ENTITY",
+    "flag.third_party": "THIRD_PARTY_UNEXPLAINED",
+    "flag.unusual_for_profile": "EVASION_BEHAVIOR",
     # Typology codes (from layer4)
     "structuring": "STRUCTURING_PATTERN",
     "layering": "LAYERING",
