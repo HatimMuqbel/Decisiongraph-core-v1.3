@@ -547,6 +547,152 @@ def validate_input(data: dict) -> tuple:
     except Exception as e:
         return False, [str(e)]
 
+
+def _is_demo_format(body: dict) -> bool:
+    """Detect if the request body is in demo/facts-array format.
+
+    Demo format: has 'case_id' or has 'facts' as a list of {field, value}
+    or has flat keys like 'customer.pep_flag' at top level.
+    Schema format: has 'header', 'alert_details', 'customer_record', etc.
+    """
+    if "case_id" in body:
+        return True
+    facts = body.get("facts")
+    if isinstance(facts, list) and facts and isinstance(facts[0], dict) and "field" in facts[0]:
+        return True
+    # Also detect flat top-level keys from demo viewer
+    if any(k.startswith(("customer.", "transaction.", "screening.", "pattern.", "docs.")) for k in body):
+        return True
+    return False
+
+
+def _convert_demo_facts(body: dict) -> dict:
+    """Convert demo facts-array format into engine-compatible inputs.
+
+    Extracts facts dict, obligations list, indicators, suspicion_evidence,
+    and instrument_type from the flat facts list.
+    """
+    raw_facts = body.get("facts", [])
+
+    # If facts is already a dict (engine format), return as-is
+    if isinstance(raw_facts, dict):
+        return {
+            "facts": raw_facts,
+            "obligations": body.get("obligations", []),
+            "indicators": body.get("indicators", []),
+            "instrument_type": body.get("instrument_type", "unknown"),
+            "suspicion_evidence": body.get("suspicion_evidence", {
+                "has_intent": False, "has_deception": False, "has_sustained_pattern": False,
+            }),
+        }
+
+    # Build lookup from facts array: {field: value}
+    fmap: dict = {}
+    if isinstance(raw_facts, list):
+        for f in raw_facts:
+            if isinstance(f, dict) and "field" in f:
+                fmap[f["field"]] = f.get("value")
+
+    # Also merge any flat top-level keys (frontend sends these)
+    for k, v in body.items():
+        if k.startswith(("customer.", "transaction.", "screening.", "pattern.", "docs.", "relationship.")):
+            fmap[k] = v
+    # Also merge nested 'customer' and 'transaction' dicts from frontend
+    if isinstance(body.get("customer"), dict):
+        for k, v in body["customer"].items():
+            if k not in fmap:
+                fmap[k] = v
+    if isinstance(body.get("transaction"), dict):
+        for k, v in body["transaction"].items():
+            if k not in fmap:
+                fmap[k] = v
+
+    # ── Derive engine facts ─────────────────────────────────────────────
+    is_pep = fmap.get("customer.pep_flag", False)
+    list_type = str(fmap.get("screening.list_type", "")).upper()
+    match_score = fmap.get("screening.match_score", 0)
+    mltf_linked = fmap.get("screening.mltf_linked", False)
+    docs_complete = fmap.get("docs.complete", True)
+    source_verified = fmap.get("docs.source_verified", True)
+    structuring = fmap.get("pattern.structuring", False)
+    layering = fmap.get("pattern.layering", False)
+    velocity_spike = fmap.get("pattern.velocity_spike", False)
+    ownership_clear = fmap.get("docs.ownership_clear", True)
+
+    # Sanctions result
+    sanctions_result = "NO_MATCH"
+    if list_type in ("OFAC_SDN", "OFAC", "UN_SANCTIONS", "EU_SANCTIONS", "CA_SANCTIONS"):
+        if (isinstance(match_score, (int, float)) and match_score >= 85):
+            sanctions_result = "MATCH"
+
+    # Adverse media
+    adverse_media_mltf = bool(mltf_linked) or (list_type == "ADVERSE_MEDIA" and bool(mltf_linked))
+
+    facts = {
+        "sanctions_result": sanctions_result,
+        "document_status": "VALID" if docs_complete else "INCOMPLETE",
+        "customer_response": "COMPLIANT",
+        "adverse_media_mltf": adverse_media_mltf,
+        "legal_prohibition": False,
+    }
+
+    # ── Obligations ─────────────────────────────────────────────────────
+    obligations: list = []
+    if is_pep:
+        obligations.append("PEP_FOREIGN")
+    ben_owner_pep = fmap.get("screening.beneficial_owner_pep", False)
+    if ben_owner_pep:
+        obligations.append("PEP_FOREIGN")
+
+    # ── Indicators ──────────────────────────────────────────────────────
+    indicators: list = []
+    if structuring:
+        indicators.append({"code": "STRUCTURING", "type": "STRUCTURING", "corroborated": True})
+    if layering:
+        indicators.append({"code": "LAYERING", "type": "LAYERING", "corroborated": True})
+    if velocity_spike:
+        indicators.append({"code": "VELOCITY_SPIKE", "type": "UNUSUAL", "corroborated": True})
+    if list_type == "ADVERSE_MEDIA":
+        indicators.append({"code": "ADVERSE_MEDIA", "type": "ADVERSE_MEDIA", "corroborated": bool(mltf_linked)})
+
+    # ── Suspicion evidence ──────────────────────────────────────────────
+    has_intent = bool(mltf_linked) or structuring
+    has_deception = layering or (not docs_complete and not source_verified and not ownership_clear)
+    has_sustained_pattern = structuring or velocity_spike
+
+    suspicion_evidence = {
+        "has_intent": has_intent,
+        "has_deception": has_deception,
+        "has_sustained_pattern": has_sustained_pattern,
+    }
+
+    # ── Instrument type ─────────────────────────────────────────────────
+    method = str(fmap.get("transaction.method", "unknown")).lower()
+    instrument_map = {"wire": "wire", "cash": "cash", "crypto": "crypto", "cheque": "cheque"}
+    instrument_type = instrument_map.get(method, "unknown")
+
+    # ── Typology maturity ───────────────────────────────────────────────
+    typology_maturity = "FORMING"
+    if sanctions_result == "MATCH" or adverse_media_mltf:
+        typology_maturity = "CONFIRMED"
+    elif structuring or layering:
+        typology_maturity = "EMERGING"
+
+    return {
+        "facts": facts,
+        "obligations": obligations,
+        "indicators": indicators,
+        "instrument_type": instrument_type,
+        "suspicion_evidence": suspicion_evidence,
+        "typology_maturity": typology_maturity,
+        "mitigations": [],
+        "evidence_quality": {},
+        "mitigation_status": {},
+        "typology_confirmed": typology_maturity == "CONFIRMED",
+        "fintrac_indicators": [],
+        "_demo_facts": fmap,  # preserve original for report rendering
+    }
+
 @app.post("/decide", tags=["Decision"])
 async def decide(request: Request):
     """
@@ -569,44 +715,69 @@ async def decide(request: Request):
         # Parse request body
         body = await request.json()
 
-        # Validate input against schema
-        valid, errors = validate_input(body)
-        if not valid:
-            logger.warning(
-                "Schema validation failed",
-                extra={"request_id": request_id}
-            )
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": "Schema validation failed",
-                    "code": "SCHEMA_VALIDATION_ERROR",
-                    "details": {"errors": errors},
-                    "request_id": request_id,
-                }
-            )
+        # ── Demo-format detection ────────────────────────────────────────
+        # Demo cases use a flat facts-array format [{field, value}, ...]
+        # that doesn't conform to the bank-grade input schema.
+        # Convert them into engine-compatible inputs and skip validation.
+        is_demo = _is_demo_format(body)
+
+        if not is_demo:
+            # Validate input against schema
+            valid, errors = validate_input(body)
+            if not valid:
+                logger.warning(
+                    "Schema validation failed",
+                    extra={"request_id": request_id}
+                )
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "Schema validation failed",
+                        "code": "SCHEMA_VALIDATION_ERROR",
+                        "details": {"errors": errors},
+                        "request_id": request_id,
+                    }
+                )
 
         # Extract case metadata
-        external_id = body.get("alert_details", {}).get("external_id", "UNKNOWN")
+        external_id = body.get("alert_details", {}).get("external_id",
+                      body.get("case_id", "DEMO"))
         input_hash = compute_input_hash(body)
         decision_id = compute_decision_id(input_hash)
 
-        # Extract engine inputs
-        facts = body.get("facts", extract_facts(body))
-        obligations = body.get("obligations", extract_obligations(body))
-        indicators = body.get("indicators", [])
-        typology_maturity = body.get("typology_maturity", "FORMING")
-        mitigations = body.get("mitigations", [])
-        suspicion_evidence = body.get("suspicion_evidence", {
-            "has_intent": False,
-            "has_deception": False,
-            "has_sustained_pattern": False,
-        })
-        instrument_type = body.get("instrument_type", extract_instrument_type(body))
-        evidence_quality = body.get("evidence_quality", {})
-        mitigation_status = body.get("mitigation_status", {})
-        typology_confirmed = body.get("typology_confirmed", False)
-        fintrac_indicators = body.get("fintrac_indicators", [])
+        if is_demo:
+            # Convert facts-array to engine format
+            demo_inputs = _convert_demo_facts(body)
+            facts = demo_inputs["facts"]
+            obligations = demo_inputs["obligations"]
+            indicators = demo_inputs["indicators"]
+            instrument_type = demo_inputs["instrument_type"]
+            suspicion_evidence = demo_inputs["suspicion_evidence"]
+            typology_maturity = demo_inputs.get("typology_maturity", "FORMING")
+            mitigations = demo_inputs.get("mitigations", [])
+            evidence_quality = demo_inputs.get("evidence_quality", {})
+            mitigation_status = demo_inputs.get("mitigation_status", {})
+            typology_confirmed = demo_inputs.get("typology_confirmed", False)
+            fintrac_indicators = demo_inputs.get("fintrac_indicators", [])
+            logger.info(f"Demo case processed: {external_id}",
+                        extra={"request_id": request_id})
+        else:
+            # Extract engine inputs from schema-compliant body
+            facts = body.get("facts", extract_facts(body))
+            obligations = body.get("obligations", extract_obligations(body))
+            indicators = body.get("indicators", [])
+            typology_maturity = body.get("typology_maturity", "FORMING")
+            mitigations = body.get("mitigations", [])
+            suspicion_evidence = body.get("suspicion_evidence", {
+                "has_intent": False,
+                "has_deception": False,
+                "has_sustained_pattern": False,
+            })
+            instrument_type = body.get("instrument_type", extract_instrument_type(body))
+            evidence_quality = body.get("evidence_quality", {})
+            mitigation_status = body.get("mitigation_status", {})
+            typology_confirmed = body.get("typology_confirmed", False)
+            fintrac_indicators = body.get("fintrac_indicators", [])
 
         # Run Gate 1
         esc_result = run_escalation_gate(

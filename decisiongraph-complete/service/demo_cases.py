@@ -220,9 +220,15 @@ def get_demo_cases() -> list[dict]:
         "name": c["name"],
         "description": c["description"],
         "category": c["category"],
-        "expected_outcome": c["expected_outcome"],
-        "key_facts": c["key_facts"],
-        "facts": c["facts"]
+        "expected_verdict": c.get("expected_outcome", "unknown"),
+        "expected_outcome": c.get("expected_outcome", "unknown"),
+        "key_levers": c.get("key_facts", []),
+        "key_facts": c.get("key_facts", []),
+        "tags": [c["category"].lower()],
+        "facts": [
+            {"field_id": f["field"], "field": f["field"], "value": f["value"], "label": f.get("label", f["field"])}
+            for f in c["facts"]
+        ],
     } for c in DEMO_CASES]
 
 
@@ -230,7 +236,21 @@ def get_demo_case(case_id: str) -> dict | None:
     """Get a specific demo case by ID."""
     for case in DEMO_CASES:
         if case["id"] == case_id:
-            return case
+            return {
+                "id": case["id"],
+                "name": case["name"],
+                "description": case["description"],
+                "category": case["category"],
+                "expected_verdict": case.get("expected_outcome", "unknown"),
+                "expected_outcome": case.get("expected_outcome", "unknown"),
+                "key_levers": case.get("key_facts", []),
+                "key_facts": case.get("key_facts", []),
+                "tags": [case["category"].lower()],
+                "facts": [
+                    {"field_id": f["field"], "field": f["field"], "value": f["value"], "label": f.get("label", f["field"])}
+                    for f in case["facts"]
+                ],
+            }
     return None
 
 

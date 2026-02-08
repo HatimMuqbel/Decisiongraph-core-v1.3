@@ -25,16 +25,16 @@ export default function DecisionViewer() {
 
   async function handleRun() {
     if (!demoCase) return;
-    const factsObj: Record<string, unknown> = {};
-    demoCase.facts?.forEach((f) => {
-      factsObj[f.field_id] = f.value;
-    });
+    // Send facts array to /decide — the backend will detect demo format
+    // and convert the facts array into engine-compatible inputs.
     try {
       const pack = await decideMut.mutateAsync({
         case_id: demoCase.id,
-        ...factsObj,
-        customer: factsObj,
-        transaction: factsObj,
+        facts: demoCase.facts?.map((f) => ({
+          field: f.field_id,
+          value: f.value,
+          label: f.label,
+        })) ?? [],
       });
       setDecisionId(pack.meta.decision_id);
     } catch {
