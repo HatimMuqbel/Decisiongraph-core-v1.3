@@ -135,6 +135,8 @@ export interface RuleFired {
   code: string;
   result: string;
   reason: string;
+  citation_ref?: string;
+  citation_text?: string;
 }
 
 export interface EvidenceUsed {
@@ -211,6 +213,7 @@ export interface PrecedentAnalysis {
   similarity_summary?: string;
   why_low_match?: string[];
   avg_top_k_similarity?: number;
+  message?: string;
 }
 
 export interface CautionPrecedent {

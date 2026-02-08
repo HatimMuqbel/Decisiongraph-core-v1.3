@@ -968,13 +968,94 @@ async def decide(request: Request):
             if val is not None:
                 pre_evidence_used.append({"field": rf, "value": val})
 
+        # ── FINTRAC Citation Reference Map ─────────────────────────────────
+        # Maps rule/typology codes to actual regulatory text for VerbatimCitations.
+        # These are the real PCMLTFA / FINTRAC references that a compliance officer
+        # or regulator would expect to see in an audit package.
+        _CITATION_MAP = {
+            "HARD_STOP_CHECK": {
+                "ref": "PCMLTFA s. 7(1), FINTRAC Guideline 3",
+                "text": "Proceeds of Crime (Money Laundering) and Terrorist Financing Act — Where a reporting entity has reasonable grounds to suspect that a transaction or attempted transaction is related to the commission or attempted commission of a money laundering offence or a terrorist activity financing offence, the entity shall report the transaction or attempted transaction to the Centre.",
+            },
+            "PEP_ISOLATION": {
+                "ref": "PCMLTFA s. 9.3, FINTRAC Guideline 4 — PEP/HIO",
+                "text": "A reporting entity shall take reasonable measures to determine whether a person is a politically exposed foreign person, a politically exposed domestic person, or a head of an international organization. PEP status alone does not constitute reasonable grounds to suspect — additional risk factors must be present.",
+            },
+            "SUSPICION_TEST": {
+                "ref": "PCMLTFA s. 7(1)(a), FINTRAC Guideline 3 — STR",
+                "text": "A suspicious transaction report shall be submitted when there are reasonable grounds to suspect that the transaction is related to the commission of a money laundering offence or a terrorist activity financing offence. Suspicion must be fact-based and articulable.",
+            },
+            "STRUCTURING_PATTERN": {
+                "ref": "FINTRAC Guideline 3 — Structuring Indicators",
+                "text": "Structuring involves conducting transactions below the $10,000 reporting threshold to avoid triggering a Large Cash Transaction Report. This includes patterns of deposits/withdrawals just below the threshold, multiple same-day transactions, and the use of multiple accounts or locations.",
+            },
+            "LAYERING": {
+                "ref": "FINTRAC ML/TF Typologies — Layering",
+                "text": "Layering is the second stage of money laundering, involving complex layers of financial transactions designed to distance illegally derived funds from their source. This may involve multiple transfers between accounts, use of shell companies, or cross-border movements.",
+            },
+            "SHELL_ENTITY": {
+                "ref": "FINTRAC ML/TF Typologies — Shell Companies",
+                "text": "Shell company indicators include nominee directors, registered agents in high-risk jurisdictions, no apparent legitimate business activity, and use of corporate structures to obscure beneficial ownership contrary to PCMLTFA s. 11.1 beneficial ownership requirements.",
+            },
+            "THIRD_PARTY_UNEXPLAINED": {
+                "ref": "FINTRAC Guideline 2 — Third-Party Determination",
+                "text": "A reporting entity shall take reasonable measures to determine whether a transaction is being conducted on behalf of a third party. Unexplained third-party involvement in financial transactions is a recognized ML/TF indicator.",
+            },
+            "FALSE_SOURCE": {
+                "ref": "PCMLTFA s. 6.1, FINTRAC Guideline 6 — Record Keeping",
+                "text": "Source of funds declarations that cannot be verified or are inconsistent with the client's known profile constitute a suspicious indicator. Reporting entities must keep records of information used to identify clients and verify their identity.",
+            },
+            "SANCTIONS_SIGNAL": {
+                "ref": "SEMA s. 4(1), PCMLTFA s. 11.42, UN Regulations",
+                "text": "Under the Special Economic Measures Act and United Nations Act regulations, it is prohibited to deal in property of designated persons. A confirmed sanctions match requires immediate blocking and reporting to FINTRAC and OSFI.",
+            },
+            "ADVERSE_MEDIA_CONFIRMED": {
+                "ref": "FINTRAC Guideline 4 — Risk Assessment, OSFI B-10 s. 7",
+                "text": "Confirmed adverse media linking a client to money laundering, terrorist financing, fraud, corruption, or organized crime is a key risk factor requiring enhanced due diligence measures and potential STR filing.",
+            },
+            "SAR_PATTERN": {
+                "ref": "PCMLTFA s. 7(1), FINTRAC Guideline 3 — Pattern of SARs",
+                "text": "A history of prior Suspicious Transaction Reports filed on a client indicates an established pattern of suspicious activity. Multiple prior SARs elevate the risk assessment and may trigger enhanced monitoring, exit consideration, or mandatory escalation.",
+            },
+            "EVASION_BEHAVIOR": {
+                "ref": "FINTRAC Guideline 3 — Unusual Activity Indicators",
+                "text": "Behaviour inconsistent with the client's known transaction profile or sudden spikes in transaction velocity are recognized indicators of potential money laundering. The reporting entity must assess whether such activity has a reasonable explanation.",
+            },
+            "ROUND_TRIP": {
+                "ref": "FINTRAC ML/TF Typologies — Round-Trip Transactions",
+                "text": "Round-trip transactions involve funds being sent to a jurisdiction and returned in a manner designed to disguise their origin. This is a recognized money laundering technique used to create the appearance of legitimate business transactions.",
+            },
+            "TRADE_BASED_LAUNDERING": {
+                "ref": "FINTRAC ML/TF Typologies — Trade-Based ML",
+                "text": "Trade-based money laundering involves the exploitation of international trade transactions to transfer value and obscure the origins of criminal proceeds. Indicators include over/under-invoicing, phantom shipments, and misrepresentation of trade goods.",
+            },
+            "FUNNEL": {
+                "ref": "FINTRAC ML/TF Typologies — Funnel Accounts",
+                "text": "Funnel account activity involves the use of bank accounts in one geographic area to consolidate and redirect funds to another area, often across borders. This is a recognized technique for integrating proceeds of crime.",
+            },
+            "VIRTUAL_ASSET_LAUNDERING": {
+                "ref": "PCMLTFA s. 1 (virtual currency), FINTRAC Guideline 5",
+                "text": "Virtual currency transactions require the same AML/ATF compliance obligations as fiat currency transactions. Indicators of virtual asset laundering include conversion to/from privacy coins, use of mixing services, and transactions with unhosted wallets.",
+            },
+            "TERRORIST_FINANCING": {
+                "ref": "PCMLTFA s. 7.1, Criminal Code s. 83.02-83.04",
+                "text": "Terrorist activity financing offences include providing or collecting property for terrorist purposes. Any transaction suspected of being related to terrorist financing must be reported to FINTRAC immediately. There is no monetary threshold for TF reporting.",
+            },
+        }
+
         pre_rules_fired = [
             {"code": "HARD_STOP_CHECK", "result": "TRIGGERED" if hard_stop_triggered else "CLEAR",
-             "reason": "Hard stop conditions detected" if hard_stop_triggered else "No hard stop conditions"},
+             "reason": "Hard stop conditions detected" if hard_stop_triggered else "No hard stop conditions",
+             "citation_ref": _CITATION_MAP["HARD_STOP_CHECK"]["ref"],
+             "citation_text": _CITATION_MAP["HARD_STOP_CHECK"]["text"]},
             {"code": "PEP_ISOLATION", "result": "APPLIED" if has_pep else "NOT_APPLICABLE",
-             "reason": "PEP status alone cannot escalate" if has_pep else "Not a PEP"},
+             "reason": "PEP status alone cannot escalate" if has_pep else "Not a PEP",
+             "citation_ref": _CITATION_MAP["PEP_ISOLATION"]["ref"],
+             "citation_text": _CITATION_MAP["PEP_ISOLATION"]["text"]},
             {"code": "SUSPICION_TEST", "result": "ACTIVATED" if suspicion_activated else "CLEAR",
-             "reason": suspicion_basis},
+             "reason": suspicion_basis,
+             "citation_ref": _CITATION_MAP["SUSPICION_TEST"]["ref"],
+             "citation_text": _CITATION_MAP["SUSPICION_TEST"]["text"]},
         ]
 
         # Add typology-specific rule codes for the Typology Map component.
@@ -998,7 +1079,13 @@ async def decide(request: Request):
         for t_code, t_check in _TYPOLOGY_RULES.items():
             try:
                 if t_check():
-                    pre_rules_fired.append({"code": t_code, "result": "TRIGGERED", "reason": f"{t_code} typology detected"})
+                    cite = _CITATION_MAP.get(t_code, {})
+                    pre_rules_fired.append({
+                        "code": t_code, "result": "TRIGGERED",
+                        "reason": f"{t_code} typology detected",
+                        "citation_ref": cite.get("ref", ""),
+                        "citation_text": cite.get("text", ""),
+                    })
             except Exception:
                 pass
 

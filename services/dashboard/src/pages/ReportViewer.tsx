@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { useReportJson } from '../hooks/useApi';
+import { useReportJson, useReportPdf } from '../hooks/useApi';
 import { Loading, ErrorMessage, Badge, StatsCard } from '../components';
 import { dispositionVariant, confidenceVariant } from '../components/Badge';
+import { getLabel } from '../components/EvidenceTable';
 import {
   ReportShell,
   LinchpinStatement,
@@ -204,6 +205,28 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         <SnapshotTable report={report} />
       </div>
 
+      {/* 5. One-Click Action Buttons */}
+      <div className="flex flex-wrap gap-3">
+        <button
+          className="flex-1 min-w-[140px] rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2"
+          onClick={() => {/* TODO: wire to judgment submission */}}
+        >
+          <span>✅</span> Approve
+        </button>
+        <button
+          className="flex-1 min-w-[140px] rounded-lg bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-500 transition-colors flex items-center justify-center gap-2"
+          onClick={() => {/* TODO: wire to request info */}}
+        >
+          <span>ℹ️</span> Request Info
+        </button>
+        <button
+          className="flex-1 min-w-[140px] rounded-lg bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+          onClick={() => {/* TODO: expand to reviewer */}}
+        >
+          <span>🔍</span> Expand to Reviewer View
+        </button>
+      </div>
+
       {/* 5. Governance Summary Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatsCard
@@ -348,10 +371,8 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
         </div>
       )}
 
-      {/* Precedent Analysis */}
-      {report.precedent_analysis?.available && (
-        <PrecedentSection report={report} />
-      )}
+      {/* Precedent Analysis — always shown (auditors need to see this section) */}
+      <PrecedentSection report={report} />
     </div>
   );
 }
@@ -359,11 +380,40 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
 // ── TIER 3 ──────────────────────────────────────────────────────────────────
 
 function Tier3Content({ report }: { report: ReportViewModel }) {
+  const pdfMutation = useReportPdf();
+
+  const handlePdfExport = () => {
+    pdfMutation.mutate(report.decision_id, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compliance_report_${report.case_id}_${report.decision_id_short}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  };
+
   return (
     <div className="space-y-5 border-t border-slate-700/40 pt-5">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-red-400">
-        Regulator View — Full Audit Package
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-red-400">
+          Regulator View — Full Audit Package
+        </h2>
+        <button
+          onClick={handlePdfExport}
+          disabled={pdfMutation.isPending}
+          className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+        >
+          {pdfMutation.isPending ? (
+            <span className="animate-spin">⏳</span>
+          ) : (
+            <span>📄</span>
+          )}
+          Export PDF
+        </button>
+      </div>
 
       {/* Verbatim Citations */}
       <VerbatimCitations report={report} />
@@ -388,12 +438,25 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
         )}
       </div>
 
-      {/* Print/PDF hint */}
-      <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5 text-center">
-        <p className="text-xs text-slate-500">
-          Use <kbd className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px]">Ctrl+P</kbd> to print this report or save as PDF.
-          All three tiers are included when printing from the Regulator View.
-        </p>
+      {/* Export options */}
+      <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-400 font-medium">Export Options</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              All three tiers are included in exported documents. Use
+              <kbd className="mx-1 rounded bg-slate-700 px-1.5 py-0.5 text-[10px]">Ctrl+P</kbd>
+              for browser print, or click Export PDF for a formatted compliance document.
+            </p>
+          </div>
+          <button
+            onClick={handlePdfExport}
+            disabled={pdfMutation.isPending}
+            className="flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-600 transition-colors disabled:opacity-50"
+          >
+            📄 Download PDF
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -402,7 +465,7 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function SnapshotTable({ report }: { report: ReportViewModel }) {
-  // Show the most critical evidence items
+  // Show the most critical evidence items with proper registry labels
   const critical = [
     ...(report.risk_factors ?? []).map((rf) => ({ field: rf.field, value: rf.value })),
     ...(report.transaction_facts ?? []).slice(0, 5),
@@ -426,7 +489,7 @@ function SnapshotTable({ report }: { report: ReportViewModel }) {
       <tbody>
         {unique.map((item, i) => (
           <tr key={i} className="border-b border-slate-800/50">
-            <td className="px-3 py-1.5 text-xs text-slate-400">{item.field}</td>
+            <td className="px-3 py-1.5 text-xs text-slate-400">{getLabel(item.field)}</td>
             <td className="px-3 py-1.5 text-xs text-slate-200">{String(item.value)}</td>
           </tr>
         ))}
@@ -494,7 +557,9 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
 
 function PrecedentSection({ report }: { report: ReportViewModel }) {
   const pa = report.precedent_analysis;
-  if (!pa?.available) return null;
+
+  const totalPrecedents = (pa?.supporting_precedents ?? 0) + (pa?.contrary_precedents ?? 0) + (pa?.neutral_precedents ?? 0);
+  const hasData = totalPrecedents > 0 || (pa?.sample_size ?? 0) > 0;
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
@@ -506,29 +571,38 @@ function PrecedentSection({ report }: { report: ReportViewModel }) {
         <div className="text-center">
           <p className="text-xs text-slate-500">Confidence</p>
           <p className="text-lg font-bold text-slate-100">
-            {Math.round((pa.precedent_confidence ?? 0) * 100)}%
+            {Math.round((pa?.precedent_confidence ?? 0) * 100)}%
           </p>
         </div>
         <div className="text-center">
           <p className="text-xs text-slate-500">Supporting</p>
-          <p className="text-lg font-bold text-emerald-400">{pa.supporting_precedents}</p>
+          <p className="text-lg font-bold text-emerald-400">{pa?.supporting_precedents ?? 0}</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-slate-500">Contrary</p>
-          <p className="text-lg font-bold text-red-400">{pa.contrary_precedents}</p>
+          <p className="text-lg font-bold text-red-400">{pa?.contrary_precedents ?? 0}</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-slate-500">Neutral</p>
-          <p className="text-lg font-bold text-slate-400">{pa.neutral_precedents}</p>
+          <p className="text-lg font-bold text-slate-400">{pa?.neutral_precedents ?? 0}</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-slate-500">Pool</p>
-          <p className="text-lg font-bold text-slate-400">{pa.sample_size}</p>
+          <p className="text-lg font-bold text-slate-400">{pa?.sample_size ?? 0}</p>
         </div>
       </div>
 
+      {/* Message when no precedent data */}
+      {!hasData && (
+        <div className="mt-4 rounded-lg bg-slate-900 p-3 text-center">
+          <p className="text-xs text-slate-500">
+            {pa?.message || 'No comparable precedents found in the seed corpus for this scenario. Run more cases to build the precedent pool.'}
+          </p>
+        </div>
+      )}
+
       {/* Sample cases */}
-      {pa.sample_cases && pa.sample_cases.length > 0 && (
+      {pa?.sample_cases && pa.sample_cases.length > 0 && (
         <div className="mt-4">
           <h4 className="mb-2 text-xs font-semibold text-slate-400">
             Sample Precedents ({pa.sample_cases.length})
@@ -563,7 +637,7 @@ function PrecedentSection({ report }: { report: ReportViewModel }) {
       )}
 
       {/* Caution precedents */}
-      {pa.caution_precedents && pa.caution_precedents.length > 0 && (
+      {pa?.caution_precedents && pa.caution_precedents.length > 0 && (
         <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
           <h4 className="mb-2 text-xs font-medium text-amber-400">
             Caution Precedents ({pa.caution_precedents.length})
@@ -581,7 +655,7 @@ function PrecedentSection({ report }: { report: ReportViewModel }) {
       )}
 
       {/* Appeal statistics */}
-      {pa.appeal_statistics && pa.appeal_statistics.total_appealed > 0 && (
+      {pa?.appeal_statistics && pa.appeal_statistics.total_appealed > 0 && (
         <div className="mt-4 grid grid-cols-4 gap-3 text-center">
           <div>
             <p className="text-[10px] text-slate-500">Appealed</p>
@@ -604,7 +678,7 @@ function PrecedentSection({ report }: { report: ReportViewModel }) {
         </div>
       )}
 
-      {pa.similarity_summary && (
+      {pa?.similarity_summary && (
         <p className="mt-3 text-xs text-slate-500">{pa.similarity_summary}</p>
       )}
     </div>
