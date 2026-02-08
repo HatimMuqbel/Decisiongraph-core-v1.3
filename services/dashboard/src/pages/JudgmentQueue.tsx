@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDemoCases, useDecide } from '../hooks/useApi';
 import {
   Loading,
@@ -13,6 +14,7 @@ import type { DemoCase, DecisionPack } from '../types';
 export default function JudgmentQueue() {
   const { data: cases, isLoading, error } = useDemoCases();
   const decideMut = useDecide();
+  const navigate = useNavigate();
   const [selectedCase, setSelectedCase] = useState<DemoCase | null>(null);
   const [result, setResult] = useState<DecisionPack | null>(null);
   const [filter, setFilter] = useState<string>('');
@@ -162,6 +164,18 @@ export default function JudgmentQueue() {
                 </Badge>
               )}
             </div>
+
+            {/* View Full Report button */}
+            <button
+              onClick={() => {
+                setSelectedCase(null);
+                setResult(null);
+                navigate(`/reports/${result.meta.decision_id}`);
+              }}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition w-full text-center"
+            >
+              View Full Compliance Report →
+            </button>
 
             {/* Decision ID */}
             <div className="rounded-lg bg-slate-900 p-3">

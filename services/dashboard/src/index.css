@@ -35,3 +35,55 @@ button:focus-visible {
 .recharts-tooltip-wrapper {
   z-index: 50;
 }
+
+/* Report Viewer — Tier 3 print mode */
+.report-print-mode {
+  /* Lighter tones for regulatory readability */
+}
+
+@media print {
+  /* Hide sidebar and nav during print */
+  aside {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 1rem !important;
+    overflow: visible !important;
+  }
+  /* White bg for print */
+  body,
+  main,
+  .report-print-mode {
+    background: white !important;
+    color: #1e293b !important;
+  }
+  /* Ensure all sections print */
+  .report-print-mode * {
+    break-inside: avoid;
+  }
+  /* Hide interactive elements */
+  button,
+  .cursor-pointer {
+    display: none !important;
+  }
+  /* Show all tier content */
+  .border-slate-700\/60 {
+    border-color: #cbd5e1 !important;
+  }
+  .bg-slate-800 {
+    background: #f8fafc !important;
+  }
+  .bg-slate-900 {
+    background: #f1f5f9 !important;
+  }
+  .text-slate-100,
+  .text-slate-200,
+  .text-slate-300 {
+    color: #1e293b !important;
+  }
+  .text-slate-400,
+  .text-slate-500 {
+    color: #64748b !important;
+  }
+}

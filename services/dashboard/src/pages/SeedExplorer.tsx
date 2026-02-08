@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge, Loading, ErrorMessage, Modal, dispositionVariant } from '../components';
 import type { SeedScenario } from '../types';
+import { useDecide } from '../hooks/useApi';
 import {
   BarChart,
   Bar,
@@ -45,6 +47,8 @@ export default function SeedExplorer() {
   const [filter, setFilter] = useState('');
   const [dispositionFilter, setDispositionFilter] = useState<string>('');
   const [selected, setSelected] = useState<(typeof SCENARIOS)[0] | null>(null);
+  const navigate = useNavigate();
+  const decideMut = useDecide();
 
   const filtered = SCENARIOS.filter((s) => {
     const matchText =
@@ -252,6 +256,34 @@ export default function SeedExplorer() {
               using weighted distributions appropriate for the scenario disposition.
               ~10% noise variants apply minority-outcome overrides for training diversity.
             </p>
+
+            {/* Run Through Pipeline */}
+            <button
+              onClick={async () => {
+                if (!selected) return;
+                try {
+                  const pack = await decideMut.mutateAsync({
+                    case_id: `seed_${selected.name}`,
+                    ...selected.base_facts,
+                    customer: selected.base_facts,
+                    transaction: selected.base_facts,
+                  });
+                  setSelected(null);
+                  navigate(`/reports/${pack.meta.decision_id}`);
+                } catch {
+                  // error handled by mutation state
+                }
+              }}
+              disabled={decideMut.isPending}
+              className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 transition"
+            >
+              {decideMut.isPending ? 'Running Pipeline…' : 'Run Through Pipeline → View Report'}
+            </button>
+            {decideMut.error && (
+              <p className="text-xs text-red-400">
+                Error: {(decideMut.error as Error).message}
+              </p>
+            )}
           </div>
         )}
       </Modal>

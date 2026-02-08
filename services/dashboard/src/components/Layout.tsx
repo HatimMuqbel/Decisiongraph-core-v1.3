@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { to: '/audit', label: 'Audit Search', icon: '⌕' },
 ];
 
+// Note: Report Viewer is at /reports/:decisionId — accessed by clicking decisions from all pages
+
 export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden">

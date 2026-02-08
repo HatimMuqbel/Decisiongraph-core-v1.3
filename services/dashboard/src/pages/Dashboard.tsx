@@ -11,7 +11,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 
 const COLORS = {
@@ -208,6 +207,24 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Report Viewer CTA */}
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
+        <h2 className="mb-2 text-sm font-semibold text-blue-400">
+          Progressive Disclosure Compliance Reports
+        </h2>
+        <p className="text-xs text-slate-400 mb-3">
+          Run any demo case through the engine, then view the full 3-tier compliance report.
+          Reports include risk heatmaps, typology analysis, negative path search, verbatim
+          citations, and full audit metadata for FINTRAC examination.
+        </p>
+        <Link
+          to="/cases"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition"
+        >
+          Open Demo Cases to Generate Reports →
+        </Link>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
+import type { ReactNode } from 'react';
 import { clsx } from 'clsx';
 
 interface StatsCardProps {
   label: string;
   value: string | number;
   sub?: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   trend?: 'up' | 'down' | 'flat';
   className?: string;
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge, Loading, ErrorMessage, dispositionVariant } from '../components';
 import { useDemoCases } from '../hooks/useApi';
 import type { DemoCase } from '../types';
@@ -21,6 +22,7 @@ const SCENARIO_TYPES = [
 
 export default function AuditSearch() {
   const { data: allCases, isLoading, error } = useDemoCases();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [outcome, setOutcome] = useState('');
@@ -206,7 +208,8 @@ export default function AuditSearch() {
               {filtered.map((c, idx) => (
                 <tr
                   key={c.id ?? idx}
-                  className="border-b border-slate-800 transition-colors hover:bg-slate-700/30"
+                  onClick={() => navigate(`/cases/${c.id}`)}
+                  className="border-b border-slate-800 transition-colors hover:bg-slate-700/30 cursor-pointer"
                 >
                   <td className="px-4 py-3 font-mono text-xs text-emerald-400">
                     {c.id ?? `#${idx + 1}`}

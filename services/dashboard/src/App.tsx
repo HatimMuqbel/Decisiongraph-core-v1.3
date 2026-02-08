@@ -5,6 +5,7 @@ import {
   Dashboard,
   JudgmentQueue,
   DecisionViewer,
+  ReportViewer,
   SeedExplorer,
   PolicyShifts,
   AuditSearch,
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/cases" element={<JudgmentQueue />} />
             <Route path="/cases/:caseId" element={<DecisionViewer />} />
+            <Route path="/reports/:decisionId" element={<ReportViewer />} />
             <Route path="/seeds" element={<SeedExplorer />} />
             <Route path="/policy-shifts" element={<PolicyShifts />} />
             <Route path="/audit" element={<AuditSearch />} />

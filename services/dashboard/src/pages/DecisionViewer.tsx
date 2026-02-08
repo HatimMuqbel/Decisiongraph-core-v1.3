@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useDemoCase, useDecide, useReportJson } from '../hooks/useApi';
 import {
@@ -8,11 +8,11 @@ import {
   EvidenceTable,
   StatsCard,
   dispositionVariant,
-  confidenceVariant,
 } from '../components';
 
 export default function DecisionViewer() {
-  const { id } = useParams<{ id: string }>();
+  const { caseId: id } = useParams<{ caseId: string }>();
+  const navigate = useNavigate();
   const { data: demoCase, isLoading: loadingCase, error: caseError } = useDemoCase(id ?? '');
   const decideMut = useDecide();
   const [decisionId, setDecisionId] = useState<string | null>(null);
@@ -64,6 +64,21 @@ export default function DecisionViewer() {
           {decideMut.isPending ? 'Running…' : 'Run Through Engine'}
         </button>
       </div>
+
+      {/* View Full Report link */}
+      {decisionId && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(`/reports/${decisionId}`)}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition"
+          >
+            View Full Report →
+          </button>
+          <span className="text-xs text-slate-500">
+            Decision: <span className="font-mono">{decisionId.slice(0, 16)}</span>
+          </span>
+        </div>
+      )}
 
       {decideMut.error && <ErrorMessage error={decideMut.error as Error} />}
 

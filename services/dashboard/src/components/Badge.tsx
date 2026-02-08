@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { clsx } from 'clsx';
 
 type Variant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
@@ -12,7 +13,7 @@ const variantClasses: Record<Variant, string> = {
 
 interface BadgeProps {
   variant?: Variant;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   size?: 'sm' | 'md';
 }

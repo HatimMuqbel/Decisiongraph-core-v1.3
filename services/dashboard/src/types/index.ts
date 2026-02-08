@@ -274,9 +274,63 @@ export interface DecisionPack {
   precedent_analysis: PrecedentAnalysis;
 }
 
-// ── Report View Model ───────────────────────────────────────────────────────
+// ── Report View Model (mirrors backend view_model.py) ───────────────────────
+
+export interface ReportGateSection {
+  id: string;
+  name: string;
+  passed: boolean;
+  reason: string;
+}
+
+export interface ReportTier1Signal {
+  code: string;
+  source: string;
+  field?: string;
+  detail: string;
+}
+
+export interface ReportTier2Signal {
+  code: string;
+  source: string;
+  field?: string;
+  detail: string;
+}
+
+export interface DecisionIntegrityAlert {
+  type: string;
+  severity: string;
+  original_verdict: string;
+  classifier_outcome: string;
+  message: string;
+}
+
+export interface PrecedentDeviationAlert {
+  type: string;
+  message: string;
+}
+
+export interface DefensibilityCheck {
+  status: string;
+  message: string;
+  action?: string;
+  note?: string;
+}
+
+export interface EddRecommendation {
+  action: string;
+  reference?: string;
+}
+
+export interface SlaTimeline {
+  case_created: string;
+  edd_deadline: string;
+  final_disposition_due: string;
+  str_filing_window: string;
+}
 
 export interface ReportViewModel {
+  // Administrative
   decision_id: string;
   decision_id_short: string;
   case_id: string;
@@ -285,49 +339,103 @@ export interface ReportViewModel {
   engine_version: string;
   policy_version: string;
   domain: string;
+  report_schema_version?: string;
+  narrative_compiler_version?: string;
+  classifier_version?: string;
+  report_sections?: string[];
+
+  // Hashes
   input_hash: string;
+  input_hash_short?: string;
   policy_hash: string;
+  policy_hash_short?: string;
+
+  // Case classification
   source_type: string;
   seed_category?: string;
   scenario_code?: string;
   is_seed: boolean;
+  escalation_summary?: string;
+  decision_confidence?: string;
+  decision_confidence_reason?: string;
+  decision_confidence_score?: number;
+  similarity_summary?: string;
+  decision_drivers: string[];
+
+  // Transaction facts
+  transaction_facts: EvidenceUsed[];
+
+  // Decision (Governed)
   verdict: string;
   action: string;
+  decision_status?: string;
+  decision_explainer?: string;
   str_required: boolean;
+  escalation_reasons?: string[];
+  regulatory_status?: string;
+  investigation_state?: string;
+  primary_typology?: string;
+  regulatory_obligation?: string;
+  regulatory_position?: string;
+
+  // Engine vs Governed
   engine_disposition: string;
   governed_disposition: string;
+
+  // Canonical
   canonical_outcome: CanonicalOutcome;
-  transaction_facts: EvidenceUsed[];
+
+  // Gates
   gate1_passed: boolean;
   gate1_decision: string;
-  gate1_sections: GateSection[];
+  gate1_sections: ReportGateSection[];
   gate2_decision: string;
   gate2_status: string;
-  gate2_sections: GateSection[];
+  gate2_sections: ReportGateSection[];
+
+  // Evaluation Trace
   rules_fired: RuleFired[];
   evidence_used: EvidenceUsed[];
   risk_factors: { field: string; value: string }[];
   decision_path_trace: string;
+
+  // Rationale
   summary: string;
+
+  // Precedent Analysis
   precedent_analysis: PrecedentAnalysis;
-  tier1_signals: Tier1Signal[];
-  tier2_signals: Tier2Signal[];
-  decision_confidence?: {
-    score: number;
-    label: string;
-    reason: string;
-  };
-  defensibility_check?: {
-    defensible: boolean;
-    reasons: string[];
-  };
-  edd_recommendations?: string[];
-  sla_timeline?: {
-    sla_hours: number;
-    priority: string;
-  };
-  decision_drivers: string[];
-  escalation_summary?: string;
+
+  // Suspicion Classification
+  classification?: Record<string, unknown>;
+  classification_outcome?: string;
+  classification_reason?: string;
+  tier1_signals: ReportTier1Signal[];
+  tier2_signals: ReportTier2Signal[];
+  suspicion_count?: number;
+  investigative_count?: number;
+  precedent_consistency_alert?: boolean;
+  precedent_consistency_detail?: string;
+
+  // Decision Integrity & Governance
+  decision_integrity_alert?: DecisionIntegrityAlert | null;
+  precedent_deviation_alert?: PrecedentDeviationAlert | null;
+  corrections_applied?: Record<string, unknown>;
+  classifier_is_sovereign?: boolean;
+
+  // Precedent Metrics
+  precedent_alignment_pct?: number;
+  precedent_match_rate?: number;
+  scored_precedent_count?: number;
+  total_comparable_pool?: number;
+
+  // Defensibility
+  defensibility_check?: DefensibilityCheck;
+
+  // EDD
+  edd_recommendations?: EddRecommendation[];
+
+  // SLA
+  sla_timeline?: SlaTimeline;
 }
 
 // ── Demo Cases ──────────────────────────────────────────────────────────────
@@ -467,4 +575,72 @@ export interface DashboardStats {
   policyShiftCount: number;
   approvalRate: number;
   avgConfidence: number;
+}
+
+// ── Report Viewer ───────────────────────────────────────────────────────────
+
+export type ReportTier = 1 | 2 | 3;
+
+export interface AutoEscalationReason {
+  tier: ReportTier;
+  reason: string;
+}
+
+/** Determine minimum tier based on risk signals in the report. */
+export function computeAutoEscalation(report: ReportViewModel): AutoEscalationReason[] {
+  const reasons: AutoEscalationReason[] = [];
+
+  // Tier 2 triggers
+  const tier1Signals = report.tier1_signals ?? [];
+  const hasMandatoryEscalation = tier1Signals.some(
+    (s) => s.code === 'MANDATORY_ESCALATION' || s.code === 'SAR_PATTERN',
+  );
+  if (hasMandatoryEscalation) reasons.push({ tier: 2, reason: 'Mandatory escalation signal present' });
+
+  const amount = report.evidence_used?.find(
+    (e) => e.field === 'txn.amount_band',
+  );
+  if (amount && ['25k_100k', '100k_500k', '500k_1m', 'over_1m'].includes(String(amount.value))) {
+    reasons.push({ tier: 2, reason: 'Transaction amount exceeds $25,000 threshold' });
+  }
+
+  const priorSars = report.evidence_used?.find((e) => e.field === 'prior.sars_filed');
+  if (priorSars && Number(priorSars.value) >= 2) {
+    reasons.push({ tier: 2, reason: 'Prior suspicious activity reports >= 2' });
+  }
+
+  // Tier 3 triggers
+  const hasDisqualifier = tier1Signals.some(
+    (s) => s.code === 'SANCTIONS_SIGNAL' || s.code === 'TERRORIST_FINANCING',
+  );
+  if (hasDisqualifier) reasons.push({ tier: 3, reason: 'Disqualifier signal present' });
+
+  if (report.verdict === 'HARD_STOP' || report.verdict === 'BLOCK') {
+    reasons.push({ tier: 3, reason: 'Decision is BLOCK / HARD_STOP' });
+  }
+
+  if (report.str_required) {
+    reasons.push({ tier: 3, reason: 'STR filing required' });
+  }
+
+  if (
+    amount &&
+    ['100k_500k', '500k_1m', 'over_1m'].includes(String(amount.value))
+  ) {
+    reasons.push({ tier: 3, reason: 'Transaction amount exceeds $100,000' });
+  }
+
+  if (report.decision_integrity_alert) {
+    reasons.push({ tier: 3, reason: 'Decision integrity alert present' });
+  }
+
+  return reasons;
+}
+
+/** Get the minimum required tier for a report. */
+export function getMinimumTier(report: ReportViewModel): ReportTier {
+  const reasons = computeAutoEscalation(report);
+  if (reasons.some((r) => r.tier === 3)) return 3;
+  if (reasons.some((r) => r.tier === 2)) return 2;
+  return 1;
 }

@@ -58,6 +58,11 @@ export const api = {
     request<{ decision_id: string; format: string; content: string; generated_at: string }>(
       `/report/${decisionId}/markdown`
     ),
+  reportPdf: async (decisionId: string): Promise<Blob> => {
+    const res = await fetch(`${API_BASE}/report/${decisionId}/pdf`);
+    if (!res.ok) throw new Error(`PDF export failed: ${res.status}`);
+    return res.blob();
+  },
 
   // Templates
   templates: () => request<TemplateInfo[]>('/templates'),
