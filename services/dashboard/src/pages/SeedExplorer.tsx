@@ -143,15 +143,15 @@ export default function SeedExplorer() {
             <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
               <div>
                 <p className="text-slate-500">Seeds</p>
-                <p className="font-bold text-slate-200">{s.seedCount}</p>
+                <p className="font-bold text-slate-200">{s.seedCount}<span className="font-normal text-slate-500"> / 1,500</span></p>
               </div>
               <div>
-                <p className="text-slate-500">Weight</p>
-                <p className="font-bold text-slate-200">{(s.weight * 100).toFixed(0)}%</p>
+                <p className="text-slate-500">Pool Share</p>
+                <p className="font-bold text-slate-200">{(s.weight * 100).toFixed(0)}%<span className="font-normal text-slate-500"> of corpus</span></p>
               </div>
               <div>
-                <p className="text-slate-500">Level</p>
-                <p className="font-bold text-slate-200">{s.decision_level}</p>
+                <p className="text-slate-500">Review Level</p>
+                <p className="font-bold text-slate-200">{s.decision_level.replace(/_/g, ' ')}</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-1">
@@ -236,26 +236,33 @@ export default function SeedExplorer() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-slate-900 p-3 text-center">
-                <p className="text-xs text-slate-500">Total Seeds</p>
+                <p className="text-xs text-slate-500">Seeds in Corpus</p>
                 <p className="text-xl font-bold text-slate-100">{selected.seedCount}</p>
+                <p className="text-[10px] text-slate-600">out of 1,500 total</p>
               </div>
               <div className="rounded-lg bg-slate-900 p-3 text-center">
-                <p className="text-xs text-slate-500">Weight</p>
+                <p className="text-xs text-slate-500">Corpus Share</p>
                 <p className="text-xl font-bold text-slate-100">
                   {(selected.weight * 100).toFixed(0)}%
                 </p>
+                <p className="text-[10px] text-slate-600">of training precedents</p>
               </div>
               <div className="rounded-lg bg-slate-900 p-3 text-center">
-                <p className="text-xs text-slate-500">Decision Level</p>
-                <p className="text-xl font-bold text-slate-100">{selected.decision_level}</p>
+                <p className="text-xs text-slate-500">Min. Review Level</p>
+                <p className="text-xl font-bold text-slate-100">{selected.decision_level.replace(/_/g, ' ')}</p>
+                <p className="text-[10px] text-slate-600">required approval authority</p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-500">
-              Remaining fields (not listed in base_facts) are filled with realistic random values
-              using weighted distributions appropriate for the scenario disposition.
-              ~10% noise variants apply minority-outcome overrides for training diversity.
-            </p>
+            <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+              <p className="text-xs text-slate-400">
+                <span className="font-semibold text-slate-300">How seeds work:</span>{' '}
+                The seed generator creates {selected.seedCount} precedent cases ({(selected.weight * 100).toFixed(0)}% of the 1,500-case training corpus) for this scenario.
+                Base facts above are pinned; remaining fields are filled with realistic random values
+                using weighted distributions appropriate for the <span className="font-mono text-emerald-400">{selected.outcome.disposition}</span> disposition.
+                ~10% of seeds receive minority-outcome noise for training diversity.
+              </p>
+            </div>
 
             {/* Run Through Pipeline */}
             <button
