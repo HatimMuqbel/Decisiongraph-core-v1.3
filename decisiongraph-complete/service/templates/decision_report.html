@@ -205,7 +205,8 @@
       </div>
       {% if engine_disposition != governed_disposition %}
       <p class="small" style="margin-top:10px; font-style:italic; color:var(--muted);">
-        Engine output differs from governed disposition. Classifier sovereignty enforced — governed outcome is authoritative.
+        Engine output differs from governed disposition. Governance correction applied — governed outcome is authoritative.
+        This correction prevents false escalation and preserves STR threshold integrity.
       </p>
       {% endif %}
     </div>
@@ -229,8 +230,47 @@
         <div class="value">{{ decision_confidence }}{% if decision_confidence_score is defined %} ({{ decision_confidence_score }}%){% endif %}</div>
         {% endif %}
       </div>
+      {% if decision_confidence %}
+      <h4 style="margin-top:14px; margin-bottom:8px; font-size:13px;">Confidence Metrics</h4>
+      <table style="font-size:12px; margin-bottom:8px;">
+        <thead>
+          <tr><th>Metric</th><th>Value</th><th>Definition</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Decision Confidence</td>
+            <td class="mono">{{ decision_confidence }} ({{ decision_confidence_score | default(0) }}%)</td>
+            <td class="small">Composite score reflecting evidence completeness and rule alignment</td>
+          </tr>
+          <tr>
+            <td>Precedent Alignment</td>
+            <td class="mono">{{ precedent_alignment_pct | default(0) }}%</td>
+            <td class="small">supporting_decisive / count(decisive_precedents) within same basis</td>
+          </tr>
+          <tr>
+            <td>Precedent Match Rate</td>
+            <td class="mono">{{ precedent_match_rate | default(0) }}% ({{ scored_precedent_count | default(0) }} / {{ total_comparable_pool | default(0) }})</td>
+            <td class="small">Percentage of comparable pool meeting similarity threshold</td>
+          </tr>
+        </tbody>
+      </table>
+      {% endif %}
       <p class="small" style="margin-top:10px;">{{ decision_explainer }}</p>
     </div>
+
+    {% if canonical_outcome %}
+    <h3>Canonical Outcome</h3>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Disposition</div>
+        <div class="value" style="font-weight:700;">{{ canonical_outcome.disposition | default('UNKNOWN') }}</div>
+        <div class="label">Disposition Basis</div>
+        <div class="value">{{ canonical_outcome.disposition_basis | default('UNKNOWN') }}</div>
+        <div class="label">Reporting</div>
+        <div class="value">{{ canonical_outcome.reporting | default('UNKNOWN') }}{% if canonical_outcome.reporting_note %} ({{ canonical_outcome.reporting_note }}){% endif %}</div>
+      </div>
+    </div>
+    {% endif %}
 
     <h3>Case Facts</h3>
     <table class="break">
@@ -345,6 +385,20 @@
       <p class="small">{{ decision_confidence_reason }}</p>
       {% endif %}
     </div>
+
+    {% if edd_recommendations and edd_recommendations|length > 0 %}
+    <h2>Recommended Actions</h2>
+    <div class="card break">
+      <ol class="small" style="margin:0; padding-left:20px;">
+        {% for rec in edd_recommendations %}
+        <li style="margin-bottom:8px;">
+          <strong>{{ rec.action }}</strong>
+          {% if rec.reference %}<br><span class="small" style="color:var(--muted); font-style:italic;">Ref: {{ rec.reference }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
 
     <h2>Suspicion Classification</h2>
     <div class="card break">
@@ -493,6 +547,20 @@
     </div>
 
     <h2>Rules Evaluated</h2>
+    {% set rule_evidence_map = {
+      'AML_ESC_HR_COUNTRY': ['txn.destination_country', 'txn.cross_border'],
+      'AML_ESC_PEP_SCREEN': ['flag.pep', 'customer.pep_flag'],
+      'AML_ESC_PEP': ['flag.pep', 'customer.pep_flag'],
+      'AML_ESC_STRUCT': ['flag.structuring_suspected', 'txn.amount_band'],
+      'AML_BLOCK_SANCTIONS': ['flag.sanctions_proximity'],
+      'AML_INV_STRUCT': ['flag.structuring_suspected', 'txn.amount_band'],
+      'AML_STR_LAYER': ['flag.rapid_movement', 'txn.method'],
+      'AML_ESC_ADVERSE_MEDIA': ['flag.adverse_media']
+    } %}
+    {% set ev_lookup = {} %}
+    {% for ev in evidence_used %}
+      {% if ev.field %}{% set _ = ev_lookup.update({ev.field: ev.value}) %}{% endif %}
+    {% endfor %}
     <table class="break">
       <thead>
         <tr>
@@ -514,7 +582,21 @@
               <span class="pill na">{{ rule.result }}</span>
             {% endif %}
           </td>
-          <td class="small">{{ rule.reason }}</td>
+          <td class="small">
+            {{ rule.reason }}
+            {% if rule.result in ['TRIGGERED', 'ACTIVATED', 'WARN', 'FAIL', 'FAILED'] %}
+              {% set mapped = rule_evidence_map.get(rule.code | upper, []) %}
+              {% set ns = namespace(active=[]) %}
+              {% for f in mapped %}
+                {% if f in ev_lookup %}
+                  {% set ns.active = ns.active + [f ~ ' = ' ~ ev_lookup[f]] %}
+                {% endif %}
+              {% endfor %}
+              {% if ns.active %}
+                <br><span style="color:var(--muted); font-size:11px;">Triggered by: {{ ns.active[:3] | join(', ') }}</span>
+              {% endif %}
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
         {% if not rules_fired %}
@@ -742,7 +824,7 @@
         <div class="label">Overturned</div>
         <div class="value">{{ precedent_analysis.appeal_statistics.overturned }}</div>
         <div class="label">Upheld Rate</div>
-        <div class="value">{{ "%.0f"|format(precedent_analysis.appeal_statistics.upheld_rate * 100) }}%</div>
+        <div class="value">{% if precedent_analysis.appeal_statistics.total_appealed > 0 %}{{ "%.0f"|format(precedent_analysis.appeal_statistics.upheld_rate * 100) }}%{% else %}N/A — No appeals filed{% endif %}</div>
       </div>
     </div>
 
@@ -768,6 +850,27 @@
     <div class="status warn" style="margin-top:12px; padding:12px;">
       <strong>Precedent Analysis Unavailable</strong><br>
       <span class="small">{{ precedent_analysis.message or precedent_analysis.error or 'Precedent analysis unavailable.' }}</span>
+    </div>
+    {% endif %}
+
+    {% if defensibility_check %}
+    <h2>Defensibility Check</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Status</div>
+        <div class="value" style="font-weight:700; {% if defensibility_check.status == 'PASS' %}color:#059669;{% elif defensibility_check.status == 'DEFERRED' %}color:#d97706;{% else %}color:#dc2626;{% endif %}">
+          {% if defensibility_check.status == 'PASS' %}✅{% elif defensibility_check.status == 'DEFERRED' %}⏳{% else %}🚨{% endif %}
+          {{ defensibility_check.status | default('UNKNOWN') }} — {{ defensibility_check.message | default('') }}
+        </div>
+        {% if defensibility_check.action %}
+        <div class="label">Action</div>
+        <div class="value">{{ defensibility_check.action }}</div>
+        {% endif %}
+        {% if defensibility_check.note %}
+        <div class="label">Note</div>
+        <div class="value small">{{ defensibility_check.note }}</div>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
 
@@ -804,10 +907,28 @@
 
     <h2>Evidence Considered</h2>
     <p class="small" style="margin-bottom:8px;">Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.</p>
+    {% set scope_labels = {
+      'risk.high_risk_jurisdiction': 'Customer domicile jurisdiction risk',
+      'txn.destination_country': 'Transaction destination jurisdiction',
+      'txn.cross_border': 'Transaction cross-border indicator',
+      'flag.cross_border': 'Cross-border flag (transaction-level)',
+      'customer.type': 'Customer entity type',
+      'customer.pep_flag': 'Customer PEP status',
+      'flag.pep': 'PEP flag (customer-level)',
+      'txn.amount_band': 'Transaction amount band',
+      'txn.method': 'Payment method',
+      'flag.structuring_suspected': 'Structuring indicator (transaction pattern)',
+      'flag.sanctions_proximity': 'Sanctions screening proximity',
+      'flag.adverse_media': 'Adverse media indicator',
+      'flag.rapid_movement': 'Rapid fund movement indicator',
+      'flag.shell_entity': 'Shell entity indicator',
+      'risk.risk_score': 'Overall risk score'
+    } %}
     <table class="break">
       <thead>
         <tr>
           <th>Field</th>
+          <th>Scope</th>
           <th>Value</th>
         </tr>
       </thead>
@@ -815,16 +936,33 @@
         {% for ev in evidence_used %}
         <tr>
           <td class="mono">{{ ev.field }}</td>
-          <td>{{ ev.value }}</td>
+          <td class="small">{{ scope_labels.get(ev.field, ev.field) }}</td>
+          <td>{% if ev.value is sameas true %}Yes{% elif ev.value is sameas false %}No{% else %}{{ ev.value }}{% endif %}</td>
         </tr>
         {% endfor %}
         {% if not evidence_used %}
         <tr>
-          <td colspan="2" class="small">No evidence recorded</td>
+          <td colspan="3" class="small">No evidence recorded</td>
         </tr>
         {% endif %}
       </tbody>
     </table>
+
+    {% if sla_timeline %}
+    <h2>Timeline</h2>
+    <div class="card break">
+      <div class="kv">
+        <div class="label">Case Created</div>
+        <div class="value mono">{{ sla_timeline.case_created | default('N/A') }}</div>
+        <div class="label">EDD Deadline</div>
+        <div class="value mono">{{ sla_timeline.edd_deadline | default('N/A') }}</div>
+        <div class="label">Final Disposition Due</div>
+        <div class="value">{{ sla_timeline.final_disposition_due | default('N/A') }}</div>
+        <div class="label">STR Filing Window</div>
+        <div class="value">{{ sla_timeline.str_filing_window | default('N/A') }}</div>
+      </div>
+    </div>
+    {% endif %}
 
     <h2>Auditability &amp; Governance</h2>
     <h3>Decision Provenance</h3>
