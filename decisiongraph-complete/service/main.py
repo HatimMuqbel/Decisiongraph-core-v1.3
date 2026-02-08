@@ -980,14 +980,20 @@ async def decide(request: Request):
         # Add typology-specific rule codes for the Typology Map component.
         # The frontend TypologyMap matches these codes against 14 known typologies.
         _TYPOLOGY_RULES = {
-            "STRUCTURING": lambda: any(i.get("code") == "STRUCTURING" for i in indicators),
+            "STRUCTURING_PATTERN": lambda: any(i.get("code") == "STRUCTURING" for i in indicators),
             "LAYERING": lambda: any(i.get("code") == "LAYERING" for i in indicators),
             "SHELL_ENTITY": lambda: any(i.get("code") == "SHELL_COMPANY" for i in indicators),
             "THIRD_PARTY_UNEXPLAINED": lambda: any(i.get("code") == "THIRD_PARTY" for i in indicators),
+            "FALSE_SOURCE": lambda: not facts.get("source_verified", True) and not facts.get("docs_complete", True),
             "SANCTIONS_SIGNAL": lambda: facts.get("sanctions_result") == "MATCH",
             "ADVERSE_MEDIA_CONFIRMED": lambda: bool(facts.get("adverse_media_mltf")),
             "SAR_PATTERN": lambda: any(i.get("code") == "PRIOR_SARS" for i in indicators),
             "EVASION_BEHAVIOR": lambda: any(i.get("code") in ("UNUSUAL_FOR_PROFILE", "VELOCITY_SPIKE") for i in indicators),
+            "ROUND_TRIP": lambda: any(i.get("code") == "ROUND_TRIP" for i in indicators),
+            "TRADE_BASED_LAUNDERING": lambda: any(i.get("code") == "TRADE_BASED" for i in indicators),
+            "FUNNEL": lambda: any(i.get("code") == "FUNNEL_ACCOUNT" for i in indicators),
+            "VIRTUAL_ASSET_LAUNDERING": lambda: instrument_type == "crypto",
+            "TERRORIST_FINANCING": lambda: any(i.get("code") == "TERRORIST_FINANCING" for i in indicators),
         }
         for t_code, t_check in _TYPOLOGY_RULES.items():
             try:

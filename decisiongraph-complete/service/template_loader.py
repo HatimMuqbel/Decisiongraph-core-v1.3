@@ -331,7 +331,8 @@ class TemplateLoader:
                     _TXN_TYPE_MAP = {
                         "cash_deposit": "cash",
                         "cash_withdrawal": "cash",
-                        "ach_eft": "ach",
+                        "check": "cheque",
+                        "ach_eft": "eft",
                         "crypto_purchase": "crypto",
                         "crypto_sale": "crypto",
                         "international_transfer": "wire_international",
