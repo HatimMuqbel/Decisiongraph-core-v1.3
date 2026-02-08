@@ -342,6 +342,9 @@ class PrecedentRegistry:
         results.sort(key=lambda x: x[1], reverse=True)
         return results
 
+    # Alias: banking domain uses "signal_codes" instead of "exclusion_codes"
+    find_by_signal_codes = find_by_exclusion_codes
+
     def get_statistics(
         self,
         fingerprint_hash: str,

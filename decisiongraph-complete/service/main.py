@@ -74,7 +74,7 @@ from decisiongraph.judgment import (
 )
 
 # Import routers
-from service.routers import demo, report, verify, templates
+from service.routers import demo, report, verify, templates, policy_shifts
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
 from service.suspicion_classifier import CLASSIFIER_VERSION, classify as classify_suspicion
 
@@ -291,6 +291,7 @@ app.include_router(demo.router)
 app.include_router(report.router)
 app.include_router(verify.router)
 app.include_router(templates.router)
+app.include_router(policy_shifts.router)
 
 # Static files for landing page
 STATIC_DIR = Path(__file__).parent / "static"
@@ -944,13 +945,18 @@ async def decide(request: Request):
         # Query similar precedents and add to decision pack
         reason_codes = extract_reason_codes(facts, indicators, obligations)
         proposed_outcome = decision_pack["decision"]["verdict"].lower()
-        # Map verdict to precedent outcome codes
+        # Map engine verdict to precedent outcome codes (banking vocabulary)
+        # The scorer uses v2 three-field canonical outcomes internally;
+        # this v1 mapping exists for backward compat with precedent comparison.
         outcome_map = {
             "str": "escalate",
             "escalate": "escalate",
             "hard_stop": "deny",
             "pass": "pay",
-            "pass_with_edd": "pay",
+            "pass_with_edd": "escalate",
+            "block": "deny",
+            "edd": "escalate",
+            "allow": "pay",
         }
         proposed_outcome = outcome_map.get(proposed_outcome, "escalate")
 
@@ -1466,10 +1472,16 @@ def _decision_level_weight(level: Optional[str]) -> float:
         return 1.0
     level = level.lower()
     return {
+        # Insurance domain
         "adjuster": 0.9,
-        "manager": 1.0,
         "tribunal": 1.1,
         "court": 1.15,
+        # Banking domain
+        "analyst": 0.9,
+        "senior_analyst": 0.95,
+        "manager": 1.0,
+        "cco": 1.1,
+        "senior_management": 1.15,
     }.get(level, 1.0)
 
 

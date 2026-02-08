@@ -233,7 +233,13 @@ class JudgmentPayload:
     # v2 outcome model — three-field canonicalization
     # See docs/PRECEDENT_OUTCOME_MODEL_V2.md
     disposition_basis: str = "UNKNOWN"       # MANDATORY | DISCRETIONARY | UNKNOWN
-    reporting_obligation: str = "UNKNOWN"    # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | UNKNOWN
+    reporting_obligation: str = "UNKNOWN"    # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | PENDING_EDD | UNKNOWN
+
+    # Domain (banking or insurance) — controls validation rules
+    domain: str = "insurance"  # backward compat: default to insurance
+
+    # Banking-specific: signal_codes are the banking equivalent of exclusion_codes
+    signal_codes: list[str] = field(default_factory=list)
 
     # Provenance
     authority_hashes: list[str] = field(default_factory=list)
@@ -265,8 +271,13 @@ class JudgmentPayload:
             if not value:
                 raise JudgmentValidationError(f"{name} cannot be empty")
 
-        # Validate outcome_code
-        valid_outcomes = {"pay", "deny", "partial", "escalate"}
+        # Validate outcome_code — domain-aware
+        _INSURANCE_OUTCOMES = {"pay", "deny", "partial", "escalate"}
+        _BANKING_OUTCOMES = {"ALLOW", "EDD", "BLOCK"}
+        if self.domain == "banking":
+            valid_outcomes = _BANKING_OUTCOMES | _INSURANCE_OUTCOMES  # accept both during migration
+        else:
+            valid_outcomes = _INSURANCE_OUTCOMES
         if self.outcome_code not in valid_outcomes:
             raise JudgmentValidationError(
                 f"Invalid outcome_code '{self.outcome_code}'. "
@@ -281,8 +292,13 @@ class JudgmentPayload:
                 f"Must be one of: {valid_certainties}"
             )
 
-        # Validate decision_level
-        valid_levels = {"adjuster", "manager", "tribunal", "court"}
+        # Validate decision_level — domain-aware
+        _INSURANCE_LEVELS = {"adjuster", "manager", "tribunal", "court"}
+        _BANKING_LEVELS = {"analyst", "senior_analyst", "manager", "cco", "senior_management"}
+        if self.domain == "banking":
+            valid_levels = _BANKING_LEVELS
+        else:
+            valid_levels = _INSURANCE_LEVELS
         if self.decision_level not in valid_levels:
             raise JudgmentValidationError(
                 f"Invalid decision_level '{self.decision_level}'. "
@@ -430,6 +446,8 @@ class JudgmentPayload:
             "seed_category": self.seed_category,
             "disposition_basis": self.disposition_basis,
             "reporting_obligation": self.reporting_obligation,
+            "domain": self.domain,
+            "signal_codes": self.signal_codes,
             "authority_hashes": self.authority_hashes,
         }
 
@@ -480,6 +498,8 @@ class JudgmentPayload:
             outcome_notable=data.get("outcome_notable"),
             disposition_basis=data.get("disposition_basis", "UNKNOWN"),
             reporting_obligation=data.get("reporting_obligation", "UNKNOWN"),
+            domain=data.get("domain", "insurance"),
+            signal_codes=data.get("signal_codes", []),
             authority_hashes=data.get("authority_hashes", []),
         )
 

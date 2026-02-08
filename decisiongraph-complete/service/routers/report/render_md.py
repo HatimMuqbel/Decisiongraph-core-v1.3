@@ -306,23 +306,35 @@ def render_markdown(ctx: dict) -> str:
         )
 
     # ── FIX-003: Evidence with scope qualifiers ───────────────────────────
-    _EVIDENCE_SCOPE_LABELS: dict[str, str] = {
+    # Pull display names from the banking field registry (single source of truth)
+    from decisiongraph.banking_field_registry import get_canonical_to_display_map
+    _EVIDENCE_SCOPE_LABELS: dict[str, str] = get_canonical_to_display_map()
+    # Add non-registry fields from decision_pack evaluation trace
+    _EVIDENCE_SCOPE_LABELS.update({
+        "facts.sanctions_result": "Sanctions screening determination",
+        "facts.adverse_media_mltf": "Adverse media ML/TF relevance indicator",
+        "suspicion.has_intent": "Suspicion element: intent indicators present",
+        "suspicion.has_deception": "Suspicion element: deception indicators present",
+        "suspicion.has_sustained_pattern": "Suspicion element: sustained transaction pattern",
+        "obligations.count": "Count of regulatory obligations triggered",
+        "mitigations.count": "Count of mitigating factors identified",
+        "typology.maturity": "Typology assessment maturity level",
+        # Legacy field aliases (website names) for backward compat
         "risk.high_risk_jurisdiction": "Customer domicile jurisdiction risk",
-        "txn.destination_country": "Transaction destination jurisdiction",
-        "txn.cross_border": "Transaction cross-border indicator",
-        "flag.cross_border": "Cross-border flag (transaction-level)",
-        "customer.type": "Customer entity type",
-        "customer.pep_flag": "Customer PEP status",
-        "flag.pep": "PEP flag (customer-level)",
-        "txn.amount_band": "Transaction amount band",
-        "txn.method": "Payment method",
-        "flag.structuring_suspected": "Structuring indicator (transaction pattern)",
-        "flag.sanctions_proximity": "Sanctions screening proximity",
-        "flag.adverse_media": "Adverse media indicator",
-        "flag.rapid_movement": "Rapid fund movement indicator",
-        "flag.shell_entity": "Shell entity indicator",
+        "risk.pep": "Politically Exposed Person status",
+        "risk.high_risk_industry": "High-risk industry indicator",
+        "risk.cash_intensive_business": "Cash-intensive business indicator",
+        "screen.sanctions_match": "Sanctions screening match",
+        "screen.pep_match": "PEP screening match",
+        "screen.adverse_media": "Adverse media indicator",
+        "screen.prior_sars_filed": "Prior Suspicious Activity Reports filed",
+        "screen.previous_account_closures": "Previous account closures on record",
+        "flag.structuring_suspected": "Structuring indicators present",
+        "flag.layering_indicators": "Layering indicators present",
+        "flag.third_party_payment": "Third-party payment indicator",
+        "flag.shell_company_indicators": "Shell company indicators present",
         "risk.risk_score": "Overall risk score",
-    }
+    })
 
     evidence_rows = ""
     for ev in ctx.get("evidence_used", []):
@@ -338,14 +350,20 @@ def render_markdown(ctx: dict) -> str:
     # Build map of triggered rules → evidence fields
     ev_fields = {str(ev.get("field", "")): ev.get("value") for ev in ctx.get("evidence_used", [])}
     _RULE_EVIDENCE_MAP: dict[str, list[str]] = {
-        "AML_ESC_HR_COUNTRY": ["txn.destination_country", "txn.cross_border"],
-        "AML_ESC_PEP_SCREEN": ["flag.pep", "customer.pep_flag"],
-        "AML_ESC_PEP": ["flag.pep", "customer.pep_flag"],
-        "AML_ESC_STRUCT": ["flag.structuring_suspected", "txn.amount_band"],
-        "AML_BLOCK_SANCTIONS": ["flag.sanctions_proximity"],
-        "AML_INV_STRUCT": ["flag.structuring_suspected", "txn.amount_band"],
-        "AML_STR_LAYER": ["flag.rapid_movement", "txn.method"],
-        "AML_ESC_ADVERSE_MEDIA": ["flag.adverse_media"],
+        "AML_ESC_HR_COUNTRY": ["txn.destination_country_risk", "txn.cross_border"],
+        "AML_ESC_PEP_SCREEN": ["customer.pep", "screening.pep_match"],
+        "AML_ESC_PEP": ["customer.pep", "screening.pep_match"],
+        "AML_ESC_STRUCT": ["flag.structuring", "txn.amount_band"],
+        "AML_BLOCK_SANCTIONS": ["screening.sanctions_match"],
+        "AML_INV_STRUCT": ["flag.structuring", "txn.amount_band"],
+        "AML_STR_LAYER": ["flag.rapid_movement", "txn.type"],
+        "AML_ESC_ADVERSE_MEDIA": ["screening.adverse_media"],
+        "AML_ESC_SHELL": ["flag.shell_company"],
+        "AML_ESC_LAYERING": ["flag.layering"],
+        "AML_ESC_3P": ["flag.third_party"],
+        "AML_ESC_CASH_INTENSIVE": ["customer.cash_intensive"],
+        "AML_ESC_CRYPTO": ["txn.type"],
+        "AML_LCTR": ["txn.amount_band", "txn.type"],
     }
 
     rules_rows = ""
