@@ -680,9 +680,29 @@ def _check_consistency(
             recommended_action="Document decision rationale thoroughly for future precedent."
         )
 
-    # Count supporting vs contrary
-    supporting = sum(1 for m in all_matches if m.outcome_code == proposed_outcome)
-    contrary = len(all_matches) - supporting
+    # Count supporting vs contrary (v2: only terminal ALLOW/BLOCK are decisive)
+    # Map raw outcome_codes to canonical dispositions for v2 comparison
+    _ALLOW_CODES = {"pay", "paid", "approve", "approved", "accept", "clear", "cleared", "pass", "no action", "close"}
+    _BLOCK_CODES = {"deny", "denied", "decline", "declined", "reject", "block", "blocked", "refuse", "hard stop", "exit"}
+    _EDD_CODES = {"review", "investigate", "escalate", "escalated", "hold", "pending", "manual review", "pass with edd"}
+
+    def _to_canonical_disp(code: str) -> str:
+        c = code.lower().strip()
+        if c in _ALLOW_CODES:
+            return "ALLOW"
+        if c in _BLOCK_CODES:
+            return "BLOCK"
+        if c in _EDD_CODES:
+            return "EDD"
+        return "UNKNOWN"
+
+    proposed_disp = _to_canonical_disp(proposed_outcome)
+
+    # INV-003/INV-005: Only count terminal (ALLOW/BLOCK) outcomes in confidence
+    decisive_matches = [m for m in all_matches if _to_canonical_disp(m.outcome_code) in ("ALLOW", "BLOCK")]
+    supporting = sum(1 for m in decisive_matches if _to_canonical_disp(m.outcome_code) == proposed_disp)
+    contrary = sum(1 for m in decisive_matches if _to_canonical_disp(m.outcome_code) != proposed_disp
+                   and {_to_canonical_disp(m.outcome_code), proposed_disp} == {"ALLOW", "BLOCK"})
 
     # Count overturned cases with same proposed outcome
     overturned = sum(
@@ -692,9 +712,9 @@ def _check_consistency(
         and m.appeal_outcome == "overturned"
     )
 
-    # Calculate consistency score
-    if len(all_matches) > 0:
-        consistency_score = supporting / len(all_matches)
+    # Calculate consistency score (v2: decisive precedents only)
+    if len(decisive_matches) > 0:
+        consistency_score = supporting / len(decisive_matches)
     else:
         consistency_score = 0.5
 

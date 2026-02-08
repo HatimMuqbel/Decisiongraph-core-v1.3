@@ -928,6 +928,46 @@ async def decide(request: Request):
             {"field": "mitigations.count", "value": len(mitigations)},
             {"field": "typology.maturity", "value": typology_maturity},
         ]
+
+        # Populate registry-keyed evidence for the Evidence Gap Tracker (27 banking fields).
+        # For demo/seed cases, use the _demo_facts; for schema cases, derive from body.
+        _reg_src: dict = {}
+        if is_demo and isinstance(demo_inputs.get("_demo_facts"), dict):
+            _reg_src = demo_inputs["_demo_facts"]
+        else:
+            # Flatten structured input (customer_record, screening_payload, etc.)
+            for section_key in ("customer_record", "screening_payload", "transaction_history_slice"):
+                section = body.get(section_key, {})
+                if isinstance(section, dict):
+                    for k, v in section.items():
+                        _reg_src[k] = v
+
+        # Map registry fields to evidence entries the frontend can match
+        _REGISTRY_FIELDS = [
+            "customer.type", "customer.relationship_length", "customer.pep",
+            "customer.high_risk_jurisdiction", "customer.high_risk_industry", "customer.cash_intensive",
+            "txn.type", "txn.amount_band", "txn.cross_border", "txn.destination_country_risk",
+            "txn.round_amount", "txn.just_below_threshold", "txn.multiple_same_day",
+            "txn.pattern_matches_profile", "txn.source_of_funds_clear", "txn.stated_purpose",
+            "flag.structuring", "flag.rapid_movement", "flag.layering",
+            "flag.unusual_for_profile", "flag.third_party", "flag.shell_company",
+            "screening.sanctions_match", "screening.pep_match", "screening.adverse_media",
+            "prior.sars_filed", "prior.account_closures",
+        ]
+        # Also derive some from engine facts
+        _derived_reg = {
+            "screening.sanctions_match": facts.get("sanctions_result") == "MATCH",
+            "screening.adverse_media": bool(facts.get("adverse_media_mltf")),
+            "customer.pep": has_pep,
+            "txn.type": instrument_type if instrument_type != "unknown" else None,
+        }
+        for rf in _REGISTRY_FIELDS:
+            val = _reg_src.get(rf)
+            if val is None:
+                val = _derived_reg.get(rf)
+            if val is not None:
+                pre_evidence_used.append({"field": rf, "value": val})
+
         pre_rules_fired = [
             {"code": "HARD_STOP_CHECK", "result": "TRIGGERED" if hard_stop_triggered else "CLEAR",
              "reason": "Hard stop conditions detected" if hard_stop_triggered else "No hard stop conditions"},
@@ -936,6 +976,25 @@ async def decide(request: Request):
             {"code": "SUSPICION_TEST", "result": "ACTIVATED" if suspicion_activated else "CLEAR",
              "reason": suspicion_basis},
         ]
+
+        # Add typology-specific rule codes for the Typology Map component.
+        # The frontend TypologyMap matches these codes against 14 known typologies.
+        _TYPOLOGY_RULES = {
+            "STRUCTURING": lambda: any(i.get("code") == "STRUCTURING" for i in indicators),
+            "LAYERING": lambda: any(i.get("code") == "LAYERING" for i in indicators),
+            "SHELL_ENTITY": lambda: any(i.get("code") == "SHELL_COMPANY" for i in indicators),
+            "THIRD_PARTY_UNEXPLAINED": lambda: any(i.get("code") == "THIRD_PARTY" for i in indicators),
+            "SANCTIONS_SIGNAL": lambda: facts.get("sanctions_result") == "MATCH",
+            "ADVERSE_MEDIA_CONFIRMED": lambda: bool(facts.get("adverse_media_mltf")),
+            "SAR_PATTERN": lambda: any(i.get("code") == "PRIOR_SARS" for i in indicators),
+            "EVASION_BEHAVIOR": lambda: any(i.get("code") in ("UNUSUAL_FOR_PROFILE", "VELOCITY_SPIKE") for i in indicators),
+        }
+        for t_code, t_check in _TYPOLOGY_RULES.items():
+            try:
+                if t_check():
+                    pre_rules_fired.append({"code": t_code, "result": "TRIGGERED", "reason": f"{t_code} typology detected"})
+            except Exception:
+                pass
 
         # Also include any indicators from the input payload as evidence
         for ind in indicators:
