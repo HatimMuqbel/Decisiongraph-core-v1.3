@@ -30,7 +30,7 @@ export default function ReportViewer() {
     data: reportData,
     isLoading,
     error,
-  } = useReportJson(decisionId ?? '', true);
+  } = useReportJson(decisionId ?? '');
 
   const report = reportData?.report;
 

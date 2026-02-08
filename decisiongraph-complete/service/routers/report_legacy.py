@@ -1442,12 +1442,9 @@ async def get_report_json(decision_id: str, include_raw: bool = False):
     }
 
     if include_raw:
-        if not ALLOW_RAW_DECISION:
-            raise HTTPException(
-                status_code=403,
-                detail="Raw decision output is disabled in this environment.",
-            )
-        response["raw_decision"] = _redact_decision(decision)
+        if ALLOW_RAW_DECISION:
+            response["raw_decision"] = _redact_decision(decision)
+        # Silently omit raw_decision when not allowed (no 403)
 
     return response
 
