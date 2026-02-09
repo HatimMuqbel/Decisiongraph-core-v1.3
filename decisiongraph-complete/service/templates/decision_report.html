@@ -6,7 +6,7 @@
   <title>DecisionGraph - AML/KYC Decision Report</title>
   <style>
     :root{
-      --fg:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#ffffff;
+      --fg:#111827; --muted:#374151; --border:#d1d5db; --bg:#ffffff;
       --chip:#f3f4f6; --ok:#065f46; --warn:#92400e; --bad:#991b1b;
       --okbg:#ecfdf5; --warnbg:#fffbeb; --badbg:#fef2f2;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -27,7 +27,7 @@
     .kv .value.mono{ font-family:var(--mono); font-size:13px; }
     table{ width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
     th, td{ text-align:left; padding:10px 12px; border:1px solid var(--border); vertical-align:top; }
-    th{ background:#f9fafb; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
+    th{ background:#f9fafb; font-size:12px; color:#1f2937; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
     .status{ border-radius:8px; padding:16px; margin:12px 0; }
     .status.ok{ background:var(--okbg); border:1px solid #a7f3d0; }
     .status.warn{ background:var(--warnbg); border:1px solid #fcd34d; }
@@ -42,18 +42,18 @@
     .pill.trig{ background:#fef2f2; color:var(--bad); }
     .pill.pass{ background:#ecfdf5; color:var(--ok); }
     .mono{ font-family:var(--mono); }
-    .small{ font-size:12px; color:var(--muted); }
+    .small{ font-size:13px; color:var(--muted); }
     .gate-block{ background:#f9fafb; border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; }
     .gate-block h4{ margin:0 0 12px 0; font-size:14px; display:flex; align-items:center; gap:8px; }
     .gate-section{ display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
     .gate-section:last-child{ border-bottom:none; }
     .gate-section .section-name{ font-weight:600; font-size:13px; }
-    .gate-section .section-reason{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .gate-section .section-reason{ font-size:13px; color:var(--muted); margin-top:2px; }
     .provenance{ background:#f9fafb; border:1px solid var(--border); border-radius:8px; padding:16px; }
-    .provenance .hash{ word-break:break-all; font-size:12px; }
+    .provenance .hash{ word-break:break-all; font-size:13px; color:#111827; }
     .statement{ background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
     .regulatory{ background:#fefce8; border:1px solid #fde047; border-radius:8px; padding:16px; margin:16px 0; font-size:14px; }
-    .foot{ margin-top:24px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; text-align:center; }
+    .foot{ margin-top:24px; padding-top:16px; border-top:1px solid var(--border); color:#374151; font-size:13px; text-align:center; }
     .break{ break-inside:avoid; page-break-inside:avoid; }
     .bar{ height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
     .bar > span{ display:block; height:100%; background:#1f2937; }
@@ -64,8 +64,8 @@
     /* Precedent match cards */
     .match-grid{ display:grid; gap:12px; margin:12px 0; }
     .match-card{ border:1px solid var(--border); border-radius:8px; padding:16px; break-inside:avoid; }
-    .match-card.below-threshold{ opacity:0.65; border-style:dashed; }
-    .match-card.below-threshold::after{ content:'Below threshold — nearest neighbor'; display:block; text-align:center; font-size:11px; color:#888; margin-top:8px; font-style:italic; }
+    .match-card.below-threshold{ opacity:0.85; border-style:dashed; }
+    .match-card.below-threshold::after{ content:'Below threshold — nearest neighbor'; display:block; text-align:center; font-size:12px; color:#4b5563; margin-top:8px; font-style:italic; }
     .match-card-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
     .match-card-header .match-id{ font-family:var(--mono); font-size:13px; font-weight:600; }
     .match-card-header .match-sim{ font-size:20px; font-weight:700; }
@@ -75,15 +75,15 @@
     .match-meta .meta-chip.contrary{ background:#fef2f2; color:#991b1b; }
     .match-meta .meta-chip.neutral{ background:#fffbeb; color:#92400e; }
     .sim-bars{ display:grid; grid-template-columns:100px 1fr 40px; gap:4px 8px; align-items:center; font-size:12px; }
-    .sim-bars .sim-label{ color:var(--muted); text-align:right; }
+    .sim-bars .sim-label{ color:#1f2937; text-align:right; }
     .sim-bars .sim-track{ height:8px; background:#f3f4f6; border-radius:999px; overflow:hidden; position:relative; }
     .sim-bars .sim-fill{ height:100%; border-radius:999px; min-width:2px; }
     .sim-bars .sim-fill.high{ background:#059669; }
     .sim-bars .sim-fill.med{ background:#d97706; }
     .sim-bars .sim-fill.low{ background:#e5e7eb; }
     .sim-bars .sim-pct{ font-weight:600; font-size:11px; }
-    .sim-bars .sim-pct.zero{ color:#d1d5db; }
-    .match-codes{ font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:8px; }
+    .sim-bars .sim-pct.zero{ color:#6b7280; }
+    .match-codes{ font-family:var(--mono); font-size:12px; color:#374151; margin-top:8px; }
     /* Decision Integrity & Governance Alerts */
     .integrity-alert{ border:2px solid #dc2626; border-radius:8px; padding:16px 20px; margin:16px 0; background:#fef2f2; }
     .integrity-alert.critical{ border-color:#dc2626; background:#fef2f2; }
@@ -94,17 +94,44 @@
     .integrity-alert .alert-header.warning{ color:#92400e; }
     .integrity-alert .alert-header.info{ color:#1e40af; }
     .integrity-alert .alert-body{ font-size:13px; line-height:1.6; color:#1f2937; }
-    .integrity-alert .alert-detail{ font-size:12px; color:var(--muted); margin-top:8px; font-family:var(--mono); }
+    .integrity-alert .alert-detail{ font-size:13px; color:#1f2937; margin-top:8px; font-family:var(--mono); }
     .integrity-alert .override-badge{ display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; background:#dc2626; color:#fff; margin-left:8px; }
+    /* Export toolbar */
+    .export-bar{ position:sticky; top:0; z-index:100; background:#fff; border-bottom:1px solid var(--border); padding:10px 0; margin-bottom:16px; display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+    .export-bar .brand{ margin-right:auto; font-weight:700; font-size:14px; color:var(--fg); }
+    .btn-export{ display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--fg); transition:background .15s; }
+    .btn-export:hover{ background:#f3f4f6; }
+    .btn-export.primary{ background:#1f2937; color:#fff; border-color:#1f2937; }
+    .btn-export.primary:hover{ background:#374151; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
-      .status, .gate-block, .provenance, .statement, .regulatory { break-inside: avoid; }
+      .export-bar { display: none !important; }
+      .status, .gate-block, .provenance, .statement, .regulatory, .card, .match-card { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      @page {
+        size: A4;
+        margin: 18mm 15mm 20mm 15mm;
+        @bottom-center { content: "DecisionGraph — Page " counter(page) " of " counter(pages); font-size: 9px; color: #6b7280; }
+        @bottom-right { content: "Policy: {{ policy_hash[:12] if policy_hash else 'N/A' }}..."; font-size: 8px; color: #6b7280; font-family: monospace; }
+      }
     }
   </style>
 </head>
 <body>
   <div class="page">
+    <div class="export-bar">
+      <span class="brand">DecisionGraph Report</span>
+      <button class="btn-export" onclick="window.print()" title="Print or save as PDF via browser print dialog">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Export PDF
+      </button>
+      <a class="btn-export primary" href="/report/{{ decision_id }}/export-html" download="decision-report-{{ decision_id_short }}-{{ timestamp[:10] if timestamp else 'unknown' }}.html" title="Download self-contained HTML report file">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Export HTML
+      </a>
+    </div>
+
     <div class="header">
       <h1>AML/KYC Investigation Report</h1>
       <div class="subtitle">Deterministic Regulatory Decision Engine</div>
@@ -393,7 +420,7 @@
         {% for rec in edd_recommendations %}
         <li style="margin-bottom:8px;">
           <strong>{{ rec.action }}</strong>
-          {% if rec.reference %}<br><span class="small" style="color:var(--muted); font-style:italic;">Ref: {{ rec.reference }}</span>{% endif %}
+          {% if rec.reference %}<br><span class="small" style="font-style:italic;">Ref: {{ rec.reference }}</span>{% endif %}
         </li>
         {% endfor %}
       </ol>
@@ -521,7 +548,7 @@
       {% endif %}
       {% if gate2_sections and gate2_sections|length > 0 %}
         {% for section in gate2_sections %}
-        <div class="gate-section" {% if not gate1_passed %}style="opacity:0.5;"{% endif %}>
+        <div class="gate-section" {% if not gate1_passed %}style="opacity:0.8;"{% endif %}>
           {% if not gate1_passed %}
             <span class="pill na">SKIPPED</span>
           {% elif section.passed %}
@@ -593,7 +620,7 @@
                 {% endif %}
               {% endfor %}
               {% if ns.active %}
-                <br><span style="color:var(--muted); font-size:11px;">Triggered by: {{ ns.active[:3] | join(', ') }}</span>
+                <br><span style="color:#374151; font-size:12px;">Triggered by: {{ ns.active[:3] | join(', ') }}</span>
               {% endif %}
             {% endif %}
           </td>
@@ -777,7 +804,7 @@
           <span class="match-id">{{ match.precedent_id }}</span>
           <span class="match-sim">{{ match.similarity_pct }}%
             {% if match.exact_match %}<span class="badge">EXACT</span>{% endif %}
-            {% if below_threshold %}<span class="badge" style="background:#888;">BELOW THRESHOLD</span>{% endif %}
+            {% if below_threshold %}<span class="badge" style="background:#4b5563; color:#fff;">BELOW THRESHOLD</span>{% endif %}
           </span>
         </div>
 
