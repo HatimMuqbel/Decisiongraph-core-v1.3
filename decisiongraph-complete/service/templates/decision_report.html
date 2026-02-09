@@ -390,7 +390,17 @@
     {% else %}
       <div class="status warn break">
         <h3>EDD_REQUIRED — Enhanced Due Diligence Required</h3>
+        {% if decision_integrity_alert and decision_integrity_alert.severity == 'CRITICAL' %}
+        <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; padding:12px; margin-bottom:12px;">
+          <strong style="color:#dc2626;">⚠ {{ decision_integrity_alert.type | replace('_', ' ') }}</strong><br>
+          <span class="small" style="color:#1f2937;">{{ decision_integrity_alert.message }}</span>
+        </div>
+        {% endif %}
+        {% if decision_integrity_alert and decision_integrity_alert.type == 'CLASSIFICATION_DISPOSITION_CONFLICT' %}
+        <p>Classifier identified Tier 1 suspicion indicators that would ordinarily meet the STR threshold. A compliance officer must review the indicators and make the final STR determination. Until reviewed, Enhanced Due Diligence applies.</p>
+        {% else %}
         <p>Additional information required before regulatory determination can be finalized. Current indicators warrant enhanced scrutiny but do not independently establish reasonable grounds to suspect.</p>
+        {% endif %}
         {% if engine_disposition != governed_disposition %}
         <p class="small" style="margin-top:8px; font-style:italic;">
           Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Classifier sovereignty applied — EDD is the governed outcome.
@@ -399,6 +409,9 @@
         <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
         <ul class="small">
           <li>Complete Enhanced Due Diligence review</li>
+          {% if decision_integrity_alert and decision_integrity_alert.type == 'CLASSIFICATION_DISPOSITION_CONFLICT' %}
+          <li><strong>Compliance officer review of Tier 1 indicators required before final disposition</strong></li>
+          {% endif %}
           <li>Obtain additional documentation as required</li>
           <li>Escalate to Senior Analyst / Compliance Officer within 5 business days</li>
         </ul>

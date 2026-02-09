@@ -140,6 +140,14 @@ def derive_regulatory_model(normalized: dict) -> dict:
         decision_status = corrections.get("decision_status", decision_status)
         investigation_state = corrections.get("investigation_state", investigation_state)
 
+        # FIX-020: Rebuild explainer to match corrected state.
+        # The original explainer was derived from the raw verdict BEFORE corrections.
+        # Without this, "No suspicious activity" appears on cases with Tier 1 signals.
+        decision_explainer = _rebuild_corrected_explainer(
+            decision_status, str_required, classification,
+            integrity_alert, rationale_summary,
+        )
+
     # Governed disposition is computed AFTER corrections are applied.
     governed_disposition = _disposition_label(decision_status, str_required)
 
@@ -345,6 +353,48 @@ def derive_regulatory_model(normalized: dict) -> dict:
             ),
         }
 
+    # FIX-021: Precedent-classifier consistency override
+    # When classifier outcome has zero precedent support but precedents
+    # unanimously agree on a different outcome, that IS a consistency concern.
+    _final_consistency_alert = classification.precedent_consistency_alert
+    _final_consistency_detail = classification.precedent_consistency_detail
+
+    if (
+        not _final_consistency_alert
+        and _pa.get("available")
+        and _total_scored > 0
+        and classification.outcome in ("STR_REQUIRED",)
+        and _supporting == 0
+    ):
+        _outcome_dist = (
+            _pa.get("match_outcome_distribution")
+            or _pa.get("outcome_distribution")
+            or {}
+        )
+        if _outcome_dist:
+            _dominant = max(_outcome_dist, key=_outcome_dist.get)
+            _dominant_count = _outcome_dist.get(_dominant, 0)
+            _dominant_label = str(_dominant).upper().replace("_", " ")
+            # If ≥80% of precedents agree on one outcome that differs from classifier
+            if _dominant_count > 0 and _dominant_count >= _total_scored * 0.8:
+                _agrees_with_governed = (
+                    str(_dominant).upper().replace(" ", "_") == governed_disposition
+                )
+                _final_consistency_alert = True
+                _final_consistency_detail = (
+                    f"All {_total_scored} comparable precedents resulted in "
+                    f"{_dominant_label}. Classifier determination of "
+                    f"{classification.outcome.replace('_', ' ')} has no historical "
+                    f"precedent support."
+                    + (
+                        f" Precedents are consistent with the governed disposition "
+                        f"({governed_disposition.replace('_', ' ')})."
+                        if _agrees_with_governed else ""
+                    )
+                    + " This divergence should be reviewed by the compliance "
+                    "officer as part of the STR determination."
+                )
+
     return {
         # Classification
         "classification": classification.to_dict(),
@@ -354,8 +404,8 @@ def derive_regulatory_model(normalized: dict) -> dict:
         "tier2_signals": classification.tier2_signals,
         "suspicion_count": classification.suspicion_count,
         "investigative_count": classification.investigative_count,
-        "precedent_consistency_alert": classification.precedent_consistency_alert,
-        "precedent_consistency_detail": classification.precedent_consistency_detail,
+        "precedent_consistency_alert": _final_consistency_alert,
+        "precedent_consistency_detail": _final_consistency_detail,
         "classifier_version": CLASSIFIER_VERSION,
 
         # Typology
@@ -479,6 +529,72 @@ def _resolve_investigation_state(decision_status: str, str_required: bool) -> st
     if str_required or decision_status == "escalate":
         return "EDD REQUIRED"
     return "UNDER REVIEW"
+
+
+def _rebuild_corrected_explainer(
+    decision_status: str,
+    str_required: bool,
+    classification,
+    integrity_alert: dict | None,
+    rationale_summary: str,
+) -> str:
+    """Rebuild decision explainer after governance corrections.
+
+    FIX-020: The original explainer was derived from the raw verdict BEFORE
+    corrections.  After corrections change decision_status, the explainer must
+    reflect the corrected state — not the overridden engine output.
+
+    Prevents "No suspicious activity" from appearing on cases with Tier 1
+    suspicion indicators.
+    """
+    alert_type = integrity_alert.get("type", "") if integrity_alert else ""
+
+    if alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT":
+        tier1_count = integrity_alert.get("tier1_count", 0)
+        return (
+            f"Classifier identified {tier1_count} Tier 1 suspicion indicator(s) "
+            f"warranting STR review, but the engine verdict does not support "
+            f"escalation. Enhanced Due Diligence with compliance officer review "
+            f"is required before final regulatory determination. This case "
+            f"cannot be cleared without review."
+        )
+
+    if alert_type == "CONTROL_CONTRADICTION":
+        if decision_status == "review":
+            return (
+                "Governance correction applied: STR determination removed due to "
+                "insufficient Tier 1 evidence. Enhanced Due Diligence required."
+            )
+        return (
+            "Governance correction applied: STR determination removed due to "
+            "insufficient Tier 1 evidence. Case cleared — no reporting obligation."
+        )
+
+    if alert_type == "ESCALATION_WITHOUT_SUSPICION":
+        if decision_status == "review":
+            return (
+                "Escalation corrected: insufficient Tier 1 suspicion indicators. "
+                "Enhanced Due Diligence required before final determination."
+            )
+        return (
+            "Escalation corrected: insufficient Tier 1 suspicion indicators. "
+            "Case cleared — no reporting obligation."
+        )
+
+    if alert_type == "CLASSIFIER_UPGRADE":
+        return (
+            "Classifier sovereignty applied: reporting obligation upgraded to STR "
+            "based on Tier 1 suspicion indicators."
+        )
+
+    # Generic fallback — re-derive from corrected status
+    if decision_status == "review":
+        return rationale_summary or "Enhanced Due Diligence required before final disposition."
+    if decision_status == "pass":
+        return "No suspicious activity indicators detected. Transaction may proceed."
+    if decision_status == "escalate":
+        return rationale_summary or "Suspicious indicators detected requiring escalation."
+    return rationale_summary or "Transaction under review."
 
 
 # ── Escalation summary ──────────────────────────────────────────────────────
