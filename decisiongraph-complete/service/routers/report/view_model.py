@@ -113,7 +113,9 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "transaction_facts": transaction_facts,
 
         # Decision (governed)
-        "verdict": normalized["verdict"],
+        # FIX-022: display_verdict reflects corrections; engine_verdict for audit
+        "verdict": derived.get("display_verdict") or normalized["verdict"],
+        "engine_verdict": normalized["verdict"],
         "action": normalized["action"],
         "decision_status": derived["decision_status"],
         "decision_explainer": decision_explainer,
@@ -144,7 +146,9 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "decision_path_trace": normalized["decision_path_trace"],
 
         # Rationale
-        "summary": normalized["rationale_summary"],
+        # FIX-022: governed_rationale replaces canned engine rationale after corrections
+        "summary": derived.get("governed_rationale") or normalized["rationale_summary"],
+        "engine_rationale": normalized["rationale_summary"],
 
         # Precedent Analysis
         "precedent_analysis": precedent_analysis,

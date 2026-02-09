@@ -151,6 +151,26 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # Governed disposition is computed AFTER corrections are applied.
     governed_disposition = _disposition_label(decision_status, str_required)
 
+    # ── 5b. FIX-022: Display verdict + governed rationale ─────────────────
+    # The raw verdict ("PASS") and raw rationale ("Pass. No escalation
+    # required.") must NOT appear as the primary display values when
+    # corrections have changed the actual state.
+    if corrections and integrity_alert:
+        alert_type = integrity_alert.get("type", "")
+        if alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT":
+            display_verdict = "PENDING_REVIEW"
+        elif decision_status == "review":
+            display_verdict = "EDD_REQUIRED"
+        elif decision_status == "escalate" and str_required:
+            display_verdict = "STR_REQUIRED"
+        else:
+            display_verdict = governed_disposition
+        # Governed rationale replaces canned engine rationale
+        governed_rationale = decision_explainer
+    else:
+        display_verdict = verdict
+        governed_rationale = None
+
     # ── 6. Precedent deviation alert ──────────────────────────────────────
     deviation_alert = _detect_precedent_deviation(
         precedent_analysis=precedent_analysis,
@@ -447,6 +467,10 @@ def derive_regulatory_model(normalized: dict) -> dict:
         # Engine vs Governed dispositions (for audit transparency)
         "engine_disposition": engine_disposition,
         "governed_disposition": governed_disposition,
+
+        # FIX-022: Display verdict + governed rationale
+        "display_verdict": display_verdict,
+        "governed_rationale": governed_rationale,
 
         # Alerts (first-class objects)
         "decision_integrity_alert": integrity_alert,

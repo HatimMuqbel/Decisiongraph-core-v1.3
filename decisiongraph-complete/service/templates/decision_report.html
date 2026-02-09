@@ -23,10 +23,10 @@
     .card{ border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; }
     .kv{ display:grid; grid-template-columns: 180px 1fr; gap:8px 16px; font-size:14px; }
     .kv .label{ color:var(--muted); }
-    .kv .value{ font-weight:600; }
+    .kv .value{ font-weight:600; overflow-wrap:break-word; word-wrap:break-word; }
     .kv .value.mono{ font-family:var(--mono); font-size:13px; }
     table{ width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
-    th, td{ text-align:left; padding:10px 12px; border:1px solid var(--border); vertical-align:top; }
+    th, td{ text-align:left; padding:10px 12px; border:1px solid var(--border); vertical-align:top; overflow-wrap:break-word; word-wrap:break-word; }
     th{ background:#f9fafb; font-size:12px; color:#1f2937; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
     .status{ border-radius:8px; padding:16px; margin:12px 0; }
     .status.ok{ background:var(--okbg); border:1px solid #a7f3d0; }
@@ -229,7 +229,11 @@
         <div class="label">&nbsp;</div>
         <div class="value small" style="color:var(--muted);">Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}</div>
         <div class="label">Engine Output (Rules)</div>
-        <div class="value mono" style="{% if engine_disposition != governed_disposition %}color:var(--muted);{% endif %}">{{ engine_disposition | replace('_', ' ') }}{% if action and action|lower != 'n/a' %} — {{ action }}{% endif %}</div>
+        <div class="value mono" style="{% if engine_disposition != governed_disposition %}color:var(--muted); text-decoration:line-through;{% endif %}">{{ engine_disposition | replace('_', ' ') }}{% if engine_verdict and engine_verdict|lower != 'n/a' %} — {{ engine_verdict }}{% endif %}</div>
+        {% if verdict != engine_verdict %}
+        <div class="label">Governed Verdict</div>
+        <div class="value" style="font-size:15px; color:{% if verdict == 'PENDING_REVIEW' %}var(--warn){% elif verdict == 'STR_REQUIRED' %}var(--bad){% else %}var(--ok){% endif %}; font-weight:700;">{{ verdict | replace('_', ' ') }}</div>
+        {% endif %}
       </div>
       {% if engine_disposition != governed_disposition %}
       <p class="small" style="margin-top:10px; font-style:italic; color:var(--muted);">
@@ -426,6 +430,16 @@
       <p class="small">{{ decision_confidence_reason }}</p>
       {% endif %}
     </div>
+
+    {% if analyst_actions and analyst_actions|length > 0 %}
+    <h3 style="margin-top:16px;">Analyst Actions</h3>
+    <div class="card break" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <span class="small" style="margin-right:8px;">Available for <strong>{{ governed_disposition | replace('_', ' ') }}</strong>:</span>
+      {% for act in analyst_actions %}
+      <span style="display:inline-block; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:{% if act.primary %}700{% else %}500{% endif %}; border:1px solid {% if act.primary %}#1f2937{% else %}var(--border){% endif %}; background:{% if act.primary %}#1f2937{% else %}#fff{% endif %}; color:{% if act.primary %}#fff{% else %}var(--fg){% endif %};">{{ act.label }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     {% if edd_recommendations and edd_recommendations|length > 0 %}
     <h2>Recommended Actions</h2>
@@ -1025,12 +1039,14 @@
         <div class="value mono hash">{{ policy_hash }}</div>
         <div class="label">Decision Path</div>
         <div class="value mono">{{ decision_path_trace or action or 'N/A' }}</div>
-        <div class="label">Engine Trigger (Rules)</div>
-        <div class="value mono">{{ action or 'N/A' }}</div>
+        <div class="label">Engine Verdict (Raw)</div>
+        <div class="value mono" style="{% if verdict != engine_verdict %}color:var(--muted); text-decoration:line-through;{% endif %}">{{ engine_verdict or action or 'N/A' }}</div>
+        <div class="label">Governed Verdict</div>
+        <div class="value mono" style="font-weight:700;">{{ verdict or 'N/A' }}</div>
         <div class="label">Engine Disposition</div>
-        <div class="value mono">{{ engine_disposition or 'N/A' }}</div>
+        <div class="value mono" style="{% if engine_disposition != governed_disposition %}color:var(--muted);{% endif %}">{{ engine_disposition or 'N/A' }}</div>
         <div class="label">Governed Disposition</div>
-        <div class="value mono">{{ governed_disposition or 'N/A' }}</div>
+        <div class="value mono" style="font-weight:700;">{{ governed_disposition or 'N/A' }}</div>
       </div>
       <p class="small" style="margin-top:12px;">
         This decision is cryptographically bound to the exact input and policy evaluated at decision time.

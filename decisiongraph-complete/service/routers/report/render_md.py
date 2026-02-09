@@ -921,9 +921,10 @@ def render_markdown(ctx: dict) -> str:
 | Input Hash | `{input_hash}` |
 | Policy Hash | `{policy_hash}` |
 | Decision Path | `{safe_path}` |
-| Engine Trigger (Rules) | `{action}` |
+| Engine Verdict (Raw) | `{engine_verdict}` |
+| Governed Verdict | **{verdict}** |
 | Engine Disposition | `{engine_disposition}` |
-| Governed Disposition | `{governed_disposition}` |
+| Governed Disposition | **{governed_disposition}** |
 
 This decision is cryptographically bound to the exact input and policy evaluated.
 
@@ -945,6 +946,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
 
     return md_template.format(
         action=ctx.get("action"),
+        engine_verdict=ctx.get("engine_verdict", ctx.get("action", "N/A")),
         canonical_outcome_md=canonical_outcome_md,
         case_id=ctx.get("case_id"),
         classification_outcome=ctx.get("classification_outcome", ""),
