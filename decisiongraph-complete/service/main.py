@@ -77,6 +77,7 @@ from decisiongraph.judgment import (
 from service.routers import demo, report, verify, templates, policy_shifts
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
 from service.suspicion_classifier import CLASSIFIER_VERSION, classify as classify_suspicion
+from service.validate_output import validate_decision_output
 
 # Log module versions at import time so deploy logs confirm the correct code shipped
 print(f"[startup] report module version: {report.REPORT_MODULE_VERSION}")
@@ -1576,6 +1577,9 @@ async def decide(request: Request):
         )
         if invariant_violations:
             decision_pack["invariant_violations"] = invariant_violations
+
+        # Self-validate output consistency (runs for ALL inputs)
+        decision_pack = validate_decision_output(decision_pack)
 
         # Calculate duration
         duration_ms = int((time.time() - start_time) * 1000)

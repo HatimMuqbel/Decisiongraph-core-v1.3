@@ -168,6 +168,10 @@ def normalize_decision(decision: dict) -> dict:
 
         # Classifier override (from main.py)
         "classifier_override": classifier_override,
+
+        # Output validation metadata (set by validate_output.py, consumed by derive.py)
+        "_validation": decision.get("_validation", {}),
+        "_confidence_cap": (decision.get("precedent_analysis", {}) or {}).get("_confidence_cap"),
     }
 
 

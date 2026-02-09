@@ -200,6 +200,16 @@ def derive_regulatory_model(normalized: dict) -> dict:
             risk_factors=risk_factors,
         )
 
+    # ── 8b. Output validation confidence cap ───────────────────────────
+    # validate_output.py may attach _confidence_cap when evidence is
+    # incomplete. Respect it by clamping the confidence band.
+    _cap = normalized.get("_confidence_cap")
+    if _cap == "Low" and conf_label not in ("Integrity Review Required",):
+        _cap_reason = precedent_analysis.get("_confidence_cap_reason", "")
+        conf_label = "Low \u2014 Manual Review Required"
+        conf_reason = ((_cap_reason + " " + conf_reason) if _cap_reason else conf_reason).strip()
+        conf_score = min(conf_score, 39)
+
     # ── 9. Decision drivers ──────────────────────────────────────────────
     decision_drivers = _derive_decision_drivers(
         rules_fired=rules_fired,
@@ -275,6 +285,19 @@ def derive_regulatory_model(normalized: dict) -> dict:
         investigative_count=classification.investigative_count,
         integrity_alert=integrity_alert,
     )
+
+    # ── 15c. Output validation action constraints ──────────────────────
+    # validate_output.py may pre-compute action constraints.
+    _pre = normalized.get("_validation", {})
+    if _pre.get("block_approve"):
+        analyst_actions = [
+            a for a in analyst_actions
+            if "Approve" not in a.get("label", "")
+            and "Confirm Clearance" not in a.get("label", "")
+        ]
+    if _pre.get("hard_stop"):
+        _allowed = {"Acknowledge", "Request Additional Information", "Expand to Reviewer View"}
+        analyst_actions = [a for a in analyst_actions if a.get("label") in _allowed]
 
     # ── 16. FIX-009: SLA timeline ────────────────────────────────────────
     timestamp = normalized.get("timestamp", "")
