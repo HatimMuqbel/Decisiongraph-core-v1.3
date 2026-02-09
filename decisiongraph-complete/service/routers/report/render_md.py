@@ -292,18 +292,36 @@ def render_markdown(ctx: dict) -> str:
         match_rate = ctx.get("precedent_match_rate", 0)
         scored_ct = ctx.get("scored_precedent_count", 0)
         total_pool = ctx.get("total_comparable_pool", 0)
+        conf_score = ctx.get("decision_confidence_score", 0)
+
+        # FIX-017: Institutional threshold indicator
+        if conf_score >= 70:
+            threshold_indicator = "Above Threshold"
+        elif conf_score >= 40:
+            threshold_indicator = "Within Band"
+        else:
+            threshold_indicator = "Below Threshold — Manual Review Required"
+
         decision_confidence_block = (
             f"### Confidence Metrics\n\n"
             f"| Metric | Value | Definition |\n"
             f"|--------|-------|------------|\n"
-            f"| Decision Confidence | {ctx['decision_confidence']} ({ctx.get('decision_confidence_score', 0)}%) | "
+            f"| Decision Confidence | {ctx['decision_confidence']} ({conf_score}%) | "
             f"Composite score reflecting evidence completeness and rule alignment |\n"
+            f"| Institutional Threshold | {threshold_indicator} | "
+            f"Bands: ≥70% High, 40–70% Moderate, <40% Low (manual review) |\n"
             f"| Precedent Alignment | {prec_alignment}% | "
             f"supporting_decisive / count(decisive_precedents) within same basis |\n"
             f"| Precedent Match Rate | {match_rate}% ({scored_ct} / {total_pool}) | "
             f"Percentage of comparable pool meeting similarity threshold |\n\n"
             f"{ctx['decision_confidence_reason']}"
         )
+        if conf_score < 40:
+            decision_confidence_block += (
+                f"\n\n> **LOW CONFIDENCE FLAG:** Decision confidence ({conf_score}%) is below "
+                f"the institutional threshold of 40%. This decision requires senior analyst "
+                f"or compliance officer review before final disposition.\n"
+            )
 
     # ── FIX-003: Evidence with scope qualifiers ───────────────────────────
     # Pull display names from the banking field registry (single source of truth)
@@ -419,6 +437,18 @@ def render_markdown(ctx: dict) -> str:
                 edd_md += f"   *Ref: {_md_escape(rec['reference'])}*\n"
             edd_md += "\n"
 
+    # ── FIX-015: Analyst Actions (outcome-aware) ─────────────────────────
+    analyst_actions = ctx.get("analyst_actions", [])
+    analyst_actions_md = ""
+    if analyst_actions:
+        governed = ctx.get("governed_disposition", "")
+        analyst_actions_md = f"## Analyst Actions\n\n"
+        analyst_actions_md += f"*Actions available for governed disposition: **{governed}***\n\n"
+        for act in analyst_actions:
+            marker = "**[PRIMARY]** " if act.get("primary") else ""
+            analyst_actions_md += f"- {marker}{_md_escape(act.get('label', ''))}\n"
+        analyst_actions_md += "\n"
+
     # ── FIX-009: SLA timeline ─────────────────────────────────────────────
     sla = ctx.get("sla_timeline", {})
     timeline_md = ""
@@ -462,6 +492,86 @@ def render_markdown(ctx: dict) -> str:
     evidence_rows_output = evidence_rows or "| No evidence recorded | - | - |"
 
     precedent_markdown = _build_precedent_markdown(ctx.get("precedent_analysis", {}))
+
+    # FIX-018: Enhanced precedent analysis sections
+    enhanced_prec = ctx.get("enhanced_precedent", {})
+    enhanced_precedent_md = ""
+
+    if enhanced_prec:
+        # a) Outcome Distribution Summary
+        od = enhanced_prec.get("outcome_distribution", {})
+        if od:
+            enhanced_precedent_md += (
+                f"\n### Outcome Distribution Summary\n\n"
+                f"| Category | Count |\n|----------|-------|\n"
+                f"| Supporting (same outcome) | {od.get('supporting', 0)} |\n"
+                f"| Contrary (different outcome) | {od.get('contrary', 0)} |\n"
+                f"| Neutral | {od.get('neutral', 0)} |\n"
+                f"| **Total Decisive** | **{od.get('total', 0)}** |\n"
+                f"| Typical Outcome for Cluster | {_md_escape(od.get('typical_outcome', 'N/A'))} |\n\n"
+            )
+
+        # b) Feature Comparison Matrix
+        fcm = enhanced_prec.get("feature_comparison_matrix", [])
+        if fcm:
+            enhanced_precedent_md += "### Feature Comparison Matrix\n\n"
+            enhanced_precedent_md += "*Top precedents compared by similarity feature. Differentiating features highlight where the dissimilarity lives.*\n\n"
+            for entry in fcm:
+                pid = _md_escape(entry.get("precedent_id", "N/A"))
+                sim = entry.get("similarity_pct", 0)
+                outcome = _md_escape(entry.get("outcome", "N/A"))
+                cls = entry.get("classification", "neutral")
+                matching = ", ".join(entry.get("matching_features", [])) or "None"
+                differing = ", ".join(entry.get("differing_features", [])) or "None"
+                enhanced_precedent_md += (
+                    f"**{pid}** — {sim}% similarity · {outcome} · _{cls}_\n"
+                    f"- Matching: {matching}\n"
+                    f"- Differentiating: {differing}\n\n"
+                )
+
+        # c) Divergence Justification
+        dj = enhanced_prec.get("divergence_justification")
+        if dj:
+            enhanced_precedent_md += "### Divergence Justification\n\n"
+            enhanced_precedent_md += f"> **{_md_escape(dj.get('statement', ''))}**\n\n"
+            contrary_details = dj.get("contrary_details", [])
+            if contrary_details:
+                enhanced_precedent_md += "| Contrary Precedent | Outcome | Similarity | Distinguishing Factors |\n"
+                enhanced_precedent_md += "|-------------------|---------|------------|------------------------|\n"
+                for cd in contrary_details:
+                    diffs = "; ".join(cd.get("distinguishing_factors", []))
+                    enhanced_precedent_md += (
+                        f"| {_md_escape(cd.get('precedent_id', 'N/A'))} "
+                        f"| {_md_escape(cd.get('outcome', 'N/A'))} "
+                        f"| {cd.get('similarity_pct', 0)}% "
+                        f"| {_md_escape(diffs)} |\n"
+                    )
+            enhanced_precedent_md += "\n"
+
+        # d) Temporal Context
+        tc = enhanced_prec.get("temporal_context", [])
+        if tc:
+            contrary_timestamps = [t for t in tc if t.get("classification") == "contrary" and t.get("timestamp")]
+            if contrary_timestamps:
+                enhanced_precedent_md += "### Temporal Context\n\n"
+                enhanced_precedent_md += "*Contrary precedent decision dates — older cases may reflect superseded regulatory guidance.*\n\n"
+                for t in contrary_timestamps[:5]:
+                    enhanced_precedent_md += f"- **{_md_escape(t.get('precedent_id', 'N/A'))}**: {_md_escape(t.get('timestamp', 'N/A'))}\n"
+                enhanced_precedent_md += "\n"
+
+        # e) Precedent Override Statement
+        override_stmt = enhanced_prec.get("override_statement")
+        if override_stmt:
+            enhanced_precedent_md += (
+                "### Precedent Override Statement\n\n"
+                "*This statement must be reviewed and approved by a compliance officer when the "
+                "current decision diverges from precedent majority.*\n\n"
+                f"> {_md_escape(override_stmt)}\n\n"
+                "| | |\n|---|---|\n"
+                "| Reviewer | _________________________ |\n"
+                "| Date | _________________________ |\n"
+                "| Signature | _________________________ |\n\n"
+            )
 
     # Classification sections
     tier1_md = ""
@@ -519,6 +629,52 @@ def render_markdown(ctx: dict) -> str:
                     f"Classifier outcome: `{dia.get('classifier_outcome', 'N/A')}`\n"
                 )
         integrity_alert_md += "\n"
+
+    # FIX-013: Override Justification Block — PROMINENT position
+    override_justification_md = ""
+    oj = ctx.get("override_justification")
+    if oj:
+        oj_severity = oj.get("severity", "INFO")
+        oj_icon = "🚨" if oj_severity == "CRITICAL" else "⚠️"
+        override_justification_md = (
+            f"\n## {oj_icon} Override Justification\n\n"
+            f"**Override Type:** {_md_escape(oj.get('override_type', ''))}\n\n"
+            f"| | |\n|---|---|\n"
+            f"| Gate Overridden | **{_md_escape(oj.get('overridden_gate', ''))}** |\n"
+            f"| Gate Decision | `{_md_escape(oj.get('gate_decision', ''))}` |\n"
+            f"| Classifier Decision | `{_md_escape(oj.get('classifier_decision', ''))}` |\n"
+            f"| Regulatory Basis | {_md_escape(oj.get('regulatory_basis', ''))} |\n\n"
+        )
+        # Gate deficiencies
+        deficiencies = oj.get("gate_deficiencies", [])
+        if deficiencies:
+            override_justification_md += "### Gate Deficiency Detail\n\n"
+            for deficiency in deficiencies:
+                override_justification_md += (
+                    f"- **{_md_escape(deficiency.get('section', ''))}**: "
+                    f"{_md_escape(deficiency.get('reason', ''))}\n"
+                )
+            override_justification_md += "\n"
+
+        # Justifying signals
+        signals = oj.get("justifying_signals", [])
+        if signals:
+            override_justification_md += "### Justifying Tier 1 Signals\n\n"
+            override_justification_md += "| Code | Source | Detail |\n|------|--------|--------|\n"
+            for sig in signals:
+                override_justification_md += (
+                    f"| `{_md_escape(sig.get('code', ''))}` | "
+                    f"{_md_escape(sig.get('source', ''))} | "
+                    f"{_md_escape(sig.get('detail', ''))} |\n"
+                )
+            override_justification_md += "\n"
+
+        # Justification narrative
+        override_justification_md += (
+            f"### Justification\n\n"
+            f"> {_md_escape(oj.get('justification', ''))}\n\n"
+            f"---\n\n"
+        )
 
     # FIX-011: Deviation alert — v2 dual deviation model (Consistency + Defensibility)
     deviation_alert_md = ""
@@ -632,6 +788,8 @@ def render_markdown(ctx: dict) -> str:
 
 {integrity_alert_md}
 
+{override_justification_md}
+
 ---
 
 ## Case Classification
@@ -721,6 +879,8 @@ def render_markdown(ctx: dict) -> str:
 
 {precedent_markdown}
 
+{enhanced_precedent_md}
+
 {deviation_alert_md}
 
 {defensibility_md}
@@ -746,6 +906,8 @@ def render_markdown(ctx: dict) -> str:
 ---
 
 {edd_md}
+
+{analyst_actions_md}
 
 {timeline_md}
 
@@ -798,6 +960,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         defensibility_md=defensibility_md,
         deviation_alert_md=deviation_alert_md,
         edd_md=edd_md,
+        analyst_actions_md=analyst_actions_md,
         engine_version=ctx.get("engine_version"),
         evidence_rows_output=evidence_rows_output,
         facts_rows=facts_rows,
@@ -807,12 +970,14 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         governance_note=governance_note,
         input_hash=ctx.get("input_hash"),
         integrity_alert_md=integrity_alert_md,
+        override_justification_md=override_justification_md,
         investigative_count=ctx.get("investigative_count", 0),
         investigation_state=ctx.get("investigation_state", ""),
         jurisdiction=ctx.get("jurisdiction"),
         policy_hash=ctx.get("policy_hash"),
         policy_version=ctx.get("policy_version"),
         precedent_markdown=precedent_markdown,
+        enhanced_precedent_md=enhanced_precedent_md,
         primary_typology=_md_escape(ctx.get("primary_typology", "")),
         regulatory_obligation=ctx.get("regulatory_obligation", "\u2014"),
         regulatory_position=ctx.get("regulatory_position", ""),

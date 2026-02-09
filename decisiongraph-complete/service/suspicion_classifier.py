@@ -257,27 +257,41 @@ def classify(
         normalized = element.lower().replace(" ", "_").replace("-", "_")
         matched = False
         for key, code in TIER1_SUSPICION_ELEMENTS.items():
-            if key in normalized and code not in seen_t1:
-                tier1.append({
-                    "code": code,
-                    "source": "suspicion_element",
-                    "field": element,
-                    "detail": f"Suspicion element: {element}",
-                })
-                seen_t1.add(code)
+            if key in normalized:
+                # Matched to a known Tier 1 code — even if already seen
+                # (duplicate from evidence), it is NOT unclassified.
+                if code not in seen_t1:
+                    tier1.append({
+                        "code": code,
+                        "source": "suspicion_element",
+                        "field": element,
+                        "detail": f"Suspicion element: {element}",
+                    })
+                    seen_t1.add(code)
                 matched = True
                 break
         if not matched:
-            # Unknown suspicion elements are Tier 1 by default (conservative)
-            generic_code = f"SUSPICION_{normalized.upper()}"
-            if generic_code not in seen_t1:
-                tier1.append({
+            # FIX-014: Unclassified elements are NOT silently promoted to Tier 1.
+            # Instead, flag as UNCLASSIFIED_GAP in Tier 2 with a governance flag
+            # requiring manual review.  Silent Tier 1 promotion creates false
+            # STR triggers and is a defensibility risk.
+            generic_code = f"UNCLASSIFIED_{normalized.upper()}"
+            if generic_code not in seen_t2:
+                tier2.append({
                     "code": generic_code,
                     "source": "suspicion_element",
                     "field": element,
-                    "detail": f"Suspicion element: {element} (unclassified — treated as Tier 1)",
+                    "detail": (
+                        f"Suspicion element '{element}' could not be mapped to a "
+                        f"known Tier 1 indicator code. Classified as Tier 2 "
+                        f"(investigative) pending manual review. If this element "
+                        f"represents genuine suspicion, a compliance officer must "
+                        f"explicitly reclassify it."
+                    ),
+                    "classification_gap": True,
+                    "requires_manual_review": True,
                 })
-                seen_t1.add(generic_code)
+                seen_t2.add(generic_code)
 
     # ── Scan triggered rules ─────────────────────────────────────────────
     for rule in (rules_fired or []):

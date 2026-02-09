@@ -184,8 +184,26 @@ def derive_regulatory_model(normalized: dict) -> dict:
         decision_status=decision_status,
     )
 
+    # ── 9b. FIX-013: Override Justification Block ────────────────────────
+    override_justification = _build_override_justification(
+        integrity_alert=integrity_alert,
+        classification=classification,
+        gate2_sections=normalized.get("gate2_sections", []),
+        gate2_decision=normalized.get("gate2_decision", ""),
+        gate2_status=normalized.get("gate2_status", ""),
+        str_required=str_required,
+        evidence_used=evidence_used,
+    )
+
     # ── 10. Similarity summary ────────────────────────────────────────────
     similarity_summary = _derive_similarity_summary(precedent_analysis)
+
+    # ── 10b. FIX-018: Enhanced precedent analysis ─────────────────────────
+    enhanced_precedent = _build_enhanced_precedent_analysis(
+        precedent_analysis=precedent_analysis,
+        governed_disposition=governed_disposition,
+        deviation_alert=deviation_alert,
+    )
 
     # ── 11. Escalation summary ────────────────────────────────────────────
     escalation_summary = _build_escalation_summary(decision_status, str_required)
@@ -218,9 +236,73 @@ def derive_regulatory_model(normalized: dict) -> dict:
         governed_disposition=governed_disposition,
     )
 
+    # ── 15b. FIX-015: Decision-outcome-aware analyst actions ─────────────
+    analyst_actions = _derive_analyst_actions(
+        governed_disposition=governed_disposition,
+        verdict=verdict,
+        str_required=str_required,
+    )
+
     # ── 16. FIX-009: SLA timeline ────────────────────────────────────────
     timestamp = normalized.get("timestamp", "")
     sla_timeline = _build_sla_timeline(timestamp, governed_disposition, reporting)
+
+    # ── 16b. FIX-016: EDD consistency check ─────────────────────────────
+    # If escalation summary mentions EDD but timeline has no EDD deadline,
+    # or if governed disposition is NO_REPORT/STR_REQUIRED but narrative
+    # references EDD, fix the inconsistency.
+    edd_consistency_alert = None
+    _edd_in_narrative = "enhanced due diligence" in escalation_summary.lower()
+    _edd_deadline_set = sla_timeline.get("edd_deadline", "N/A") != "N/A"
+
+    if _edd_in_narrative and not _edd_deadline_set:
+        # Narrative says EDD but deadline is N/A — force-populate deadline
+        if governed_disposition in ("STR_REQUIRED",):
+            # STR cases: EDD is a procedural step, populate a 7-day window
+            try:
+                _ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00")) if timestamp else datetime.utcnow()
+            except (ValueError, AttributeError):
+                _ts = datetime.utcnow()
+            bd, d = 0, _ts
+            while bd < 7:
+                d += timedelta(days=1)
+                if d.weekday() < 5:
+                    bd += 1
+            sla_timeline["edd_deadline"] = d.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+            edd_consistency_alert = {
+                "type": "EDD_DEADLINE_POPULATED",
+                "severity": "INFO",
+                "message": "EDD deadline auto-populated to align with narrative reference.",
+            }
+        else:
+            # Non-STR escalation: should already have deadline — force-populate
+            try:
+                _ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00")) if timestamp else datetime.utcnow()
+            except (ValueError, AttributeError):
+                _ts = datetime.utcnow()
+            bd, d = 0, _ts
+            while bd < 5:
+                d += timedelta(days=1)
+                if d.weekday() < 5:
+                    bd += 1
+            sla_timeline["edd_deadline"] = d.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+            edd_consistency_alert = {
+                "type": "EDD_DEADLINE_POPULATED",
+                "severity": "INFO",
+                "message": "EDD deadline auto-populated to align with narrative reference.",
+            }
+
+    if not _edd_in_narrative and governed_disposition == "NO_REPORT":
+        # Correct: no EDD mention for cleared cases
+        pass
+    elif governed_disposition == "NO_REPORT" and _edd_in_narrative:
+        # Contradiction: cleared but mentions EDD
+        escalation_summary = "No escalation or reporting obligation was triggered based on available indicators."
+        edd_consistency_alert = {
+            "type": "EDD_NARRATIVE_CORRECTED",
+            "severity": "INFO",
+            "message": "EDD reference removed from cleared case narrative.",
+        }
 
     # ── 17. FIX-005: Precedent match rate ─────────────────────────────────
     _pa = precedent_analysis or {}
@@ -295,12 +377,16 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # Alerts (first-class objects)
         "decision_integrity_alert": integrity_alert,
+        "override_justification": override_justification,
         "precedent_deviation_alert": deviation_alert,
         "corrections_applied": corrections or {},
 
         # Risk & similarity
         "risk_factors": risk_factors,
         "similarity_summary": similarity_summary,
+
+        # FIX-018: Enhanced precedent analysis
+        "enhanced_precedent": enhanced_precedent,
 
         # FIX-006: Defensibility check
         "defensibility_check": defensibility_check,
@@ -310,6 +396,14 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # FIX-009: SLA timeline
         "sla_timeline": sla_timeline,
+
+        # FIX-013: Override justification (already added above)
+
+        # FIX-015: Analyst actions (outcome-aware)
+        "analyst_actions": analyst_actions,
+
+        # FIX-016: EDD consistency
+        "edd_consistency_alert": edd_consistency_alert,
     }
 
 
@@ -485,11 +579,26 @@ def _compute_confidence_score(
 
     score = min(100, max(0, score))
 
-    if score >= 90:
-        return "High", "Deterministic rule activation with corroborating precedent alignment.", score
+    # FIX-017: Institutional confidence thresholds
+    # Bands: <40% = Low (manual review required), 40-70% = Moderate, >70% = High
     if score >= 70:
-        return "Moderate", "Deterministic rule activation with moderate precedent alignment.", score
-    return "Elevated Review Recommended", "Evidence completeness or precedent alignment below standard threshold.", score
+        label = "High"
+        reason = "Deterministic rule activation with corroborating precedent alignment."
+        threshold_note = "Above institutional confidence threshold (≥70%)."
+    elif score >= 40:
+        label = "Moderate"
+        reason = "Deterministic rule activation with moderate precedent alignment."
+        threshold_note = "Within institutional confidence band (40–70%). Standard review process applies."
+    else:
+        label = "Low — Manual Review Required"
+        reason = (
+            "Evidence completeness or precedent alignment below institutional threshold. "
+            "Below institutional confidence threshold (<40%) — manual senior review required "
+            "before final disposition."
+        )
+        threshold_note = "Below institutional confidence threshold (<40%). Manual review required."
+
+    return label, reason, score
 
 
 # ── Integrity alerts ─────────────────────────────────────────────────────────
@@ -594,6 +703,117 @@ def _detect_integrity_issues(
         return alert, corrections
 
     return None, None
+
+
+# ── Override Justification Block (FIX-013) ───────────────────────────────────
+
+def _build_override_justification(
+    integrity_alert: dict | None,
+    classification,
+    gate2_sections: list,
+    gate2_decision: str,
+    gate2_status: str,
+    str_required: bool,
+    evidence_used: list,
+) -> dict | None:
+    """Generate a structured Override Justification Block when classifier
+    overrides a gate decision.
+
+    This is a defensibility-critical artifact — it explains *why* the
+    classifier's sovereignty was exercised and what the gate found
+    insufficient.  Must be rendered PROMINENTLY, not buried in metadata.
+
+    Returns None if no override occurred.
+    """
+    if not integrity_alert:
+        return None
+
+    alert_type = integrity_alert.get("type", "")
+
+    # Case A: CLASSIFIER_UPGRADE — Gate 2 said INSUFFICIENT but classifier
+    # found Tier 1 signals and upgraded to STR_REQUIRED.
+    if alert_type == "CLASSIFIER_UPGRADE":
+        # Identify what Gate 2 found insufficient
+        gate2_failures = []
+        for section in (gate2_sections or []):
+            if not section.get("passed"):
+                gate2_failures.append({
+                    "section": section.get("name", "Unknown"),
+                    "reason": section.get("reason", "Insufficient evidence"),
+                })
+
+        # Identify the Tier 1 signals that justified the override
+        tier1_signals = classification.tier1_signals if hasattr(classification, "tier1_signals") else []
+        justifying_signals = []
+        for sig in tier1_signals:
+            justifying_signals.append({
+                "code": sig.get("code", ""),
+                "source": sig.get("source", ""),
+                "detail": sig.get("detail", ""),
+            })
+
+        return {
+            "override_type": "CLASSIFIER_UPGRADE",
+            "overridden_gate": "Gate 2 (STR Threshold)",
+            "gate_decision": gate2_decision or gate2_status or "INSUFFICIENT",
+            "gate_deficiencies": gate2_failures or [{"section": "STR Threshold", "reason": "Evidence quality below STR threshold"}],
+            "classifier_decision": "STR_REQUIRED",
+            "justifying_signals": justifying_signals,
+            "justification": (
+                f"Gate 2 returned {gate2_decision or gate2_status or 'INSUFFICIENT'} "
+                f"due to evidence quality concerns. However, the Suspicion Classifier "
+                f"identified {len(justifying_signals)} Tier 1 suspicion indicator(s) "
+                f"that independently meet the Reasonable Grounds to Suspect (RGS) "
+                f"threshold under PCMLTFA/FINTRAC guidance. Under the classifier "
+                f"sovereignty framework, any single Tier 1 indicator is sufficient "
+                f"for STR determination regardless of gate evidence scoring."
+            ),
+            "regulatory_basis": "PCMLTFA s. 7 — Reasonable Grounds to Suspect (RGS) threshold",
+            "severity": "INFO",
+        }
+
+    # Case B: CLASSIFIER_OVERRIDE — Rules engine said STR but classifier
+    # found no Tier 1 signals and downgraded.
+    if alert_type == "CLASSIFIER_OVERRIDE":
+        original_verdict = integrity_alert.get("original_verdict", "STR")
+        return {
+            "override_type": "CLASSIFIER_OVERRIDE",
+            "overridden_gate": "Rules Engine",
+            "gate_decision": original_verdict,
+            "gate_deficiencies": [{"section": "Rules Layer", "reason": f"Engine produced {original_verdict} without Tier 1 suspicion indicators"}],
+            "classifier_decision": classification.outcome if hasattr(classification, "outcome") else "EDD_REQUIRED",
+            "justifying_signals": [],
+            "justification": (
+                f"Rules engine produced {original_verdict} based on risk indicators, "
+                f"but the Suspicion Classifier found 0 Tier 1 suspicion indicators. "
+                f"Under PCMLTFA/FINTRAC guidance, STR filing requires Reasonable "
+                f"Grounds to Suspect — risk indicators alone are insufficient. "
+                f"Disposition corrected to preserve STR threshold integrity."
+            ),
+            "regulatory_basis": "PCMLTFA s. 7 — STR requires Tier 1 suspicion, not risk alone",
+            "severity": "CRITICAL",
+        }
+
+    # Case C: CONTROL_CONTRADICTION — similar to CLASSIFIER_OVERRIDE
+    if alert_type == "CONTROL_CONTRADICTION":
+        return {
+            "override_type": "CONTROL_CONTRADICTION",
+            "overridden_gate": "Rules Engine / STR Determination",
+            "gate_decision": "STR REQUIRED (engine)",
+            "gate_deficiencies": [{"section": "STR Determination", "reason": "0 Tier 1 indicators — STR filing would be unjustified"}],
+            "classifier_decision": classification.outcome if hasattr(classification, "outcome") else "EDD_REQUIRED",
+            "justifying_signals": [],
+            "justification": (
+                "Regulatory status was STR REQUIRED but Suspicion Classifier "
+                "found 0 Tier 1 indicators. These statements cannot legally coexist "
+                "under PCMLTFA/FINTRAC. Suspicion threshold not met — corrected to "
+                "prevent unjustified STR filing."
+            ),
+            "regulatory_basis": "PCMLTFA s. 7 — STR requires RGS threshold (Tier 1 ≥ 1)",
+            "severity": "CRITICAL",
+        }
+
+    return None
 
 
 # ── Precedent deviation ──────────────────────────────────────────────────────
@@ -848,6 +1068,66 @@ def _build_sla_timeline(
     }
 
 
+# ── FIX-015: Analyst Actions (decision-outcome-aware) ────────────────────────
+
+def _derive_analyst_actions(
+    governed_disposition: str,
+    verdict: str,
+    str_required: bool,
+) -> list[dict]:
+    """Generate decision-outcome-aware action options for analyst views.
+
+    Governance rule: HARD_STOP / BLOCK decisions must NEVER offer "Approve".
+    Each action has a label and a role restriction.
+    """
+    v = verdict.upper()
+    is_hard_stop = v in ("HARD_STOP",) or "HARD_STOP" in v
+    is_block = v.startswith("BLOCK") or v.startswith("DECLINE") or governed_disposition == "STR_REQUIRED"
+
+    if is_hard_stop:
+        return [
+            {"label": "Acknowledge", "role": "tier1_analyst", "primary": True},
+            {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+            {"label": "Expand to Reviewer View", "role": "tier1_analyst", "primary": False},
+        ]
+
+    if is_block and not str_required:
+        return [
+            {"label": "Acknowledge", "role": "tier1_analyst", "primary": True},
+            {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+            {"label": "Expand to Reviewer View", "role": "tier1_analyst", "primary": False},
+        ]
+
+    if governed_disposition in ("STR_REQUIRED",) or str_required:
+        return [
+            {"label": "Acknowledge STR Filing", "role": "tier1_analyst", "primary": True},
+            {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+            {"label": "Expand to Reviewer View", "role": "tier1_analyst", "primary": False},
+            {"label": "Escalate to Compliance Officer", "role": "tier1_analyst", "primary": False},
+        ]
+
+    if governed_disposition == "ESCALATE":
+        return [
+            {"label": "Approve Escalation", "role": "tier1_analyst", "primary": True},
+            {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+            {"label": "Return to Queue", "role": "tier1_analyst", "primary": False},
+        ]
+
+    if governed_disposition == "EDD_REQUIRED":
+        return [
+            {"label": "Begin EDD Review", "role": "tier1_analyst", "primary": True},
+            {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+            {"label": "Escalate", "role": "tier1_analyst", "primary": False},
+        ]
+
+    # NO_REPORT / APPROVED / PASS
+    return [
+        {"label": "Confirm Clearance", "role": "tier1_analyst", "primary": True},
+        {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+        {"label": "Escalate", "role": "tier1_analyst", "primary": False},
+    ]
+
+
 def _detect_precedent_deviation(
     precedent_analysis: dict,
     governed_disposition: str,
@@ -1045,6 +1325,162 @@ def _detect_precedent_deviation(
         return alert
 
     return None
+
+
+# ── FIX-018: Enhanced precedent analysis ─────────────────────────────────────
+
+_SIMILARITY_FEATURE_LABELS: dict[str, str] = {
+    "rules_overlap": "Rule activation",
+    "gate_match": "Gate outcomes",
+    "typology_overlap": "Typology overlap",
+    "amount_bucket": "Amount band",
+    "channel_method": "Channel/method",
+    "corridor_match": "Corridor risk",
+    "pep_match": "PEP status",
+    "customer_profile": "Customer profile",
+    "geo_risk": "Geographic risk",
+}
+
+
+def _build_enhanced_precedent_analysis(
+    precedent_analysis: dict,
+    governed_disposition: str,
+    deviation_alert: dict | None,
+) -> dict:
+    """Build enhanced precedent analysis with divergence justification,
+    feature comparison matrix, outcome distribution, and override statement.
+
+    Returns a dict consumed by the renderer.
+    """
+    if not precedent_analysis or not precedent_analysis.get("available"):
+        return {}
+
+    sample_cases = precedent_analysis.get("sample_cases", []) or []
+    supporting = int(precedent_analysis.get("supporting_precedents", 0) or 0)
+    contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
+    neutral = int(precedent_analysis.get("neutral_precedents", 0) or 0)
+    total_decisive = supporting + contrary
+
+    result: dict = {}
+
+    # ── a) Outcome Distribution Summary ──────────────────────────────
+    result["outcome_distribution"] = {
+        "supporting": supporting,
+        "contrary": contrary,
+        "neutral": neutral,
+        "total": supporting + contrary + neutral,
+        "typical_outcome": (
+            governed_disposition if supporting >= contrary
+            else "CONTRARY (majority diverges from current decision)"
+        ),
+    }
+
+    # ── b) Feature Comparison Matrix ─────────────────────────────────
+    # For top 5 similar precedents, generate feature comparison showing
+    # which features match vs differ.
+    comparison_matrix: list[dict] = []
+    for match in sample_cases[:5]:
+        components = match.get("similarity_components", {}) or {}
+        sim_pct = int(match.get("similarity_pct", 0) or 0)
+        classification = match.get("classification", "neutral")
+
+        matching_features = []
+        differing_features = []
+        for key, label in _SIMILARITY_FEATURE_LABELS.items():
+            score = components.get(key, 0) or 0
+            try:
+                score = float(score)
+            except (TypeError, ValueError):
+                score = 0.0
+            if score >= 70:
+                matching_features.append(label)
+            elif score > 0 and score < 50:
+                differing_features.append(f"{label} ({int(score)}%)")
+
+        comparison_matrix.append({
+            "precedent_id": match.get("precedent_id", "N/A"),
+            "similarity_pct": sim_pct,
+            "outcome": match.get("outcome_label") or str(match.get("outcome", "N/A")).upper(),
+            "classification": classification,
+            "matching_features": matching_features,
+            "differing_features": differing_features,
+        })
+    result["feature_comparison_matrix"] = comparison_matrix
+
+    # ── c) Divergence Justification ──────────────────────────────────
+    # When engine outcome diverges from precedent majority, explain why.
+    has_deviation = deviation_alert is not None
+    contrary_cases = [
+        m for m in sample_cases
+        if m.get("classification") == "contrary"
+    ]
+
+    divergence_justification = None
+    if has_deviation and contrary_cases:
+        contrary_details = []
+        for cc in contrary_cases[:5]:
+            components = cc.get("similarity_components", {}) or {}
+            # Find the differentiating features
+            diffs = []
+            for key, label in _SIMILARITY_FEATURE_LABELS.items():
+                score = components.get(key, 0) or 0
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    score = 0.0
+                if 0 < score < 60:
+                    diffs.append(f"{label} ({int(score)}%)")
+            contrary_details.append({
+                "precedent_id": cc.get("precedent_id", "N/A"),
+                "outcome": cc.get("outcome_label") or str(cc.get("outcome", "N/A")).upper(),
+                "similarity_pct": int(cc.get("similarity_pct", 0) or 0),
+                "distinguishing_factors": diffs or ["No clear differentiating factor identified"],
+            })
+
+        divergence_justification = {
+            "diverges_from_majority": contrary > supporting,
+            "contrary_count": len(contrary_cases),
+            "total_decisive": total_decisive,
+            "contrary_details": contrary_details,
+            "statement": (
+                f"Decision diverges from precedent majority. "
+                f"{len(contrary_cases)} contrary precedent(s) identified "
+                f"out of {total_decisive} decisive comparisons. "
+                f"Override justified by classifier sovereignty and "
+                f"current case-specific Tier 1 indicators."
+            ),
+        }
+    result["divergence_justification"] = divergence_justification
+
+    # ── d) Temporal Context ──────────────────────────────────────────
+    # Flag if contrary cases are older (suggesting regulatory shift)
+    temporal_notes = []
+    for sc in sample_cases[:10]:
+        ts = sc.get("timestamp") or sc.get("decided_at") or sc.get("created_at")
+        if ts:
+            temporal_notes.append({
+                "precedent_id": sc.get("precedent_id", "N/A"),
+                "timestamp": ts,
+                "classification": sc.get("classification", "neutral"),
+            })
+    result["temporal_context"] = temporal_notes
+
+    # ── e) Precedent Override Statement ──────────────────────────────
+    # Auto-generate a signable statement when diverging
+    override_statement = None
+    if has_deviation and contrary > supporting:
+        override_statement = (
+            f"I acknowledge that the current decision ({governed_disposition}) "
+            f"diverges from the majority of scored precedents "
+            f"({contrary} contrary vs {supporting} supporting). "
+            f"This divergence is justified based on the following "
+            f"case-specific factors that distinguish it from the "
+            f"historical pattern. The distinguishing factors are "
+            f"documented in the Feature Comparison Matrix above."
+        )
+    result["override_statement"] = override_statement
+
+    return result
 
 
 # ── Similarity summary ───────────────────────────────────────────────────────

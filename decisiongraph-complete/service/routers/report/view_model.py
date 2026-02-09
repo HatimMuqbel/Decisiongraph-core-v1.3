@@ -162,6 +162,7 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
 
         # Decision Integrity & Governance Alerts
         "decision_integrity_alert": derived["decision_integrity_alert"],
+        "override_justification": derived.get("override_justification"),
         "precedent_deviation_alert": derived["precedent_deviation_alert"],
         "corrections_applied": derived.get("corrections_applied", {}),
         "classifier_is_sovereign": True,
@@ -178,11 +179,17 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         # FIX-006: Defensibility check
         "defensibility_check": derived.get("defensibility_check", {}),
 
+        # FIX-018: Enhanced precedent analysis
+        "enhanced_precedent": derived.get("enhanced_precedent", {}),
+
         # FIX-007: EDD recommendations
         "edd_recommendations": derived.get("edd_recommendations", []),
 
         # FIX-009: SLA timeline
         "sla_timeline": derived.get("sla_timeline", {}),
+
+        # FIX-015: Analyst actions (outcome-aware)
+        "analyst_actions": derived.get("analyst_actions", []),
     }
 
 
