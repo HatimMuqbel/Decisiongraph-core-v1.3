@@ -28,7 +28,7 @@ TIER1_SUSPICION_CODES: dict[str, str] = {
     # Evidence flags (from evaluation trace)
     "flag.structuring_suspected": "STRUCTURING_PATTERN",
     "flag.layering": "LAYERING",
-    "flag.rapid_movement": "LAYERING",
+    "flag.rapid_movement": "EVASION_BEHAVIOR",
     "flag.funnel_account": "FUNNEL",
     "flag.third_party_unexplained": "THIRD_PARTY_UNEXPLAINED",
     "flag.false_source": "FALSE_SOURCE",
@@ -69,7 +69,7 @@ TIER1_SUSPICION_CODES: dict[str, str] = {
 TIER1_SUSPICION_ELEMENTS: dict[str, str] = {
     "structuring": "STRUCTURING_PATTERN",
     "layering": "LAYERING",
-    "rapid_movement": "LAYERING",
+    "rapid_movement": "EVASION_BEHAVIOR",
     "funnel": "FUNNEL",
     "shell": "SHELL_ENTITY",
     "evasion": "EVASION_BEHAVIOR",

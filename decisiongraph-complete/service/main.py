@@ -1252,7 +1252,7 @@ async def decide(request: Request):
             _typology_label = "shell_company"
         elif "THIRD_PARTY" in _indicator_codes:
             _typology_label = "third_party"
-        elif sanctions_result == "MATCH":
+        elif facts.get("sanctions_result") == "MATCH":
             _typology_label = "sanctions"
         layer4_typologies_pre = {
             "typologies": [{"name": _typology_label, "maturity": typology_maturity}],
@@ -1568,6 +1568,14 @@ async def decide(request: Request):
             jurisdiction=DG_JURISDICTION,
         )
         decision_pack["precedent_analysis"] = precedent_analysis
+
+        # Runtime invariant checks (PRECEDENT_OUTCOME_MODEL_V2.md §10)
+        invariant_violations = check_precedent_invariants(
+            precedent_analysis=precedent_analysis,
+            decision_id=decision_pack["meta"]["decision_id"],
+        )
+        if invariant_violations:
+            decision_pack["invariant_violations"] = invariant_violations
 
         # Calculate duration
         duration_ms = int((time.time() - start_time) * 1000)
@@ -2804,6 +2812,163 @@ def query_similar_precedents(
         }
 
 # =============================================================================
+# Runtime Invariant Checks (PRECEDENT_OUTCOME_MODEL_V2.md §10)
+# =============================================================================
+
+def check_precedent_invariants(
+    precedent_analysis: dict,
+    decision_id: str,
+) -> list[dict]:
+    """Validate v2 invariants against a completed precedent analysis.
+
+    Each violation is logged at CRITICAL level with the invariant ID,
+    violating values, and decision_id for audit trail.
+
+    Returns a list of violation dicts (empty = all invariants satisfied).
+    """
+    violations: list[dict] = []
+    if not precedent_analysis or not precedent_analysis.get("available"):
+        return violations
+
+    proposed = precedent_analysis.get("proposed_canonical", {})
+    sample_cases = precedent_analysis.get("sample_cases", []) or []
+
+    def _violation(inv_id: str, detail: str, values: dict | None = None):
+        v = {
+            "invariant": inv_id,
+            "detail": detail,
+            "decision_id": decision_id,
+        }
+        if values:
+            v["values"] = values
+        violations.append(v)
+        logger.critical(
+            f"INVARIANT VIOLATION: {inv_id} — {detail}",
+            extra={"invariant": inv_id, "decision_id": decision_id, **(values or {})},
+        )
+
+    # INV-001: STR never inferred from disposition
+    # If reporting == FILE_STR, there must be explicit evidence (reason codes
+    # with RC-RPT-STR/SAR, or raw outcome containing STR terms).
+    # We can verify this structurally: FILE_STR should not appear when the
+    # only evidence is disposition == BLOCK.
+    p_disp = proposed.get("disposition", "")
+    p_reporting = proposed.get("reporting", "")
+    if p_reporting == "FILE_STR" and p_disp == "BLOCK":
+        p_basis = proposed.get("disposition_basis", "")
+        if p_basis == "DISCRETIONARY":
+            # Discretionary BLOCK + FILE_STR is suspicious — STR might be
+            # inferred from the block itself.  Only a violation if no
+            # explicit reporting reason codes were searched.
+            reason_codes = precedent_analysis.get("reason_codes_searched", []) or []
+            has_explicit_str = any(
+                "RPT-STR" in c.upper() or "RPT-SAR" in c.upper()
+                for c in reason_codes
+            )
+            if not has_explicit_str:
+                _violation(
+                    "INV-001",
+                    "STR obligation may have been inferred from disposition (BLOCK + DISCRETIONARY + FILE_STR without explicit RPT code)",
+                    {"disposition": p_disp, "reporting": p_reporting, "basis": p_basis},
+                )
+
+    # INV-002: Three fields present and independent
+    for field in ("disposition", "disposition_basis", "reporting"):
+        if field not in proposed or proposed[field] is None:
+            _violation("INV-002", f"Canonical field '{field}' missing from proposed_canonical")
+
+    # INV-003: UNKNOWN excluded from confidence denominator
+    # The confidence formula should only count ALLOW/BLOCK.
+    # We verify by checking that no UNKNOWN sample case was classified as
+    # supporting or contrary.
+    for sc in sample_cases:
+        sc_disp = sc.get("disposition", "UNKNOWN")
+        sc_class = sc.get("classification", "neutral")
+        if sc_disp == "UNKNOWN" and sc_class in ("supporting", "contrary"):
+            _violation(
+                "INV-003",
+                f"UNKNOWN disposition classified as {sc_class}",
+                {"precedent_id": sc.get("precedent_id"), "disposition": sc_disp},
+            )
+
+    # INV-004: Only ALLOW vs BLOCK is contrary
+    for sc in sample_cases:
+        sc_class = sc.get("classification", "neutral")
+        if sc_class == "contrary":
+            sc_disp = sc.get("disposition", "UNKNOWN")
+            if sc_disp not in ("ALLOW", "BLOCK"):
+                _violation(
+                    "INV-004",
+                    f"Non-terminal disposition '{sc_disp}' classified as contrary",
+                    {"precedent_id": sc.get("precedent_id"), "disposition": sc_disp},
+                )
+
+    # INV-005: EDD neutral vs terminal dispositions
+    # Per Section 5.1, EDD == EDD is supporting (same disposition).
+    # INV-005 applies to EDD vs ALLOW/BLOCK — those must be neutral.
+    case_disp = proposed.get("disposition", "UNKNOWN")
+    for sc in sample_cases:
+        sc_disp = sc.get("disposition", "UNKNOWN")
+        sc_class = sc.get("classification", "neutral")
+        # EDD vs terminal classified as supporting or contrary = violation
+        if sc_disp == "EDD" and case_disp in ("ALLOW", "BLOCK") and sc_class != "neutral":
+            _violation(
+                "INV-005",
+                f"EDD precedent classified as {sc_class} against terminal {case_disp}",
+                {"precedent_id": sc.get("precedent_id")},
+            )
+        if case_disp == "EDD" and sc_disp in ("ALLOW", "BLOCK") and sc_class != "neutral":
+            _violation(
+                "INV-005",
+                f"Terminal {sc_disp} precedent classified as {sc_class} against EDD case",
+                {"precedent_id": sc.get("precedent_id")},
+            )
+        # EDD classified as contrary is always wrong
+        if sc_disp == "EDD" and sc_class == "contrary":
+            _violation(
+                "INV-005",
+                f"EDD disposition classified as contrary",
+                {"precedent_id": sc.get("precedent_id")},
+            )
+
+    # INV-006: Gate2 STR derived from reporting, not disposition
+    # Structural check: verified at code level (line 2484).
+    # Runtime: ensure gate_match component used reporting field.
+    # (This is enforced by construction — no runtime sample data to check.)
+
+    # INV-007: Disposition deviation → Consistency; Reporting deviation → Defensibility
+    # (Checked in derive.py — deviation alert types are hardcoded.)
+
+    # INV-008: No cross-basis in confidence denominator
+    case_basis = proposed.get("disposition_basis", "UNKNOWN")
+    for sc in sample_cases:
+        sc_basis = sc.get("disposition_basis", "UNKNOWN")
+        sc_class = sc.get("classification", "neutral")
+        sc_disp = sc.get("disposition", "UNKNOWN")
+        if (
+            sc_class in ("supporting", "contrary")
+            and case_basis != "UNKNOWN"
+            and sc_basis != "UNKNOWN"
+            and case_basis != sc_basis
+        ):
+            _violation(
+                "INV-008",
+                f"Cross-basis precedent ({sc_basis} vs case {case_basis}) classified as {sc_class}",
+                {"precedent_id": sc.get("precedent_id"), "prec_basis": sc_basis, "case_basis": case_basis},
+            )
+
+    # INV-009: (Governance-level — tracked via defensibility_check in derive.py)
+
+    if violations:
+        logger.critical(
+            f"Precedent invariant check: {len(violations)} violation(s)",
+            extra={"decision_id": decision_id, "violation_count": len(violations)},
+        )
+
+    return violations
+
+
+# =============================================================================
 # Startup/Shutdown
 # =============================================================================
 
@@ -2984,12 +3149,17 @@ _SPA_ROUTES = {"/cases", "/seeds", "/policy-shifts", "/audit", "/registry"}
 async def serve_spa_catchall(full_path: str):
     """Catch-all: serve the React SPA index.html for frontend routes.
 
-    This handles client-side routing for paths like /cases, /reports/xyz,
-    /seeds, etc. that don't match any API endpoint.
+    Only serves SPA for known frontend routes — API routes like /report/
+    must NOT be intercepted here.
     """
     from fastapi.responses import FileResponse
+
+    # Only serve SPA for known frontend routes, not API paths
+    normalized = f"/{full_path}".rstrip("/")
+    is_spa_route = any(normalized.startswith(r) for r in _SPA_ROUTES)
+
     spa_index = DASHBOARD_DIR / "index.html"
-    if spa_index.exists():
+    if is_spa_route and spa_index.exists():
         return FileResponse(spa_index, media_type="text/html")
     raise HTTPException(status_code=404, detail=f"Not found: /{full_path}")
 

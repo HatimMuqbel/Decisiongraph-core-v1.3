@@ -493,11 +493,48 @@ def render_markdown(ctx: dict) -> str:
 
     precedent_markdown = _build_precedent_markdown(ctx.get("precedent_analysis", {}))
 
-    # FIX-018: Enhanced precedent analysis sections
+    # FIX-018 + FIX-027: Enhanced precedent analysis sections
     enhanced_prec = ctx.get("enhanced_precedent", {})
     enhanced_precedent_md = ""
 
     if enhanced_prec:
+        # FIX-027: Pattern Summary (institutional knowledge headline)
+        ps = enhanced_prec.get("pattern_summary", "")
+        if ps:
+            enhanced_precedent_md += (
+                f"\n### Institutional Pattern Summary\n\n"
+                f"> {_md_escape(ps)}\n\n"
+            )
+
+        # FIX-027: Institutional Posture Statement
+        ip = enhanced_prec.get("institutional_posture", "")
+        if ip:
+            enhanced_precedent_md += (
+                f"### Institutional Posture\n\n"
+                f"> *{_md_escape(ip)}*\n\n"
+            )
+
+        # FIX-027: Case Thumbnails (readable precedent summaries)
+        ct = enhanced_prec.get("case_thumbnails", [])
+        if ct:
+            enhanced_precedent_md += "### Precedent Case Summaries\n\n"
+            for thumb in ct:
+                pid = _md_escape(thumb.get("precedent_id", "N/A"))
+                sim = thumb.get("similarity_pct", 0)
+                cls = thumb.get("classification", "neutral")
+                desc = _md_escape(thumb.get("description", ""))
+                km = ", ".join(thumb.get("key_matches", [])) or "None"
+                kd = ", ".join(thumb.get("key_differences", [])) or "None"
+                enhanced_precedent_md += (
+                    f"**{pid}** — {sim}% similarity · _{cls}_\n"
+                    f"> {desc}\n"
+                )
+                if thumb.get("key_matches"):
+                    enhanced_precedent_md += f"> Matching: {km}\n"
+                if thumb.get("key_differences"):
+                    enhanced_precedent_md += f"> Differs: {kd}\n"
+                enhanced_precedent_md += "\n"
+
         # a) Outcome Distribution Summary
         od = enhanced_prec.get("outcome_distribution", {})
         if od:

@@ -227,7 +227,19 @@
         <div class="label">Final Disposition</div>
         <div class="value" style="font-size:16px;">{{ governed_disposition | replace('_', ' ') }}</div>
         <div class="label">&nbsp;</div>
-        <div class="value small" style="color:var(--muted);">Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}</div>
+        <div class="value small" style="color:var(--muted);">
+          {% if classification_outcome and governed_disposition != classification_outcome | replace('_REQUIRED', '_REQUIRED') %}
+            {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
+              Classifier recommends {{ classification_outcome | replace('_', ' ') }}. Governed: {{ governed_disposition | replace('_', ' ') }} per gate evaluation. Conflict deferred to compliance officer.
+            {% elif classification_outcome == 'NO_REPORT' and governed_disposition != 'NO_REPORT' %}
+              Classifier recommends {{ classification_outcome | replace('_', ' ') }}. Governed: {{ governed_disposition | replace('_', ' ') }} per governance correction.
+            {% else %}
+              Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}
+            {% endif %}
+          {% else %}
+            Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}
+          {% endif %}
+        </div>
         <div class="label">Engine Output (Rules)</div>
         <div class="value mono" style="{% if engine_disposition != governed_disposition %}color:var(--muted); text-decoration:line-through;{% endif %}">{{ engine_disposition | replace('_', ' ') }}{% if engine_verdict and engine_verdict|lower != 'n/a' %} — {{ engine_verdict }}{% endif %}</div>
         {% if verdict != engine_verdict %}
@@ -295,11 +307,11 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Disposition</div>
-        <div class="value" style="font-weight:700;">{{ canonical_outcome.disposition | default('UNKNOWN') }}</div>
+        <div class="value" style="font-weight:700;">{{ canonical_outcome.disposition | default('N/A') | replace('_', ' ') }}</div>
         <div class="label">Disposition Basis</div>
-        <div class="value">{{ canonical_outcome.disposition_basis | default('UNKNOWN') }}</div>
+        <div class="value">{{ canonical_outcome.disposition_basis | default('N/A') | replace('_', ' ') }}</div>
         <div class="label">Reporting</div>
-        <div class="value">{{ canonical_outcome.reporting | default('UNKNOWN') }}{% if canonical_outcome.reporting_note %} ({{ canonical_outcome.reporting_note }}){% endif %}</div>
+        <div class="value">{{ canonical_outcome.reporting | default('N/A') | replace('_', ' ') }}{% if canonical_outcome.reporting_note %} <span class="small">({{ canonical_outcome.reporting_note }})</span>{% endif %}</div>
       </div>
     </div>
     {% endif %}
@@ -461,7 +473,11 @@
         <div class="label">Classifier Outcome</div>
         <div class="value"><strong>{{ classification_outcome }}</strong></div>
         <div class="label">Classifier Authority</div>
+        {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
+        <div class="value" style="color:var(--warn); font-weight:600;">OVERRIDDEN — Classifier recommends STR, governed disposition is {{ governed_disposition | replace('_', ' ') }}</div>
+        {% else %}
         <div class="value" style="color:#059669; font-weight:600;">SOVEREIGN — Hard Gate</div>
+        {% endif %}
         <div class="label">Suspicion Indicators (Tier 1)</div>
         <div class="value">{{ suspicion_count }}</div>
         <div class="label">Investigative Signals (Tier 2)</div>
@@ -471,8 +487,13 @@
       </div>
       <p class="small" style="margin-top:10px;">{{ classification_reason }}</p>
       <p class="small" style="margin-top:6px; color:var(--muted);">
-        Decision Hierarchy: Classifier → Rules → Narrative → Governance.
-        {% if suspicion_count == 0 %}STR is impossible when Tier 1 = 0. No rule, gate, or precedent can override this.{% endif %}
+        {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
+        Decision Hierarchy: Classifier recommends {{ classification_outcome | replace('_', ' ') }}, but gate evaluation produced {{ governed_disposition | replace('_', ' ') }}. Conflict deferred to compliance officer for final STR determination.
+        {% elif suspicion_count == 0 %}
+        Decision Hierarchy: Classifier → Rules → Narrative → Governance. STR is impossible when Tier 1 = 0. No rule, gate, or precedent can override this.
+        {% else %}
+        Decision Hierarchy: Classifier → Rules → Narrative → Governance. Classifier is sovereign — final authority on suspicion determination.
+        {% endif %}
       </p>
       {% if tier1_signals and tier1_signals|length > 0 %}
       <h4 style="margin-top:14px; margin-bottom:6px; color:#b91c1c;">Tier 1 — Suspicion Indicators (RGS Contributors)</h4>
@@ -671,6 +692,145 @@
       <div class="alert-header warning">⚠ Thin Precedent Pool</div>
       <div class="alert-body">{{ precedent_pool_warning.message }}</div>
       <div class="alert-detail">Pool size: {{ precedent_pool_warning.pool_size }} · Minimum required: {{ precedent_pool_warning.minimum_required }}. Percentage-based metrics below are informational only and must not be relied upon for disposition decisions.</div>
+    </div>
+    {% endif %}
+
+    <!-- FIX-027: Pattern Summary — institutional knowledge headline -->
+    {% if enhanced_precedent and enhanced_precedent.pattern_summary %}
+    <div class="card break" style="border-left:4px solid #2563eb; background:#f0f9ff;">
+      <h4 style="margin:0 0 8px 0; color:#1e40af;">Institutional Pattern Summary</h4>
+      <p style="font-size:14px; line-height:1.6; margin:0;">{{ enhanced_precedent.pattern_summary }}</p>
+    </div>
+    {% endif %}
+
+    <!-- FIX-027: Institutional Posture Statement -->
+    {% if enhanced_precedent and enhanced_precedent.institutional_posture %}
+    <div class="statement break" style="margin-top:12px;">
+      <strong>Institutional Posture</strong><br>
+      <p style="font-size:14px; line-height:1.6; margin:8px 0 0 0;">{{ enhanced_precedent.institutional_posture }}</p>
+    </div>
+    {% endif %}
+
+    <!-- FIX-027: Case Thumbnails — readable precedent summaries -->
+    {% if enhanced_precedent and enhanced_precedent.case_thumbnails and enhanced_precedent.case_thumbnails|length > 0 %}
+    <h3 style="margin-top:16px;">Precedent Case Summaries</h3>
+    <div class="match-grid">
+      {% for thumb in enhanced_precedent.case_thumbnails %}
+      <div class="card break" style="border-left:3px solid {% if thumb.classification == 'supporting' %}var(--ok){% elif thumb.classification == 'contrary' %}var(--bad){% else %}var(--warn){% endif %}; padding:12px 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span class="mono" style="font-size:13px; font-weight:600;">{{ thumb.precedent_id }}</span>
+          <span style="font-size:18px; font-weight:700;">{{ thumb.similarity_pct }}%</span>
+        </div>
+        <p style="font-size:13px; margin:0 0 6px 0;">{{ thumb.description }}</p>
+        {% if thumb.key_matches %}
+        <span class="small" style="color:var(--ok);">Matching: {{ thumb.key_matches | join(', ') }}</span><br>
+        {% endif %}
+        {% if thumb.key_differences %}
+        <span class="small" style="color:var(--bad);">Differs: {{ thumb.key_differences | join(', ') }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Feature Comparison Matrix -->
+    {% if enhanced_precedent and enhanced_precedent.feature_comparison_matrix and enhanced_precedent.feature_comparison_matrix|length > 0 %}
+    <h3 style="margin-top:16px;">Feature Comparison Matrix</h3>
+    <p class="small" style="margin-bottom:8px;"><em>Top precedents compared by similarity feature. Differentiating features highlight where dissimilarity lives.</em></p>
+    <table style="width:100%; font-size:13px; border-collapse:collapse;">
+      <thead>
+        <tr style="background:var(--bg); text-align:left;">
+          <th style="padding:6px 8px;">Precedent</th>
+          <th style="padding:6px 8px;">Sim.</th>
+          <th style="padding:6px 8px;">Outcome</th>
+          <th style="padding:6px 8px;">Class</th>
+          <th style="padding:6px 8px;">Matching Features</th>
+          <th style="padding:6px 8px;">Differentiating Features</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in enhanced_precedent.feature_comparison_matrix %}
+        <tr style="border-bottom:1px solid #e5e7eb;">
+          <td style="padding:6px 8px;" class="mono">{{ entry.precedent_id }}</td>
+          <td style="padding:6px 8px; font-weight:600;">{{ entry.similarity_pct }}%</td>
+          <td style="padding:6px 8px;">{{ entry.outcome }}</td>
+          <td style="padding:6px 8px; color:{% if entry.classification == 'supporting' %}var(--ok){% elif entry.classification == 'contrary' %}var(--bad){% else %}var(--warn){% endif %};">{{ entry.classification }}</td>
+          <td style="padding:6px 8px; color:var(--ok); font-size:12px;">{{ entry.matching_features | join(', ') or 'None' }}</td>
+          <td style="padding:6px 8px; color:var(--bad); font-size:12px;">{{ entry.differing_features | join(', ') or 'None' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Divergence Justification -->
+    {% if enhanced_precedent and enhanced_precedent.divergence_justification %}
+    {% set dj = enhanced_precedent.divergence_justification %}
+    <div class="card break" style="border-left:4px solid var(--warn); margin-top:16px; padding:12px 16px;">
+      <h3 style="margin:0 0 8px 0; font-size:15px;">Divergence Justification</h3>
+      {% if dj.statement %}
+      <p style="font-weight:600; margin:0 0 10px 0;">{{ dj.statement }}</p>
+      {% endif %}
+      {% if dj.contrary_details and dj.contrary_details|length > 0 %}
+      <table style="width:100%; font-size:13px; border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--bg); text-align:left;">
+            <th style="padding:4px 8px;">Contrary Precedent</th>
+            <th style="padding:4px 8px;">Outcome</th>
+            <th style="padding:4px 8px;">Similarity</th>
+            <th style="padding:4px 8px;">Distinguishing Factors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cd in dj.contrary_details %}
+          <tr style="border-bottom:1px solid #e5e7eb;">
+            <td style="padding:4px 8px;" class="mono">{{ cd.precedent_id }}</td>
+            <td style="padding:4px 8px;">{{ cd.outcome }}</td>
+            <td style="padding:4px 8px;">{{ cd.similarity_pct }}%</td>
+            <td style="padding:4px 8px; font-size:12px;">{{ cd.distinguishing_factors | join('; ') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Temporal Context -->
+    {% if enhanced_precedent and enhanced_precedent.temporal_context and enhanced_precedent.temporal_context|length > 0 %}
+    {% set contrary_timestamps = [] %}
+    {% for t in enhanced_precedent.temporal_context if t.classification == 'contrary' and t.timestamp %}
+      {% if contrary_timestamps.append(t) %}{% endif %}
+    {% endfor %}
+    {% if contrary_timestamps|length > 0 %}
+    <div style="margin-top:12px;">
+      <h4 style="margin-bottom:4px; font-size:14px;">Temporal Context</h4>
+      <p class="small" style="margin-bottom:6px;"><em>Contrary precedent decision dates — older cases may reflect superseded regulatory guidance.</em></p>
+      <ul style="font-size:13px; margin:0; padding-left:20px;">
+        {% for t in contrary_timestamps[:5] %}
+        <li><span class="mono">{{ t.precedent_id }}</span>: {{ t.timestamp }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Override Statement -->
+    {% if enhanced_precedent and enhanced_precedent.override_statement %}
+    <div class="card break" style="border-left:4px solid var(--bad); margin-top:16px; padding:12px 16px; background:#fef2f2;">
+      <h3 style="margin:0 0 8px 0; font-size:15px;">Precedent Override Statement</h3>
+      <p class="small" style="margin-bottom:10px;"><em>This statement must be reviewed and approved by a compliance officer when the current decision diverges from precedent majority.</em></p>
+      <blockquote style="border-left:3px solid var(--bad); padding:8px 12px; margin:0 0 12px 0; font-style:italic; background:#fff;">
+        {{ enhanced_precedent.override_statement }}
+      </blockquote>
+      <div style="display:grid; grid-template-columns:100px 1fr; gap:4px 12px; font-size:13px;">
+        <div style="font-weight:600;">Reviewer</div>
+        <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
+        <div style="font-weight:600;">Date</div>
+        <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
+        <div style="font-weight:600;">Rationale</div>
+        <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
+      </div>
     </div>
     {% endif %}
 
@@ -932,6 +1092,12 @@
         {% if defensibility_check.note %}
         <div class="label">Note</div>
         <div class="value small">{{ defensibility_check.note }}</div>
+        {% endif %}
+        {% if defensibility_check.requires_documented_rationale %}
+        <div class="label" style="color:#dc2626; font-weight:600;">INV-009</div>
+        <div class="value small" style="color:#dc2626;">{{ defensibility_check.inv_009_note }}</div>
+        <div class="label">Rationale Status</div>
+        <div class="value" style="font-weight:600; color:#d97706;">{{ defensibility_check.rationale_status | default('PENDING') }}</div>
         {% endif %}
       </div>
     </div>

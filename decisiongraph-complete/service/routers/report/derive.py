@@ -232,6 +232,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         precedent_analysis=precedent_analysis,
         governed_disposition=governed_disposition,
         deviation_alert=deviation_alert,
+        classification_outcome=classification.outcome,
     )
 
     # ── 11. Escalation summary ────────────────────────────────────────────
@@ -272,6 +273,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         str_required=str_required,
         suspicion_count=classification.suspicion_count,
         investigative_count=classification.investigative_count,
+        integrity_alert=integrity_alert,
     )
 
     # ── 16. FIX-009: SLA timeline ────────────────────────────────────────
@@ -1088,9 +1090,12 @@ _DISCRETIONARY_RULE_PREFIXES = frozenset({
 def _derive_disposition_basis(rules_fired: list, governed_disposition: str) -> str:
     """Derive disposition_basis from triggered rule context.
 
+    FIX-023: UNKNOWN replaced with PENDING_REVIEW — compliance documents
+    must never display UNKNOWN as a disposition basis.
+
     MANDATORY  — sanctions or hard-stop rule triggered.
     DISCRETIONARY — risk-based escalation rule triggered.
-    UNKNOWN — not determinable.
+    PENDING_REVIEW — basis not determinable from triggered rules.
     """
     if governed_disposition == "NO_REPORT":
         return "DISCRETIONARY"
@@ -1100,7 +1105,7 @@ def _derive_disposition_basis(rules_fired: list, governed_disposition: str) -> s
         if str(r.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED", "WARN"}
     ]
     if not triggered:
-        return "UNKNOWN"
+        return "PENDING_REVIEW"
 
     for rule in triggered:
         code = str(rule.get("code", "")).upper()
@@ -1114,7 +1119,7 @@ def _derive_disposition_basis(rules_fired: list, governed_disposition: str) -> s
             if code.startswith(prefix):
                 return "DISCRETIONARY"
 
-    return "UNKNOWN"
+    return "PENDING_REVIEW"
 
 
 def _derive_reporting(governed_disposition: str, str_required: bool) -> tuple[str, str]:
@@ -1122,14 +1127,17 @@ def _derive_reporting(governed_disposition: str, str_required: bool) -> tuple[st
 
     Returns (reporting_value, reporting_note).
     Reporting is NEVER inferred from disposition — only from explicit signals.
+
+    FIX-023: UNKNOWN replaced with PENDING_COMPLIANCE_REVIEW — a compliance
+    report must never say UNKNOWN (auditor reads it as system failure).
     """
     if str_required:
         return "FILE_STR", ""
     if governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
-        return "UNKNOWN", "pending EDD completion"
+        return "PENDING_COMPLIANCE_REVIEW", "reporting obligation deferred to compliance officer — see Decision Integrity Alert"
     if governed_disposition == "NO_REPORT":
         return "NO_REPORT", ""
-    return "UNKNOWN", "not determinable"
+    return "PENDING_COMPLIANCE_REVIEW", "reporting obligation deferred to compliance officer"
 
 
 # ── FIX-007: EDD recommendations from risk factors ───────────────────────────
@@ -1259,6 +1267,14 @@ def _build_defensibility_check(
                 f"{rd.get('dominant_precedent_reporting', 'N/A')} filing rate "
                 f"for this typology."
             ),
+            # INV-009: Override without documented rationale = examination finding
+            "requires_documented_rationale": True,
+            "rationale_status": "PENDING",
+            "inv_009_note": (
+                "Per PCMLTFA s. 73/73.1 and INV-009: Overriding this "
+                "Defensibility Alert without documented rationale "
+                "constitutes a material examination finding."
+            ),
         }
 
     return {
@@ -1320,16 +1336,38 @@ def _derive_analyst_actions(
     str_required: bool,
     suspicion_count: int = 0,
     investigative_count: int = 0,
+    integrity_alert: dict | None = None,
 ) -> list[dict]:
     """Generate decision-outcome-aware action options for analyst views.
 
+    FIX-025: Actions are driven by governed_disposition FIRST, not raw verdict.
     Governance rule: HARD_STOP / BLOCK decisions must NEVER offer "Approve".
     EDD with Tier 1 signals must use "Confirm with EDD Conditions" (not "Approve").
+    PENDING_REVIEW (integrity conflict) must NEVER offer "Approve" or "Confirm Clearance".
     Each action has a label and a role restriction.
     """
     v = verdict.upper()
     is_hard_stop = v in ("HARD_STOP",) or "HARD_STOP" in v
     is_block = v.startswith("BLOCK") or v.startswith("DECLINE") or governed_disposition == "STR_REQUIRED"
+
+    # FIX-025: If integrity alert exists with corrections, governed disposition
+    # is authoritative — never offer clearance/approve actions.
+    has_conflict = (
+        integrity_alert is not None
+        and integrity_alert.get("type") in (
+            "CLASSIFICATION_DISPOSITION_CONFLICT",
+            "CONTROL_CONTRADICTION",
+            "ESCALATION_WITHOUT_SUSPICION",
+        )
+    )
+
+    if has_conflict:
+        # Conflict case: compliance officer must review before any clearance
+        return [
+            {"label": "Escalate to Compliance Officer", "role": "tier1_analyst", "primary": True},
+            {"label": "Confirm with EDD Conditions", "role": "tier1_analyst", "primary": False},
+            {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+        ]
 
     if is_hard_stop:
         return [
@@ -1601,11 +1639,22 @@ def _build_enhanced_precedent_analysis(
     precedent_analysis: dict,
     governed_disposition: str,
     deviation_alert: dict | None,
+    classification_outcome: str = "",
 ) -> dict:
-    """Build enhanced precedent analysis with divergence justification,
-    feature comparison matrix, outcome distribution, and override statement.
+    """Build enhanced precedent analysis with institutional learning features.
 
-    Returns a dict consumed by the renderer.
+    FIX-027: Rebuilt for institutional knowledge transfer per audit feedback.
+    Precedent analysis must teach, not just list.
+
+    Returns a dict consumed by the renderer with:
+      - pattern_summary: natural language institutional knowledge
+      - case_thumbnails: readable precedent summaries
+      - outcome_distribution: counts
+      - feature_comparison_matrix: top 5 precedent feature comparison
+      - institutional_posture: auto-generated from pattern data
+      - divergence_justification
+      - temporal_context
+      - override_statement
     """
     if not precedent_analysis or not precedent_analysis.get("available"):
         return {}
@@ -1615,24 +1664,115 @@ def _build_enhanced_precedent_analysis(
     contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
     neutral = int(precedent_analysis.get("neutral_precedents", 0) or 0)
     total_decisive = supporting + contrary
+    total_all = supporting + contrary + neutral
+
+    # Get outcome distribution for pattern analysis — prefer matched, fall
+    # back to raw overlap pool for broader context when matches are sparse.
+    match_distribution = (
+        precedent_analysis.get("match_outcome_distribution")
+        or precedent_analysis.get("outcome_distribution")
+        or {}
+    )
+    raw_overlap_count = int(precedent_analysis.get("raw_overlap_count", 0) or 0)
+    raw_distribution = precedent_analysis.get("raw_outcome_distribution") or {}
 
     result: dict = {}
 
-    # ── a) Outcome Distribution Summary ──────────────────────────────
+    # ── a) Pattern Summary (the headline — institutional knowledge) ───
+    # Natural language: what the bank's collective experience says
+    pattern_summary = _build_pattern_summary(
+        total_all=total_all,
+        supporting=supporting,
+        contrary=contrary,
+        neutral=neutral,
+        governed_disposition=governed_disposition,
+        classification_outcome=classification_outcome,
+        match_distribution=match_distribution,
+        sample_cases=sample_cases,
+        raw_overlap_count=raw_overlap_count,
+        raw_distribution=raw_distribution,
+    )
+    result["pattern_summary"] = pattern_summary
+
+    # ── b) Outcome Distribution Summary ──────────────────────────────
     result["outcome_distribution"] = {
         "supporting": supporting,
         "contrary": contrary,
         "neutral": neutral,
-        "total": supporting + contrary + neutral,
+        "total": total_all,
         "typical_outcome": (
             governed_disposition if supporting >= contrary
             else "CONTRARY (majority diverges from current decision)"
         ),
     }
 
-    # ── b) Feature Comparison Matrix ─────────────────────────────────
-    # For top 5 similar precedents, generate feature comparison showing
-    # which features match vs differ.
+    # ── c) Case Thumbnails (readable precedent summaries) ─────────────
+    # FIX-027: Replace cryptic hashes with readable summaries
+    case_thumbnails: list[dict] = []
+    for match in sample_cases[:5]:
+        components = match.get("similarity_components", {}) or {}
+        sim_pct = int(match.get("similarity_pct", 0) or 0)
+        outcome_label = match.get("outcome_label") or str(match.get("outcome", "N/A")).upper()
+        classification = match.get("classification", "neutral")
+        reason_codes = match.get("reason_codes", []) or []
+
+        # Build a readable thumbnail from available data
+        thumbnail_parts = []
+        # Customer type from reason codes
+        for rc in reason_codes:
+            rc_upper = str(rc).upper()
+            if "PEP" in rc_upper:
+                thumbnail_parts.append("PEP customer")
+            if "SANCTION" in rc_upper:
+                thumbnail_parts.append("sanctions exposure")
+            if "STRUCT" in rc_upper:
+                thumbnail_parts.append("structuring pattern")
+            if "LAYER" in rc_upper:
+                thumbnail_parts.append("layering indicators")
+            if "SHELL" in rc_upper:
+                thumbnail_parts.append("shell entity")
+            if "ADVERSE" in rc_upper:
+                thumbnail_parts.append("adverse media")
+            if "VELOCITY" in rc_upper or "EVASION" in rc_upper:
+                thumbnail_parts.append("evasion behavior")
+
+        # Key differentiators from similarity components
+        key_matches = []
+        key_diffs = []
+        for key, label in _SIMILARITY_FEATURE_LABELS.items():
+            score = components.get(key, 0) or 0
+            try:
+                score = float(score)
+            except (TypeError, ValueError):
+                score = 0.0
+            if score >= 70:
+                key_matches.append(label)
+            elif 0 < score < 50:
+                key_diffs.append(label)
+
+        # Build description — always aim for a meaningful sentence
+        if thumbnail_parts:
+            description = f"{outcome_label}. Key factors: {', '.join(thumbnail_parts[:3])}."
+        elif key_matches:
+            description = f"{outcome_label}. Similar on: {', '.join(key_matches[:3])}."
+        else:
+            description = f"{outcome_label}. {sim_pct}% similarity to current case profile."
+        if key_diffs:
+            description += f" Key difference from current case: {', '.join(key_diffs[:2])}."
+
+        case_thumbnails.append({
+            "precedent_id": match.get("precedent_id", "N/A"),
+            "similarity_pct": sim_pct,
+            "outcome_label": outcome_label,
+            "classification": classification,
+            "description": description,
+            "key_matches": key_matches[:3],
+            "key_differences": key_diffs[:3],
+            "reason_codes": reason_codes,
+        })
+    result["case_thumbnails"] = case_thumbnails
+
+    # ── d) Feature Comparison Matrix ─────────────────────────────────
     comparison_matrix: list[dict] = []
     for match in sample_cases[:5]:
         components = match.get("similarity_components", {}) or {}
@@ -1662,8 +1802,22 @@ def _build_enhanced_precedent_analysis(
         })
     result["feature_comparison_matrix"] = comparison_matrix
 
-    # ── c) Divergence Justification ──────────────────────────────────
-    # When engine outcome diverges from precedent majority, explain why.
+    # ── e) Institutional Posture Statement ────────────────────────────
+    # FIX-027: Auto-generated from pattern data — what the bank's
+    # historical practice says about this case profile.
+    result["institutional_posture"] = _build_institutional_posture(
+        total_all=total_all,
+        supporting=supporting,
+        contrary=contrary,
+        neutral=neutral,
+        governed_disposition=governed_disposition,
+        classification_outcome=classification_outcome,
+        match_distribution=match_distribution,
+        raw_overlap_count=raw_overlap_count,
+        raw_distribution=raw_distribution,
+    )
+
+    # ── f) Divergence Justification ──────────────────────────────────
     has_deviation = deviation_alert is not None
     contrary_cases = [
         m for m in sample_cases
@@ -1675,7 +1829,6 @@ def _build_enhanced_precedent_analysis(
         contrary_details = []
         for cc in contrary_cases[:5]:
             components = cc.get("similarity_components", {}) or {}
-            # Find the differentiating features
             diffs = []
             for key, label in _SIMILARITY_FEATURE_LABELS.items():
                 score = components.get(key, 0) or 0
@@ -1707,8 +1860,7 @@ def _build_enhanced_precedent_analysis(
         }
     result["divergence_justification"] = divergence_justification
 
-    # ── d) Temporal Context ──────────────────────────────────────────
-    # Flag if contrary cases are older (suggesting regulatory shift)
+    # ── g) Temporal Context ──────────────────────────────────────────
     temporal_notes = []
     for sc in sample_cases[:10]:
         ts = sc.get("timestamp") or sc.get("decided_at") or sc.get("created_at")
@@ -1720,8 +1872,7 @@ def _build_enhanced_precedent_analysis(
             })
     result["temporal_context"] = temporal_notes
 
-    # ── e) Precedent Override Statement ──────────────────────────────
-    # Auto-generate a signable statement when diverging
+    # ── h) Precedent Override Statement ──────────────────────────────
     override_statement = None
     if has_deviation and contrary > supporting:
         override_statement = (
@@ -1736,6 +1887,204 @@ def _build_enhanced_precedent_analysis(
     result["override_statement"] = override_statement
 
     return result
+
+
+def _build_pattern_summary(
+    total_all: int,
+    supporting: int,
+    contrary: int,
+    neutral: int,
+    governed_disposition: str,
+    classification_outcome: str,
+    match_distribution: dict,
+    sample_cases: list,
+    raw_overlap_count: int = 0,
+    raw_distribution: dict | None = None,
+) -> str:
+    """Build natural language pattern summary for institutional learning.
+
+    FIX-027: A new hire should read this and understand the bank's posture.
+    """
+    if total_all == 0:
+        # No matched precedents — use raw overlap pool for broader context
+        if raw_overlap_count > 0 and raw_distribution:
+            dominant = max(raw_distribution, key=raw_distribution.get)
+            dominant_count = raw_distribution[dominant]
+            dom_label = str(dominant).upper().replace("_", " ")
+            dom_pct = int(dominant_count / raw_overlap_count * 100)
+            return (
+                f"No precedents met the similarity threshold for direct comparison. "
+                f"Broader institutional pool ({raw_overlap_count} cases) shows "
+                f"{dom_pct}% resulted in {dom_label}. "
+                f"This case profile appears novel in the bank's experience."
+            )
+        return "No comparable precedents available for pattern analysis."
+
+    governed_label = governed_disposition.replace("_", " ")
+    total_decisive = supporting + contrary
+
+    # Find dominant outcome from distribution
+    dominant_outcome = ""
+    dominant_count = 0
+    if match_distribution:
+        dominant_outcome = max(match_distribution, key=match_distribution.get)
+        dominant_count = match_distribution.get(dominant_outcome, 0)
+    dominant_label = str(dominant_outcome).upper().replace("_", " ") if dominant_outcome else governed_label
+
+    # Build the story
+    parts = []
+
+    # Opening: how many comparable cases and what they resulted in
+    if total_decisive > 0:
+        if supporting == total_decisive:
+            parts.append(
+                f"Of {total_all} comparable cases, all {total_decisive} decisive "
+                f"precedents resulted in {governed_label}."
+            )
+        elif supporting > contrary:
+            support_pct = int(supporting / total_decisive * 100)
+            parts.append(
+                f"Of {total_all} comparable cases, {support_pct}% "
+                f"({supporting} of {total_decisive} decisive) resulted in "
+                f"{governed_label}."
+            )
+        elif contrary > supporting:
+            contrary_pct = int(contrary / total_decisive * 100)
+            parts.append(
+                f"Of {total_all} comparable cases, {contrary_pct}% "
+                f"({contrary} of {total_decisive} decisive) resulted in a "
+                f"different outcome than the current {governed_label} determination."
+            )
+        else:
+            parts.append(
+                f"Of {total_all} comparable cases, decisive precedents are "
+                f"evenly split ({supporting} supporting, {contrary} contrary)."
+            )
+
+    if neutral > 0:
+        parts.append(
+            f"{neutral} case(s) resolved through enhanced review "
+            f"processes (EDD/review states) rather than immediate determination."
+        )
+
+    # Escalation history
+    escalation_outcomes = {
+        k: v for k, v in (match_distribution or {}).items()
+        if str(k).upper() in ("STR_REQUIRED", "ESCALATE", "FILE_STR")
+    }
+    edd_outcomes = {
+        k: v for k, v in (match_distribution or {}).items()
+        if "EDD" in str(k).upper() or "REVIEW" in str(k).upper()
+    }
+    no_report_outcomes = {
+        k: v for k, v in (match_distribution or {}).items()
+        if str(k).upper() in ("NO_REPORT", "PASS", "CLEARED")
+    }
+
+    total_str = sum(escalation_outcomes.values())
+    total_edd = sum(edd_outcomes.values())
+    total_clear = sum(no_report_outcomes.values())
+
+    if governed_disposition == "EDD_REQUIRED" and total_str == 0 and total_all > 0:
+        parts.append(
+            "The bank has never escalated a comparable case to STR at the pre-EDD stage."
+        )
+    elif total_str > 0 and governed_disposition != "STR_REQUIRED":
+        str_pct = int(total_str / total_all * 100) if total_all > 0 else 0
+        parts.append(
+            f"{str_pct}% of comparable cases ({total_str} of {total_all}) "
+            f"were escalated to STR."
+        )
+
+    # Classifier divergence note
+    if classification_outcome and classification_outcome != governed_disposition:
+        classifier_label = classification_outcome.replace("_", " ")
+        parts.append(
+            f"Classifier determination of {classifier_label} diverges from "
+            f"the governed disposition of {governed_label}."
+        )
+
+    return " ".join(parts) if parts else f"{total_all} comparable precedents found."
+
+
+def _build_institutional_posture(
+    total_all: int,
+    supporting: int,
+    contrary: int,
+    neutral: int,
+    governed_disposition: str,
+    classification_outcome: str,
+    match_distribution: dict,
+    raw_overlap_count: int = 0,
+    raw_distribution: dict | None = None,
+) -> str:
+    """Auto-generated institutional posture statement from pattern data.
+
+    FIX-027: What the bank's historical practice says about this case profile.
+    """
+    if total_all == 0:
+        if raw_overlap_count > 0 and raw_distribution:
+            governed_label = governed_disposition.replace("_", " ")
+            dominant = max(raw_distribution, key=raw_distribution.get)
+            dom_label = str(dominant).upper().replace("_", " ")
+            return (
+                f"No directly comparable precedents available. "
+                f"Broader institutional pool ({raw_overlap_count} cases) "
+                f"predominantly resolved as {dom_label}. "
+                f"Current disposition of {governed_label} is consistent with "
+                f"institutional practice for low-risk profiles."
+            )
+        return "Insufficient precedent data to establish institutional posture."
+
+    governed_label = governed_disposition.replace("_", " ")
+    total_decisive = supporting + contrary
+
+    if total_decisive == 0:
+        return (
+            f"All {neutral} comparable precedent(s) resolved through review processes. "
+            f"No decisive precedent available to establish institutional posture."
+        )
+
+    support_pct = int(supporting / total_decisive * 100) if total_decisive > 0 else 0
+
+    if support_pct == 100:
+        posture = (
+            f"Institutional precedent strongly supports {governed_label} "
+            f"as the appropriate disposition for this case profile. "
+            f"All {total_decisive} comparable decisive precedents resulted "
+            f"in the same outcome."
+        )
+    elif support_pct >= 80:
+        posture = (
+            f"Institutional precedent supports {governed_label}. "
+            f"{support_pct}% of comparable decisive precedents "
+            f"({supporting} of {total_decisive}) resulted in the same outcome."
+        )
+    elif support_pct >= 50:
+        posture = (
+            f"Institutional precedent is mixed but leans toward {governed_label}. "
+            f"{support_pct}% of comparable decisive precedents support the current disposition."
+        )
+    else:
+        contrary_pct = 100 - support_pct
+        posture = (
+            f"Institutional precedent diverges from {governed_label}. "
+            f"{contrary_pct}% of comparable decisive precedents resulted "
+            f"in a different outcome. Senior compliance review is recommended."
+        )
+
+    # Add classifier conflict note
+    if (
+        classification_outcome
+        and classification_outcome != governed_disposition
+        and classification_outcome == "STR_REQUIRED"
+    ):
+        posture += (
+            f" Classifier's {classification_outcome.replace('_', ' ')} determination "
+            f"has {'no' if supporting == 0 else 'limited'} historical precedent support."
+        )
+
+    return posture
 
 
 # ── Similarity summary ───────────────────────────────────────────────────────
