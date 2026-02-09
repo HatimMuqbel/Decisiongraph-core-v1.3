@@ -1,20 +1,20 @@
-# ClaimPilot API - Railway Deployment
+# DecisionGraph AML Service - Railway Deployment (nixpacks fallback)
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "python311Packages.virtualenv"]
+nixPkgs = ["python312", "python312Packages.pip", "python312Packages.virtualenv"]
 
 [phases.install]
 cmds = [
   "python -m venv /opt/venv",
-  ". /opt/venv/bin/activate && pip install -r claimpilot/requirements.txt"
+  ". /opt/venv/bin/activate && pip install -r decisiongraph-complete/requirements.txt"
 ]
 
 [start]
-cmd = ". /opt/venv/bin/activate && cd claimpilot && uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = ". /opt/venv/bin/activate && cd decisiongraph-complete && uvicorn service.main:app --host 0.0.0.0 --port ${PORT:-8000}"
 
 [variables]
 PYTHONUNBUFFERED = "1"
-PYTHONPATH = "claimpilot/src"
+PYTHONPATH = "decisiongraph-complete:/app/decisiongraph-complete/src"
 VIRTUAL_ENV = "/opt/venv"
 PATH = "/opt/venv/bin:$PATH"
