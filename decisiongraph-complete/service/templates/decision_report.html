@@ -419,7 +419,7 @@
         {% endif %}
         {% if engine_disposition != governed_disposition %}
         <p class="small" style="margin-top:8px; font-style:italic;">
-          Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Classifier sovereignty applied — EDD is the governed outcome.
+          Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Classifier sovereignty applied — {{ governed_disposition | replace('_', ' ') }} is the governed outcome.
         </p>
         {% endif %}
         <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
@@ -448,7 +448,11 @@
     <div class="card break" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
       <span class="small" style="margin-right:8px;">Available for <strong>{{ governed_disposition | replace('_', ' ') }}</strong>:</span>
       {% for act in analyst_actions %}
+      {% set is_approval = act.label in ('Approve', 'Confirm Clearance') %}
+      {% set block_approval = decision_integrity_alert or display_verdict == 'PENDING_REVIEW' %}
+      {% if not (is_approval and block_approval) %}
       <span style="display:inline-block; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:{% if act.primary %}700{% else %}500{% endif %}; border:1px solid {% if act.primary %}#1f2937{% else %}var(--border){% endif %}; background:{% if act.primary %}#1f2937{% else %}#fff{% endif %}; color:{% if act.primary %}#fff{% else %}var(--fg){% endif %};">{{ act.label }}</span>
+      {% endif %}
       {% endfor %}
     </div>
     {% endif %}
@@ -491,6 +495,8 @@
         Decision Hierarchy: Classifier recommends {{ classification_outcome | replace('_', ' ') }}, but gate evaluation produced {{ governed_disposition | replace('_', ' ') }}. Conflict deferred to compliance officer for final STR determination.
         {% elif suspicion_count == 0 %}
         Decision Hierarchy: Classifier → Rules → Narrative → Governance. STR is impossible when Tier 1 = 0. No rule, gate, or precedent can override this.
+        {% elif governed_disposition != classification_outcome %}
+        Decision Hierarchy: Classifier recommends {{ classification_outcome | replace('_', ' ') }}. Governed: {{ governed_disposition | replace('_', ' ') }}. Conflict deferred to compliance officer.
         {% else %}
         Decision Hierarchy: Classifier → Rules → Narrative → Governance. Classifier is sovereign — final authority on suspicion determination.
         {% endif %}
