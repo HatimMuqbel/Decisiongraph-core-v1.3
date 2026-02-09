@@ -569,6 +569,24 @@ def _is_demo_format(body: dict) -> bool:
     return False
 
 
+def _derive_stated_purpose(purpose_text: str | None) -> str | None:
+    """Map demo case free-text purpose to canonical stated_purpose enum."""
+    if not purpose_text:
+        return None
+    p = str(purpose_text).lower()
+    if "legal" in p or "counsel" in p or "attorney" in p:
+        return "business"
+    if "business" in p or "trade" in p or "supplier" in p or "acquisition" in p:
+        return "business"
+    if "investment" in p or "portfolio" in p:
+        return "investment"
+    if "family" in p or "gift" in p or "personal" in p or "support" in p:
+        return "personal"
+    if "unclear" in p or "unknown" in p:
+        return "unclear"
+    return "unclear"
+
+
 def _convert_demo_facts(body: dict) -> dict:
     """Convert demo facts-array or seed base_facts into engine-compatible inputs.
 
@@ -756,6 +774,128 @@ def _convert_demo_facts(body: dict) -> dict:
     elif structuring or layering or prior_sars >= 4:
         typology_maturity = "EMERGING"
 
+    # ── Build canonical registry facts from demo vocabulary ─────────────
+    # Maps the demo-specific field names to the 28 canonical registry
+    # fields used by the Evidence Gap Tracker, fingerprint scorer,
+    # and precedent matcher.  This is the translation layer that ensures
+    # demo cases populate the full evidence table.
+    _DEMO_CUSTOMER_TYPE_MAP = {
+        "IND": "individual", "INDIVIDUAL": "individual", "individual": "individual",
+        "CORP": "corporation", "CORPORATE": "corporation", "corporation": "corporation",
+    }
+    _DEMO_METHOD_TO_TXN_TYPE = {
+        "WIRE": "wire_international",
+        "wire": "wire_international",
+        "CASH": "cash",
+        "cash": "cash",
+        "CRYPTO": "crypto",
+        "crypto": "crypto",
+        "CHEQUE": "cheque",
+        "cheque": "cheque",
+        "EFT": "eft",
+    }
+    _HIGH_RISK_COUNTRIES = {"RU", "IR", "KP", "SY", "AF", "VG", "CY", "MM", "YE", "LY", "SO", "SD", "IQ", "PK"}
+    _HIGH_RISK_DEST_COUNTRIES = {"AE", "SG", "HK", "CH", "PA", "BS", "KY", "BZ", "VG", "JE", "IM", "LI"}
+
+    demo_amount_cad = fmap.get("transaction.amount_cad")
+    demo_destination = fmap.get("transaction.destination")
+    demo_residence = fmap.get("customer.residence", "")
+    demo_tenure_years = fmap.get("relationship.tenure_years")
+    demo_method = fmap.get("transaction.method", "")
+    demo_txn_count = fmap.get("transaction.count")
+    demo_purpose = fmap.get("transaction.purpose")
+
+    # Amount banding
+    amount_band = None
+    if demo_amount_cad is not None:
+        try:
+            from decisiongraph import create_txn_amount_banding
+            amount_band = create_txn_amount_banding().apply(demo_amount_cad)
+        except Exception:
+            amt = float(demo_amount_cad)
+            if amt < 3000: amount_band = "under_3k"
+            elif amt < 10000: amount_band = "3k_10k"
+            elif amt < 25000: amount_band = "10k_25k"
+            elif amt < 100000: amount_band = "25k_100k"
+            elif amt < 500000: amount_band = "100k_500k"
+            elif amt < 1000000: amount_band = "500k_1m"
+            else: amount_band = "over_1m"
+
+    # Relationship length banding
+    rel_length = None
+    if demo_tenure_years is not None:
+        t = float(demo_tenure_years)
+        if t < 0.5: rel_length = "new"
+        elif t < 2: rel_length = "recent"
+        else: rel_length = "established"
+
+    # Destination country risk
+    dest_risk = None
+    is_cross_border = False
+    if demo_destination:
+        is_cross_border = str(demo_destination).upper() != "CA"
+        if str(demo_destination).upper() in _HIGH_RISK_COUNTRIES:
+            dest_risk = "high"
+        elif str(demo_destination).upper() in _HIGH_RISK_DEST_COUNTRIES:
+            dest_risk = "medium"
+        else:
+            dest_risk = "low"
+
+    # Whether to derive cross-border from method
+    if str(demo_method).upper() == "WIRE" and demo_destination and str(demo_destination).upper() != "CA":
+        is_cross_border = True
+
+    # Structuring indicators
+    is_just_below = False
+    if demo_amount_cad is not None:
+        amt = float(demo_amount_cad)
+        is_just_below = 8000 <= amt < 10000
+
+    is_multiple_same_day = bool(demo_txn_count and int(demo_txn_count) > 1)
+    is_round_amount = False
+    if demo_amount_cad is not None:
+        is_round_amount = float(demo_amount_cad) % 1000 == 0 and float(demo_amount_cad) >= 5000
+
+    canonical_facts = {
+        # Customer
+        "customer.type": _DEMO_CUSTOMER_TYPE_MAP.get(str(fmap.get("customer.type", "")), None),
+        "customer.relationship_length": rel_length,
+        "customer.pep": is_pep,
+        "customer.high_risk_jurisdiction": str(demo_residence).upper() in _HIGH_RISK_COUNTRIES if demo_residence else False,
+        "customer.high_risk_industry": False,  # Not captured in demo format
+        "customer.cash_intensive": str(demo_method).upper() == "CASH",
+
+        # Transaction
+        "txn.type": _DEMO_METHOD_TO_TXN_TYPE.get(str(demo_method).upper(), instrument_type if instrument_type != "unknown" else None),
+        "txn.amount_band": amount_band,
+        "txn.cross_border": is_cross_border,
+        "txn.destination_country_risk": dest_risk,
+        "txn.round_amount": is_round_amount,
+        "txn.just_below_threshold": is_just_below,
+        "txn.multiple_same_day": is_multiple_same_day,
+        "txn.pattern_matches_profile": not (velocity_spike or structuring or layering),
+        "txn.source_of_funds_clear": source_verified,
+        "txn.stated_purpose": _derive_stated_purpose(demo_purpose),
+
+        # Flags
+        "flag.structuring": structuring,
+        "flag.rapid_movement": velocity_spike,
+        "flag.layering": layering,
+        "flag.unusual_for_profile": velocity_spike or bool(reg_unusual_for_profile),
+        "flag.third_party": bool(reg_third_party),
+        "flag.shell_company": bool(fmap.get("docs.ownership_clear") is False and str(fmap.get("customer.type", "")).upper() == "CORP"),
+
+        # Screening
+        "screening.sanctions_match": sanctions_result == "MATCH",
+        "screening.pep_match": is_pep,
+        "screening.adverse_media": adverse_media_mltf,
+        "prior.sars_filed": prior_sars,
+        "prior.account_closures": bool(reg_account_closures),
+    }
+
+    # Remove None values so they appear as gaps in Evidence Gap Tracker
+    canonical_facts = {k: v for k, v in canonical_facts.items() if v is not None}
+
     return {
         "facts": facts,
         "obligations": obligations,
@@ -769,6 +909,7 @@ def _convert_demo_facts(body: dict) -> dict:
         "typology_confirmed": typology_maturity == "CONFIRMED",
         "fintrac_indicators": [],
         "_demo_facts": fmap,  # preserve original for report rendering
+        "_canonical_facts": canonical_facts,  # translated to 28 registry fields
     }
 
 @app.post("/decide", tags=["Decision"])
@@ -930,9 +1071,12 @@ async def decide(request: Request):
         ]
 
         # Populate registry-keyed evidence for the Evidence Gap Tracker (27 banking fields).
-        # For demo/seed cases, use the _demo_facts; for schema cases, derive from body.
+        # For demo/seed cases, use the _canonical_facts (translated to registry vocabulary);
+        # for schema cases, derive from body.
         _reg_src: dict = {}
-        if is_demo and isinstance(demo_inputs.get("_demo_facts"), dict):
+        if is_demo and isinstance(demo_inputs.get("_canonical_facts"), dict):
+            _reg_src = demo_inputs["_canonical_facts"]
+        elif is_demo and isinstance(demo_inputs.get("_demo_facts"), dict):
             _reg_src = demo_inputs["_demo_facts"]
         else:
             # Flatten structured input (customer_record, screening_payload, etc.)
@@ -1095,8 +1239,25 @@ async def decide(request: Request):
             pre_evidence_used.append({"field": ind_field, "value": ind.get("corroborated", False)})
 
         # Construct classifier inputs from layers
+        # Build typology label from indicators for driver derivation
+        _typology_label = "primary"
+        _indicator_codes = [ind.get("code", "") for ind in indicators]
+        if "ADVERSE_MEDIA" in _indicator_codes:
+            _typology_label = "adverse_media"
+        elif "STRUCTURING" in _indicator_codes:
+            _typology_label = "structuring"
+        elif "LAYERING" in _indicator_codes:
+            _typology_label = "layering"
+        elif "VELOCITY_SPIKE" in _indicator_codes:
+            _typology_label = "unusual_activity"
+        elif "SHELL_COMPANY" in _indicator_codes:
+            _typology_label = "shell_company"
+        elif "THIRD_PARTY" in _indicator_codes:
+            _typology_label = "third_party"
+        elif sanctions_result == "MATCH":
+            _typology_label = "sanctions"
         layer4_typologies_pre = {
-            "typologies": [{"name": "primary", "maturity": typology_maturity}],
+            "typologies": [{"name": _typology_label, "maturity": typology_maturity}],
         }
         layer6_suspicion_pre = {
             "activated": suspicion_activated,
@@ -1124,6 +1285,24 @@ async def decide(request: Request):
                 "destination": primary_txn_pre.get("destination_country", ""),
                 "method": primary_txn_pre.get("payment_method") or primary_txn_pre.get("method", ""),
             }
+        elif is_demo and isinstance(demo_inputs.get("_canonical_facts"), dict):
+            # For demo cases, derive transaction context from canonical facts
+            _cf = demo_inputs["_canonical_facts"]
+            _df = demo_inputs.get("_demo_facts", {})
+            layer1_facts_pre["transaction"] = {
+                "cross_border": _cf.get("txn.cross_border", False),
+                "destination": _df.get("transaction.destination", ""),
+                "method": _df.get("transaction.method", ""),
+            }
+            # Also add hard_stop_triggered to help driver derivation
+            if hard_stop_triggered:
+                layer1_facts_pre["hard_stop_triggered"] = True
+                if facts.get("adverse_media_mltf"):
+                    layer1_facts_pre["hard_stop_reason"] = "ADVERSE_MEDIA_MLTF"
+                elif facts.get("sanctions_result") == "MATCH":
+                    layer1_facts_pre["hard_stop_reason"] = "SANCTIONS_MATCH"
+                else:
+                    layer1_facts_pre["hard_stop_reason"] = "Triggered"
         customer_record = body.get("customer_record", {})
         layer1_facts_pre["customer"] = {
             "pep_flag": customer_record.get("pep_flag") == "Y" or has_pep,
@@ -1269,8 +1448,12 @@ async def decide(request: Request):
         fingerprint_facts = {}
         if isinstance(body.get("facts"), dict):
             fingerprint_facts.update(body.get("facts", {}))
-        # For demo/seed cases, merge the original registry fields into fingerprint
-        if is_demo and isinstance(demo_inputs.get("_demo_facts"), dict):
+        # For demo/seed cases, merge the CANONICAL registry fields into fingerprint
+        # (translated to proper vocabulary: "individual" not "IND", etc.)
+        if is_demo and isinstance(demo_inputs.get("_canonical_facts"), dict):
+            for k, v in demo_inputs["_canonical_facts"].items():
+                fingerprint_facts.setdefault(k, v)
+        elif is_demo and isinstance(demo_inputs.get("_demo_facts"), dict):
             for k, v in demo_inputs["_demo_facts"].items():
                 if "." in k:  # only registry-style fields
                     fingerprint_facts.setdefault(k, v)

@@ -181,6 +181,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         str_required=str_required,
         evidence_used=evidence_used,
         layer1_facts=layer1_facts,
+        decision_status=decision_status,
     )
 
     # ── 10. Similarity summary ────────────────────────────────────────────
@@ -561,6 +562,34 @@ def _detect_integrity_issues(
             "str_required": False,
             "decision_status": "review" if has_investigative else "pass",
             "investigation_state": "EDD REQUIRED" if has_investigative else "CLEARED",
+        }
+        return alert, corrections
+
+    # Case 4: Classifier found suspicion but gate2 did not set str_required
+    # This occurs when hard stop triggers (adverse media, sanctions) but gate2
+    # evidence quality check is insufficient.  The classifier is sovereign —
+    # if it says STR_REQUIRED and suspicion_count > 0, honour that.
+    if (
+        classification.suspicion_count > 0
+        and not str_required
+        and decision_status == "escalate"
+        and classification.outcome == "STR_REQUIRED"
+    ):
+        alert = {
+            "type": "CLASSIFIER_UPGRADE",
+            "severity": "INFO",
+            "message": (
+                f"Classifier identified {classification.suspicion_count} Tier 1 suspicion "
+                f"indicator(s) with STR_REQUIRED outcome. Reporting obligation upgraded "
+                f"from UNKNOWN to FILE_STR per classifier sovereignty."
+            ),
+            "original_verdict": verdict,
+            "classifier_outcome": classification.outcome,
+        }
+        corrections = {
+            "str_required": True,
+            "regulatory_status": "STR REQUIRED",
+            "investigation_state": "STR REQUIRED",
         }
         return alert, corrections
 
@@ -1057,7 +1086,7 @@ def _derive_similarity_summary(precedent_analysis: dict) -> str:
 def _map_driver_label(text: str) -> str:
     if not text:
         return ""
-    lowered = text.lower()
+    lowered = text.lower().replace("_", " ")
     if "structur" in lowered or "threshold" in lowered:
         return "Structuring indicators (threshold-adjacent pattern)"
     if "round" in lowered and "trip" in lowered:
@@ -1080,6 +1109,12 @@ def _map_driver_label(text: str) -> str:
         return "Adverse media exposure"
     if "unusual" in lowered or "deviation" in lowered:
         return "Unusual activity pattern"
+    if "intent" in lowered:
+        return "Intent indicators identified"
+    if "deception" in lowered:
+        return "Deceptive conduct indicators"
+    if "sustained" in lowered and "pattern" in lowered:
+        return "Sustained pattern of suspicious activity"
     return ""
 
 
@@ -1092,6 +1127,7 @@ def _derive_decision_drivers(
     str_required: bool,
     evidence_used: list | None = None,
     layer1_facts: dict | None = None,
+    decision_status: str = "",
 ) -> list[str]:
     """Generate 3–5 decision driver bullets. Ordered by regulatory weight."""
     ev_map: dict[str, object] = {}
@@ -1106,8 +1142,10 @@ def _derive_decision_drivers(
     typologies = layer4_typologies.get("typologies", []) or []
     elements = layer6_suspicion.get("elements", {}) or {}
 
-    # ── CASE A: STR required ─────────────────────────────────────────────
-    if str_required:
+    # ── CASE A: STR required OR hard-stop / mandatory escalation ────────
+    # When decision_status is "escalate" (HARD_STOP, BLOCK, etc.), treat
+    # as affirmative case even if str_required is technically False.
+    if str_required or decision_status == "escalate":
         drivers: list[str] = []
         for typ in typologies:
             name = typ.get("name") if isinstance(typ, dict) else str(typ)
@@ -1132,6 +1170,20 @@ def _derive_decision_drivers(
         cust_type = customer.get("type") or ev_map.get("customer.type") or ""
         if cust_type and str(cust_type).lower() in {"corporation", "corporate", "business", "entity"}:
             drivers.append("Corporate customer profile")
+
+        # PEP exposure from evidence
+        if customer.get("pep_flag") or ev_map.get("customer.pep") or ev_map.get("screening.pep_match"):
+            pep_label = "PEP exposure"
+            if pep_label not in drivers:
+                drivers.append(pep_label)
+
+        # Hard stop reason
+        if facts.get("hard_stop_triggered"):
+            reason = facts.get("hard_stop_reason", "")
+            if reason and "ADVERSE_MEDIA" in str(reason).upper() and "Adverse media exposure" not in drivers:
+                drivers.append("Adverse media — confirmed MLTF link (hard stop)")
+            elif reason and "SANCTIONS" in str(reason).upper() and "Sanctions screening proximity" not in drivers:
+                drivers.append("Sanctions match — immediate block required (hard stop)")
 
         drivers.append("No mitigating evidence sufficient to negate suspicion threshold")
         return _dedupe_drivers(drivers, cap=5)
