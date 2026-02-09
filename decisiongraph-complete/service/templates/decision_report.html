@@ -153,6 +153,7 @@
       <div class="alert-header {% if decision_integrity_alert.severity == 'CRITICAL' %}critical{% elif decision_integrity_alert.severity == 'WARNING' %}warning{% else %}info{% endif %}">
         ⚠ Decision Integrity Alert
         {% if decision_integrity_alert.type == 'CLASSIFIER_OVERRIDE' %}<span class="override-badge">OVERRIDE APPLIED</span>{% endif %}
+        {% if decision_integrity_alert.type == 'CLASSIFICATION_DISPOSITION_CONFLICT' %}<span class="override-badge">COMPLIANCE REVIEW REQUIRED</span>{% endif %}
       </div>
       <div class="alert-body">{{ decision_integrity_alert.message }}</div>
       {% if decision_integrity_alert.original_verdict %}
@@ -637,6 +638,14 @@
     {% if precedent_analysis and precedent_analysis.available %}
     <h2>Precedent Intelligence</h2>
     <p class="small"><em>Precedent analysis is advisory and does not override the deterministic engine verdict. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
+
+    {% if precedent_pool_warning %}
+    <div class="integrity-alert warning break">
+      <div class="alert-header warning">⚠ Thin Precedent Pool</div>
+      <div class="alert-body">{{ precedent_pool_warning.message }}</div>
+      <div class="alert-detail">Pool size: {{ precedent_pool_warning.pool_size }} · Minimum required: {{ precedent_pool_warning.minimum_required }}. Percentage-based metrics below are informational only and must not be relied upon for disposition decisions.</div>
+    </div>
+    {% endif %}
 
     <!-- Decision Intelligence Summary -->
     <div class="gate-block break" style="background: #f8fafc;">

@@ -176,6 +176,9 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "scored_precedent_count": derived.get("scored_precedent_count", 0),
         "total_comparable_pool": derived.get("total_comparable_pool", 0),
 
+        # FIX-019: Precedent pool threshold warning
+        "precedent_pool_warning": derived.get("precedent_pool_warning"),
+
         # FIX-006: Defensibility check
         "defensibility_check": derived.get("defensibility_check", {}),
 

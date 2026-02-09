@@ -130,6 +130,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         str_required=str_required,
         decision_status=decision_status,
         verdict=verdict,
+        gate1_passed=gate1_passed,
     )
 
     # Apply corrections (explicit — not hidden)
@@ -241,6 +242,8 @@ def derive_regulatory_model(normalized: dict) -> dict:
         governed_disposition=governed_disposition,
         verdict=verdict,
         str_required=str_required,
+        suspicion_count=classification.suspicion_count,
+        investigative_count=classification.investigative_count,
     )
 
     # ── 16. FIX-009: SLA timeline ────────────────────────────────────────
@@ -325,6 +328,23 @@ def derive_regulatory_model(normalized: dict) -> dict:
         int(_supporting / decisive_count * 100) if decisive_count > 0 else 0
     )
 
+    # FIX-019: Precedent minimum pool threshold
+    _MIN_PRECEDENT_POOL = 5
+    precedent_pool_warning = None
+    _total_scored = _supporting + _contrary + int(_pa.get("neutral_precedents", 0) or 0)
+    if _pa.get("available") and 0 < _total_scored < _MIN_PRECEDENT_POOL:
+        precedent_pool_warning = {
+            "type": "THIN_PRECEDENT_POOL",
+            "severity": "WARNING",
+            "pool_size": _total_scored,
+            "minimum_required": _MIN_PRECEDENT_POOL,
+            "message": (
+                f"Precedent pool below minimum threshold (n={_total_scored}, "
+                f"required ≥{_MIN_PRECEDENT_POOL}). Percentage-based confidence "
+                f"metrics are unreliable at this sample size. Manual review required."
+            ),
+        }
+
     return {
         # Classification
         "classification": classification.to_dict(),
@@ -367,6 +387,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
         "precedent_match_rate": precedent_match_rate,
         "scored_precedent_count": scored_count,
         "total_comparable_pool": total_pool,
+
+        # FIX-019: Precedent pool threshold warning
+        "precedent_pool_warning": precedent_pool_warning,
 
         # Drivers
         "decision_drivers": decision_drivers,
@@ -412,9 +435,20 @@ def derive_regulatory_model(normalized: dict) -> dict:
 def _resolve_decision_status(
     verdict: str, str_required: bool, rationale_summary: str,
 ) -> tuple[str, str]:
-    """Map verdict to one of: pass | escalate | review + explainer text."""
+    """Map verdict to one of: pass | escalate | review + explainer text.
+
+    v2 spec §4.2 mapping:
+      PASS / APPROVE          → pass  (ALLOW)
+      PASS_WITH_EDD / HOLD    → review (EDD)
+      ESCALATE / HARD_STOP    → escalate (BLOCK / STR)
+    """
     v = verdict.upper()
-    if v in ("PASS", "PASS_WITH_EDD") or v.startswith("APPROVE"):
+
+    # PASS_WITH_EDD is EDD — NOT a clearance (v2 spec §4.2)
+    if v == "PASS_WITH_EDD":
+        return "review", rationale_summary or "Enhanced Due Diligence required before final disposition."
+
+    if v in ("PASS",) or v.startswith("APPROVE"):
         return "pass", "No suspicious activity indicators detected. Transaction may proceed."
     if (
         v in ("HARD_STOP", "STR", "ESCALATE")
@@ -609,6 +643,7 @@ def _detect_integrity_issues(
     str_required: bool,
     decision_status: str,
     verdict: str,
+    gate1_passed: bool = True,
 ) -> tuple[Optional[dict], Optional[dict]]:
     """Return (alert, corrections) — corrections are explicit, never hidden."""
 
@@ -674,15 +709,15 @@ def _detect_integrity_issues(
         }
         return alert, corrections
 
-    # Case 4: Classifier found suspicion but gate2 did not set str_required
-    # This occurs when hard stop triggers (adverse media, sanctions) but gate2
-    # evidence quality check is insufficient.  The classifier is sovereign —
-    # if it says STR_REQUIRED and suspicion_count > 0, honour that.
+    # Case 4: Classifier found suspicion + escalation + gate permits
+    # The classifier is sovereign — if it says STR_REQUIRED,
+    # suspicion_count > 0, AND gate allows, honour that.
     if (
         classification.suspicion_count > 0
         and not str_required
         and decision_status == "escalate"
         and classification.outcome == "STR_REQUIRED"
+        and gate1_passed
     ):
         alert = {
             "type": "CLASSIFIER_UPGRADE",
@@ -699,6 +734,43 @@ def _detect_integrity_issues(
             "str_required": True,
             "regulatory_status": "STR REQUIRED",
             "investigation_state": "STR REQUIRED",
+        }
+        return alert, corrections
+
+    # Case 5: Classifier says STR_REQUIRED but disposition is not STR
+    # (e.g. PASS_WITH_EDD, or gate1 blocks escalation).
+    # DO NOT upgrade — generate a CONFLICT alert for compliance review.
+    # Per v2 spec INV-001: STR must be determined by compliance officer,
+    # not mechanically inferred when gates block.
+    if (
+        classification.suspicion_count > 0
+        and classification.outcome == "STR_REQUIRED"
+        and not str_required
+        and decision_status != "escalate"
+    ):
+        governed_label = _disposition_label(decision_status, str_required)
+        alert = {
+            "type": "CLASSIFICATION_DISPOSITION_CONFLICT",
+            "severity": "CRITICAL",
+            "message": (
+                f"Classifier identified {classification.suspicion_count} Tier 1 suspicion "
+                f"indicator(s) and determined STR_REQUIRED, but governed disposition is "
+                f"{governed_label}."
+                + (" Gate 1 determined insufficient legal basis for escalation." if not gate1_passed else "")
+                + " A compliance officer must review the Tier 1 indicators and make "
+                "the final STR determination. Until reviewed, EDD applies."
+            ),
+            "original_verdict": verdict,
+            "classifier_outcome": classification.outcome,
+            "governed_disposition": governed_label,
+            "tier1_count": classification.suspicion_count,
+            "gate1_blocked": not gate1_passed,
+        }
+        # Force to EDD — do NOT leave as "pass" when Tier 1 signals exist
+        corrections = {
+            "decision_status": "review",
+            "regulatory_status": "EDD REQUIRED",
+            "investigation_state": "COMPLIANCE REVIEW REQUIRED",
         }
         return alert, corrections
 
@@ -810,6 +882,38 @@ def _build_override_justification(
                 "prevent unjustified STR filing."
             ),
             "regulatory_basis": "PCMLTFA s. 7 — STR requires RGS threshold (Tier 1 ≥ 1)",
+            "severity": "CRITICAL",
+        }
+
+    # Case D: CLASSIFICATION_DISPOSITION_CONFLICT — Classifier found Tier 1
+    # signals (STR_REQUIRED) but governed disposition remains EDD_REQUIRED
+    # because gate blocked or verdict was PASS_WITH_EDD.
+    if alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT":
+        tier1_signals = classification.tier1_signals if hasattr(classification, "tier1_signals") else []
+        justifying_signals = [
+            {"code": sig.get("code", ""), "source": sig.get("source", ""), "detail": sig.get("detail", "")}
+            for sig in tier1_signals
+        ]
+        governed = integrity_alert.get("governed_disposition", "EDD_REQUIRED")
+        return {
+            "override_type": "CLASSIFICATION_DISPOSITION_CONFLICT",
+            "overridden_gate": "Classifier vs Disposition",
+            "gate_decision": governed,
+            "gate_deficiencies": [
+                {"section": "Gate 1 / Verdict", "reason": f"Governed disposition is {governed} despite Tier 1 signals"}
+            ],
+            "classifier_decision": "STR_REQUIRED",
+            "justifying_signals": justifying_signals,
+            "justification": (
+                f"Suspicion Classifier identified {len(justifying_signals)} Tier 1 "
+                f"indicator(s) that would ordinarily meet the STR threshold, but the "
+                f"governed disposition is {governed}."
+                + (" Gate 1 determined insufficient legal basis for escalation." if integrity_alert.get("gate1_blocked") else "")
+                + " A compliance officer must review the Tier 1 indicators and "
+                "make the final STR/no-file determination. EDD with compliance "
+                "review is the governed outcome until that determination is made."
+            ),
+            "regulatory_basis": "PCMLTFA s. 7 — STR determination requires compliance officer review",
             "severity": "CRITICAL",
         }
 
@@ -1074,10 +1178,13 @@ def _derive_analyst_actions(
     governed_disposition: str,
     verdict: str,
     str_required: bool,
+    suspicion_count: int = 0,
+    investigative_count: int = 0,
 ) -> list[dict]:
     """Generate decision-outcome-aware action options for analyst views.
 
     Governance rule: HARD_STOP / BLOCK decisions must NEVER offer "Approve".
+    EDD with Tier 1 signals must use "Confirm with EDD Conditions" (not "Approve").
     Each action has a label and a role restriction.
     """
     v = verdict.upper()
@@ -1114,6 +1221,14 @@ def _derive_analyst_actions(
         ]
 
     if governed_disposition == "EDD_REQUIRED":
+        # High-risk EDD: Tier 1 signals present or many investigative signals
+        # → must acknowledge EDD conditions, not just "Begin EDD"
+        if suspicion_count > 0 or investigative_count >= 3:
+            return [
+                {"label": "Confirm with EDD Conditions", "role": "tier1_analyst", "primary": True},
+                {"label": "Escalate to Compliance Officer", "role": "tier1_analyst", "primary": False},
+                {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
+            ]
         return [
             {"label": "Begin EDD Review", "role": "tier1_analyst", "primary": True},
             {"label": "Request Additional Information", "role": "tier1_analyst", "primary": False},
@@ -1664,8 +1779,8 @@ def _derive_decision_drivers(
     if customer.get("pep_flag") or ev_map.get("flag.pep"):
         drivers.append(f"{trigger_prefix}PEP exposure")
 
-    if not gate1_passed:
-        drivers.append("Escalation blocked by Gate 1 legal basis")
+    # NOTE: Gate 1 blocking is a system action, not a case signal.
+    # It is communicated in the Gate Evaluation section, not in Key Signals.
 
     return _dedupe_drivers(drivers, cap=5)
 

@@ -682,8 +682,9 @@ def _convert_demo_facts(body: dict) -> dict:
     # Adverse media: registry flag OR demo MLTF link
     adverse_media_mltf = bool(reg_adverse_media) or bool(demo_mltf_linked)
 
-    # PEP: registry flag OR demo flag
-    is_pep = bool(reg_pep) or bool(reg_pep_match) or bool(demo_pep_flag)
+    # PEP: registry flag OR demo flag OR beneficial owner PEP
+    ben_owner_pep_flag = fmap.get("screening.beneficial_owner_pep", False)
+    is_pep = bool(reg_pep) or bool(reg_pep_match) or bool(demo_pep_flag) or bool(ben_owner_pep_flag)
 
     # Documents
     docs_complete = True
@@ -717,9 +718,6 @@ def _convert_demo_facts(body: dict) -> dict:
     # ── Obligations ─────────────────────────────────────────────────────
     obligations: list = []
     if is_pep:
-        obligations.append("PEP_FOREIGN")
-    ben_owner_pep = fmap.get("screening.beneficial_owner_pep", False)
-    if ben_owner_pep:
         obligations.append("PEP_FOREIGN")
 
     # ── Indicators ──────────────────────────────────────────────────────
