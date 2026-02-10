@@ -373,6 +373,20 @@ def _check_precedent_quality(pack: dict) -> list[dict]:
             "avg_similarity": round(avg_sim, 3),
         })
 
+    # 3d: Confidence is fallback when no decisive precedents
+    decisive_total = int(pa.get("decisive_total", -1))
+    if decisive_total == 0 and confidence == 0.5:
+        warnings.append({
+            "check": "PRECEDENT_NO_DECISIVE",
+            "severity": "INFO",
+            "message": (
+                f"All precedents are non-terminal (EDD/review). "
+                f"Confidence 0.50 is a neutral fallback, not a calculated value. "
+                f"Terminal outcomes (ALLOW/BLOCK) required for meaningful confidence."
+            ),
+            "decisive_total": 0,
+        })
+
     return warnings
 
 

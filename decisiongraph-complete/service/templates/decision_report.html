@@ -843,6 +843,28 @@
     <!-- Decision Intelligence Summary -->
     <div class="gate-block break" style="background: #f8fafc;">
       <h4 style="margin-bottom:8px;">Precedent Alignment Summary</h4>
+
+      {# Governed Disposition Alignment — from enhanced_precedent (uses actual governed disposition) #}
+      {% set gov_align = enhanced_precedent.governed_alignment_count | default(precedent_analysis.governed_alignment_count | default(0)) %}
+      {% set gov_total = enhanced_precedent.governed_alignment_total | default(precedent_analysis.governed_alignment_total | default(0)) %}
+      {% if gov_total > 0 %}
+      <div style="border-left:4px solid var(--ok); padding:8px 12px; margin-bottom:12px; background:#f0fdf4;">
+        <div style="font-size:15px; font-weight:700;">
+          Governed Disposition Alignment: {{ gov_align }}/{{ gov_total }}
+          ({{ "%.0f"|format(gov_align / gov_total * 100) }}%)
+        </div>
+        <p class="small" style="margin:4px 0 0 0;">
+          {% if gov_align == gov_total %}
+          All comparable precedents resulted in {{ precedent_analysis.proposed_outcome_label | default(governed_disposition | replace('_', ' ')) }} — consistent with current governed disposition.
+          {% elif gov_align > gov_total / 2 %}
+          Majority of comparable precedents ({{ gov_align }}/{{ gov_total }}) match the current governed disposition.
+          {% else %}
+          Minority of comparable precedents ({{ gov_align }}/{{ gov_total }}) match the current governed disposition.
+          {% endif %}
+        </p>
+      </div>
+      {% endif %}
+
       <div class="kv" style="font-size:13px;">
         <div class="label">Comparable Matches (Scored)</div>
         <div class="value">{{ precedent_analysis.match_count }}</div>
@@ -850,11 +872,28 @@
         <div class="value">{{ precedent_analysis.raw_overlap_count | default(0) }}</div>
         <div class="label">Representative Sample</div>
         <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (≥{{ (precedent_analysis.threshold_used * 100) | round | int if precedent_analysis.threshold_used is defined else (precedent_analysis.min_similarity_pct | default(50)) }}% similarity required; mode: {{ precedent_analysis.threshold_mode | default('prod') }})</div>
-        <div class="label">Precedent Alignment</div>
+
+        {# Terminal Confidence — show N/A when no decisive precedents #}
+        {% set decisive_total = precedent_analysis.decisive_total | default(-1) %}
+        <div class="label">Terminal Confidence</div>
+        {% if decisive_total == 0 %}
+        <div class="value">N/A — No terminal precedents in pool</div>
+        {% else %}
         <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
+        {% endif %}
+
         <div class="label">Exact Matches</div>
         <div class="value">{{ precedent_analysis.exact_match_count | default(0) }}</div>
       </div>
+
+      {# Terminal confidence context when N/A #}
+      {% if decisive_total == 0 %}
+      <p class="small" style="margin-top:8px; font-style:italic;">
+        All comparable precedents are non-terminal (EDD/review). Terminal confidence scoring requires resolved outcomes (ALLOW/BLOCK). Governed disposition alignment above reflects institutional practice.
+      </p>
+      {% endif %}
+
+      {# Alignment text for cases WITH decisive precedents #}
       {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
       {% if total_decisive > 0 %}
       {% set alignment_pct = (precedent_analysis.supporting_precedents / total_decisive * 100) %}
@@ -932,6 +971,18 @@
       <p class="small" style="margin-top:12px;">
         <em>Procedural outcomes reflect cases resolved through enhanced review processes (EDD/review states) rather than immediate determination.</em>
       </p>
+      {% if precedent_analysis.neutral_precedents | default(0) > 0 and precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents == 0 %}
+      {% set cls_gov_align = enhanced_precedent.governed_alignment_count | default(0) %}
+      {% set cls_gov_total = enhanced_precedent.governed_alignment_total | default(0) %}
+      <p class="small" style="margin-top:8px; border-left:3px solid var(--ok); padding-left:8px;">
+        <strong>Note:</strong> All {{ precedent_analysis.neutral_precedents }} precedents are non-terminal (EDD/review) and classified as "Neutral" per INV-005.
+        {% if cls_gov_align > 0 %}
+        However, {{ cls_gov_align }} of {{ cls_gov_total }} match the current governed disposition — indicating strong institutional alignment despite absence of terminal outcomes.
+        {% else %}
+        The governed disposition diverges from the precedent pool — all comparable cases resolved through EDD while the current disposition differs.
+        {% endif %}
+      </p>
+      {% endif %}
     </div>
 
     <h3>Scored Match Outcome Distribution</h3>

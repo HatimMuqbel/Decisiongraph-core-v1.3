@@ -759,11 +759,16 @@ def _compute_confidence_score(
         score += 10
 
     if precedent_analysis and precedent_analysis.get("available"):
+        decisive_total = int(precedent_analysis.get("decisive_total", -1))
         try:
             conf = float(precedent_analysis.get("precedent_confidence", 0) or 0)
         except (TypeError, ValueError):
             conf = 0.0
-        if conf >= 0.75:
+        # When decisive_total == 0, confidence is a meaningless 0.5 fallback.
+        # Don't inflate the score — no terminal precedents means no signal.
+        if decisive_total == 0:
+            score += 0  # Explicit: no precedent signal available
+        elif conf >= 0.75:
             score += 30
         elif conf >= 0.45:
             score += 20
@@ -1729,6 +1734,25 @@ def _build_enhanced_precedent_analysis(
         ),
     }
 
+    # ── b2) Governed Disposition Alignment ─────────────────────────────
+    # How many precedents in the scored pool match the governed disposition?
+    # Maps governed disposition label to canonical distribution keys.
+    _gov_canonical = (
+        "EDD" if "EDD" in governed_disposition.upper()
+        else "BLOCK" if any(k in governed_disposition.upper() for k in ("BLOCK", "STR"))
+        else "ALLOW"
+    )
+    _gov_match = sum(
+        v for k, v in match_distribution.items()
+        if str(k).upper() == _gov_canonical
+        or (_gov_canonical == "EDD" and ("EDD" in str(k).upper() or "REVIEW" in str(k).upper()))
+        or (_gov_canonical == "ALLOW" and str(k).upper() in ("ALLOW", "NO_REPORT", "PASS", "CLEARED"))
+        or (_gov_canonical == "BLOCK" and str(k).upper() in ("BLOCK", "STR_REQUIRED", "FILE_STR"))
+    )
+    _gov_total = sum(match_distribution.values()) if match_distribution else 0
+    result["governed_alignment_count"] = _gov_match
+    result["governed_alignment_total"] = _gov_total
+
     # ── c) Case Thumbnails (readable precedent summaries) ─────────────
     # FIX-027: Replace cryptic hashes with readable summaries
     case_thumbnails: list[dict] = []
@@ -2063,9 +2087,23 @@ def _build_institutional_posture(
     total_decisive = supporting + contrary
 
     if total_decisive == 0:
+        governed_label = governed_disposition.replace("_", " ")
+        edd_count = sum(
+            v for k, v in match_distribution.items()
+            if "EDD" in str(k).upper() or "REVIEW" in str(k).upper()
+        )
+        if edd_count > 0 and governed_disposition in ("EDD_REQUIRED", "PASS_WITH_EDD"):
+            return (
+                f"All {neutral} comparable precedent(s) resolved through enhanced "
+                f"due diligence — consistent with the current {governed_label} "
+                f"disposition. The bank's institutional practice for this case "
+                f"profile is uniform EDD referral. No terminal outcomes "
+                f"(ALLOW/BLOCK) exist in the comparable pool."
+            )
         return (
-            f"All {neutral} comparable precedent(s) resolved through review processes. "
-            f"No decisive precedent available to establish institutional posture."
+            f"All {neutral} comparable precedent(s) resolved through review "
+            f"processes. No terminal outcomes available to establish "
+            f"directional institutional posture."
         )
 
     support_pct = int(supporting / total_decisive * 100) if total_decisive > 0 else 0

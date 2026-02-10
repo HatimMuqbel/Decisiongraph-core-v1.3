@@ -2735,6 +2735,14 @@ def query_similar_precedents(
         else:
             precedent_confidence = 0.5
 
+        # Governed Disposition Alignment — how many precedents match the
+        # governed disposition, regardless of whether they're terminal.
+        # This answers: "Does the bank agree with this outcome?"
+        governed_alignment_count = 0
+        for payload, _overlap, _score, _comps, _dw, _rw, prec_co in scored_matches:
+            if prec_co.disposition == proposed_canonical.disposition:
+                governed_alignment_count += 1
+
         why_low_match = []
         missing_features = []
         if not case_amount_band:
@@ -2785,6 +2793,10 @@ def query_similar_precedents(
             "supporting_precedents": counts["supporting"],
             "contrary_precedents": counts["contrary"],
             "neutral_precedents": counts["neutral"],
+            "decisive_total": decisive_total,
+            "decisive_supporting": decisive_supporting,
+            "governed_alignment_count": governed_alignment_count,
+            "governed_alignment_total": len(scored_matches),
             "exact_match_count": exact_match_count,
             "caution_precedents": caution_precedents[:5],
             "sample_cases": sample_cases[:10],
