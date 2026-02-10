@@ -99,12 +99,23 @@ def evaluate_gates(
                 warning = w
             logger.warning(w)
 
-        # Rule 2: values in the same class are identical
-        passed = (
-            case_class is not None
-            and prec_class is not None
-            and case_class == prec_class
-        )
+        # Rule 2: values in the same class are identical.
+        # If either side's class is still None after fallback (value present
+        # but not in any equivalence class), the gate passes — we cannot
+        # determine incomparability from an unclassifiable value.
+        if case_class is None or prec_class is None:
+            passed = True
+            fallback_used = True
+            w = (
+                f"Gate field '{gate.field}' has unclassifiable value "
+                f"(case={case_val}, prec={prec_val}); passing gate"
+            )
+            if warning:
+                warning = f"{warning}; {w}"
+            else:
+                warning = w
+        else:
+            passed = case_class == prec_class
 
         results.append(GateResult(
             passed=passed,

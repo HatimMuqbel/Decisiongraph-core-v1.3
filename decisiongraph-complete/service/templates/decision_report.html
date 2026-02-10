@@ -934,6 +934,36 @@
       </div>
       {% endif %}
 
+      {# ── v3 Decision Driver Analysis ────────────────────────── #}
+      {% if enhanced_precedent.driver_causality is defined and enhanced_precedent.driver_causality %}
+      {% set dc = enhanced_precedent.driver_causality %}
+      {% if dc.shared_drivers or dc.divergent_drivers %}
+      <div style="margin-top:16px; padding:12px; background:#f0f4f8; border-radius:6px; border:1px solid #c8d6e5;">
+        <div style="font-weight:600; margin-bottom:8px;">Decision Driver Analysis</div>
+        {% if dc.shared_drivers %}
+        <div style="margin-bottom:8px;">
+          <span class="small" style="color:#2d6a4f; font-weight:600;">Shared Drivers (aligned across precedents):</span>
+          <div class="small" style="margin-top:4px;">
+            {% for d in dc.shared_drivers %}
+            <span style="display:inline-block; padding:2px 8px; margin:2px; background:#d8f3dc; border-radius:3px; font-size:11px;">{{ d | replace('_', ' ') | replace('.', ' &rsaquo; ') }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if dc.divergent_drivers %}
+        <div>
+          <span class="small" style="color:#9b2226; font-weight:600;">Divergent Drivers (differ from precedent pool):</span>
+          <div class="small" style="margin-top:4px;">
+            {% for d in dc.divergent_drivers %}
+            <span style="display:inline-block; padding:2px 8px; margin:2px; background:#fde8e8; border-radius:3px; font-size:11px;">{{ d | replace('_', ' ') | replace('.', ' &rsaquo; ') }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% endif %}
+
       {# Alignment text for cases WITH decisive precedents #}
       {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
       {% if total_decisive > 0 %}

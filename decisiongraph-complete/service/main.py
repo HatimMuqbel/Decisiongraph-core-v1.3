@@ -121,7 +121,7 @@ DG_PRECEDENT_THRESHOLD_PROD = float(os.getenv("DG_PRECEDENT_THRESHOLD_PROD", "0.
 DG_PRECEDENT_THRESHOLD_DEMO = float(os.getenv("DG_PRECEDENT_THRESHOLD_DEMO", "0.50"))
 DG_PRECEDENT_MIN_SCORE = float(os.getenv("DG_PRECEDENT_MIN_SCORE", "0.6"))
 DG_PRECEDENT_SALT = os.getenv("DG_PRECEDENT_SALT", "decisiongraph-banking-seed-v1")
-DG_PRECEDENT_VERSION = os.getenv("DG_PRECEDENT_VERSION", "v2")
+DG_PRECEDENT_VERSION = os.getenv("DG_PRECEDENT_VERSION", "v3")
 
 # Get git commit: prefer env var (set at build time), fallback to git command
 DG_ENGINE_COMMIT = os.getenv("DG_ENGINE_COMMIT")
@@ -2931,11 +2931,13 @@ def query_similar_precedents_v3(
             disposition_basis=case_basis,
         )
 
-        # Build case scoring facts from case_facts + banded facts
+        # Build case scoring facts — v3 uses raw canonical fields directly.
+        # Do NOT apply v2 banded facts (apply_aml_banding) here because they:
+        #   1) Stringify booleans (False -> "false"), causing type mismatches
+        #   2) Add schema-level "unknown" fields that dilute similarity scores
         case_scoring_facts: dict = {}
         if case_facts:
             case_scoring_facts.update(case_facts)
-        case_scoring_facts.update(case_banded)
 
         # Detect primary typology for similarity floor override
         typology = detect_primary_typology(case_reason_codes, case_facts)
@@ -3226,6 +3228,19 @@ def query_similar_precedents_v3(
                 "non_transferable_reasons": non_transferable_reasons,
                 "matched_drivers": matched_drivers,
                 "mismatched_drivers": mismatched_drivers,
+                # v2 template compatibility — the HTML template reads
+                # match.similarity_components for the sim-bar display
+                "similarity_components": {
+                    "rules_overlap": field_scores_pct.get("flag.structuring", 0),
+                    "gate_match": int(round(score * 100)),
+                    "typology_overlap": field_scores_pct.get("flag.unusual_for_profile", 0),
+                    "amount_bucket": field_scores_pct.get("txn.amount_band", 0),
+                    "channel_method": field_scores_pct.get("txn.type", 0),
+                    "corridor_match": field_scores_pct.get("txn.destination_country_risk", 0),
+                    "pep_match": field_scores_pct.get("customer.pep", 0),
+                    "customer_profile": field_scores_pct.get("customer.type", 0),
+                    "geo_risk": field_scores_pct.get("customer.high_risk_jurisdiction", 0),
+                },
             })
 
         # ── Build response (v2 superset) ─────────────────────────────

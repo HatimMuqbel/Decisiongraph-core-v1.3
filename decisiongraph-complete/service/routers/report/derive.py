@@ -1676,6 +1676,38 @@ _SIMILARITY_FEATURE_LABELS: dict[str, str] = {
     "geo_risk": "Geographic risk",
 }
 
+# v3 field-level labels — maps canonical field names from the banking domain
+# registry to human-readable labels for report rendering.
+_V3_FIELD_LABELS: dict[str, str] = {
+    "customer.type": "Customer type",
+    "customer.relationship_length": "Relationship length",
+    "customer.pep": "PEP status",
+    "customer.high_risk_jurisdiction": "High-risk jurisdiction",
+    "customer.high_risk_industry": "High-risk industry",
+    "customer.cash_intensive": "Cash-intensive business",
+    "txn.type": "Transaction type",
+    "txn.amount_band": "Amount band",
+    "txn.cross_border": "Cross-border",
+    "txn.destination_country_risk": "Destination risk",
+    "txn.round_amount": "Round amount",
+    "txn.just_below_threshold": "Below threshold",
+    "txn.multiple_same_day": "Same-day multiples",
+    "txn.pattern_matches_profile": "Profile consistency",
+    "txn.source_of_funds_clear": "Source of funds",
+    "txn.stated_purpose": "Stated purpose",
+    "flag.structuring": "Structuring",
+    "flag.rapid_movement": "Rapid movement",
+    "flag.layering": "Layering",
+    "flag.unusual_for_profile": "Unusual activity",
+    "flag.third_party": "Third-party payment",
+    "flag.shell_company": "Shell company",
+    "screening.sanctions_match": "Sanctions match",
+    "screening.pep_match": "PEP screening",
+    "screening.adverse_media": "Adverse media",
+    "prior.sars_filed": "Prior SARs",
+    "prior.account_closures": "Account closures",
+}
+
 
 def _build_enhanced_precedent_analysis(
     precedent_analysis: dict,
@@ -1769,9 +1801,9 @@ def _build_enhanced_precedent_analysis(
 
     # ── c) Case Thumbnails (readable precedent summaries) ─────────────
     # FIX-027: Replace cryptic hashes with readable summaries
+    is_v3 = precedent_analysis.get("scoring_version") == "v3"
     case_thumbnails: list[dict] = []
     for match in sample_cases[:5]:
-        components = match.get("similarity_components", {}) or {}
         sim_pct = int(match.get("similarity_pct", 0) or 0)
         outcome_label = match.get("outcome_label") or str(match.get("outcome", "N/A")).upper()
         classification = match.get("classification", "neutral")
@@ -1797,19 +1829,46 @@ def _build_enhanced_precedent_analysis(
             if "VELOCITY" in rc_upper or "EVASION" in rc_upper:
                 thumbnail_parts.append("evasion behavior")
 
-        # Key differentiators from similarity components
+        # Key differentiators — v3 reads field_scores, v2 reads similarity_components
         key_matches = []
         key_diffs = []
-        for key, label in _SIMILARITY_FEATURE_LABELS.items():
-            score = components.get(key, 0) or 0
-            try:
-                score = float(score)
-            except (TypeError, ValueError):
-                score = 0.0
-            if score >= 70:
-                key_matches.append(label)
-            elif 0 < score < 50:
-                key_diffs.append(label)
+        matched_drivers: list[str] = []
+        mismatched_drivers: list[str] = []
+        if is_v3:
+            field_scores = match.get("field_scores", {}) or {}
+            m_drivers = set(match.get("matched_drivers", []) or [])
+            mm_drivers = set(match.get("mismatched_drivers", []) or [])
+            for key, label in _V3_FIELD_LABELS.items():
+                score = field_scores.get(key)
+                if score is None:
+                    continue
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    continue
+                tag = ""
+                if key in m_drivers:
+                    tag = " (driver)"
+                    matched_drivers.append(label)
+                elif key in mm_drivers:
+                    tag = " (driver mismatch)"
+                    mismatched_drivers.append(label)
+                if score >= 70:
+                    key_matches.append(f"{label}{tag}")
+                elif 0 < score < 50:
+                    key_diffs.append(f"{label}{tag}")
+        else:
+            components = match.get("similarity_components", {}) or {}
+            for key, label in _SIMILARITY_FEATURE_LABELS.items():
+                score = components.get(key, 0) or 0
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    score = 0.0
+                if score >= 70:
+                    key_matches.append(label)
+                elif 0 < score < 50:
+                    key_diffs.append(label)
 
         # Build description — always aim for a meaningful sentence
         if thumbnail_parts:
@@ -1821,7 +1880,7 @@ def _build_enhanced_precedent_analysis(
         if key_diffs:
             description += f" Key difference from current case: {', '.join(key_diffs[:2])}."
 
-        case_thumbnails.append({
+        thumb = {
             "precedent_id": match.get("precedent_id", "N/A"),
             "similarity_pct": sim_pct,
             "outcome_label": outcome_label,
@@ -1830,37 +1889,71 @@ def _build_enhanced_precedent_analysis(
             "key_matches": key_matches[:3],
             "key_differences": key_diffs[:3],
             "reason_codes": reason_codes,
-        })
+        }
+        if is_v3:
+            thumb["matched_drivers"] = matched_drivers
+            thumb["mismatched_drivers"] = mismatched_drivers
+        case_thumbnails.append(thumb)
     result["case_thumbnails"] = case_thumbnails
 
     # ── d) Feature Comparison Matrix ─────────────────────────────────
     comparison_matrix: list[dict] = []
     for match in sample_cases[:5]:
-        components = match.get("similarity_components", {}) or {}
         sim_pct = int(match.get("similarity_pct", 0) or 0)
         classification = match.get("classification", "neutral")
 
         matching_features = []
         differing_features = []
-        for key, label in _SIMILARITY_FEATURE_LABELS.items():
-            score = components.get(key, 0) or 0
-            try:
-                score = float(score)
-            except (TypeError, ValueError):
-                score = 0.0
-            if score >= 70:
-                matching_features.append(label)
-            elif score > 0 and score < 50:
-                differing_features.append(f"{label} ({int(score)}%)")
+        matched_drv = []
+        mismatched_drv = []
+        if is_v3:
+            field_scores = match.get("field_scores", {}) or {}
+            m_drivers = set(match.get("matched_drivers", []) or [])
+            mm_drivers = set(match.get("mismatched_drivers", []) or [])
+            for key, label in _V3_FIELD_LABELS.items():
+                score = field_scores.get(key)
+                if score is None:
+                    continue
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    continue
+                driver_tag = ""
+                if key in m_drivers:
+                    driver_tag = " \u2605"  # ★ driver marker
+                    matched_drv.append(label)
+                elif key in mm_drivers:
+                    driver_tag = " \u2606"  # ☆ mismatched driver
+                    mismatched_drv.append(label)
+                if score >= 70:
+                    matching_features.append(f"{label}{driver_tag}")
+                elif 0 < score < 50:
+                    differing_features.append(f"{label} ({int(score)}%){driver_tag}")
+        else:
+            components = match.get("similarity_components", {}) or {}
+            for key, label in _SIMILARITY_FEATURE_LABELS.items():
+                score = components.get(key, 0) or 0
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    score = 0.0
+                if score >= 70:
+                    matching_features.append(label)
+                elif score > 0 and score < 50:
+                    differing_features.append(f"{label} ({int(score)}%)")
 
-        comparison_matrix.append({
+        entry = {
             "precedent_id": match.get("precedent_id", "N/A"),
             "similarity_pct": sim_pct,
             "outcome": match.get("outcome_label") or str(match.get("outcome", "N/A")).upper(),
             "classification": classification,
             "matching_features": matching_features,
             "differing_features": differing_features,
-        })
+        }
+        if is_v3:
+            entry["matched_drivers"] = matched_drv
+            entry["mismatched_drivers"] = mismatched_drv
+        comparison_matrix.append(entry)
     result["feature_comparison_matrix"] = comparison_matrix
 
     # ── e) Institutional Posture Statement ────────────────────────────
@@ -1889,16 +1982,31 @@ def _build_enhanced_precedent_analysis(
     if has_deviation and contrary_cases:
         contrary_details = []
         for cc in contrary_cases[:5]:
-            components = cc.get("similarity_components", {}) or {}
             diffs = []
-            for key, label in _SIMILARITY_FEATURE_LABELS.items():
-                score = components.get(key, 0) or 0
-                try:
-                    score = float(score)
-                except (TypeError, ValueError):
-                    score = 0.0
-                if 0 < score < 60:
-                    diffs.append(f"{label} ({int(score)}%)")
+            if is_v3:
+                field_scores = cc.get("field_scores", {}) or {}
+                mm_drivers = set(cc.get("mismatched_drivers", []) or [])
+                for key, label in _V3_FIELD_LABELS.items():
+                    score = field_scores.get(key)
+                    if score is None:
+                        continue
+                    try:
+                        score = float(score)
+                    except (TypeError, ValueError):
+                        continue
+                    if 0 < score < 60:
+                        tag = " (driver)" if key in mm_drivers else ""
+                        diffs.append(f"{label} ({int(score)}%){tag}")
+            else:
+                components = cc.get("similarity_components", {}) or {}
+                for key, label in _SIMILARITY_FEATURE_LABELS.items():
+                    score = components.get(key, 0) or 0
+                    try:
+                        score = float(score)
+                    except (TypeError, ValueError):
+                        score = 0.0
+                    if 0 < score < 60:
+                        diffs.append(f"{label} ({int(score)}%)")
             contrary_details.append({
                 "precedent_id": cc.get("precedent_id", "N/A"),
                 "outcome": cc.get("outcome_label") or str(cc.get("outcome", "N/A")).upper(),

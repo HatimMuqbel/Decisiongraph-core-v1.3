@@ -52,15 +52,15 @@ _SCENARIO_REASON_CODES: dict[str, list[str]] = {
     "round_amount_reporting":   ["RC-TXN-STRUCT", "RC-TXN-UNUSUAL"],
     "source_of_funds_unclear":  ["RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
     "stated_purpose_unclear":   ["RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
-    "adverse_media":            ["RC-KYC-ADVERSE-MINOR"],
+    "adverse_media":            ["RC-KYC-ADVERSE-MINOR", "RC-KYC-ADVERSE-MAJOR"],
     "rapid_movement":           ["RC-TXN-RAPID", "RC-TXN-LAYER"],
     "profile_deviation":        ["RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
     "third_party":              ["RC-TXN-UNUSUAL"],
     "layering_shell":           ["RC-TXN-LAYER", "RC-TXN-RAPID"],
     "high_risk_country":        ["RC-TXN-FATF-GREY"],
     "cash_intensive_large":     ["RC-TXN-UNUSUAL", "RC-RPT-LCTR"],
-    "pep_large_amount":         ["RC-TXN-PEP", "RC-TXN-PEP-EDD"],
-    "pep_screening_match":      ["RC-TXN-PEP", "RC-TXN-PEP-EDD"],
+    "pep_large_amount":         ["RC-TXN-PEP", "RC-TXN-PEP-EDD", "RC-KYC-PEP-APPROVED"],
+    "pep_screening_match":      ["RC-TXN-PEP", "RC-TXN-PEP-EDD", "RC-KYC-PEP-APPROVED"],
     "sanctions_match":          ["RC-SCR-SANCTION", "RC-SCR-OFAC"],
     "one_prior_sar":            ["RC-TXN-NORMAL", "RC-MON-ALERT"],
     "multiple_prior_sars":      ["RC-MON-ALERT", "RC-MON-VELOCITY"],
@@ -91,42 +91,71 @@ def _schema_for_codes(codes: list[str]) -> str:
 # 20 scenarios  (matches task spec)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Clean defaults — every scenario starts from this base; scenario-specific
+# overrides are applied on top.  This ensures ALL 27 fields are populated
+# with coherent values rather than random noise, which is critical for v3
+# field-by-field similarity scoring.
+# ---------------------------------------------------------------------------
+
+# Boolean / flag defaults only.  The 6 high-variation enum fields
+# (customer.type, customer.relationship_length, txn.type, txn.amount_band,
+# txn.destination_country_risk, txn.stated_purpose) are intentionally omitted
+# so _random_realistic_value() fills them with weighted distributions, giving
+# natural variety across seeds (gate coverage for corporate / retail, different
+# channels, amount bands, etc.).
+_CLEAN_PROFILE: dict[str, Any] = {
+    "customer.pep": False,
+    "customer.high_risk_jurisdiction": False,
+    "customer.high_risk_industry": False,
+    "customer.cash_intensive": False,
+    "txn.cross_border": False,
+    "txn.round_amount": False,
+    "txn.just_below_threshold": False,
+    "txn.multiple_same_day": False,
+    "txn.pattern_matches_profile": True,
+    "txn.source_of_funds_clear": True,
+    "flag.structuring": False,
+    "flag.rapid_movement": False,
+    "flag.layering": False,
+    "flag.unusual_for_profile": False,
+    "flag.third_party": False,
+    "flag.shell_company": False,
+    "screening.sanctions_match": False,
+    "screening.pep_match": False,
+    "screening.adverse_media": False,
+    "prior.sars_filed": 0,
+    "prior.account_closures": False,
+}
+
+
 SCENARIOS = [
     # ── APPROVE ──
     {
         "name": "clean_known_customer",
         "description": "Known customer, normal pattern, under $10K",
         "base_facts": {
-            "customer.type": "individual",
-            "customer.relationship_length": "established",
-            "txn.amount_band": "3k_10k",
-            "txn.cross_border": False,
-            "txn.pattern_matches_profile": True,
-            "txn.source_of_funds_clear": True,
-            "flag.structuring": False,
-            "screening.sanctions_match": False,
-            "screening.adverse_media": False,
-            "prior.sars_filed": 0,
+            **_CLEAN_PROFILE,
         },
         "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
         "decision_level": "analyst",
         "weight": 0.25,
+        "decision_drivers": ["txn.pattern_matches_profile", "txn.source_of_funds_clear"],
+        "driver_typology": "",
     },
     {
         "name": "new_customer_large_clear",
         "description": "New customer, >$10K, source clear, LCTR required",
         "base_facts": {
-            "customer.type": "individual",
+            **_CLEAN_PROFILE,
             "customer.relationship_length": "new",
             "txn.amount_band": "10k_25k",
-            "txn.source_of_funds_clear": True,
-            "txn.cross_border": False,
-            "flag.structuring": False,
-            "screening.sanctions_match": False,
         },
         "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_LCTR"},
         "decision_level": "analyst",
         "weight": 0.08,
+        "decision_drivers": ["txn.amount_band", "txn.source_of_funds_clear"],
+        "driver_typology": "",
     },
 
     # ── INVESTIGATE (EDD) ──
@@ -134,20 +163,26 @@ SCENARIOS = [
         "name": "structuring_suspected",
         "description": "Just below $10K, multiple same day",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "txn.amount_band": "3k_10k",
             "txn.just_below_threshold": True,
             "txn.multiple_same_day": True,
             "flag.structuring": True,
             "txn.round_amount": True,
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.06,
+        "decision_drivers": ["flag.structuring", "txn.just_below_threshold", "txn.multiple_same_day"],
+        "driver_typology": "structuring",
     },
     {
         "name": "round_amount_reporting",
         "description": "Round amount in reporting range",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "txn.amount_band": "10k_25k",
             "txn.round_amount": True,
             "txn.pattern_matches_profile": False,
@@ -155,81 +190,114 @@ SCENARIOS = [
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
+        "decision_drivers": ["txn.round_amount", "txn.amount_band", "txn.pattern_matches_profile"],
+        "driver_typology": "structuring",
     },
     {
         "name": "source_of_funds_unclear",
         "description": "Source of funds unclear",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "txn.source_of_funds_clear": False,
             "txn.stated_purpose": "unclear",
+            "txn.pattern_matches_profile": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.05,
+        "decision_drivers": ["txn.source_of_funds_clear", "txn.stated_purpose"],
+        "driver_typology": "",
     },
     {
         "name": "stated_purpose_unclear",
         "description": "Stated purpose unclear",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "txn.stated_purpose": "unclear",
             "txn.pattern_matches_profile": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
+        "decision_drivers": ["txn.stated_purpose", "txn.pattern_matches_profile"],
+        "driver_typology": "",
     },
     {
         "name": "adverse_media",
         "description": "Adverse media match",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "screening.adverse_media": True,
+            "txn.pattern_matches_profile": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
+        "decision_drivers": ["screening.adverse_media"],
+        "driver_typology": "adverse_media",
     },
     {
         "name": "rapid_movement",
         "description": "Rapid in/out movement",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "flag.rapid_movement": True,
             "txn.pattern_matches_profile": False,
+            "flag.unusual_for_profile": True,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
+        "decision_drivers": ["flag.rapid_movement", "flag.unusual_for_profile"],
+        "driver_typology": "",
     },
     {
         "name": "profile_deviation",
         "description": "Activity unusual for customer profile",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "flag.unusual_for_profile": True,
             "txn.pattern_matches_profile": False,
+            "txn.amount_band": "100k_500k",
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
+        "decision_drivers": ["flag.unusual_for_profile", "txn.pattern_matches_profile"],
+        "driver_typology": "",
     },
     {
         "name": "third_party",
         "description": "Third-party payment",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "flag.third_party": True,
+            "txn.pattern_matches_profile": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.03,
+        "decision_drivers": ["flag.third_party"],
+        "driver_typology": "",
     },
     {
         "name": "layering_shell",
         "description": "Layering / shell company indicators",
         "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
             "flag.layering": True,
             "flag.shell_company": True,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "medium",
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
+        "decision_drivers": ["flag.layering", "flag.shell_company", "txn.cross_border"],
+        "driver_typology": "",
     },
 
     # ── ESCALATE (to senior/compliance) ──
@@ -237,18 +305,24 @@ SCENARIOS = [
         "name": "high_risk_country",
         "description": "High-risk country destination",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "txn.cross_border": True,
             "txn.destination_country_risk": "high",
             "customer.high_risk_jurisdiction": True,
+            "txn.amount_band": "25k_100k",
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "senior_analyst",
         "weight": 0.04,
+        "decision_drivers": ["txn.destination_country_risk", "customer.high_risk_jurisdiction", "txn.cross_border"],
+        "driver_typology": "",
     },
     {
         "name": "cash_intensive_large",
         "description": "Cash-intensive business, large amount",
         "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
             "customer.cash_intensive": True,
             "txn.amount_band": "25k_100k",
             "txn.type": "cash",
@@ -256,29 +330,39 @@ SCENARIOS = [
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "senior_analyst",
         "weight": 0.04,
+        "decision_drivers": ["customer.cash_intensive", "txn.amount_band", "txn.type"],
+        "driver_typology": "",
     },
     {
         "name": "pep_large_amount",
         "description": "PEP, large amount",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "customer.pep": True,
             "screening.pep_match": True,
             "txn.amount_band": "25k_100k",
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "medium",
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "senior_analyst",
         "weight": 0.04,
+        "decision_drivers": ["customer.pep", "screening.pep_match", "txn.amount_band"],
+        "driver_typology": "",
     },
     {
         "name": "pep_screening_match",
         "description": "PEP screening match",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "screening.pep_match": True,
             "customer.pep": True,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "senior_analyst",
         "weight": 0.03,
+        "decision_drivers": ["screening.pep_match", "customer.pep"],
+        "driver_typology": "",
     },
 
     # ── BLOCK ──
@@ -286,11 +370,17 @@ SCENARIOS = [
         "name": "sanctions_match",
         "description": "Sanctions match - mandatory block",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "screening.sanctions_match": True,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+            "customer.high_risk_jurisdiction": True,
         },
         "outcome": {"disposition": "BLOCK", "disposition_basis": "MANDATORY", "reporting": "FILE_STR"},
         "decision_level": "manager",
         "weight": 0.03,
+        "decision_drivers": ["screening.sanctions_match"],
+        "driver_typology": "sanctions",
     },
 
     # ── MONITORING / SAR HISTORY ──
@@ -298,41 +388,58 @@ SCENARIOS = [
         "name": "one_prior_sar",
         "description": "1 prior SAR - normal processing with monitoring",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "prior.sars_filed": 1,
         },
         "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
         "decision_level": "analyst",
         "weight": 0.03,
+        "decision_drivers": ["prior.sars_filed"],
+        "driver_typology": "",
     },
     {
         "name": "multiple_prior_sars",
         "description": "2-3 prior SARs - escalate",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "prior.sars_filed": 3,
+            "txn.pattern_matches_profile": False,
+            "flag.unusual_for_profile": True,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "senior_analyst",
         "weight": 0.03,
+        "decision_drivers": ["prior.sars_filed", "flag.unusual_for_profile"],
+        "driver_typology": "",
     },
     {
         "name": "heavy_sar_history",
         "description": "4+ prior SARs - block for exit review",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "prior.sars_filed": 4,
+            "txn.pattern_matches_profile": False,
+            "flag.unusual_for_profile": True,
         },
         "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
         "decision_level": "manager",
         "weight": 0.02,
+        "decision_drivers": ["prior.sars_filed"],
+        "driver_typology": "",
     },
     {
         "name": "previous_closure",
         "description": "Previous account closure - escalate",
         "base_facts": {
+            **_CLEAN_PROFILE,
             "prior.account_closures": True,
+            "txn.pattern_matches_profile": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "senior_analyst",
         "weight": 0.03,
+        "decision_drivers": ["prior.account_closures"],
+        "driver_typology": "",
     },
 ]
 
@@ -508,6 +615,8 @@ def _generate_seed(
         reporting_obligation=scenario["outcome"]["reporting"],
         domain="banking",
         signal_codes=list(signal_codes),
+        decision_drivers=scenario.get("decision_drivers", []),
+        driver_typology=scenario.get("driver_typology", ""),
     )
 
 
