@@ -28,6 +28,7 @@ router = APIRouter(prefix="/report", tags=["Report"])
 # Setup Jinja2 templates
 templates_dir = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
+templates.env.auto_reload = True
 
 # In-memory cache of recent decisions for report generation
 # In production, this would be a proper cache/database

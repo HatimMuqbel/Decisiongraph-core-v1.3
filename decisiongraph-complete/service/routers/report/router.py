@@ -19,6 +19,7 @@ router = APIRouter(prefix="/report", tags=["Report"])
 # Templates directory: service/templates/ (three levels up from this file)
 _templates_dir = Path(__file__).parent.parent.parent / "templates"
 _jinja = Jinja2Templates(directory=str(_templates_dir))
+_jinja.env.auto_reload = True
 
 
 def _redact_decision(decision: dict) -> dict:
