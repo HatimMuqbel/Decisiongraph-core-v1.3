@@ -82,7 +82,7 @@
     .sim-bars .sim-fill.med{ background:#d97706; }
     .sim-bars .sim-fill.low{ background:#e5e7eb; }
     .sim-bars .sim-pct{ font-weight:600; font-size:11px; }
-    .sim-bars .sim-pct.zero{ color:#cbd5e1; }
+    .sim-bars .sim-pct.zero{ color:#94a3b8; }
     .match-codes{ font-family:var(--mono); font-size:12px; color:#374151; margin-top:8px; }
     /* Decision Integrity & Governance Alerts */
     .integrity-alert{ border:2px solid #dc2626; border-radius:8px; padding:16px 20px; margin:16px 0; background:#fef2f2; }
@@ -103,6 +103,23 @@
     .btn-export:hover{ background:#f3f4f6; }
     .btn-export.primary{ background:#1f2937; color:#fff; border-color:#1f2937; }
     .btn-export.primary:hover{ background:#374151; }
+    /* Precedent Intelligence Panel */
+    .pi-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:12px 0; }
+    @media (max-width:640px){ .pi-grid{ grid-template-columns:1fr; } }
+    .pi-card{ border:1px solid var(--border); border-radius:8px; padding:16px; }
+    .pi-card h4{ margin:0 0 8px 0; font-size:14px; }
+    .pi-big{ font-size:28px; font-weight:700; line-height:1.2; }
+    .pi-dim-bar{ height:8px; background:#e9ecef; border-radius:3px; overflow:hidden; margin:2px 0; }
+    .pi-dim-bar > span{ display:block; height:100%; border-radius:3px; }
+    details.pi-case{ border:1px solid var(--border); border-radius:8px; margin:6px 0; }
+    details.pi-case summary{ padding:10px 16px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; }
+    details.pi-case summary::-webkit-details-marker{ display:none; }
+    details.pi-case summary::before{ content:'▸'; font-size:11px; transition:transform .15s; }
+    details.pi-case[open] summary::before{ transform:rotate(90deg); }
+    details.pi-case .pi-case-body{ padding:0 16px 12px 16px; font-size:13px; }
+    .pi-chip{ display:inline-block; padding:2px 8px; margin:2px; border-radius:3px; font-size:11px; }
+    .pi-chip.driver{ background:#d8f3dc; color:#2d6a4f; }
+    .pi-chip.divergent{ background:#fde8e8; color:#9b2226; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -119,6 +136,8 @@
   </style>
 </head>
 <body>
+  {# Truncation safeguard — detects incomplete words and appends "ed." #}
+  {% macro safe_text(text) %}{% set t = text | default('') | string %}{% set markers = ['detecte', 'pendin', 'determina', 'indicat', 'transacti', 'investiga', 'escala', 'complia', 'regulato'] %}{% set ns = namespace(fixed=t) %}{% for m in markers %}{% if ns.fixed.rstrip().lower().endswith(m) %}{% set ns.fixed = ns.fixed.rstrip() + 'ed.' %}{% endif %}{% endfor %}{{ ns.fixed }}{% endmacro %}
   <div class="page">
     <div class="export-bar">
       <span class="brand">DecisionGraph Report</span>
@@ -228,13 +247,13 @@
         <div class="value" style="font-size:16px;">{{ governed_disposition | replace('_', ' ') }}</div>
         <div class="label">&nbsp;</div>
         <div class="value small" style="color:var(--muted);">
-          {% if classification_outcome and governed_disposition != classification_outcome | replace('_REQUIRED', '_REQUIRED') %}
+          {% if classification_outcome and classification_outcome != governed_disposition %}
             {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
               Classifier recommends {{ classification_outcome | replace('_', ' ') }}. Governed: {{ governed_disposition | replace('_', ' ') }} per gate evaluation. Conflict deferred to compliance officer.
             {% elif classification_outcome == 'NO_REPORT' and governed_disposition != 'NO_REPORT' %}
               Classifier recommends {{ classification_outcome | replace('_', ' ') }}. Governed: {{ governed_disposition | replace('_', ' ') }} per governance correction.
             {% else %}
-              Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}
+              Governance Corrected — {{ governed_disposition | replace('_', ' ') }}
             {% endif %}
           {% else %}
             Classifier Sovereign{% if suspicion_count == 0 %} · Tier 1 = 0{% endif %}
@@ -299,7 +318,7 @@
         </tbody>
       </table>
       {% endif %}
-      <p class="small" style="margin-top:10px;">{{ decision_explainer }}</p>
+      <p class="small" style="margin-top:10px;">{{ safe_text(decision_explainer) }}</p>
     </div>
 
     {% if canonical_outcome %}
@@ -436,10 +455,15 @@
 
     <div class="card break">
       <h3>Regulatory Escalation Summary</h3>
-      <p class="small">{{ escalation_summary }}</p>
+      <p class="small">{{ safe_text(escalation_summary) }}</p>
       {% if decision_confidence %}
       <p class="small" style="margin-top:10px;"><strong>Decision Confidence:</strong> {{ decision_confidence }}</p>
       <p class="small">{{ decision_confidence_reason }}</p>
+      {% endif %}
+      {% set _reg_align = enhanced_precedent.governed_alignment_count | default(0) if enhanced_precedent is defined and enhanced_precedent else 0 %}
+      {% set _reg_total = enhanced_precedent.governed_alignment_total | default(0) if enhanced_precedent is defined and enhanced_precedent else 0 %}
+      {% if _reg_total > 0 %}
+      <p class="small" style="margin-top:10px;"><strong>Precedent alignment:</strong> {{ _reg_align }}/{{ _reg_total }} ({{ "%.0f"|format(_reg_align / _reg_total * 100) }}%) of comparable precedents match the governed disposition.</p>
       {% endif %}
     </div>
 
@@ -449,7 +473,7 @@
       <span class="small" style="margin-right:8px;">Available for <strong>{{ governed_disposition | replace('_', ' ') }}</strong>:</span>
       {% for act in analyst_actions %}
       {% set is_approval = act.label in ('Approve', 'Confirm Clearance') %}
-      {% set block_approval = decision_integrity_alert or display_verdict == 'PENDING_REVIEW' %}
+      {% set block_approval = decision_integrity_alert or display_verdict == 'PENDING_REVIEW' or (precedent_analysis is defined and precedent_analysis and precedent_analysis.available and precedent_analysis.contrary_precedents > precedent_analysis.supporting_precedents and (precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents) > 0) %}
       {% if not (is_approval and block_approval) %}
       <span style="display:inline-block; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:{% if act.primary %}700{% else %}500{% endif %}; border:1px solid {% if act.primary %}#1f2937{% else %}var(--border){% endif %}; background:{% if act.primary %}#1f2937{% else %}#fff{% endif %}; color:{% if act.primary %}#fff{% else %}var(--fg){% endif %};">{{ act.label }}</span>
       {% endif %}
@@ -477,8 +501,8 @@
         <div class="label">Classifier Outcome</div>
         <div class="value"><strong>{{ classification_outcome }}</strong></div>
         <div class="label">Classifier Authority</div>
-        {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
-        <div class="value" style="color:var(--warn); font-weight:600;">OVERRIDDEN — Classifier recommends STR, governed disposition is {{ governed_disposition | replace('_', ' ') }}</div>
+        {% if classification_outcome != governed_disposition %}
+        <div class="value" style="color:var(--warn); font-weight:600;">OVERRIDDEN — Classifier recommends {{ classification_outcome | replace('_', ' ') }}, governed disposition is {{ governed_disposition | replace('_', ' ') }}</div>
         {% else %}
         <div class="value" style="color:#059669; font-weight:600;">SOVEREIGN — Hard Gate</div>
         {% endif %}
@@ -532,7 +556,7 @@
       {% if precedent_consistency_alert %}
       <div class="status warn" style="margin-top:12px; padding:12px;">
         <strong>⚠️ PRECEDENT CONSISTENCY ALERT</strong><br>
-        <span class="small">{{ precedent_consistency_detail }}</span>
+        <span class="small"><strong style="color:#92400e;">Precedent Consistency:</strong> {{ precedent_consistency_detail }}</span>
       </div>
       {% endif %}
     </div>
@@ -549,6 +573,234 @@
       <p class="small">Decision drivers derived from rule evaluation were not available in this record.</p>
       {% endif %}
     </div>
+
+    {# ══════════════════════════════════════════════════════════════ #}
+    {# PRECEDENT INTELLIGENCE PANEL                                 #}
+    {# ══════════════════════════════════════════════════════════════ #}
+    {% if precedent_analysis and precedent_analysis.available %}
+    <h2>Precedent Intelligence</h2>
+    <p class="small"><em>Precedent analysis is advisory and does not override the deterministic engine verdict. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
+
+    {% if precedent_pool_warning %}
+    <div class="integrity-alert warning break">
+      <div class="alert-header warning">⚠ Thin Precedent Pool</div>
+      <div class="alert-body">{{ precedent_pool_warning.message }}</div>
+      <div class="alert-detail">Pool size: {{ precedent_pool_warning.pool_size }} · Minimum required: {{ precedent_pool_warning.minimum_required }}</div>
+    </div>
+    {% endif %}
+
+    {# ── Row 1: Governed Alignment + Terminal Confidence ────────── #}
+    {% set gov_align = enhanced_precedent.governed_alignment_count | default(precedent_analysis.governed_alignment_count | default(0)) %}
+    {% set gov_total = enhanced_precedent.governed_alignment_total | default(precedent_analysis.governed_alignment_total | default(0)) %}
+    <div class="pi-grid">
+      <div class="pi-card" style="border-left:4px solid var(--ok);">
+        <h4>Governed Disposition Alignment</h4>
+        {% if gov_total > 0 %}
+        {% set gov_pct = (gov_align / gov_total * 100) | round | int %}
+        <div class="pi-big" style="color:{% if gov_pct >= 80 %}var(--ok){% elif gov_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">
+          {{ gov_align }}/{{ gov_total }} <span style="font-size:16px; font-weight:400;">({{ gov_pct }}%)</span>
+        </div>
+        <div class="bar" style="margin:8px 0;"><span style="width:{{ gov_pct }}%; background:{% if gov_pct >= 80 %}#059669{% elif gov_pct >= 50 %}#d97706{% else %}#dc2626{% endif %};"></span></div>
+        <p class="small" style="margin:4px 0 0 0;">
+          {% if gov_align == gov_total %}All comparable precedents match the governed disposition.
+          {% elif gov_align > gov_total / 2 %}Majority match ({{ gov_align }}/{{ gov_total }}).
+          {% else %}Minority match — review advised.{% endif %}
+        </p>
+        {% else %}
+        <div class="pi-big" style="color:var(--muted);">N/A</div>
+        <p class="small">No comparable precedents in pool.</p>
+        {% endif %}
+      </div>
+
+      <div class="pi-card" style="border-left:4px solid #2563eb;">
+        <h4>Terminal Confidence</h4>
+        {% if enhanced_precedent.confidence_dimensions is defined and enhanced_precedent.confidence_dimensions %}
+        {% set cl = enhanced_precedent.confidence_level | default('NONE') | upper %}
+        {% set cl_color = {'VERY_HIGH': '#059669', 'HIGH': '#28a745', 'MODERATE': '#d97706', 'LOW': '#fd7e14', 'NONE': '#dc2626'}.get(cl, '#6c757d') %}
+        <div class="pi-big" style="color:{{ cl_color }};">{{ cl | replace('_', ' ') }}</div>
+        {% if enhanced_precedent.confidence_bottleneck %}
+        <p class="small" style="margin:2px 0 8px 0;">Bottleneck: {{ enhanced_precedent.confidence_bottleneck | replace('_', ' ') | title }}</p>
+        {% endif %}
+        {% if enhanced_precedent.confidence_hard_rule %}
+        <p class="small" style="color:var(--bad); margin:0 0 8px 0;"><em>{{ enhanced_precedent.confidence_hard_rule }}</em></p>
+        {% endif %}
+        {% for dim in enhanced_precedent.confidence_dimensions %}
+        <div style="margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px;">
+            <span>{{ dim.name | replace('_', ' ') | title }}</span>
+            <span style="font-weight:600;">{{ dim.level | replace('_', ' ') }}{% if dim.bottleneck %} ★{% endif %}</span>
+          </div>
+          {% set bp = {'NONE': 0, 'LOW': 25, 'MODERATE': 50, 'HIGH': 75, 'VERY_HIGH': 95}.get(dim.level | upper, 0) %}
+          {% set bc = {'NONE': '#dc3545', 'LOW': '#fd7e14', 'MODERATE': '#ffc107', 'HIGH': '#28a745', 'VERY_HIGH': '#20c997'}.get(dim.level | upper, '#6c757d') %}
+          <div class="pi-dim-bar"><span style="width:{{ bp }}%; background:{{ bc }};"></span></div>
+          {% if dim.note %}<div class="small" style="color:#64748b; margin-top:1px;">{{ dim.note }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        {% set decisive_total = precedent_analysis.decisive_total | default(-1) %}
+        {% if decisive_total == 0 %}
+        <div class="pi-big" style="color:var(--muted);">N/A</div>
+        <p class="small">No terminal precedents in pool.</p>
+        {% else %}
+        <div class="pi-big">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Row 2: Institutional Posture ──────────────────────────── #}
+    {% if enhanced_precedent and (enhanced_precedent.pattern_summary or enhanced_precedent.institutional_posture) %}
+    <div class="statement break" style="margin-top:12px;">
+      {% if enhanced_precedent.pattern_summary %}
+      <strong style="color:#1e40af;">Institutional Pattern</strong>
+      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">{{ enhanced_precedent.pattern_summary }}</p>
+      {% endif %}
+      {% if enhanced_precedent.institutional_posture %}
+      <strong style="color:#1e40af; {% if enhanced_precedent.pattern_summary %}margin-top:10px; display:block;{% endif %}">Institutional Posture</strong>
+      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">{{ enhanced_precedent.institutional_posture }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ── Row 3: Top 5 Comparable Cases ─────────────────────────── #}
+    {% if enhanced_precedent and enhanced_precedent.case_thumbnails and enhanced_precedent.case_thumbnails|length > 0 %}
+    <h3 style="margin-top:16px;">Top Comparable Cases</h3>
+    {% for thumb in enhanced_precedent.case_thumbnails %}
+    <details class="pi-case break" {% if loop.first %}open{% endif %}>
+      <summary>
+        <span class="mono" style="font-weight:600; min-width:80px;">{{ thumb.precedent_id }}</span>
+        <span style="font-weight:700; font-size:16px; margin:0 4px;">{{ thumb.similarity_pct }}%</span>
+        <span class="pill {% if thumb.classification == 'supporting' %}pass{% elif thumb.classification == 'contrary' %}trig{% else %}req{% endif %}" style="margin-left:auto;">{{ thumb.outcome_label }}</span>
+      </summary>
+      <div class="pi-case-body">
+        <p style="margin:0 0 6px 0;">{{ thumb.description }}</p>
+        {% if thumb.key_matches %}
+        <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">{{ thumb.key_matches | join(', ') }}</span></div>
+        {% endif %}
+        {% if thumb.key_differences %}
+        <div style="margin-bottom:4px;"><span class="small" style="color:var(--bad); font-weight:600;">Differs:</span> <span class="small" style="color:var(--bad);">{{ thumb.key_differences | join(', ') }}</span></div>
+        {% endif %}
+        {% if thumb.matched_drivers is defined and thumb.matched_drivers %}
+        <div style="margin-top:4px;">{% for d in thumb.matched_drivers %}<span class="pi-chip driver">{{ d }}</span>{% endfor %}</div>
+        {% endif %}
+        {% if thumb.mismatched_drivers is defined and thumb.mismatched_drivers %}
+        <div style="margin-top:2px;">{% for d in thumb.mismatched_drivers %}<span class="pi-chip divergent">{{ d }}</span>{% endfor %}</div>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+    {% endif %}
+
+    {# ── Row 4: Divergence Justification + Sign-Off ────────────── #}
+    {% if enhanced_precedent and enhanced_precedent.divergence_justification %}
+    {% set dj = enhanced_precedent.divergence_justification %}
+    <div class="card break" style="border-left:4px solid var(--warn); margin-top:16px; padding:12px 16px;">
+      <h3 style="margin:0 0 8px 0; font-size:15px;">Divergence Justification</h3>
+      {% if dj.statement %}
+      <p style="font-weight:600; margin:0 0 10px 0;">{{ dj.statement }}</p>
+      {% endif %}
+      {% if dj.contrary_details and dj.contrary_details|length > 0 %}
+      <table style="width:100%; font-size:13px; border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--bg); text-align:left;">
+            <th style="padding:4px 8px;">Contrary Precedent</th>
+            <th style="padding:4px 8px;">Outcome</th>
+            <th style="padding:4px 8px;">Similarity</th>
+            <th style="padding:4px 8px;">Distinguishing Factors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cd in dj.contrary_details %}
+          <tr style="border-bottom:1px solid #e5e7eb;">
+            <td style="padding:4px 8px;" class="mono">{{ cd.precedent_id }}</td>
+            <td style="padding:4px 8px;">{{ cd.outcome }}</td>
+            <td style="padding:4px 8px;">{{ cd.similarity_pct }}%</td>
+            <td style="padding:4px 8px; font-size:12px;">{{ cd.distinguishing_factors | join('; ') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if enhanced_precedent.override_statement %}
+      <blockquote style="border-left:3px solid var(--bad); padding:8px 12px; margin:12px 0; font-style:italic; background:#fef2f2;">
+        {{ enhanced_precedent.override_statement }}
+      </blockquote>
+      {% endif %}
+      <div style="margin-top:12px; padding:12px; background:#f9fafb; border:1px solid var(--border); border-radius:6px;">
+        <strong style="font-size:13px;">Compliance Officer Sign-Off</strong>
+        <div style="display:grid; grid-template-columns:100px 1fr; gap:6px 12px; font-size:13px; margin-top:8px;">
+          <div style="font-weight:600;">Reviewer</div>
+          <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
+          <div style="font-weight:600;">Date</div>
+          <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
+          <div style="font-weight:600;">Rationale</div>
+          <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Decision Driver Analysis ──────────────────────────────── #}
+    {% if enhanced_precedent.driver_causality is defined and enhanced_precedent.driver_causality %}
+    {% set dc = enhanced_precedent.driver_causality %}
+    {% if dc.shared_drivers or dc.divergent_drivers %}
+    <div style="margin-top:16px; padding:12px; background:#f0f4f8; border-radius:6px; border:1px solid #c8d6e5;">
+      <div style="font-weight:600; margin-bottom:8px;">Decision Driver Analysis</div>
+      {% if dc.shared_drivers %}
+      <div style="margin-bottom:8px;">
+        <span class="small" style="color:#2d6a4f; font-weight:600;">Shared Drivers:</span>
+        <div style="margin-top:4px;">{% for d in dc.shared_drivers %}<span class="pi-chip driver">{{ d | replace('_', ' ') | replace('.', ' › ') }}</span>{% endfor %}</div>
+      </div>
+      {% endif %}
+      {% if dc.divergent_drivers %}
+      <div>
+        <span class="small" style="color:#9b2226; font-weight:600;">Divergent Drivers:</span>
+        <div style="margin-top:4px;">{% for d in dc.divergent_drivers %}<span class="pi-chip divergent">{{ d | replace('_', ' ') | replace('.', ' › ') }}</span>{% endfor %}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {# ── Non-Transferable Precedents ───────────────────────────── #}
+    {% if enhanced_precedent.non_transferable_explanations is defined and enhanced_precedent.non_transferable_explanations | length > 0 %}
+    <div class="status warn" style="margin-top:12px; padding:12px;">
+      <strong>Non-Transferable Precedents ({{ enhanced_precedent.non_transferable_explanations | length }})</strong>
+      <ul class="small" style="margin-top:6px;">
+        {% for nt in enhanced_precedent.non_transferable_explanations[:3] %}
+        <li>{{ nt.precedent_id }}: {{ nt.reasons | join('; ') }}</li>
+        {% endfor %}
+      </ul>
+      <span class="small">These precedents were scored but cannot be classified as "supporting" due to driver mismatches.</span>
+    </div>
+    {% endif %}
+
+    {# ── Temporal Context ──────────────────────────────────────── #}
+    {% if enhanced_precedent and enhanced_precedent.temporal_context and enhanced_precedent.temporal_context|length > 0 %}
+    {% set contrary_ts = [] %}
+    {% for t in enhanced_precedent.temporal_context if t.classification == 'contrary' and t.timestamp %}
+      {% if contrary_ts.append(t) %}{% endif %}
+    {% endfor %}
+    {% if contrary_ts|length > 0 %}
+    <div style="margin-top:12px;">
+      <h4 style="margin-bottom:4px; font-size:14px;">Temporal Context</h4>
+      <p class="small" style="margin-bottom:6px;"><em>Contrary precedent dates — older cases may reflect superseded guidance.</em></p>
+      <ul style="font-size:13px; margin:0; padding-left:20px;">
+        {% for t in contrary_ts[:5] %}
+        <li><span class="mono">{{ t.precedent_id }}</span>: {{ t.timestamp }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% elif precedent_analysis %}
+    <h2>Precedent Intelligence</h2>
+    <div class="status warn" style="margin-top:12px; padding:12px;">
+      <strong>Precedent Analysis Unavailable</strong><br>
+      <span class="small">{{ precedent_analysis.message or precedent_analysis.error or 'Precedent analysis unavailable.' }}</span>
+    </div>
+    {% endif %}
 
     <h2>Gate Evaluation</h2>
     <h3>Gate 1: Zero-False-Escalation Check</h3>
@@ -689,320 +941,154 @@
       </tbody>
     </table>
 
+    {# ── Precedent Technical Detail (collapsible) ────────────────── #}
     {% if precedent_analysis and precedent_analysis.available %}
-    <h2>Precedent Intelligence</h2>
-    <p class="small"><em>Precedent analysis is advisory and does not override the deterministic engine verdict. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
+    <details style="margin-top:16px;">
+      <summary style="cursor:pointer; font-size:14px; font-weight:600; padding:8px 0;">Precedent Technical Detail</summary>
+      <div style="padding-top:8px;">
 
-    {% if precedent_pool_warning %}
-    <div class="integrity-alert warning break">
-      <div class="alert-header warning">⚠ Thin Precedent Pool</div>
-      <div class="alert-body">{{ precedent_pool_warning.message }}</div>
-      <div class="alert-detail">Pool size: {{ precedent_pool_warning.pool_size }} · Minimum required: {{ precedent_pool_warning.minimum_required }}. Percentage-based metrics below are informational only and must not be relied upon for disposition decisions.</div>
-    </div>
-    {% endif %}
-
-    <!-- FIX-027: Pattern Summary — institutional knowledge headline -->
-    {% if enhanced_precedent and enhanced_precedent.pattern_summary %}
-    <div class="card break" style="border-left:4px solid #2563eb; background:#f0f9ff;">
-      <h4 style="margin:0 0 8px 0; color:#1e40af;">Institutional Pattern Summary</h4>
-      <p style="font-size:14px; line-height:1.6; margin:0;">{{ enhanced_precedent.pattern_summary }}</p>
-    </div>
-    {% endif %}
-
-    <!-- FIX-027: Institutional Posture Statement -->
-    {% if enhanced_precedent and enhanced_precedent.institutional_posture %}
-    <div class="statement break" style="margin-top:12px;">
-      <strong>Institutional Posture</strong><br>
-      <p style="font-size:14px; line-height:1.6; margin:8px 0 0 0;">{{ enhanced_precedent.institutional_posture }}</p>
-    </div>
-    {% endif %}
-
-    <!-- FIX-027: Case Thumbnails — readable precedent summaries -->
-    {% if enhanced_precedent and enhanced_precedent.case_thumbnails and enhanced_precedent.case_thumbnails|length > 0 %}
-    <h3 style="margin-top:16px;">Precedent Case Summaries</h3>
-    <div class="match-grid">
-      {% for thumb in enhanced_precedent.case_thumbnails %}
-      <div class="card break" style="border-left:3px solid {% if thumb.classification == 'supporting' %}var(--ok){% elif thumb.classification == 'contrary' %}var(--bad){% else %}var(--warn){% endif %}; padding:12px 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span class="mono" style="font-size:13px; font-weight:600;">{{ thumb.precedent_id }}</span>
-          <span style="font-size:18px; font-weight:700;">{{ thumb.similarity_pct }}%</span>
+      <h3>Precedent Classification</h3>
+      <div class="card break">
+        <div class="kv">
+          <div class="label">Supporting Precedents</div>
+          <div class="value" style="color: var(--ok);">{{ precedent_analysis.supporting_precedents }} <span class="small">(same outcome)</span></div>
+          <div class="label">Contrary Precedents</div>
+          <div class="value" style="color: var(--bad);">{{ precedent_analysis.contrary_precedents }} <span class="small">(different outcome)</span></div>
+          <div class="label">Neutral / Procedural</div>
+          <div class="value" style="color: var(--muted);">{{ precedent_analysis.neutral_precedents | default(0) }} <span class="small">(enhanced review)</span></div>
+          <div class="label">Comparable Matches</div>
+          <div class="value">{{ precedent_analysis.match_count }}</div>
+          <div class="label">Raw Overlaps</div>
+          <div class="value">{{ precedent_analysis.raw_overlap_count | default(0) }}</div>
+          <div class="label">Exact Matches</div>
+          <div class="value">{{ precedent_analysis.exact_match_count | default(0) }}</div>
         </div>
-        <p style="font-size:13px; margin:0 0 6px 0;">{{ thumb.description }}</p>
-        {% if thumb.key_matches %}
-        <span class="small" style="color:var(--ok);">Matching: {{ thumb.key_matches | join(', ') }}</span><br>
-        {% endif %}
-        {% if thumb.key_differences %}
-        <span class="small" style="color:var(--bad);">Differs: {{ thumb.key_differences | join(', ') }}</span>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Feature Comparison Matrix -->
-    {% if enhanced_precedent and enhanced_precedent.feature_comparison_matrix and enhanced_precedent.feature_comparison_matrix|length > 0 %}
-    <h3 style="margin-top:16px;">Feature Comparison Matrix</h3>
-    <p class="small" style="margin-bottom:8px;"><em>Top precedents compared by similarity feature. Differentiating features highlight where dissimilarity lives.</em></p>
-    <table style="width:100%; font-size:13px; border-collapse:collapse;">
-      <thead>
-        <tr style="background:var(--bg); text-align:left;">
-          <th style="padding:6px 8px;">Precedent</th>
-          <th style="padding:6px 8px;">Sim.</th>
-          <th style="padding:6px 8px;">Outcome</th>
-          <th style="padding:6px 8px;">Class</th>
-          <th style="padding:6px 8px;">Matching Features</th>
-          <th style="padding:6px 8px;">Differentiating Features</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for entry in enhanced_precedent.feature_comparison_matrix %}
-        <tr style="border-bottom:1px solid #e5e7eb;">
-          <td style="padding:6px 8px;" class="mono">{{ entry.precedent_id }}</td>
-          <td style="padding:6px 8px; font-weight:600;">{{ entry.similarity_pct }}%</td>
-          <td style="padding:6px 8px;">{{ entry.outcome }}</td>
-          <td style="padding:6px 8px; color:{% if entry.classification == 'supporting' %}var(--ok){% elif entry.classification == 'contrary' %}var(--bad){% else %}var(--warn){% endif %};">{{ entry.classification }}</td>
-          <td style="padding:6px 8px; color:var(--ok); font-size:12px;">{{ entry.matching_features | join(', ') or 'None' }}</td>
-          <td style="padding:6px 8px; color:var(--bad); font-size:12px;">{{ entry.differing_features | join(', ') or 'None' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-
-    <!-- Divergence Justification -->
-    {% if enhanced_precedent and enhanced_precedent.divergence_justification %}
-    {% set dj = enhanced_precedent.divergence_justification %}
-    <div class="card break" style="border-left:4px solid var(--warn); margin-top:16px; padding:12px 16px;">
-      <h3 style="margin:0 0 8px 0; font-size:15px;">Divergence Justification</h3>
-      {% if dj.statement %}
-      <p style="font-weight:600; margin:0 0 10px 0;">{{ dj.statement }}</p>
-      {% endif %}
-      {% if dj.contrary_details and dj.contrary_details|length > 0 %}
-      <table style="width:100%; font-size:13px; border-collapse:collapse;">
-        <thead>
-          <tr style="background:var(--bg); text-align:left;">
-            <th style="padding:4px 8px;">Contrary Precedent</th>
-            <th style="padding:4px 8px;">Outcome</th>
-            <th style="padding:4px 8px;">Similarity</th>
-            <th style="padding:4px 8px;">Distinguishing Factors</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for cd in dj.contrary_details %}
-          <tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:4px 8px;" class="mono">{{ cd.precedent_id }}</td>
-            <td style="padding:4px 8px;">{{ cd.outcome }}</td>
-            <td style="padding:4px 8px;">{{ cd.similarity_pct }}%</td>
-            <td style="padding:4px 8px; font-size:12px;">{{ cd.distinguishing_factors | join('; ') }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- Temporal Context -->
-    {% if enhanced_precedent and enhanced_precedent.temporal_context and enhanced_precedent.temporal_context|length > 0 %}
-    {% set contrary_timestamps = [] %}
-    {% for t in enhanced_precedent.temporal_context if t.classification == 'contrary' and t.timestamp %}
-      {% if contrary_timestamps.append(t) %}{% endif %}
-    {% endfor %}
-    {% if contrary_timestamps|length > 0 %}
-    <div style="margin-top:12px;">
-      <h4 style="margin-bottom:4px; font-size:14px;">Temporal Context</h4>
-      <p class="small" style="margin-bottom:6px;"><em>Contrary precedent decision dates — older cases may reflect superseded regulatory guidance.</em></p>
-      <ul style="font-size:13px; margin:0; padding-left:20px;">
-        {% for t in contrary_timestamps[:5] %}
-        <li><span class="mono">{{ t.precedent_id }}</span>: {{ t.timestamp }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    {% endif %}
-
-    <!-- Override Statement -->
-    {% if enhanced_precedent and enhanced_precedent.override_statement %}
-    <div class="card break" style="border-left:4px solid var(--bad); margin-top:16px; padding:12px 16px; background:#fef2f2;">
-      <h3 style="margin:0 0 8px 0; font-size:15px;">Precedent Override Statement</h3>
-      <p class="small" style="margin-bottom:10px;"><em>This statement must be reviewed and approved by a compliance officer when the current decision diverges from precedent majority.</em></p>
-      <blockquote style="border-left:3px solid var(--bad); padding:8px 12px; margin:0 0 12px 0; font-style:italic; background:#fff;">
-        {{ enhanced_precedent.override_statement }}
-      </blockquote>
-      <div style="display:grid; grid-template-columns:100px 1fr; gap:4px 12px; font-size:13px;">
-        <div style="font-weight:600;">Reviewer</div>
-        <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
-        <div style="font-weight:600;">Date</div>
-        <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
-        <div style="font-weight:600;">Rationale</div>
-        <div style="border-bottom:1px solid #999; min-width:200px;">&nbsp;</div>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Decision Intelligence Summary -->
-    <div class="gate-block break" style="background: #f8fafc;">
-      <h4 style="margin-bottom:8px;">Precedent Alignment Summary</h4>
-
-      {# Governed Disposition Alignment — from enhanced_precedent (uses actual governed disposition) #}
-      {% set gov_align = enhanced_precedent.governed_alignment_count | default(precedent_analysis.governed_alignment_count | default(0)) %}
-      {% set gov_total = enhanced_precedent.governed_alignment_total | default(precedent_analysis.governed_alignment_total | default(0)) %}
-      {% if gov_total > 0 %}
-      <div style="border-left:4px solid var(--ok); padding:8px 12px; margin-bottom:12px; background:#f0fdf4;">
-        <div style="font-size:15px; font-weight:700;">
-          Governed Disposition Alignment: {{ gov_align }}/{{ gov_total }}
-          ({{ "%.0f"|format(gov_align / gov_total * 100) }}%)
-        </div>
-        <p class="small" style="margin:4px 0 0 0;">
-          {% if gov_align == gov_total %}
-          All comparable precedents resulted in {{ precedent_analysis.proposed_outcome_label | default(governed_disposition | replace('_', ' ')) }} — consistent with current governed disposition.
-          {% elif gov_align > gov_total / 2 %}
-          Majority of comparable precedents ({{ gov_align }}/{{ gov_total }}) match the current governed disposition.
-          {% else %}
-          Minority of comparable precedents ({{ gov_align }}/{{ gov_total }}) match the current governed disposition.
+        {% if precedent_analysis.neutral_precedents | default(0) > 0 and precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents == 0 %}
+        {% set cls_gov_align = enhanced_precedent.governed_alignment_count | default(0) %}
+        {% set cls_gov_total = enhanced_precedent.governed_alignment_total | default(0) %}
+        <p class="small" style="margin-top:8px; border-left:3px solid var(--ok); padding-left:8px;">
+          <strong>Note:</strong> All {{ precedent_analysis.neutral_precedents }} precedents are non-terminal (EDD/review).
+          {% if cls_gov_align > 0 %}
+          However, {{ cls_gov_align }} of {{ cls_gov_total }} match the governed disposition.
           {% endif %}
         </p>
-      </div>
-      {% endif %}
-
-      <div class="kv" style="font-size:13px;">
-        <div class="label">Comparable Matches (Scored)</div>
-        <div class="value">{{ precedent_analysis.match_count }}</div>
-        <div class="label">Raw Overlaps Found</div>
-        <div class="value">{{ precedent_analysis.raw_overlap_count | default(0) }}</div>
-        <div class="label">Representative Sample</div>
-        <div class="value">{{ precedent_analysis.sample_size | default(50) }} cases (≥{{ (precedent_analysis.threshold_used * 100) | round | int if precedent_analysis.threshold_used is defined else (precedent_analysis.min_similarity_pct | default(50)) }}% similarity required; mode: {{ precedent_analysis.threshold_mode | default('prod') }})</div>
-
-        {# Terminal Confidence — show N/A when no decisive precedents #}
-        {% set decisive_total = precedent_analysis.decisive_total | default(-1) %}
-        <div class="label">Terminal Confidence</div>
-        {% if decisive_total == 0 %}
-        <div class="value">N/A — No terminal precedents in pool</div>
-        {% else %}
-        <div class="value">{{ "%.0f"|format(precedent_analysis.precedent_confidence * 100) }}%</div>
         {% endif %}
-
-        <div class="label">Exact Matches</div>
-        <div class="value">{{ precedent_analysis.exact_match_count | default(0) }}</div>
       </div>
 
-      {# Terminal confidence context when N/A #}
-      {% if decisive_total == 0 %}
-      <p class="small" style="margin-top:8px; font-style:italic;">
-        All comparable precedents are non-terminal (EDD/review). Terminal confidence scoring requires resolved outcomes (ALLOW/BLOCK). Governed disposition alignment above reflects institutional practice.
-      </p>
-      {% endif %}
+      <h3>Scored Match Outcome Distribution</h3>
+      {% set scored_distribution = precedent_analysis.match_outcome_distribution or precedent_analysis.outcome_distribution %}
+      {% set outcome_total = scored_distribution.values()|sum %}
+      <table class="break">
+        <thead><tr><th>Outcome</th><th>Count</th><th style="width:220px;">Distribution</th></tr></thead>
+        <tbody>
+          {% for outcome, count in scored_distribution.items() %}
+          {% set pct = (count / outcome_total * 100) if outcome_total else 0 %}
+          <tr>
+            <td>{{ outcome|upper }}</td>
+            <td class="mono">{{ count }}</td>
+            <td><div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div></td>
+          </tr>
+          {% endfor %}
+          {% if not scored_distribution %}<tr><td colspan="3" class="small">No data</td></tr>{% endif %}
+        </tbody>
+      </table>
 
-      {# ── v3 Governed Confidence Breakdown ─────────────────────── #}
-      {% if enhanced_precedent.confidence_dimensions is defined and enhanced_precedent.confidence_dimensions %}
-      <div style="margin-top:16px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #dee2e6;">
-        <div style="font-weight:600; margin-bottom:8px;">Confidence Dimensions (v3 Governed Model)</div>
-        {% if enhanced_precedent.confidence_level is defined %}
-        <div class="small" style="margin-bottom:8px;">
-          Overall: <strong>{{ enhanced_precedent.confidence_level | upper }}</strong>
-          {% if enhanced_precedent.confidence_bottleneck %} — bottleneck: {{ enhanced_precedent.confidence_bottleneck | replace('_', ' ') }}{% endif %}
-          {% if enhanced_precedent.confidence_hard_rule %}<br><em>Hard rule: {{ enhanced_precedent.confidence_hard_rule }}</em>{% endif %}
-        </div>
-        {% endif %}
-        {% for dim in enhanced_precedent.confidence_dimensions %}
-        <div style="margin-bottom:6px;">
-          <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
-            <span>{{ dim.name | replace('_', ' ') | title }}</span>
-            <span>{{ dim.level | upper }}{% if dim.bottleneck %} ★{% endif %}</span>
+      <h3>Raw Overlap Outcome Distribution</h3>
+      {% set overlap_distribution = precedent_analysis.raw_outcome_distribution or precedent_analysis.overlap_outcome_distribution | default({}) %}
+      {% set overlap_total = overlap_distribution.values()|sum %}
+      <table class="break">
+        <thead><tr><th>Outcome</th><th>Count</th><th style="width:220px;">Distribution</th></tr></thead>
+        <tbody>
+          {% for outcome, count in overlap_distribution.items() %}
+          {% set pct = (count / overlap_total * 100) if overlap_total else 0 %}
+          <tr>
+            <td>{{ outcome|upper }}</td>
+            <td class="mono">{{ count }}</td>
+            <td><div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div></td>
+          </tr>
+          {% endfor %}
+          {% if not overlap_distribution %}<tr><td colspan="3" class="small">No data</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h3>Precedent Evidence (Top Matches)</h3>
+      {% set threshold_pct = ((precedent_analysis.threshold_used|default(0.5)) * 100)|int %}
+      <p class="small" style="margin-bottom:8px;"><em>Similarity threshold: ≥{{ threshold_pct }}%.</em></p>
+      <div class="match-grid">
+        {% for match in precedent_analysis.sample_cases %}
+        {% set sc = match.similarity_components %}
+        {% set below_threshold = match.similarity_pct < threshold_pct %}
+        <div class="match-card break{% if below_threshold %} below-threshold{% endif %}">
+          <div class="match-card-header">
+            <span class="match-id">{{ match.precedent_id }}</span>
+            <span class="match-sim">{{ match.similarity_pct }}%
+              {% if match.exact_match %}<span class="badge">EXACT</span>{% endif %}
+              {% if below_threshold %}<span class="badge" style="background:#4b5563; color:#fff;">BELOW THRESHOLD</span>{% endif %}
+            </span>
           </div>
-          {% set bar_pct = {'NONE': 0, 'LOW': 25, 'MODERATE': 50, 'HIGH': 75, 'VERY_HIGH': 95}.get(dim.level | upper, 0) %}
-          {% set bar_color = {'NONE': '#dc3545', 'LOW': '#fd7e14', 'MODERATE': '#ffc107', 'HIGH': '#28a745', 'VERY_HIGH': '#20c997'}.get(dim.level | upper, '#6c757d') %}
-          <div style="background:#e9ecef; border-radius:3px; height:8px; overflow:hidden;">
-            <div style="width:{{ bar_pct }}%; height:100%; background:{{ bar_color }}; border-radius:3px;"></div>
+          <div class="match-meta">
+            <span class="meta-chip {{ match.classification | default('neutral') }}">{{ match.outcome_label }}</span>
+            <span class="meta-chip">{{ match.decision_level | default('N/A') }}</span>
+            {% if match.appealed %}<span class="meta-chip contrary">Appealed{% if match.appeal_outcome %} · {{ match.appeal_outcome }}{% endif %}</span>{% endif %}
           </div>
-          {% if dim.note %}<div class="small" style="color:#6c757d; margin-top:1px;">{{ dim.note }}</div>{% endif %}
+          <div class="sim-bars">
+            {% set drivers = [
+              ("Rules", sc.rules_overlap|default(0), 30),
+              ("Gates", sc.gate_match|default(0), 25),
+              ("Typology", sc.typology_overlap|default(0), 15),
+              ("Amount", sc.amount_bucket|default(0), 10),
+              ("Corridor", sc.corridor_match|default(0), 8),
+              ("Channel", sc.channel_method|default(0), 7),
+              ("PEP", sc.pep_match|default(0), 5),
+              ("Customer", sc.customer_profile|default(0), 5),
+              ("Geo Risk", sc.geo_risk|default(0), 5)
+            ] %}
+            {% for label, pct, weight in drivers %}
+            <span class="sim-label">{{ label }}</span>
+            <span class="sim-track"><span class="sim-fill {% if pct >= 80 %}high{% elif pct >= 40 %}med{% else %}low{% endif %}" style="width:{{ pct }}%"></span></span>
+            <span class="sim-pct {% if pct == 0 %}zero{% endif %}">{% if pct > 0 %}{{ pct }}%{% else %}—{% endif %}</span>
+            {% endfor %}
+          </div>
+          <div class="match-codes">{{ match.reason_codes | join(' · ') }}</div>
         </div>
         {% endfor %}
+        {% if not precedent_analysis.sample_cases %}
+        <div class="card small">No precedent matches available</div>
+        {% endif %}
       </div>
-      {% endif %}
 
-      {# ── v3 Non-transferable Explanations ─────────────────────── #}
-      {% if enhanced_precedent.non_transferable_explanations is defined and enhanced_precedent.non_transferable_explanations | length > 0 %}
-      <div class="status warn" style="margin-top:12px; padding:12px;">
-        <strong>Non-Transferable Precedents ({{ enhanced_precedent.non_transferable_explanations | length }})</strong>
-        <ul class="small" style="margin-top:6px;">
-          {% for nt in enhanced_precedent.non_transferable_explanations[:3] %}
-          <li>{{ nt.precedent_id }}: {{ nt.reasons | join('; ') }}</li>
+      <h3>Appeal Statistics</h3>
+      <div class="card break">
+        <div class="kv">
+          <div class="label">Total Appealed</div>
+          <div class="value">{{ precedent_analysis.appeal_statistics.total_appealed }}</div>
+          <div class="label">Upheld</div>
+          <div class="value">{{ precedent_analysis.appeal_statistics.upheld }}</div>
+          <div class="label">Overturned</div>
+          <div class="value">{{ precedent_analysis.appeal_statistics.overturned }}</div>
+          <div class="label">Upheld Rate</div>
+          <div class="value">{% if precedent_analysis.appeal_statistics.total_appealed > 0 %}{{ "%.0f"|format(precedent_analysis.appeal_statistics.upheld_rate * 100) }}%{% else %}N/A{% endif %}</div>
+        </div>
+      </div>
+
+      {% if precedent_analysis.caution_precedents and precedent_analysis.caution_precedents|length > 0 %}
+      <h3>Caution Precedents (Overturned Cases)</h3>
+      <div class="status warn break">
+        <p><strong>{{ precedent_analysis.caution_precedents|length }}</strong> similar cases were later overturned on appeal.</p>
+        <ul>
+          {% for prec in precedent_analysis.caution_precedents[:5] %}
+          <li><strong>{{ prec.case_ref }}</strong> — {{ prec.outcome|upper }}{% if prec.appeal_result %} <span class="small">({{ prec.appeal_result }})</span>{% endif %}</li>
           {% endfor %}
         </ul>
-        <span class="small">These precedents were scored but cannot be classified as "supporting" due to driver mismatches.</span>
       </div>
       {% endif %}
 
-      {# ── v3 Decision Driver Analysis ────────────────────────── #}
-      {% if enhanced_precedent.driver_causality is defined and enhanced_precedent.driver_causality %}
-      {% set dc = enhanced_precedent.driver_causality %}
-      {% if dc.shared_drivers or dc.divergent_drivers %}
-      <div style="margin-top:16px; padding:12px; background:#f0f4f8; border-radius:6px; border:1px solid #c8d6e5;">
-        <div style="font-weight:600; margin-bottom:8px;">Decision Driver Analysis</div>
-        {% if dc.shared_drivers %}
-        <div style="margin-bottom:8px;">
-          <span class="small" style="color:#2d6a4f; font-weight:600;">Shared Drivers (aligned across precedents):</span>
-          <div class="small" style="margin-top:4px;">
-            {% for d in dc.shared_drivers %}
-            <span style="display:inline-block; padding:2px 8px; margin:2px; background:#d8f3dc; border-radius:3px; font-size:11px;">{{ d | replace('_', ' ') | replace('.', ' &rsaquo; ') }}</span>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-        {% if dc.divergent_drivers %}
-        <div>
-          <span class="small" style="color:#9b2226; font-weight:600;">Divergent Drivers (differ from precedent pool):</span>
-          <div class="small" style="margin-top:4px;">
-            {% for d in dc.divergent_drivers %}
-            <span style="display:inline-block; padding:2px 8px; margin:2px; background:#fde8e8; border-radius:3px; font-size:11px;">{{ d | replace('_', ' ') | replace('.', ' &rsaquo; ') }}</span>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-      </div>
-      {% endif %}
-      {% endif %}
-
-      {# Alignment text for cases WITH decisive precedents #}
-      {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
-      {% if total_decisive > 0 %}
-      {% set alignment_pct = (precedent_analysis.supporting_precedents / total_decisive * 100) %}
-      <p class="small" style="margin-top:12px;">
-        {% if alignment_pct >= 100 %}
-          <strong>All scored comparable precedents</strong> resulted in the same regulatory outcome.
-        {% else %}
-          <strong>{{ "%.0f"|format(alignment_pct) }}%</strong> of scored comparable cases resulted in the same regulatory outcome.
-        {% endif %}
-        <em>(Based on {{ total_decisive }} scored matches above similarity threshold only.)</em>
-      </p>
-      {% endif %}
-      {% if precedent_analysis.similarity_summary %}
-      <p class="small" style="margin-top:6px;"><strong>{{ precedent_analysis.similarity_summary }}</strong></p>
-      {% endif %}
-      {% if precedent_analysis.contrary_precedents > precedent_analysis.supporting_precedents %}
-      <div class="status warn" style="margin-top:12px; padding:12px;">
-        <strong>⚠️ PRECEDENT DIVERGENCE DETECTED</strong><br>
-        <span class="small">Current recommendation diverges from majority of historical cases. Senior compliance review advised before finalization.</span>
-      </div>
-      {% endif %}
-      {% if precedent_analysis.raw_overlap_count | default(0) > 0 and precedent_analysis.match_count == 0 %}
-      <div class="status warn" style="margin-top:12px; padding:12px;">
-        <strong>Limited Matching Evidence</strong><br>
-        <span class="small">Raw overlaps were found based on limited features, but no precedents met the similarity threshold. Provide transaction shape and customer profile facts to enable scoring.</span>
-      </div>
-      {% endif %}
-      {% if precedent_analysis.raw_overlap_count | default(0) > 0 %}
-      <p class="small" style="margin-top:10px;">
-        Raw overlaps reflect cases sharing one or more structural indicators but not meeting the similarity threshold required for scored comparison.
-      </p>
-      {% endif %}
       {% set threshold_used = precedent_analysis.threshold_used if precedent_analysis.threshold_used is defined else (precedent_analysis.min_similarity_pct | default(50)) / 100 %}
       {% set avg_similarity = precedent_analysis.avg_top_k_similarity | default(0) %}
       {% set show_why = (precedent_analysis.match_count == 0) or (precedent_analysis.precedent_confidence < 0.4) or (avg_similarity < threshold_used) %}
       {% if show_why and precedent_analysis.why_low_match and precedent_analysis.why_low_match|length > 0 %}
       <div class="status warn" style="margin-top:12px; padding:12px;">
-        <strong>Why precedent confidence is limited</strong><br>
+        <strong>Why precedent confidence is limited</strong>
         <ul class="small">
           {% set ns = namespace(missing=[], gate=[], rule=[], typo=[]) %}
           {% for item in precedent_analysis.why_low_match %}
@@ -1011,197 +1097,16 @@
             {% if item.rule_mismatch is defined %}{% set ns.rule = item.rule_mismatch %}{% endif %}
             {% if item.typology_mismatch is defined %}{% set ns.typo = item.typology_mismatch %}{% endif %}
           {% endfor %}
-          {% if ns.missing|length > 0 %}
-          <li>Missing features: {{ ns.missing | join(', ') | replace('_', ' ') }}</li>
-          {% endif %}
-          {% if ns.gate|length > 0 %}
-          <li>Gate mismatch or missing gate data: {{ ns.gate | join(', ') }}</li>
-          {% endif %}
-          {% if ns.rule|length > 0 %}
-          <li>Rule mismatch: {{ ns.rule | join(', ') | replace('_', ' ') }}</li>
-          {% endif %}
-          {% if ns.typo|length > 0 %}
-          <li>Typology mismatch: {{ ns.typo | join(', ') | replace('_', ' ') }}</li>
-          {% endif %}
+          {% if ns.missing|length > 0 %}<li>Missing features: {{ ns.missing | join(', ') | replace('_', ' ') }}</li>{% endif %}
+          {% if ns.gate|length > 0 %}<li>Gate mismatch: {{ ns.gate | join(', ') }}</li>{% endif %}
+          {% if ns.rule|length > 0 %}<li>Rule mismatch: {{ ns.rule | join(', ') | replace('_', ' ') }}</li>{% endif %}
+          {% if ns.typo|length > 0 %}<li>Typology mismatch: {{ ns.typo | join(', ') | replace('_', ' ') }}</li>{% endif %}
         </ul>
-        <span class="small"><strong>How to improve matching:</strong> provide amount bucket, channel/method, corridor, customer type, relationship length, and PEP status.</span>
       </div>
       {% endif %}
-    </div>
 
-    <h3>Precedent Classification</h3>
-    <div class="card break">
-      <div class="kv">
-        <div class="label">Supporting Precedents</div>
-        <div class="value" style="color: var(--ok);">{{ precedent_analysis.supporting_precedents }} <span class="small">(same outcome as recommendation)</span></div>
-        <div class="label">Contrary Precedents</div>
-        <div class="value" style="color: var(--bad);">{{ precedent_analysis.contrary_precedents }} <span class="small">(different outcome)</span></div>
-        <div class="label">Neutral / Procedural Outcomes</div>
-        <div class="value" style="color: var(--muted);">{{ precedent_analysis.neutral_precedents | default(0) }} <span class="small">(resolved via enhanced review)</span></div>
       </div>
-      <p class="small" style="margin-top:12px;">
-        <em>Procedural outcomes reflect cases resolved through enhanced review processes (EDD/review states) rather than immediate determination.</em>
-      </p>
-      {% if precedent_analysis.neutral_precedents | default(0) > 0 and precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents == 0 %}
-      {% set cls_gov_align = enhanced_precedent.governed_alignment_count | default(0) %}
-      {% set cls_gov_total = enhanced_precedent.governed_alignment_total | default(0) %}
-      <p class="small" style="margin-top:8px; border-left:3px solid var(--ok); padding-left:8px;">
-        <strong>Note:</strong> All {{ precedent_analysis.neutral_precedents }} precedents are non-terminal (EDD/review) and classified as "Neutral" per INV-005.
-        {% if cls_gov_align > 0 %}
-        However, {{ cls_gov_align }} of {{ cls_gov_total }} match the current governed disposition — indicating strong institutional alignment despite absence of terminal outcomes.
-        {% else %}
-        The governed disposition diverges from the precedent pool — all comparable cases resolved through EDD while the current disposition differs.
-        {% endif %}
-      </p>
-      {% endif %}
-    </div>
-
-    <h3>Scored Match Outcome Distribution</h3>
-    {% set scored_distribution = precedent_analysis.match_outcome_distribution or precedent_analysis.outcome_distribution %}
-    {% set outcome_total = scored_distribution.values()|sum %}
-    <table class="break">
-      <thead>
-        <tr>
-          <th>Outcome</th>
-          <th>Count</th>
-          <th style="width:220px;">Distribution</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for outcome, count in scored_distribution.items() %}
-        {% set pct = (count / outcome_total * 100) if outcome_total else 0 %}
-        <tr>
-          <td>{{ outcome|upper }}</td>
-          <td class="mono">{{ count }}</td>
-          <td>
-            <div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not scored_distribution %}
-        <tr>
-          <td colspan="3" class="small">No data</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
-
-    <h3>Raw Overlap Outcome Distribution</h3>
-    {% set overlap_distribution = precedent_analysis.raw_outcome_distribution or precedent_analysis.overlap_outcome_distribution | default({}) %}
-    {% set overlap_total = overlap_distribution.values()|sum %}
-    <table class="break">
-      <thead>
-        <tr>
-          <th>Outcome</th>
-          <th>Count</th>
-          <th style="width:220px;">Distribution</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for outcome, count in overlap_distribution.items() %}
-        {% set pct = (count / overlap_total * 100) if overlap_total else 0 %}
-        <tr>
-          <td>{{ outcome|upper }}</td>
-          <td class="mono">{{ count }}</td>
-          <td>
-            <div class="bar"><span style="width: {{ "%.0f"|format(pct) }}%;"></span></div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not overlap_distribution %}
-        <tr>
-          <td colspan="3" class="small">No data</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
-
-    <h3>Precedent Evidence (Top Matches)</h3>
-    {% set threshold_pct = ((precedent_analysis.threshold_used|default(0.5)) * 100)|int %}
-    <p class="small" style="margin-bottom:8px;"><em>Similarity threshold: ≥{{ threshold_pct }}%. Matches below threshold are shown as nearest neighbors for analyst context only.</em></p>
-    <div class="match-grid">
-      {% for match in precedent_analysis.sample_cases %}
-      {% set sc = match.similarity_components %}
-      {% set below_threshold = match.similarity_pct < threshold_pct %}
-      <div class="match-card break{% if below_threshold %} below-threshold{% endif %}">
-        <div class="match-card-header">
-          <span class="match-id">{{ match.precedent_id }}</span>
-          <span class="match-sim">{{ match.similarity_pct }}%
-            {% if match.exact_match %}<span class="badge">EXACT</span>{% endif %}
-            {% if below_threshold %}<span class="badge" style="background:#4b5563; color:#fff;">BELOW THRESHOLD</span>{% endif %}
-          </span>
-        </div>
-
-        <div class="match-meta">
-          <span class="meta-chip {{ match.classification | default('neutral') }}">{{ match.outcome_label }}</span>
-          <span class="meta-chip">{{ match.decision_level | default('N/A') }}</span>
-          {% if match.appealed %}<span class="meta-chip contrary">Appealed{% if match.appeal_outcome %} · {{ match.appeal_outcome }}{% endif %}</span>{% endif %}
-        </div>
-
-        <div class="sim-bars">
-          {% set drivers = [
-            ("Rules", sc.rules_overlap|default(0), 30),
-            ("Gates", sc.gate_match|default(0), 25),
-            ("Typology", sc.typology_overlap|default(0), 15),
-            ("Amount", sc.amount_bucket|default(0), 10),
-            ("Corridor", sc.corridor_match|default(0), 8),
-            ("Channel", sc.channel_method|default(0), 7),
-            ("PEP", sc.pep_match|default(0), 5),
-            ("Customer", sc.customer_profile|default(0), 5),
-            ("Geo Risk", sc.geo_risk|default(0), 5)
-          ] %}
-          {% for label, pct, weight in drivers %}
-          <span class="sim-label">{{ label }}</span>
-          <span class="sim-track"><span class="sim-fill {% if pct >= 80 %}high{% elif pct >= 40 %}med{% else %}low{% endif %}" style="width:{{ pct }}%"></span></span>
-          <span class="sim-pct {% if pct == 0 %}zero{% endif %}">{% if pct > 0 %}{{ pct }}%{% else %}—{% endif %}</span>
-          {% endfor %}
-        </div>
-
-        <div class="match-codes">{{ match.reason_codes | join(' · ') }}</div>
-      </div>
-      {% endfor %}
-      {% if not precedent_analysis.sample_cases %}
-      <div class="card small">No precedent matches available</div>
-      {% endif %}
-    </div>
-
-    <h3>Appeal Statistics</h3>
-    <div class="card break">
-      <div class="kv">
-        <div class="label">Total Appealed</div>
-        <div class="value">{{ precedent_analysis.appeal_statistics.total_appealed }}</div>
-        <div class="label">Upheld</div>
-        <div class="value">{{ precedent_analysis.appeal_statistics.upheld }}</div>
-        <div class="label">Overturned</div>
-        <div class="value">{{ precedent_analysis.appeal_statistics.overturned }}</div>
-        <div class="label">Upheld Rate</div>
-        <div class="value">{% if precedent_analysis.appeal_statistics.total_appealed > 0 %}{{ "%.0f"|format(precedent_analysis.appeal_statistics.upheld_rate * 100) }}%{% else %}N/A — No appeals filed{% endif %}</div>
-      </div>
-    </div>
-
-    {% if precedent_analysis.caution_precedents and precedent_analysis.caution_precedents|length > 0 %}
-    <h3>Caution Precedents (Overturned Cases)</h3>
-    <div class="status warn break">
-      <p><strong>{{ precedent_analysis.caution_precedents|length }}</strong> similar cases were later overturned on appeal. Review these precedents carefully:</p>
-      <ul>
-        {% for prec in precedent_analysis.caution_precedents[:5] %}
-        <li>
-          <strong>{{ prec.case_ref }}</strong> — {{ prec.outcome|upper }}
-          {% if prec.appeal_result %}<span class="small">(Appeal: {{ prec.appeal_result }})</span>{% endif %}
-        </li>
-        {% endfor %}
-        {% if precedent_analysis.caution_precedents|length > 5 %}
-        <li class="small">... and {{ precedent_analysis.caution_precedents|length - 5 }} more</li>
-        {% endif %}
-      </ul>
-    </div>
-    {% endif %}
-    {% elif precedent_analysis %}
-    <h2>Precedent Intelligence</h2>
-    <div class="status warn" style="margin-top:12px; padding:12px;">
-      <strong>Precedent Analysis Unavailable</strong><br>
-      <span class="small">{{ precedent_analysis.message or precedent_analysis.error or 'Precedent analysis unavailable.' }}</span>
-    </div>
+    </details>
     {% endif %}
 
     {% if defensibility_check %}

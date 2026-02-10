@@ -1,0 +1,491 @@
+[
+  {
+    "case_id": "pep-legal-fees",
+    "name": "Foreign PEP - Legal Fees (PASS)",
+    "category": "PASS",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 45.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8846,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "40/45"
+  },
+  {
+    "case_id": "high-value-explained",
+    "name": "High Value Wire - Documented (PASS)",
+    "category": "PASS",
+    "confidence_level": "VERY_HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 64.0,
+        "level": "VERY_HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8755,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "64/64"
+  },
+  {
+    "case_id": "cross-border-routine",
+    "name": "Cross-Border - Routine (PASS)",
+    "category": "PASS",
+    "confidence_level": "VERY_HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 154.0,
+        "level": "VERY_HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8564,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "154/154"
+  },
+  {
+    "case_id": "sanctions-hit",
+    "name": "Sanctions Match - OFAC (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 19.0,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8786,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 0.963,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "screening.sanctions_match"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "19/19"
+  },
+  {
+    "case_id": "structuring-pattern",
+    "name": "Structuring - Just Under $10K (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "similarity_quality",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 64.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7586,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 0.963,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.rapid_movement",
+        "flag.structuring",
+        "flag.unusual_for_profile",
+        "txn.just_below_threshold",
+        "txn.multiple_same_day"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "61/64"
+  },
+  {
+    "case_id": "shell-company-layering",
+    "name": "Shell Company - BVI (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "MODERATE",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": "0 decisive precedents",
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 42.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8475,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "MODERATE",
+        "bottleneck": true,
+        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 0.963,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.layering",
+        "flag.shell_company",
+        "txn.cross_border"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "42/42"
+  },
+  {
+    "case_id": "pep-plus-adverse-media",
+    "name": "PEP + Adverse Media (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 74.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7623,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.adverse_media",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "0/74"
+  },
+  {
+    "case_id": "crypto-high-risk-corridor",
+    "name": "Crypto to Wire - UAE (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 24.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7519,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.rapid_movement",
+        "flag.unusual_for_profile",
+        "txn.amount_band",
+        "txn.pattern_matches_profile",
+        "txn.round_amount",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": [
+        "txn.stated_purpose"
+      ]
+    },
+    "non_transferable_count": 2,
+    "governed_alignment": "22/24"
+  },
+  {
+    "case_id": "velocity-spike",
+    "name": "10x Velocity Spike (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 58.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7149,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.rapid_movement",
+        "flag.unusual_for_profile",
+        "txn.amount_band",
+        "txn.pattern_matches_profile",
+        "txn.round_amount",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": [
+        "txn.stated_purpose"
+      ]
+    },
+    "non_transferable_count": 3,
+    "governed_alignment": "56/58"
+  },
+  {
+    "case_id": "beneficial-owner-pep",
+    "name": "Hidden PEP Owner (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "MODERATE",
+    "confidence_bottleneck": "similarity_quality",
+    "confidence_hard_rule": "0 decisive precedents",
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 21.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.6819,
+        "level": "MODERATE",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 0.963,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "21/21"
+  }
+]
