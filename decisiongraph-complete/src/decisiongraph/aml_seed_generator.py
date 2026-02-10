@@ -27,6 +27,11 @@ from .banking_field_registry import (
     validate_field_value,
 )
 from .judgment import JudgmentPayload, AnchorFact
+from .policy_shift_shadows import (
+    POLICY_SHIFTS,
+    SHIFT_EFFECTIVE_DATES,
+    _case_facts_to_seed_like,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -587,6 +592,30 @@ def _generate_seed(
         datetime.now(timezone.utc) - timedelta(days=days_ago)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    # ── Regime tagging (B1.1) ─────────────────────────────────────────
+    seed_like = _case_facts_to_seed_like(facts)
+    decided_date = datetime.fromisoformat(decided_at.replace("Z", "+00:00")).date()
+    affected_shift_ids = [
+        shift["id"] for shift in POLICY_SHIFTS
+        if shift["_affects"](seed_like)
+    ]
+    if affected_shift_ids:
+        all_effective = all(
+            decided_date >= SHIFT_EFFECTIVE_DATES[sid]
+            for sid in affected_shift_ids
+        )
+        policy_regime = {
+            "version": POLICY_VERSION,
+            "shifts_applied": affected_shift_ids,
+            "is_post_shift": all_effective,
+        }
+    else:
+        policy_regime = {
+            "version": POLICY_VERSION,
+            "shifts_applied": [],
+            "is_post_shift": True,
+        }
+
     # v1 backward compat: map banking disposition to pay/deny/escalate
     outcome_code_v1 = _DISPOSITION_TO_V1.get(scenario["outcome"]["disposition"], "escalate")
 
@@ -617,6 +646,7 @@ def _generate_seed(
         signal_codes=list(signal_codes),
         decision_drivers=scenario.get("decision_drivers", []),
         driver_typology=scenario.get("driver_typology", ""),
+        policy_regime=policy_regime,
     )
 
 
@@ -682,7 +712,126 @@ def generate_all_banking_seeds(
             else:
                 seeds.append(_generate_seed(scenario, i, rng, salt))
 
+    # ── Post-shift seeds (B1.1) ─────────────────────────────────────
+    post_shift = _generate_post_shift_seeds(seeds, rng, salt)
+    seeds.extend(post_shift)
+
     return seeds
+
+
+# ---------------------------------------------------------------------------
+# Post-shift seed generation (B1.1)
+# ---------------------------------------------------------------------------
+
+_V1_TO_DISPOSITION_INV = {"pay": "ALLOW", "escalate": "EDD", "deny": "BLOCK"}
+
+
+def _generate_post_shift_seeds(
+    base_seeds: list[JudgmentPayload],
+    rng: random.Random,
+    salt: str = SEED_SALT,
+) -> list[JudgmentPayload]:
+    """Generate ~4-8 post-shift seeds per policy shift.
+
+    Clones affected base seeds, moves decided_at past the shift effective date,
+    and applies the new outcome dictated by the shift.
+    """
+    post_shift_seeds: list[JudgmentPayload] = []
+
+    for shift in POLICY_SHIFTS:
+        shift_id = shift["id"]
+        effective_date = SHIFT_EFFECTIVE_DATES[shift_id]
+        affects_fn = shift["_affects"]
+        outcome_fn = shift["_new_outcome"]
+
+        # Find base seeds affected by this shift
+        affected_bases = []
+        for seed in base_seeds:
+            facts_dict = {af.field_id: af.value for af in seed.anchor_facts}
+            seed_like = _case_facts_to_seed_like(facts_dict)
+            if affects_fn(seed_like):
+                affected_bases.append(seed)
+
+        target_count = min(rng.randint(4, 8), len(affected_bases))
+        if target_count == 0:
+            continue
+        selected = rng.sample(affected_bases, target_count)
+
+        for i, base in enumerate(selected):
+            facts_dict = {af.field_id: af.value for af in base.anchor_facts}
+            seed_like = _case_facts_to_seed_like(facts_dict)
+            old_outcome = {
+                "disposition": _V1_TO_DISPOSITION_INV.get(base.outcome_code, base.outcome_code),
+                "disposition_basis": base.disposition_basis,
+                "reporting": base.reporting_obligation,
+            }
+            new_outcome, new_level = outcome_fn(seed_like, old_outcome)
+            if new_level is None:
+                new_level = base.decision_level
+
+            # decided_at: effective_date + i days
+            post_date = datetime(
+                effective_date.year, effective_date.month, effective_date.day,
+                tzinfo=timezone.utc,
+            ) + timedelta(days=i + 1)
+            new_decided_at = post_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            new_disposition = new_outcome.get(
+                "disposition",
+                old_outcome.get("disposition", "EDD"),
+            )
+            new_outcome_code = _DISPOSITION_TO_V1.get(new_disposition, "escalate")
+
+            new_precedent_id = str(uuid4())
+            case_id = f"SEED-POSTSHIFT-{shift_id}-{i:04d}"
+            case_id_hash = hashlib.sha256(f"{salt}:{case_id}".encode()).hexdigest()
+            facts_str = "|".join(
+                f"{af.field_id}={af.value}" for af in base.anchor_facts
+            )
+            fingerprint_hash = hashlib.sha256(
+                f"{salt}:ps:{facts_str}".encode()
+            ).hexdigest()
+
+            post_seed = JudgmentPayload(
+                precedent_id=new_precedent_id,
+                case_id_hash=case_id_hash,
+                jurisdiction_code=base.jurisdiction_code,
+                fingerprint_hash=fingerprint_hash,
+                fingerprint_schema_id=base.fingerprint_schema_id,
+                exclusion_codes=list(base.exclusion_codes),
+                reason_codes=list(base.reason_codes),
+                reason_code_registry_id=base.reason_code_registry_id,
+                outcome_code=new_outcome_code,
+                certainty=base.certainty,
+                anchor_facts=list(base.anchor_facts),
+                policy_pack_hash=POLICY_PACK_HASH,
+                policy_pack_id=POLICY_PACK_ID,
+                policy_version=shift["policy_version"],
+                decision_level=new_level,
+                decided_at=new_decided_at,
+                decided_by_role=base.decided_by_role,
+                source_type="seed",
+                scenario_code=base.scenario_code,
+                seed_category="aml_post_shift",
+                disposition_basis=new_outcome.get(
+                    "disposition_basis", base.disposition_basis,
+                ),
+                reporting_obligation=new_outcome.get(
+                    "reporting", base.reporting_obligation,
+                ),
+                domain="banking",
+                signal_codes=list(base.signal_codes),
+                decision_drivers=list(base.decision_drivers),
+                driver_typology=base.driver_typology,
+                policy_regime={
+                    "version": shift["policy_version"],
+                    "shifts_applied": [shift_id],
+                    "is_post_shift": True,
+                },
+            )
+            post_shift_seeds.append(post_seed)
+
+    return post_shift_seeds
 
 
 # Backward-compat stubs for imports that reference old class names

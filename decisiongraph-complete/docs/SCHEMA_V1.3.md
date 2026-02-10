@@ -1,3 +1,4 @@
+
 # DecisionGraph Schema v1.3
 
 ## Cell Types
@@ -277,4 +278,151 @@ DEFAULT_ROOT_NAMESPACE = "corp"
     "signature": "sig1|sig2"
   }
 }
+```
+
+---
+
+## Repository Map
+
+### Overview
+
+**Repo:** `Decisiongraph-core-v1.3`
+**URL:** https://github.com/HatimMuqbel/Decisiongraph-core-v1.3
+**Deployed to:** Railway (Dockerfile + railway.json) → decisiongraph.pro
+
+Monorepo containing the DecisionGraph kernel, two domain applications (banking AML + insurance claims), a React dashboard, and deployment config.
+
+### Directory Structure
+
+```
+Decisiongraph-core-v1.3/
+├── decisiongraph-complete/
+│   ├── src/decisiongraph/     — Foundation layer (55 modules): cell, chain, genesis,
+│   │                            namespace, scholar + banking domain engine
+│   ├── service/               — FastAPI service (main.py), report pipeline,
+│   │                            suspicion classifier, templates
+│   ├── service/routers/       — API routes: demo, report/, verify, policy_shifts
+│   ├── service/templates/     — Jinja2 HTML report templates
+│   ├── tests/                 — 55 test files, 1855 tests
+│   ├── validation_reports/    — Generated HTML reports for 10 demo cases
+│   ├── docs/                  — Schema, precedent model, operator guide
+│   └── release/               — CHANGELOG, runbook, SBOM
+├── claimpilot/
+│   ├── src/claimpilot/        — Insurance claims engine (41 modules)
+│   │   ├── models/            — Claim, Policy, Evidence, TriBool, Disposition
+│   │   ├── engine/            — Policy engine, evidence gate, precedent finder
+│   │   ├── calendars/         — Ontario FSRA + US federal holiday calendars
+│   │   ├── precedent/         — Seed-based precedent matching (uses foundation layer)
+│   │   └── packs/             — Policy pack loader + schema
+│   ├── api/                   — Separate FastAPI service
+│   └── tests/                 — Insurance-specific tests
+├── services/
+│   └── dashboard/             — React 18 + TypeScript 5.6 + Vite 6 + Tailwind CSS
+│                                44 components, TanStack Query, Recharts
+├── adapters/
+│   └── fincrime/              — Generic CSV adapter for FinCrime data
+├── packs/                     — Policy packs (fincrime_canada.yaml)
+├── poc/                       — Proof of concept implementations
+├── Dockerfile                 — Production build (Python 3.12-slim, port 8000)
+└── railway.json               — Railway deployment config
+```
+
+### Domain-Specific Code
+
+#### Banking AML (decisiongraph-complete/) — ~40,000 lines
+
+| Category | Modules |
+|----------|---------|
+| Decision Engine | `engine.py`, `escalation_gate.py`, `str_gate.py`, `decision_pack.py`, `rules.py`, `gates.py` |
+| v3 Precedent Engine | `precedent_scorer_v3.py`, `governed_confidence.py`, `domain_registry.py`, `field_comparators.py`, `comparability_gate.py`, `precedent_registry.py`, `precedent_check_report.py` |
+| AML-Specific | `aml_fingerprint.py`, `aml_reason_codes.py`, `aml_seed_generator.py`, `banking_domain.py`, `banking_field_registry.py`, `suspicion_classifier.py` |
+| Reporting | `bank_report.py`, `report_standards.py`, `citations.py`, `taxonomy.py` + service report pipeline (8 modules) |
+| Regulatory | PCMLTFA/FINTRAC indicators, zero-false-escalation guarantee, dual-gate system |
+
+#### Insurance Claims (claimpilot/) — ~15,000 lines
+
+| Category | Modules |
+|----------|---------|
+| Claims Engine | `policy_engine.py`, `context_resolver.py`, `condition_evaluator.py`, `recommendation_builder.py` |
+| Evidence System | `evidence_gate.py` (two-stage: BLOCKING_RECOMMENDATION vs BLOCKING_FINALIZATION) |
+| Precedent Matching | `precedent_finder.py`, `banding_library.py`, `fingerprint_schema.py`, `seed_generator.py`, `lookback_service.py` |
+| Insurance-Specific | `models/conditions.py` (TriBool logic), `models/policy.py`, `models/claim.py`, `calendars/canada_ontario.py` |
+| Regulatory | Ontario FSRA timelines, multi-line coverage (auto, property, health, workers comp, liability, marine, travel) |
+
+#### Shared Foundation Layer (lives in src/decisiongraph/, imported by both)
+
+| Module | Purpose |
+|--------|---------|
+| `cell.py` | Atomic decision unit (hash-linked) |
+| `chain.py` | Append-only chain of custody |
+| `genesis.py` | Genesis block creation |
+| `namespace.py` | Department/domain isolation |
+| `scholar.py` | Bitemporal query resolver |
+| `signing.py` | Cryptographic signing |
+| `wal.py` / `segmented_wal.py` | Write-ahead log |
+| `judgment.py` | Judgment cell creation |
+| `precedent_registry.py` | Shared precedent storage |
+| `canon.py` | Canonical JSON for deterministic hashing |
+
+ClaimPilot imports from this layer:
+
+```python
+from decisiongraph.chain import Chain
+from decisiongraph.cell import NULL_HASH
+from decisiongraph.precedent_registry import PrecedentRegistry
+from decisiongraph.judgment import create_judgment_cell
+```
+
+### Infrastructure
+
+| Component | Banking | Insurance |
+|-----------|---------|-----------|
+| API | FastAPI (`service/main.py`, 161KB) | FastAPI (`api/main.py`, 8KB) |
+| Database | In-memory (no persistent DB) | In-memory |
+| Frontend | React SPA at `services/dashboard/` | None (shares banking dashboard) |
+| Seeds | 10 AML demo cases in `demo_cases.py` | 8 policy lines in YAML seeds (auto, property, health, CGL, E&O, marine, WSIB, travel) |
+| Deployment | Dockerfile + railway.json | Bundled in same container |
+
+### Insurance-Only vs Banking-Only
+
+**Insurance has, banking does not:**
+- Three-valued logic (TriBool: TRUE/FALSE/UNKNOWN for missing facts)
+- Two-stage evidence gates (BLOCKING_RECOMMENDATION vs BLOCKING_FINALIZATION)
+- Holiday calendars (Ontario FSRA, US federal)
+- Multi-line policy coverage resolution (7 insurance lines)
+- RecommendationRecord model (system recommends, human decides)
+
+**Banking has, insurance does not:**
+- Dual-gate system (Gate 1: zero-false-escalation, Gate 2: STR obligation)
+- 6-layer taxonomy (facts, obligations, indicators, typologies, mitigations, suspicion)
+- v3 Precedent Engine (3-layer comparability + 4-dimension governed confidence)
+- Suspicion classifier with sovereignty model
+- Full report pipeline (derive, normalize, render, sanitize, store)
+- React dashboard with 44 components
+- Policy shift shadow tracking
+
+### Kernel Extraction Path
+
+The foundation layer is already shared. Target structure for full separation:
+
+```
+decisiongraph/
+├── kernel/                    — Extract from src/decisiongraph/
+│   ├── cell.py, chain.py, genesis.py, namespace.py, scholar.py
+│   ├── signing.py, wal.py, segmented_wal.py
+│   ├── judgment.py, canon.py, precedent_registry.py
+│   └── domain_registry.py    — Generalize (currently banking-specific)
+├── domains/
+│   ├── banking/               — Current decisiongraph-complete minus kernel
+│   │   ├── engine/
+│   │   ├── precedent/
+│   │   ├── service/
+│   │   └── seeds/
+│   └── insurance/             — Current claimpilot
+│       ├── engine/
+│       ├── precedent/
+│       ├── service/
+│       └── seeds/
+├── dashboard/                 — Current services/dashboard
+└── adapters/                  — Current adapters/
 ```

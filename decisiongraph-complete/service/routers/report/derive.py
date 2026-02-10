@@ -2138,6 +2138,18 @@ def _build_enhanced_precedent_analysis(
             "divergent_drivers": sorted(divergent_drivers),
         }
 
+        # l) B1.7: Regime analysis — propagate temporal partitioning
+        ra = precedent_analysis.get("regime_analysis")
+        if ra:
+            result["regime_analysis"] = ra
+            # Add regime_limited flag to case thumbnails
+            for thumb in result.get("case_thumbnails", []):
+                pid_prefix = thumb.get("precedent_id", "")
+                for sc in sample_cases:
+                    if sc.get("precedent_id") == pid_prefix and sc.get("regime_limited"):
+                        thumb["regime_limited"] = True
+                        break
+
     return result
 
 

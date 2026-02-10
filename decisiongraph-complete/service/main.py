@@ -91,6 +91,11 @@ from decisiongraph.governed_confidence import (
     compute_governed_confidence,
     GovernedConfidenceResult,
 )
+from decisiongraph.policy_shift_shadows import (
+    detect_applicable_shifts,
+    compute_shadow_outcome,
+    SHIFT_EFFECTIVE_DATES,
+)
 
 # Import routers
 from service.routers import demo, report, verify, templates, policy_shifts
@@ -3062,6 +3067,37 @@ def query_similar_precedents_v3(
                     gate_results,
                 ))
 
+        # ── Regime Detection & Temporal Partitioning (B1) ────────────
+        applicable_shifts = detect_applicable_shifts(case_scoring_facts)
+        regime_shift_ids = [s["id"] for s in applicable_shifts]
+
+        # Partition scored_matches into pre-shift and post-shift pools
+        pre_shift_matches = []
+        post_shift_matches = []
+        regime_limited_ids: set = set()  # precedent_ids marked regime-limited
+
+        if regime_shift_ids:
+            from datetime import date as _date_cls
+            for entry in scored_matches:
+                payload = entry[0]
+                pr = getattr(payload, "policy_regime", None)
+                if pr and pr.get("is_post_shift"):
+                    post_shift_matches.append(entry)
+                else:
+                    pre_shift_matches.append(entry)
+                    # Check if shadow outcome differs → regime-limited
+                    prec_anchor_dict = {
+                        af.field_id: af.value for af in payload.anchor_facts
+                    }
+                    for sid in regime_shift_ids:
+                        shadow = compute_shadow_outcome(prec_anchor_dict, sid)
+                        if shadow is not None:
+                            regime_limited_ids.add(payload.precedent_id)
+                            break
+        else:
+            # No shifts detected — all matches are current-regime
+            post_shift_matches = list(scored_matches)
+
         # ── Stratified Sampling ──────────────────────────────────────
         # Build v2-compatible tuples for stratified_precedent_sample
         v2_tuples = [
@@ -3114,9 +3150,17 @@ def query_similar_precedents_v3(
             if sim_scores_for_avg else 0.0
         )
 
+        # B1.5: Use post-shift pool_size when shifts detected so
+        # confidence reflects current-regime experience only
+        effective_pool_size = (
+            len(post_shift_matches)
+            if regime_shift_ids
+            else len(scored_matches)
+        )
+
         governed_result = compute_governed_confidence(
             domain=banking_domain,
-            pool_size=len(scored_matches),
+            pool_size=effective_pool_size,
             avg_similarity=avg_sim,
             decisive_supporting=decisive_supporting,
             decisive_total=decisive_total,
@@ -3228,6 +3272,8 @@ def query_similar_precedents_v3(
                 "non_transferable_reasons": non_transferable_reasons,
                 "matched_drivers": matched_drivers,
                 "mismatched_drivers": mismatched_drivers,
+                # B1.6: regime-limited marking for pre-shift precedents
+                "regime_limited": payload.precedent_id in regime_limited_ids,
                 # v2 template compatibility — the HTML template reads
                 # match.similarity_components for the sim-bar display
                 "similarity_components": {
@@ -3313,6 +3359,67 @@ def query_similar_precedents_v3(
             "confidence_bottleneck": governed_result.bottleneck,
             "confidence_hard_rule": governed_result.hard_rule_applied,
         }
+
+        # ── B1: Regime Analysis ─────────────────────────────────────
+        regime_analysis: dict | None = None
+        if regime_shift_ids:
+            # Count outcome distributions in pre- vs post-shift pools
+            pre_dist = _build_outcome_distribution(
+                [p for p, *_ in pre_shift_matches]
+            ) if pre_shift_matches else {}
+            post_dist = _build_outcome_distribution(
+                [p for p, *_ in post_shift_matches]
+            ) if post_shift_matches else {}
+
+            # Determine magnitude (how many pool members are regime-limited)
+            regime_limited_count = len(regime_limited_ids)
+            total_pool = len(scored_matches)
+            pct_limited = round(
+                regime_limited_count / total_pool * 100, 1
+            ) if total_pool else 0.0
+
+            # Guidance
+            if pct_limited > 50:
+                magnitude = "high"
+                guidance = (
+                    "Majority of precedent pool predates policy change. "
+                    "Confidence reflects post-shift experience only."
+                )
+            elif pct_limited > 20:
+                magnitude = "moderate"
+                guidance = (
+                    "Significant portion of pool predates policy change. "
+                    "Post-shift pool is smaller than total."
+                )
+            else:
+                magnitude = "low"
+                guidance = (
+                    "Most precedents remain valid under current policy."
+                )
+
+            regime_analysis = {
+                "shifts_detected": [
+                    {
+                        "id": s["id"],
+                        "name": s["name"],
+                        "description": s["description"],
+                        "effective_date": s.get("effective_date"),
+                    }
+                    for s in applicable_shifts
+                ],
+                "total_pool": total_pool,
+                "pre_shift_count": len(pre_shift_matches),
+                "post_shift_count": len(post_shift_matches),
+                "regime_limited_count": regime_limited_count,
+                "pct_regime_limited": pct_limited,
+                "magnitude": magnitude,
+                "guidance": guidance,
+                "pre_shift_distribution": pre_dist,
+                "post_shift_distribution": post_dist,
+                "effective_pool_size": effective_pool_size,
+            }
+
+        response["regime_analysis"] = regime_analysis
 
         if len(scored_matches) == 0:
             response["message"] = "No precedents met the similarity threshold"

@@ -249,6 +249,10 @@ class JudgmentPayload:
     # Provenance
     authority_hashes: list[str] = field(default_factory=list)
 
+    # Regime tagging — which policy regime was active when this precedent was decided
+    # None = legacy/untagged seed; populated dict for B1+ seeds
+    policy_regime: dict | None = None
+
     def __post_init__(self) -> None:
         """Validate payload on construction."""
         self._validate()
@@ -467,6 +471,8 @@ class JudgmentPayload:
             result["appeal_level"] = self.appeal_level
         if self.outcome_notable is not None:
             result["outcome_notable"] = self.outcome_notable
+        if self.policy_regime is not None:
+            result["policy_regime"] = self.policy_regime
 
         return result
 
@@ -510,6 +516,7 @@ class JudgmentPayload:
             decision_drivers=data.get("decision_drivers", []),
             driver_typology=data.get("driver_typology", ""),
             authority_hashes=data.get("authority_hashes", []),
+            policy_regime=data.get("policy_regime"),
         )
 
 

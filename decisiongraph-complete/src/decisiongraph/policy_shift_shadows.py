@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 from copy import deepcopy
+from datetime import date as _date
 from typing import Any
 from uuid import uuid4
 
@@ -185,6 +186,64 @@ POLICY_SHIFTS: list[dict[str, Any]] = [
         "_new_outcome": _new_outcome_structuring,
     },
 ]
+
+# ---------------------------------------------------------------------------
+# Parsed effective dates for temporal partitioning (B1)
+# ---------------------------------------------------------------------------
+
+SHIFT_EFFECTIVE_DATES: dict[str, _date] = {
+    shift["id"]: _date(*[int(p) for p in shift["policy_version"].split(".")])
+    for shift in POLICY_SHIFTS
+}
+
+
+# ---------------------------------------------------------------------------
+# Public helpers for regime detection (B1.2 / B1.6)
+# ---------------------------------------------------------------------------
+
+def _case_facts_to_seed_like(case_facts: dict) -> dict:
+    """Convert flat ``{field_id: value}`` dict to seed-like format for _affects_* predicates."""
+    return {
+        "anchor_facts": [
+            {"field_id": k, "value": v}
+            for k, v in case_facts.items()
+        ]
+    }
+
+
+def detect_applicable_shifts(case_facts: dict) -> list[dict]:
+    """Return serializable metadata for each shift that affects *case_facts*."""
+    seed_like = _case_facts_to_seed_like(case_facts)
+    applicable = []
+    for shift in POLICY_SHIFTS:
+        if shift["_affects"](seed_like):
+            meta = {k: v for k, v in shift.items() if not k.startswith("_")}
+            meta["effective_date"] = SHIFT_EFFECTIVE_DATES[shift["id"]].isoformat()
+            applicable.append(meta)
+    applicable.sort(key=lambda s: s["effective_date"])
+    return applicable
+
+
+def compute_shadow_outcome(case_facts: dict, shift_id: str) -> dict | None:
+    """Compute post-shift outcome for *case_facts* under *shift_id*.
+
+    Returns ``{disposition, disposition_basis, reporting}`` or ``None``
+    if the shift does not affect these facts.
+    """
+    seed_like = _case_facts_to_seed_like(case_facts)
+    for shift in POLICY_SHIFTS:
+        if shift["id"] != shift_id:
+            continue
+        if not shift["_affects"](seed_like):
+            return None
+        old_outcome: dict = {}
+        new_outcome, new_level = shift["_new_outcome"](seed_like, old_outcome)
+        result = dict(new_outcome)
+        if new_level:
+            result["decision_level"] = new_level
+        return result
+    return None
+
 
 # ---------------------------------------------------------------------------
 # Change-type classification

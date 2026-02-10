@@ -9,14 +9,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 45.0,
-        "level": "HIGH",
+        "value": 12.0,
+        "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8846,
+        "value": 0.8854,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -45,7 +45,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "40/45"
+    "governed_alignment": "42/47"
   },
   {
     "case_id": "high-value-explained",
@@ -192,21 +192,21 @@
     "name": "Structuring - Just Under $10K (ESCALATE)",
     "category": "ESCALATE",
     "confidence_level": "HIGH",
-    "confidence_bottleneck": "similarity_quality",
+    "confidence_bottleneck": "pool_adequacy",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 64.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
+        "value": 44.0,
+        "level": "HIGH",
+        "bottleneck": true,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7586,
+        "value": 0.7593,
         "level": "HIGH",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
@@ -235,7 +235,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "61/64"
+    "governed_alignment": "62/66"
   },
   {
     "case_id": "shell-company-layering",
@@ -295,14 +295,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 74.0,
-        "level": "VERY_HIGH",
+        "value": 41.0,
+        "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7623,
+        "value": 0.7648,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -332,26 +332,26 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "0/74"
+    "governed_alignment": "0/76"
   },
   {
     "case_id": "crypto-high-risk-corridor",
     "name": "Crypto to Wire - UAE (EDGE)",
     "category": "EDGE",
     "confidence_level": "LOW",
-    "confidence_bottleneck": "outcome_consistency",
-    "confidence_hard_rule": null,
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": "pool below minimum (5)",
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 24.0,
-        "level": "HIGH",
-        "bottleneck": false,
-        "note": ""
+        "value": 3.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
-        "value": 0.7519,
+        "value": 0.747,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -360,7 +360,7 @@
         "name": "outcome_consistency",
         "value": 0.0,
         "level": "LOW",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
@@ -385,7 +385,7 @@
       ]
     },
     "non_transferable_count": 2,
-    "governed_alignment": "22/24"
+    "governed_alignment": "25/27"
   },
   {
     "case_id": "velocity-spike",
@@ -444,22 +444,22 @@
     "case_id": "beneficial-owner-pep",
     "name": "Hidden PEP Owner (EDGE)",
     "category": "EDGE",
-    "confidence_level": "MODERATE",
-    "confidence_bottleneck": "similarity_quality",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "pool_adequacy",
     "confidence_hard_rule": "0 terminal precedents (ALLOW/BLOCK)",
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 21.0,
-        "level": "HIGH",
-        "bottleneck": false,
-        "note": ""
+        "value": 3.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
         "value": 0.6819,
         "level": "MODERATE",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
