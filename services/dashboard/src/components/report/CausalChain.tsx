@@ -88,8 +88,15 @@ export default function CausalChain({ report }: CausalChainProps) {
               </p>
             </div>
             {report.classifier_is_sovereign && (
-              <div className="rounded-lg bg-purple-500/5 border border-purple-500/10 px-2 py-1.5 text-[10px] text-purple-400">
-                Classifier is sovereign — final authority
+              <div className={clsx(
+                'rounded-lg px-2 py-1.5 text-[10px]',
+                report.classification_outcome !== report.governed_disposition
+                  ? 'bg-amber-500/5 border border-amber-500/10 text-amber-400'
+                  : 'bg-purple-500/5 border border-purple-500/10 text-purple-400',
+              )}>
+                {report.classification_outcome !== report.governed_disposition
+                  ? `OVERRIDDEN — Classifier recommends ${report.classification_outcome?.replace(/_/g, ' ')}, governed disposition is ${report.governed_disposition?.replace(/_/g, ' ')}`
+                  : 'Classifier is sovereign — final authority'}
               </div>
             )}
           </div>

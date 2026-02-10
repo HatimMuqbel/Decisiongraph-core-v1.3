@@ -3694,7 +3694,7 @@ async def search_audit(q: str = "", outcome: str = "", scenario: str = ""):
 # MUST be the LAST route registered
 # =============================================================================
 
-_SPA_ROUTES = {"/cases", "/seeds", "/policy-shifts", "/audit", "/registry"}
+_SPA_ROUTES = {"/cases", "/seeds", "/policy-shifts", "/audit", "/registry", "/reports"}
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

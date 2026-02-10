@@ -10,3 +10,4 @@ export { default as VerbatimCitations } from './VerbatimCitations';
 export { default as CausalChain } from './CausalChain';
 export { default as AuditMetadata } from './AuditMetadata';
 export { default as ReportEvidenceTable } from './ReportEvidenceTable';
+export { default as PrecedentIntelligence } from './PrecedentIntelligence';

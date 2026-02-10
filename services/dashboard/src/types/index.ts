@@ -176,6 +176,12 @@ export interface SampleCase {
   code_similarity_pct: number;
   fingerprint_similarity_pct: number;
   similarity_components: SimilarityComponents;
+  // v3 fields
+  field_scores?: Record<string, number>;
+  matched_drivers?: string[];
+  mismatched_drivers?: string[];
+  non_transferable?: boolean;
+  non_transferable_reasons?: string[];
 }
 
 export interface AppealStatistics {
@@ -183,6 +189,53 @@ export interface AppealStatistics {
   upheld: number;
   overturned: number;
   upheld_rate: number;
+}
+
+// ── v3 Precedent Engine Types ─────────────────────────────────────────────
+
+export interface ConfidenceDimension {
+  name: string;
+  level: string;
+  value: number;
+  bottleneck: boolean;
+  note?: string;
+}
+
+export interface EnhancedPrecedent {
+  confidence_level?: string;
+  confidence_dimensions?: ConfidenceDimension[];
+  confidence_bottleneck?: string;
+  confidence_hard_rule?: string;
+  governed_alignment_count?: number;
+  governed_alignment_total?: number;
+  institutional_posture?: string;
+  pattern_summary?: string;
+  case_thumbnails?: SampleCase[];
+  driver_causality?: {
+    shared_drivers: string[];
+    divergent_drivers: string[];
+  };
+  divergence_justification?: {
+    diverges_from_majority: boolean;
+    contrary_count: number;
+    total_decisive: number;
+    contrary_details: Array<{
+      precedent_id: string;
+      outcome: string;
+      similarity_pct: number;
+      distinguishing_factors: string;
+    }>;
+    statement: string;
+  } | null;
+  non_transferable_explanations?: Array<{
+    precedent_id: string;
+    reasons: string[];
+    mismatched_drivers: string[];
+  }>;
+  feature_comparison_matrix?: unknown[];
+  override_statement?: string | null;
+  outcome_distribution?: Record<string, number>;
+  temporal_context?: unknown[];
 }
 
 export interface PrecedentAnalysis {
@@ -214,6 +267,15 @@ export interface PrecedentAnalysis {
   why_low_match?: string[];
   avg_top_k_similarity?: number;
   message?: string;
+  // v3 fields
+  confidence_level?: string;
+  confidence_dimensions?: ConfidenceDimension[];
+  confidence_bottleneck?: string;
+  confidence_hard_rule?: string;
+  confidence_model_version?: string;
+  scoring_version?: string;
+  governed_alignment_count?: number;
+  governed_alignment_total?: number;
 }
 
 export interface CautionPrecedent {
@@ -407,6 +469,9 @@ export interface ReportViewModel {
 
   // Precedent Analysis
   precedent_analysis: PrecedentAnalysis;
+
+  // Enhanced Precedent (v3)
+  enhanced_precedent?: EnhancedPrecedent;
 
   // Suspicion Classification
   classification?: Record<string, unknown>;

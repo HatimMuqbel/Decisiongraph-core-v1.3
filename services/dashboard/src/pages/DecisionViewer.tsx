@@ -9,6 +9,7 @@ import {
   StatsCard,
   dispositionVariant,
 } from '../components';
+import { PrecedentIntelligence } from '../components/report';
 
 export default function DecisionViewer() {
   const { caseId: id } = useParams<{ caseId: string }>();
@@ -182,8 +183,10 @@ export default function DecisionViewer() {
             <EvidenceTable evidence={pack.evaluation_trace.evidence_used} />
           </div>
 
-          {/* Precedent Analysis */}
-          {pack.precedent_analysis?.available && (
+          {/* Precedent Intelligence — uses report JSON when available */}
+          {vm?.precedent_analysis?.available ? (
+            <PrecedentIntelligence report={vm} />
+          ) : pack.precedent_analysis?.available ? (
             <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
                 Precedent Analysis
@@ -192,7 +195,7 @@ export default function DecisionViewer() {
                 <div>
                   <p className="text-xs text-slate-500">Confidence</p>
                   <p className="text-lg font-bold text-slate-100">
-                    {Math.round((pack.precedent_analysis.precedent_confidence ?? 0) * 100)}%
+                    {pack.precedent_analysis.confidence_level ?? `${Math.round((pack.precedent_analysis.precedent_confidence ?? 0) * 100)}%`}
                   </p>
                 </div>
                 <div>
@@ -214,40 +217,8 @@ export default function DecisionViewer() {
                   </p>
                 </div>
               </div>
-
-              {/* Sample cases */}
-              {pack.precedent_analysis.sample_cases?.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="mb-2 text-xs font-semibold text-slate-400">Sample Precedents</h3>
-                  <div className="space-y-2">
-                    {pack.precedent_analysis.sample_cases.slice(0, 5).map((sc, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-2"
-                      >
-                        <Badge variant={dispositionVariant(sc.outcome_normalized)}>
-                          {sc.outcome_label}
-                        </Badge>
-                        <span className="font-mono text-xs text-slate-400">{sc.precedent_id}</span>
-                        <Badge
-                          variant={
-                            sc.classification === 'supporting'
-                              ? 'success'
-                              : sc.classification === 'contrary'
-                              ? 'danger'
-                              : 'neutral'
-                          }
-                        >
-                          {sc.classification}
-                        </Badge>
-                        <span className="text-xs text-slate-500">{sc.similarity_pct}% similar</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
-          )}
+          ) : null}
 
           {/* Rationale */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">

@@ -83,7 +83,14 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
         <div className="rounded-lg bg-slate-900 p-4">
           <h4 className="mb-3 text-xs font-medium text-slate-400">Precedent Metrics</h4>
           <div className="space-y-2 text-xs">
-            <Row label="Alignment" value={`${report.precedent_alignment_pct ?? 0}%`} />
+            <Row
+              label="Alignment"
+              value={
+                report.enhanced_precedent?.governed_alignment_total
+                  ? `${report.enhanced_precedent.governed_alignment_count ?? 0}/${report.enhanced_precedent.governed_alignment_total} (${Math.round(((report.enhanced_precedent.governed_alignment_count ?? 0) / report.enhanced_precedent.governed_alignment_total) * 100)}%)`
+                  : `${report.precedent_alignment_pct ?? 0}%`
+              }
+            />
             <Row label="Match Rate" value={`${report.precedent_match_rate ?? 0}%`} />
             <Row label="Scored Precedents" value={String(report.scored_precedent_count ?? 0)} />
             <Row label="Comparable Pool" value={String(report.total_comparable_pool ?? 0)} />

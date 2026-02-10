@@ -17,6 +17,7 @@ import {
   CausalChain,
   AuditMetadata,
   ReportEvidenceTable,
+  PrecedentIntelligence,
 } from '../components/report';
 import type { ReportTier, ReportViewModel } from '../types';
 import { getMinimumTier } from '../types';
@@ -206,26 +207,41 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
       </div>
 
       {/* 5. One-Click Action Buttons */}
-      <div className="flex flex-wrap gap-3">
-        <button
-          className="flex-1 min-w-[140px] rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2"
-          onClick={() => {/* TODO: wire to judgment submission */}}
-        >
-          <span>✅</span> Approve
-        </button>
-        <button
-          className="flex-1 min-w-[140px] rounded-lg bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-500 transition-colors flex items-center justify-center gap-2"
-          onClick={() => {/* TODO: wire to request info */}}
-        >
-          <span>ℹ️</span> Request Info
-        </button>
-        <button
-          className="flex-1 min-w-[140px] rounded-lg bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
-          onClick={() => {/* TODO: expand to reviewer */}}
-        >
-          <span>🔍</span> Expand to Reviewer View
-        </button>
-      </div>
+      {(() => {
+        const blockApproval = !!(
+          report.decision_integrity_alert ||
+          report.investigation_state === 'COMPLIANCE REVIEW REQUIRED' ||
+          (report.precedent_analysis?.contrary_precedents ?? 0) > (report.precedent_analysis?.supporting_precedents ?? 0)
+        );
+        return (
+          <div className="flex flex-wrap gap-3">
+            {blockApproval ? (
+              <div className="flex-1 min-w-[140px] rounded-lg bg-red-600/20 border border-red-500/30 px-5 py-3 text-sm font-semibold text-red-400 flex items-center justify-center gap-2">
+                <span>⚠</span> Compliance Review Required
+              </div>
+            ) : (
+              <button
+                className="flex-1 min-w-[140px] rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2"
+                onClick={() => {/* TODO: wire to judgment submission */}}
+              >
+                <span>✅</span> Approve
+              </button>
+            )}
+            <button
+              className="flex-1 min-w-[140px] rounded-lg bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-500 transition-colors flex items-center justify-center gap-2"
+              onClick={() => {/* TODO: wire to request info */}}
+            >
+              <span>ℹ️</span> Request Info
+            </button>
+            <button
+              className="flex-1 min-w-[140px] rounded-lg bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+              onClick={() => {/* TODO: expand to reviewer */}}
+            >
+              <span>🔍</span> Expand to Reviewer View
+            </button>
+          </div>
+        );
+      })()}
 
       {/* 5. Governance Summary Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -246,9 +262,14 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         <StatsCard
           label="Defensibility"
           value={report.defensibility_check?.status ?? 'N/A'}
-          sub={report.defensibility_check?.message?.slice(0, 30)}
+          sub={report.defensibility_check?.message}
         />
       </div>
+
+      {/* 6. Precedent Intelligence Panel */}
+      {report.precedent_analysis?.available && (
+        <PrecedentIntelligence report={report} />
+      )}
     </div>
   );
 }
@@ -371,8 +392,15 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
         </div>
       )}
 
-      {/* Precedent Analysis — always shown (auditors need to see this section) */}
-      <PrecedentSection report={report} />
+      {/* Precedent Technical Detail — collapsible stats for auditors */}
+      <CollapsibleSection
+        id="precedent-detail"
+        title="Precedent Technical Detail"
+        expanded={expandedSections.has('precedent-detail')}
+        onToggle={toggle}
+      >
+        <PrecedentTechnicalDetail report={report} />
+      </CollapsibleSection>
     </div>
   );
 }
@@ -555,7 +583,7 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
   );
 }
 
-function PrecedentSection({ report }: { report: ReportViewModel }) {
+function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
   const pa = report.precedent_analysis;
 
   const totalPrecedents = (pa?.supporting_precedents ?? 0) + (pa?.contrary_precedents ?? 0) + (pa?.neutral_precedents ?? 0);
