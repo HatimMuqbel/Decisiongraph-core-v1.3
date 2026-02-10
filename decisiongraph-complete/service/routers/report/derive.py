@@ -440,6 +440,54 @@ def derive_regulatory_model(normalized: dict) -> dict:
                     "officer as part of the STR determination."
                 )
 
+    # ── Full outcome-attribution enrichment ──────────────────────────────
+    # When a consistency alert is active, replace the detail text with a
+    # structured attribution that names EVERY component's outcome so the
+    # compliance officer sees the full picture at a glance.
+    if _final_consistency_alert and _pa.get("available"):
+        _clf_label = classification.outcome.replace("_", " ")
+        _eng_label = engine_disposition.replace("_", " ")
+        _gov_label = governed_disposition.replace("_", " ")
+
+        # Dominant precedent outcome from scored distribution
+        _outcome_dist = (
+            _pa.get("match_outcome_distribution")
+            or _pa.get("outcome_distribution")
+            or {}
+        )
+        _dominant_label = ""
+        if _outcome_dist:
+            _dom_key = max(_outcome_dist, key=_outcome_dist.get)
+            if _outcome_dist.get(_dom_key, 0) > 0:
+                _dominant_label = str(_dom_key).upper().replace("_", " ")
+
+        # Precedent breakdown line
+        if _contrary > 0 and _dominant_label:
+            _prec_line = (
+                f"{_contrary} contrary precedents ({_dominant_label}) "
+                f"vs {_supporting} supporting."
+            )
+        elif _contrary > 0 or _supporting > 0:
+            _prec_line = (
+                f"{_contrary} contrary vs {_supporting} supporting precedents."
+            )
+        elif _total_scored > 0 and _dominant_label:
+            _prec_line = (
+                f"All {_total_scored} comparable precedents resulted in "
+                f"{_dominant_label}."
+            )
+        else:
+            _prec_line = ""
+
+        _final_consistency_detail = (
+            f"Classifier recommends {_clf_label}. "
+            f"Engine disposition: {_eng_label}. "
+            f"Governed disposition: {_gov_label}. "
+            + (_prec_line + " " if _prec_line else "")
+            + "Precedent majority diverges from current disposition. "
+            "Compliance officer review required."
+        )
+
     return {
         # Classification
         "classification": classification.to_dict(),

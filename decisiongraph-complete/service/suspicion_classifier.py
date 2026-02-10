@@ -444,16 +444,16 @@ def classify(
         if outcome == "STR_REQUIRED" and contrary > supporting and (supporting + contrary) > 0:
             precedent_alert = True
             precedent_detail = (
-                f"Engine outcome is STR_REQUIRED, but precedent majority "
+                f"Classifier recommends STR REQUIRED, but precedent majority "
                 f"({contrary} contrary vs {supporting} supporting) diverges. "
-                "Consistency review advised — this is a governance signal, not an override."
+                "Compliance officer review required."
             )
         elif outcome == "NO_REPORT" and supporting > 0 and contrary > supporting:
             precedent_alert = True
             precedent_detail = (
-                f"Engine outcome is NO_REPORT, but {contrary} historical cases "
-                "with similar profiles resulted in escalation. "
-                "Consider additional review for consistency."
+                f"Classifier recommends NO REPORT, but {contrary} of "
+                f"{supporting + contrary} comparable precedents resulted in "
+                "a different outcome. Consider additional review for consistency."
             )
 
     return ClassificationResult(
