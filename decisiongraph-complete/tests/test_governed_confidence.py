@@ -286,7 +286,7 @@ class TestHardRules:
             case_facts=full_case_facts,
         )
         assert result.level <= ConfidenceLevel.MODERATE
-        assert result.hard_rule_applied == "0 decisive precedents"
+        assert result.hard_rule_applied == "0 terminal precedents (ALLOW/BLOCK)"
 
     def test_hard_rule_pool_below_minimum(self, registry, full_case_facts):
         """Pool < 5 → capped at LOW."""

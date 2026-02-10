@@ -104,7 +104,7 @@ export default function PrecedentIntelligence({ report }: Props) {
           </h4>
           <div className="space-y-2">
             {visibleCases.map((sc, i) => (
-              <PrecedentCaseCard key={i} sc={sc} defaultOpen={i === 0} />
+              <PrecedentCaseCard key={i} sc={sc} defaultOpen={i === 0} caseDisposition={report.governed_disposition} />
             ))}
           </div>
           {cases.length > 5 && (

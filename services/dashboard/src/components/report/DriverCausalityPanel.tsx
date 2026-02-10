@@ -3,8 +3,38 @@ interface Props {
   divergentDrivers: string[];
 }
 
+const DRIVER_LABELS: Record<string, string> = {
+  'customer.type': 'Customer type',
+  'customer.relationship_length': 'Relationship length',
+  'customer.pep': 'Politically Exposed Person status',
+  'customer.high_risk_jurisdiction': 'High-risk jurisdiction',
+  'customer.high_risk_industry': 'High-risk industry',
+  'customer.cash_intensive': 'Cash-intensive business',
+  'txn.type': 'Transaction type',
+  'txn.amount_band': 'Transaction amount range',
+  'txn.cross_border': 'Cross-border transaction',
+  'txn.destination_country_risk': 'Destination country risk',
+  'txn.round_amount': 'Round amount indicator',
+  'txn.just_below_threshold': 'Below threshold indicator',
+  'txn.multiple_same_day': 'Same-day multiples',
+  'txn.pattern_matches_profile': 'Profile consistency',
+  'txn.source_of_funds_clear': 'Source of funds clarity',
+  'txn.stated_purpose': 'Stated purpose',
+  'flag.structuring': 'Structuring indicators',
+  'flag.rapid_movement': 'Rapid fund movement',
+  'flag.layering': 'Layering indicators',
+  'flag.unusual_for_profile': 'Activity unusual for profile',
+  'flag.third_party': 'Third-party payment',
+  'flag.shell_company': 'Shell company indicators',
+  'screening.sanctions_match': 'Sanctions screening match',
+  'screening.pep_match': 'PEP screening match',
+  'screening.adverse_media': 'Adverse media indicator',
+  'prior.sars_filed': 'Prior SARs filed',
+  'prior.account_closures': 'Account closures',
+};
+
 function formatLabel(d: string): string {
-  return d.replace(/^(flag|txn|customer|screening)[\s.]/, '').replace(/[._]/g, ' ');
+  return DRIVER_LABELS[d] ?? d.replace(/^(flag|txn|customer|screening)[\s.]/, '').replace(/[._]/g, ' ');
 }
 
 export default function DriverCausalityPanel({ sharedDrivers, divergentDrivers }: Props) {

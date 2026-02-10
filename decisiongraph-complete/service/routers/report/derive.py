@@ -1638,14 +1638,16 @@ def _detect_precedent_deviation(
             )
         return alert
 
-    if not is_escalation and supporting > contrary:
+    if not is_escalation and contrary > supporting:
+        # Contrary > supporting with non-escalation governed disposition:
+        # precedent majority disagrees with the governed outcome.
         alert = {
             "type": "UNDER_ESCALATION_RISK",
             "severity": "INFO",
             "message": (
                 f"Deviation vs GOVERNED outcome ({governed_disposition}): "
-                f"{supporting} of {total} scored comparable cases "
-                "resulted in escalation, but governed outcome is non-escalation. "
+                f"{contrary} of {total} scored comparable cases "
+                f"resulted in a different outcome than {governed_disposition}. "
                 "Consistency review may be warranted."
             ),
             "supporting": supporting,
@@ -1885,6 +1887,7 @@ def _build_enhanced_precedent_analysis(
             "similarity_pct": sim_pct,
             "outcome_label": outcome_label,
             "classification": classification,
+            "disposition": match.get("disposition", "UNKNOWN"),
             "description": description,
             "key_matches": key_matches[:3],
             "key_differences": key_diffs[:3],
@@ -2022,7 +2025,7 @@ def _build_enhanced_precedent_analysis(
             "statement": (
                 f"Decision diverges from precedent majority. "
                 f"{len(contrary_cases)} contrary precedent(s) identified "
-                f"out of {total_decisive} decisive comparisons. "
+                f"out of {total_decisive} terminal comparisons. "
                 f"Override justified by classifier sovereignty and "
                 f"current case-specific Tier 1 indicators."
             ),
@@ -2139,26 +2142,26 @@ def _build_pattern_summary(
     if total_decisive > 0:
         if supporting == total_decisive:
             parts.append(
-                f"Of {total_all} comparable cases, all {total_decisive} decisive "
+                f"Of {total_all} comparable cases, all {total_decisive} terminal "
                 f"precedents resulted in {governed_label}."
             )
         elif supporting > contrary:
             support_pct = int(supporting / total_decisive * 100)
             parts.append(
                 f"Of {total_all} comparable cases, {support_pct}% "
-                f"({supporting} of {total_decisive} decisive) resulted in "
+                f"({supporting} of {total_decisive} terminal) resulted in "
                 f"{governed_label}."
             )
         elif contrary > supporting:
             contrary_pct = int(contrary / total_decisive * 100)
             parts.append(
                 f"Of {total_all} comparable cases, {contrary_pct}% "
-                f"({contrary} of {total_decisive} decisive) resulted in a "
+                f"({contrary} of {total_decisive} terminal) resulted in a "
                 f"different outcome than the current {governed_label} determination."
             )
         else:
             parts.append(
-                f"Of {total_all} comparable cases, decisive precedents are "
+                f"Of {total_all} comparable cases, terminal precedents are "
                 f"evenly split ({supporting} supporting, {contrary} contrary)."
             )
 
@@ -2266,25 +2269,25 @@ def _build_institutional_posture(
         posture = (
             f"Institutional precedent strongly supports {governed_label} "
             f"as the appropriate disposition for this case profile. "
-            f"All {total_decisive} comparable decisive precedents resulted "
+            f"All {total_decisive} comparable terminal precedents resulted "
             f"in the same outcome."
         )
     elif support_pct >= 80:
         posture = (
             f"Institutional precedent supports {governed_label}. "
-            f"{support_pct}% of comparable decisive precedents "
+            f"{support_pct}% of comparable terminal precedents "
             f"({supporting} of {total_decisive}) resulted in the same outcome."
         )
     elif support_pct >= 50:
         posture = (
             f"Institutional precedent is mixed but leans toward {governed_label}. "
-            f"{support_pct}% of comparable decisive precedents support the current disposition."
+            f"{support_pct}% of comparable terminal precedents support the current disposition."
         )
     else:
         contrary_pct = 100 - support_pct
         posture = (
             f"Institutional precedent diverges from {governed_label}. "
-            f"{contrary_pct}% of comparable decisive precedents resulted "
+            f"{contrary_pct}% of comparable terminal precedents resulted "
             f"in a different outcome. Senior compliance review is recommended."
         )
 

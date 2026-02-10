@@ -265,7 +265,7 @@ def compute_governed_confidence(
 
     # Hard rule 4: 0 decisive precedents → capped at MODERATE
     elif decisive_total == 0:
-        hard_rule = "0 decisive precedents"
+        hard_rule = "0 terminal precedents (ALLOW/BLOCK)"
         final_level = min(
             ConfidenceLevel.MODERATE,
             min(d.level for d in dimensions),

@@ -56,7 +56,15 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
 
       <div className="mt-4 space-y-3">
         {dimensions.map((dim) => {
-          const cfg = LEVEL_CONFIG[dim.level] ?? LEVEL_CONFIG.NONE;
+          // Fix 2: outcome_consistency with "No terminal precedents" note → display N/A
+          const isNaDimension =
+            dim.name === 'outcome_consistency' &&
+            dim.note &&
+            dim.note.toLowerCase().includes('no terminal precedent');
+          const displayLevel = isNaDimension ? 'N/A' : dim.level.replace('_', ' ');
+          const cfg = isNaDimension
+            ? { color: 'bg-slate-600', width: '0%' }
+            : (LEVEL_CONFIG[dim.level] ?? LEVEL_CONFIG.NONE);
           const isBottleneck = dim.bottleneck;
           const label = DIM_LABELS[dim.name] ?? dim.name;
 
@@ -72,9 +80,9 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
                 </span>
                 <span className={clsx(
                   'font-medium',
-                  LEVEL_TEXT_COLOR[dim.level] ?? 'text-slate-500',
+                  isNaDimension ? 'text-slate-500' : (LEVEL_TEXT_COLOR[dim.level] ?? 'text-slate-500'),
                 )}>
-                  {dim.level.replace('_', ' ')}
+                  {displayLevel}
                 </span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">

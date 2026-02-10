@@ -308,7 +308,7 @@
           <tr>
             <td>Precedent Alignment</td>
             <td class="mono">{{ precedent_alignment_pct | default(0) }}%</td>
-            <td class="small">supporting_decisive / count(decisive_precedents) within same basis</td>
+            <td class="small">supporting_terminal / count(terminal_precedents) within same basis</td>
           </tr>
           <tr>
             <td>Precedent Match Rate</td>
@@ -670,7 +670,8 @@
       <summary>
         <span class="mono" style="font-weight:600; min-width:80px;">{{ thumb.precedent_id }}</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">{{ thumb.similarity_pct }}%</span>
-        <span class="pill {% if thumb.classification == 'supporting' %}pass{% elif thumb.classification == 'contrary' %}trig{% else %}req{% endif %}" style="margin-left:auto;">{{ thumb.outcome_label }}</span>
+        {% set is_aligned = thumb.classification == 'supporting' and thumb.disposition not in ['ALLOW', 'BLOCK'] %}
+        <span class="pill {% if thumb.classification == 'supporting' and not is_aligned %}pass{% elif is_aligned %}req{% elif thumb.classification == 'contrary' %}trig{% else %}req{% endif %}" style="margin-left:auto;{% if is_aligned %} background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);{% endif %}">{{ 'ALIGNED' if is_aligned else thumb.outcome_label }}</span>
       </summary>
       <div class="pi-case-body">
         <p style="margin:0 0 6px 0;">{{ thumb.description }}</p>
