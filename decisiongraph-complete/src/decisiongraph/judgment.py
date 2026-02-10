@@ -241,6 +241,11 @@ class JudgmentPayload:
     # Banking-specific: signal_codes are the banking equivalent of exclusion_codes
     signal_codes: list[str] = field(default_factory=list)
 
+    # v3 driver tracking — which fields drove the precedent's outcome
+    # Empty list = no driver data available (backward compatible)
+    decision_drivers: list[str] = field(default_factory=list)
+    driver_typology: str = ""
+
     # Provenance
     authority_hashes: list[str] = field(default_factory=list)
 
@@ -448,6 +453,8 @@ class JudgmentPayload:
             "reporting_obligation": self.reporting_obligation,
             "domain": self.domain,
             "signal_codes": self.signal_codes,
+            "decision_drivers": self.decision_drivers,
+            "driver_typology": self.driver_typology,
             "authority_hashes": self.authority_hashes,
         }
 
@@ -500,6 +507,8 @@ class JudgmentPayload:
             reporting_obligation=data.get("reporting_obligation", "UNKNOWN"),
             domain=data.get("domain", "insurance"),
             signal_codes=data.get("signal_codes", []),
+            decision_drivers=data.get("decision_drivers", []),
+            driver_typology=data.get("driver_typology", ""),
             authority_hashes=data.get("authority_hashes", []),
         )
 

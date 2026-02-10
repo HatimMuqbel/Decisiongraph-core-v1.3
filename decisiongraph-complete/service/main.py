@@ -73,6 +73,25 @@ from decisiongraph.judgment import (
     normalize_seed_category,
 )
 
+# v3 Precedent Engine imports (conditional usage based on DG_PRECEDENT_VERSION)
+from decisiongraph.banking_domain import create_banking_domain_registry
+from decisiongraph.comparability_gate import (
+    evaluate_gates,
+    extract_gate_facts_from_case,
+    extract_gate_facts_from_precedent,
+)
+from decisiongraph.precedent_scorer_v3 import (
+    SimilarityResult,
+    score_similarity,
+    classify_match_v3,
+    detect_primary_typology,
+    anchor_facts_to_dict,
+)
+from decisiongraph.governed_confidence import (
+    compute_governed_confidence,
+    GovernedConfidenceResult,
+)
+
 # Import routers
 from service.routers import demo, report, verify, templates, policy_shifts
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
@@ -102,6 +121,7 @@ DG_PRECEDENT_THRESHOLD_PROD = float(os.getenv("DG_PRECEDENT_THRESHOLD_PROD", "0.
 DG_PRECEDENT_THRESHOLD_DEMO = float(os.getenv("DG_PRECEDENT_THRESHOLD_DEMO", "0.50"))
 DG_PRECEDENT_MIN_SCORE = float(os.getenv("DG_PRECEDENT_MIN_SCORE", "0.6"))
 DG_PRECEDENT_SALT = os.getenv("DG_PRECEDENT_SALT", "decisiongraph-banking-seed-v1")
+DG_PRECEDENT_VERSION = os.getenv("DG_PRECEDENT_VERSION", "v2")
 
 # Get git commit: prefer env var (set at build time), fallback to git command
 DG_ENGINE_COMMIT = os.getenv("DG_ENGINE_COMMIT")
@@ -2039,6 +2059,17 @@ def map_aml_outcome_label_v2(canonical: CanonicalOutcome) -> str:
     return d
 
 
+# Module-level cached v3 domain registry (loaded once)
+_BANKING_DOMAIN = None
+
+def _get_banking_domain():
+    """Lazy-load and cache the banking domain registry for v3 scoring."""
+    global _BANKING_DOMAIN
+    if _BANKING_DOMAIN is None:
+        _BANKING_DOMAIN = create_banking_domain_registry()
+    return _BANKING_DOMAIN
+
+
 AML_SIMILARITY_WEIGHTS_V1 = {
     "rules_overlap": 30,
     "gate_match": 25,
@@ -2403,6 +2434,17 @@ def query_similar_precedents(
     - supporting/contrary/neutral counts
     - caution_precedents: Cases overturned on appeal
     """
+    # v3 dispatcher: route to v3 engine when feature flag is set
+    if DG_PRECEDENT_VERSION == "v3":
+        return query_similar_precedents_v3(
+            reason_codes=reason_codes,
+            proposed_outcome=proposed_outcome,
+            namespace_prefix=namespace_prefix,
+            domain=domain,
+            case_facts=case_facts,
+            jurisdiction=jurisdiction,
+        )
+
     if not PRECEDENTS_LOADED or not PRECEDENT_REGISTRY:
         return {
             "available": False,
@@ -2828,6 +2870,449 @@ def query_similar_precedents(
         }
 
 # =============================================================================
+# v3 Precedent Scoring (Three-Layer Comparability Model)
+# =============================================================================
+
+def query_similar_precedents_v3(
+    reason_codes: list,
+    proposed_outcome: str,
+    namespace_prefix: str = "banking.aml",
+    domain: Optional[str] = None,
+    case_facts: Optional[dict] = None,
+    jurisdiction: Optional[str] = None,
+) -> dict:
+    """Query precedent registry using v3 Three-Layer Comparability Model.
+
+    Layer 1: Comparability Gates (equivalence-class filtering)
+    Layer 2: Causal Factor Alignment (driver-aware field-by-field scoring)
+    Layer 3: Governed Confidence (4-dimension model — Phase 4)
+
+    Returns a superset of the v2 dict with additional v3 keys.
+    """
+    if not PRECEDENTS_LOADED or not PRECEDENT_REGISTRY:
+        return {
+            "available": False,
+            "message": "Precedent system not loaded",
+        }
+
+    try:
+        resolved_prefix = resolve_precedent_namespace(domain, namespace_prefix)
+        if not resolved_prefix:
+            return {
+                "available": False,
+                "message": "Precedent system not enabled for this domain",
+            }
+
+        # Load v3 domain registry
+        banking_domain = _get_banking_domain()
+
+        # Normalize proposed outcome
+        proposed_normalized = normalize_outcome(proposed_outcome)
+        proposed_canonical = normalize_outcome_v2(
+            proposed_outcome, reason_codes=reason_codes, case_facts=case_facts,
+        )
+        case_basis = proposed_canonical.disposition_basis
+
+        mode = "demo" if DG_MODE == "demo" else "prod"
+        threshold_used = (
+            DG_PRECEDENT_THRESHOLD_DEMO if mode == "demo"
+            else DG_PRECEDENT_THRESHOLD_PROD
+        )
+
+        # Prepare case facts for gate and scoring evaluation
+        schema_id = _select_schema_id_for_codes(reason_codes)
+        case_banded = _compute_case_banded_facts(case_facts or {}, schema_id)
+        case_reason_codes = list(set(reason_codes))
+
+        # Build case gate facts
+        case_gate_facts = extract_gate_facts_from_case(
+            case_facts or {},
+            jurisdiction=jurisdiction,
+            disposition_basis=case_basis,
+        )
+
+        # Build case scoring facts from case_facts + banded facts
+        case_scoring_facts: dict = {}
+        if case_facts:
+            case_scoring_facts.update(case_facts)
+        case_scoring_facts.update(case_banded)
+
+        # Detect primary typology for similarity floor override
+        typology = detect_primary_typology(case_reason_codes, case_facts)
+        similarity_floor = (
+            banking_domain.similarity_floor_overrides.get(typology, banking_domain.similarity_floor)
+            if typology
+            else banking_domain.similarity_floor
+        )
+
+        # Find matching precedents (Tier 1 — overlapping reason codes)
+        precedent_matches = PRECEDENT_REGISTRY.find_by_exclusion_codes(
+            codes=reason_codes,
+            namespace_prefix=resolved_prefix,
+            min_overlap=1,
+        )
+
+        stats = PRECEDENT_REGISTRY.get_statistics_by_codes(
+            exclusion_codes=reason_codes,
+            namespace_prefix=resolved_prefix,
+            min_overlap=1,
+        )
+
+        # ── Layer 1: Comparability Gate Filtering ─────────────────────
+        gate_passed_matches = []
+        gate_excluded_count = 0
+        for payload, overlap in precedent_matches:
+            # Schema filter (same as v2)
+            if payload.fingerprint_schema_id != schema_id:
+                continue
+
+            # Build precedent gate facts
+            prec_anchor_dict = {
+                af.field_id: af.value for af in payload.anchor_facts
+            }
+            prec_gate_facts = extract_gate_facts_from_precedent(
+                prec_anchor_dict,
+                jurisdiction_code=payload.jurisdiction_code,
+                disposition_basis=getattr(payload, "disposition_basis", "UNKNOWN"),
+            )
+
+            # Evaluate all comparability gates
+            gates_ok, gate_results = evaluate_gates(
+                banking_domain, case_gate_facts, prec_gate_facts,
+            )
+
+            if gates_ok:
+                gate_passed_matches.append((payload, overlap, gate_results))
+            else:
+                gate_excluded_count += 1
+
+        # ── Layer 2: Field-by-Field Scoring ──────────────────────────
+        scored_matches = []
+        non_transferable_count = 0
+
+        for payload, overlap, gate_results in gate_passed_matches:
+            # Build precedent scoring facts from anchor_facts
+            prec_scoring_facts = anchor_facts_to_dict(payload.anchor_facts)
+
+            # Get decision drivers from payload (v3 field)
+            precedent_drivers = getattr(payload, "decision_drivers", []) or []
+
+            # Score similarity using v3 field-by-field engine
+            sim_result = score_similarity(
+                banking_domain,
+                case_scoring_facts,
+                prec_scoring_facts,
+                precedent_drivers=precedent_drivers,
+            )
+
+            # Apply similarity floor
+            if sim_result.score < similarity_floor:
+                continue
+
+            # v2 canonical outcome for classification
+            prec_canonical = normalize_outcome_v2(
+                payload.outcome_code,
+                reason_codes=payload.reason_codes,
+            )
+            stored_basis = getattr(payload, "disposition_basis", "UNKNOWN")
+            stored_reporting = getattr(payload, "reporting_obligation", "UNKNOWN")
+            if stored_basis != "UNKNOWN" or stored_reporting != "UNKNOWN":
+                prec_canonical = CanonicalOutcome(
+                    disposition=prec_canonical.disposition,
+                    disposition_basis=(
+                        stored_basis if stored_basis != "UNKNOWN"
+                        else prec_canonical.disposition_basis
+                    ),
+                    reporting=(
+                        stored_reporting if stored_reporting != "UNKNOWN"
+                        else prec_canonical.reporting
+                    ),
+                )
+
+            # v3 match classification (INV-011: non-transferable cannot be supporting)
+            classification = classify_match_v3(
+                case_disposition=proposed_canonical.disposition,
+                precedent_disposition=prec_canonical.disposition,
+                case_basis=case_basis,
+                precedent_basis=prec_canonical.disposition_basis,
+                non_transferable=sim_result.non_transferable,
+            )
+
+            if sim_result.non_transferable:
+                non_transferable_count += 1
+
+            # Rank-ordering factors (same as v2)
+            decision_weight = _decision_level_weight(payload.decision_level)
+            recency_weight = _recency_weight(payload.decided_at)
+            combined = sim_result.score * decision_weight * recency_weight
+
+            # Only include matches above threshold
+            if sim_result.score >= threshold_used:
+                scored_matches.append((
+                    payload,
+                    overlap,
+                    combined,
+                    sim_result,
+                    decision_weight,
+                    recency_weight,
+                    prec_canonical,
+                    classification,
+                    gate_results,
+                ))
+
+        # ── Stratified Sampling ──────────────────────────────────────
+        # Build v2-compatible tuples for stratified_precedent_sample
+        v2_tuples = [
+            (payload, overlap, classification, combined, {})
+            for payload, overlap, combined, sim_result, dw, rw, co, classification, gr
+            in scored_matches
+        ]
+
+        # Sort by score descending
+        v2_tuples.sort(key=lambda x: x[3], reverse=True)
+
+        # Apply stratified sampling limits
+        sampled_supporting = []
+        sampled_contrary = []
+        sampled_neutral = []
+        for t in v2_tuples:
+            cls = t[2]
+            if cls == "supporting" and len(sampled_supporting) < 35:
+                sampled_supporting.append(t)
+            elif cls == "contrary" and len(sampled_contrary) < 10:
+                sampled_contrary.append(t)
+            elif cls == "neutral" and len(sampled_neutral) < 15:
+                sampled_neutral.append(t)
+
+        sampled = (sampled_supporting + sampled_contrary + sampled_neutral)[:50]
+        counts = {
+            "supporting": len(sampled_supporting),
+            "contrary": len(sampled_contrary),
+            "neutral": len(sampled_neutral),
+        }
+
+        # ── Confidence: Governed 4-Dimension Model (v3) ────────────
+        decisive_supporting = 0
+        decisive_total = 0
+        sim_scores_for_avg = []
+        for payload, _ov, _sc, sim_r, _dw, _rw, prec_co, _cls, _gr in scored_matches:
+            sim_scores_for_avg.append(sim_r.score)
+            prec_disp = prec_co.disposition
+            prec_basis = prec_co.disposition_basis
+            if prec_disp not in ("ALLOW", "BLOCK"):
+                continue
+            if case_basis != "UNKNOWN" and prec_basis != "UNKNOWN" and case_basis != prec_basis:
+                continue
+            decisive_total += 1
+            if prec_disp == proposed_canonical.disposition:
+                decisive_supporting += 1
+
+        avg_sim = (
+            sum(sim_scores_for_avg) / len(sim_scores_for_avg)
+            if sim_scores_for_avg else 0.0
+        )
+
+        governed_result = compute_governed_confidence(
+            domain=banking_domain,
+            pool_size=len(scored_matches),
+            avg_similarity=avg_sim,
+            decisive_supporting=decisive_supporting,
+            decisive_total=decisive_total,
+            case_facts=case_scoring_facts,
+            non_transferable_count=non_transferable_count,
+        )
+
+        # Map v3 level to numeric for backward compat
+        precedent_confidence = governed_result.numeric_value
+
+        # Governed alignment
+        governed_alignment_count = sum(
+            1 for _, _, _, _, _, _, co, _, _ in scored_matches
+            if co.disposition == proposed_canonical.disposition
+        )
+
+        # ── Top-k similarity ─────────────────────────────────────────
+        sorted_scores = sorted(
+            (sim.score for _, _, _, sim, _, _, _, _, _ in scored_matches),
+            reverse=True,
+        )
+        top_scores = sorted_scores[:5]
+        avg_top_k_similarity = (
+            round(sum(top_scores) / len(top_scores), 2) if top_scores else 0.0
+        )
+
+        # ── Caution precedents ───────────────────────────────────────
+        caution_precedents = []
+        for payload, overlap, classification, score, _cs in sampled:
+            if payload.appealed and payload.appeal_outcome == "overturned":
+                prec_co = normalize_outcome_v2(
+                    payload.outcome_code, reason_codes=payload.reason_codes,
+                )
+                caution_precedents.append({
+                    "precedent_id": payload.precedent_id[:8] + "...",
+                    "outcome": payload.outcome_code,
+                    "outcome_normalized": prec_co.disposition,
+                    "disposition": prec_co.disposition,
+                    "disposition_basis": prec_co.disposition_basis,
+                    "reporting": prec_co.reporting,
+                    "classification": classification,
+                    "appeal_outcome": payload.appeal_outcome,
+                    "reason_codes": payload.reason_codes[:3],
+                })
+
+        # ── Sample cases with v3 field scores ────────────────────────
+        sample_cases = []
+        exact_match_count = 0
+        # Build a lookup from scored_matches for sim_result data
+        sim_lookup = {
+            id(payload): (sim_result, gate_results)
+            for payload, _, _, sim_result, _, _, _, _, gate_results in scored_matches
+        }
+
+        for payload, overlap, classification, score, _cs in sampled:
+            overlap_codes = set(case_reason_codes).intersection(payload.reason_codes)
+            case_code_weights = sum(_code_weight(c) for c in case_reason_codes) or 1.0
+            weighted_overlap = sum(_code_weight(c) for c in overlap_codes)
+            code_similarity = weighted_overlap / case_code_weights
+            fingerprint_similarity = _compute_fingerprint_similarity(case_banded, payload)
+            exact_match = code_similarity >= 0.9 and fingerprint_similarity >= 0.9
+            if exact_match:
+                exact_match_count += 1
+
+            prec_canonical = normalize_outcome_v2(
+                payload.outcome_code, reason_codes=payload.reason_codes,
+            )
+            outcome_label = map_aml_outcome_label_v2(prec_canonical)
+
+            # v3-specific data from sim_result
+            sim_data = sim_lookup.get(id(payload))
+            field_scores_pct = {}
+            non_transferable = False
+            non_transferable_reasons = []
+            matched_drivers = []
+            mismatched_drivers = []
+            if sim_data:
+                sr, _ = sim_data
+                field_scores_pct = {
+                    k: int(round(v * 100)) for k, v in sr.field_scores.items()
+                }
+                non_transferable = sr.non_transferable
+                non_transferable_reasons = sr.non_transferable_reasons
+                matched_drivers = sr.matched_drivers
+                mismatched_drivers = sr.mismatched_drivers
+
+            sample_cases.append({
+                "precedent_id": payload.precedent_id[:8] + "...",
+                "decision_level": payload.decision_level,
+                "decided_at": payload.decided_at,
+                "classification": classification,
+                "overlap": overlap,
+                "similarity_pct": int(round(score * 100)),
+                "exact_match": exact_match,
+                "outcome": payload.outcome_code,
+                "outcome_normalized": prec_canonical.disposition,
+                "outcome_label": outcome_label,
+                "disposition": prec_canonical.disposition,
+                "disposition_basis": prec_canonical.disposition_basis,
+                "reporting": prec_canonical.reporting,
+                "reason_codes": payload.reason_codes[:4],
+                "appealed": payload.appealed,
+                "appeal_outcome": payload.appeal_outcome,
+                "code_similarity_pct": int(round(code_similarity * 100)),
+                "fingerprint_similarity_pct": int(round(fingerprint_similarity * 100)),
+                # v3-specific fields
+                "field_scores": field_scores_pct,
+                "non_transferable": non_transferable,
+                "non_transferable_reasons": non_transferable_reasons,
+                "matched_drivers": matched_drivers,
+                "mismatched_drivers": mismatched_drivers,
+            })
+
+        # ── Build response (v2 superset) ─────────────────────────────
+        raw_overlap_count = len(precedent_matches)
+        overlap_outcome_distribution = _build_outcome_distribution(
+            [p for p, _o in precedent_matches]
+        )
+        match_outcome_distribution = _build_outcome_distribution(
+            [p for p, _, _, _, _, _, _, _, _ in scored_matches]
+        )
+
+        response = {
+            "available": True,
+            "match_count": len(scored_matches),
+            "sample_size": len(sampled),
+            "raw_overlap_count": raw_overlap_count,
+            "overlap_outcome_distribution": overlap_outcome_distribution,
+            "raw_outcome_distribution": overlap_outcome_distribution,
+            "match_outcome_distribution": match_outcome_distribution,
+            "outcome_distribution": match_outcome_distribution,
+            "appeal_statistics": {
+                "total_appealed": stats.appeal_stats.total_appealed,
+                "upheld": stats.appeal_stats.upheld,
+                "overturned": stats.appeal_stats.overturned,
+                "upheld_rate": round(stats.appeal_stats.upheld_rate, 2),
+            },
+            "precedent_confidence": round(precedent_confidence, 2),
+            "supporting_precedents": counts["supporting"],
+            "contrary_precedents": counts["contrary"],
+            "neutral_precedents": counts["neutral"],
+            "decisive_total": decisive_total,
+            "decisive_supporting": decisive_supporting,
+            "governed_alignment_count": governed_alignment_count,
+            "governed_alignment_total": len(scored_matches),
+            "exact_match_count": exact_match_count,
+            "caution_precedents": caution_precedents[:5],
+            "sample_cases": sample_cases[:10],
+            "reason_codes_searched": reason_codes,
+            "proposed_outcome_normalized": proposed_normalized,
+            "proposed_outcome_label": map_aml_outcome_label_v2(proposed_canonical),
+            "proposed_canonical": proposed_canonical.to_dict(),
+            "outcome_model_version": "v2",
+            "min_similarity_pct": int(round(threshold_used * 100)),
+            "threshold_used": threshold_used,
+            "threshold_mode": mode,
+            # v3-specific keys
+            "scoring_version": "v3",
+            "precedent_scoring_version": "v3",
+            "gate_excluded_count": gate_excluded_count,
+            "gate_passed_count": len(gate_passed_matches),
+            "non_transferable_count": non_transferable_count,
+            "similarity_floor_used": similarity_floor,
+            "typology_detected": typology,
+            "weights_version": "v3",
+            "why_low_match": [],
+            "avg_top_k_similarity": avg_top_k_similarity,
+            # v3 governed confidence
+            "confidence_model_version": "v3",
+            "confidence_level": governed_result.level.value,
+            "confidence_dimensions": [
+                {
+                    "name": d.name,
+                    "value": round(d.value, 4),
+                    "level": d.level.value,
+                    "bottleneck": d.bottleneck,
+                    "note": d.note,
+                }
+                for d in governed_result.dimensions
+            ],
+            "confidence_bottleneck": governed_result.bottleneck,
+            "confidence_hard_rule": governed_result.hard_rule_applied,
+        }
+
+        if len(scored_matches) == 0:
+            response["message"] = "No precedents met the similarity threshold"
+
+        return response
+
+    except Exception as e:
+        logger.warning(f"Precedent query v3 failed: {e}")
+        return {
+            "available": False,
+            "message": f"Precedent query failed: {str(e)}",
+        }
+
+
+# =============================================================================
 # Runtime Invariant Checks (PRECEDENT_OUTCOME_MODEL_V2.md §10)
 # =============================================================================
 
@@ -2974,6 +3459,42 @@ def check_precedent_invariants(
             )
 
     # INV-009: (Governance-level — tracked via defensibility_check in derive.py)
+
+    # ── v3 invariants (only checked when scoring_version == "v3") ──
+    if precedent_analysis.get("scoring_version") == "v3":
+        # INV-010: No hardcoded fallback confidence
+        # v3 governed model should never produce 0.5 as a fallback
+        conf_val = precedent_analysis.get("precedent_confidence")
+        conf_model = precedent_analysis.get("confidence_model_version")
+        if conf_model == "v3" and conf_val == 0.5:
+            conf_level = (precedent_analysis.get("confidence_level") or "").upper()
+            # 0.5 maps to MODERATE — only valid if actually computed as MODERATE
+            if conf_level != "MODERATE":
+                _violation(
+                    "INV-010",
+                    "Hardcoded fallback confidence 0.5 detected in v3 model",
+                    {"confidence": conf_val, "level": conf_level},
+                )
+
+        # INV-011: Non-transferable cannot be supporting
+        for sc in sample_cases:
+            if sc.get("non_transferable") and sc.get("classification") == "supporting":
+                _violation(
+                    "INV-011",
+                    "Non-transferable precedent classified as supporting",
+                    {"precedent_id": sc.get("precedent_id")},
+                )
+
+        # INV-012: Below-floor precedent cannot appear in scored pool
+        sim_floor = precedent_analysis.get("similarity_floor_used", 0.60)
+        for sc in sample_cases:
+            sim_pct = sc.get("similarity_pct", 100)
+            if sim_pct < int(round(sim_floor * 100)):
+                _violation(
+                    "INV-012",
+                    f"Precedent with similarity {sim_pct}% below floor {sim_floor:.0%} in scored pool",
+                    {"precedent_id": sc.get("precedent_id"), "similarity_pct": sim_pct},
+                )
 
     if violations:
         logger.critical(

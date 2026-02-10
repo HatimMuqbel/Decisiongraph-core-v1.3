@@ -893,6 +893,47 @@
       </p>
       {% endif %}
 
+      {# ── v3 Governed Confidence Breakdown ─────────────────────── #}
+      {% if enhanced_precedent.confidence_dimensions is defined and enhanced_precedent.confidence_dimensions %}
+      <div style="margin-top:16px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #dee2e6;">
+        <div style="font-weight:600; margin-bottom:8px;">Confidence Dimensions (v3 Governed Model)</div>
+        {% if enhanced_precedent.confidence_level is defined %}
+        <div class="small" style="margin-bottom:8px;">
+          Overall: <strong>{{ enhanced_precedent.confidence_level | upper }}</strong>
+          {% if enhanced_precedent.confidence_bottleneck %} — bottleneck: {{ enhanced_precedent.confidence_bottleneck | replace('_', ' ') }}{% endif %}
+          {% if enhanced_precedent.confidence_hard_rule %}<br><em>Hard rule: {{ enhanced_precedent.confidence_hard_rule }}</em>{% endif %}
+        </div>
+        {% endif %}
+        {% for dim in enhanced_precedent.confidence_dimensions %}
+        <div style="margin-bottom:6px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+            <span>{{ dim.name | replace('_', ' ') | title }}</span>
+            <span>{{ dim.level | upper }}{% if dim.bottleneck %} ★{% endif %}</span>
+          </div>
+          {% set bar_pct = {'NONE': 0, 'LOW': 25, 'MODERATE': 50, 'HIGH': 75, 'VERY_HIGH': 95}.get(dim.level | upper, 0) %}
+          {% set bar_color = {'NONE': '#dc3545', 'LOW': '#fd7e14', 'MODERATE': '#ffc107', 'HIGH': '#28a745', 'VERY_HIGH': '#20c997'}.get(dim.level | upper, '#6c757d') %}
+          <div style="background:#e9ecef; border-radius:3px; height:8px; overflow:hidden;">
+            <div style="width:{{ bar_pct }}%; height:100%; background:{{ bar_color }}; border-radius:3px;"></div>
+          </div>
+          {% if dim.note %}<div class="small" style="color:#6c757d; margin-top:1px;">{{ dim.note }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# ── v3 Non-transferable Explanations ─────────────────────── #}
+      {% if enhanced_precedent.non_transferable_explanations is defined and enhanced_precedent.non_transferable_explanations | length > 0 %}
+      <div class="status warn" style="margin-top:12px; padding:12px;">
+        <strong>Non-Transferable Precedents ({{ enhanced_precedent.non_transferable_explanations | length }})</strong>
+        <ul class="small" style="margin-top:6px;">
+          {% for nt in enhanced_precedent.non_transferable_explanations[:3] %}
+          <li>{{ nt.precedent_id }}: {{ nt.reasons | join('; ') }}</li>
+          {% endfor %}
+        </ul>
+        <span class="small">These precedents were scored but cannot be classified as "supporting" due to driver mismatches.</span>
+      </div>
+      {% endif %}
+
       {# Alignment text for cases WITH decisive precedents #}
       {% set total_decisive = precedent_analysis.supporting_precedents + precedent_analysis.contrary_precedents %}
       {% if total_decisive > 0 %}

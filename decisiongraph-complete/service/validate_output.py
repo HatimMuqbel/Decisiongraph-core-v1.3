@@ -387,6 +387,34 @@ def _check_precedent_quality(pack: dict) -> list[dict]:
             "decisive_total": 0,
         })
 
+    # ── v3 governed confidence checks ────────────────────────────
+    if pa.get("confidence_model_version") == "v3":
+        v3_level = (pa.get("confidence_level") or "").upper()
+        hard_rule = pa.get("confidence_hard_rule")
+
+        # 3e: Hard rule fired — report it
+        if hard_rule:
+            warnings.append({
+                "check": "PRECEDENT_HARD_RULE",
+                "severity": "WARNING",
+                "message": f"Governed confidence hard rule applied: {hard_rule}",
+                "hard_rule": hard_rule,
+                "confidence_level": v3_level,
+            })
+
+        # 3f: Non-transferable count > 0
+        nt_count = int(pa.get("non_transferable_count", 0) or 0)
+        if nt_count > 0:
+            warnings.append({
+                "check": "PRECEDENT_NON_TRANSFERABLE",
+                "severity": "INFO",
+                "message": (
+                    f"{nt_count} precedent(s) flagged as non-transferable "
+                    f"(driver mismatch or absent)"
+                ),
+                "non_transferable_count": nt_count,
+            })
+
     return warnings
 
 

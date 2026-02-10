@@ -759,21 +759,35 @@ def _compute_confidence_score(
         score += 10
 
     if precedent_analysis and precedent_analysis.get("available"):
-        decisive_total = int(precedent_analysis.get("decisive_total", -1))
-        try:
-            conf = float(precedent_analysis.get("precedent_confidence", 0) or 0)
-        except (TypeError, ValueError):
-            conf = 0.0
-        # When decisive_total == 0, confidence is a meaningless 0.5 fallback.
-        # Don't inflate the score — no terminal precedents means no signal.
-        if decisive_total == 0:
-            score += 0  # Explicit: no precedent signal available
-        elif conf >= 0.75:
-            score += 30
-        elif conf >= 0.45:
-            score += 20
-        elif conf > 0:
-            score += 10
+        # v3 governed confidence: use confidence_level directly
+        if precedent_analysis.get("confidence_model_version") == "v3":
+            v3_level = (precedent_analysis.get("confidence_level") or "").upper()
+            if v3_level == "VERY_HIGH":
+                score += 30
+            elif v3_level == "HIGH":
+                score += 25
+            elif v3_level == "MODERATE":
+                score += 15
+            elif v3_level == "LOW":
+                score += 5
+            # NONE → 0 points
+        else:
+            # v2 path
+            decisive_total = int(precedent_analysis.get("decisive_total", -1))
+            try:
+                conf = float(precedent_analysis.get("precedent_confidence", 0) or 0)
+            except (TypeError, ValueError):
+                conf = 0.0
+            # When decisive_total == 0, confidence is a meaningless 0.5 fallback.
+            # Don't inflate the score — no terminal precedents means no signal.
+            if decisive_total == 0:
+                score += 0  # Explicit: no precedent signal available
+            elif conf >= 0.75:
+                score += 30
+            elif conf >= 0.45:
+                score += 20
+            elif conf > 0:
+                score += 10
 
     contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0) if precedent_analysis else 0
     if contrary == 0:
@@ -1932,6 +1946,38 @@ def _build_enhanced_precedent_analysis(
             f"documented in the Feature Comparison Matrix above."
         )
     result["override_statement"] = override_statement
+
+    # ── v3 enhancements (only when scoring_version == "v3") ──────
+    if precedent_analysis.get("scoring_version") == "v3":
+        # i) Non-transferable explanations
+        nt_explanations = []
+        for sc in sample_cases:
+            if sc.get("non_transferable"):
+                nt_explanations.append({
+                    "precedent_id": sc.get("precedent_id", "N/A"),
+                    "reasons": sc.get("non_transferable_reasons", []),
+                    "mismatched_drivers": sc.get("mismatched_drivers", []),
+                })
+        result["non_transferable_explanations"] = nt_explanations
+
+        # j) Confidence dimensions (4-bar breakdown data)
+        result["confidence_dimensions"] = precedent_analysis.get("confidence_dimensions", [])
+        result["confidence_level"] = precedent_analysis.get("confidence_level")
+        result["confidence_bottleneck"] = precedent_analysis.get("confidence_bottleneck")
+        result["confidence_hard_rule"] = precedent_analysis.get("confidence_hard_rule")
+
+        # k) Driver causality — shared vs divergent drivers
+        shared_drivers = set()
+        divergent_drivers = set()
+        for sc in sample_cases:
+            for d in sc.get("matched_drivers", []):
+                shared_drivers.add(d)
+            for d in sc.get("mismatched_drivers", []):
+                divergent_drivers.add(d)
+        result["driver_causality"] = {
+            "shared_drivers": sorted(shared_drivers),
+            "divergent_drivers": sorted(divergent_drivers),
+        }
 
     return result
 
