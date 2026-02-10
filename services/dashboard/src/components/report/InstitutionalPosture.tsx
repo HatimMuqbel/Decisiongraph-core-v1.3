@@ -1,9 +1,12 @@
+import type { RegimeAnalysis } from '../../types';
+
 interface Props {
   patternSummary?: string;
   institutionalPosture?: string;
+  regimeAnalysis?: RegimeAnalysis;
 }
 
-export default function InstitutionalPosture({ patternSummary, institutionalPosture }: Props) {
+export default function InstitutionalPosture({ patternSummary, institutionalPosture, regimeAnalysis }: Props) {
   if (!patternSummary && !institutionalPosture) {
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
@@ -12,6 +15,21 @@ export default function InstitutionalPosture({ patternSummary, institutionalPost
         </p>
       </div>
     );
+  }
+
+  // Build regime context addendum
+  const ra = regimeAnalysis;
+  const hasRegime = ra && ra.shifts_detected && ra.shifts_detected.length > 0;
+  let regimeNote = '';
+  if (hasRegime) {
+    const shift = ra.shifts_detected[0];
+    const preDist = ra.pre_shift_distribution;
+    const postDist = ra.post_shift_distribution;
+    const preDominant = Object.entries(preDist).sort(([, a], [, b]) => b - a)[0];
+    const postDominant = Object.entries(postDist).sort(([, a], [, b]) => b - a)[0];
+    const prePct = preDominant ? Math.round((preDominant[1] / ra.pre_shift_count) * 100) : 0;
+    const postPct = postDominant ? Math.round((postDominant[1] / ra.post_shift_count) * 100) : 0;
+    regimeNote = `Note: Historical practice spans two policy regimes. Under current policy (post ${shift.effective_date}), ${ra.post_shift_count} comparable cases resulted in ${postDominant?.[0] ?? 'N/A'} (${postPct}%). Under prior policy, ${prePct}% were ${preDominant?.[0] ?? 'N/A'}. Current posture reflects ${shift.name}.`;
   }
 
   return (
@@ -30,6 +48,11 @@ export default function InstitutionalPosture({ patternSummary, institutionalPost
             Institutional Posture
           </h4>
           <p className="text-sm leading-relaxed text-slate-300">{institutionalPosture}</p>
+        </div>
+      )}
+      {regimeNote && (
+        <div className="mt-3 border-t border-slate-700/60 pt-3">
+          <p className="text-xs leading-relaxed text-amber-300/80 italic">{regimeNote}</p>
         </div>
       )}
     </div>

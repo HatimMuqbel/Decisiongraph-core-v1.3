@@ -120,6 +120,26 @@
     .pi-chip{ display:inline-block; padding:2px 8px; margin:2px; border-radius:3px; font-size:11px; }
     .pi-chip.driver{ background:#d8f3dc; color:#2d6a4f; }
     .pi-chip.divergent{ background:#fde8e8; color:#9b2226; }
+    .pi-chip.pre-shift{ background:#f3e8ff; color:#7c3aed; }
+    /* Regime context panel */
+    .regime-panel{ border:2px solid #d97706; border-radius:10px; padding:16px; margin:12px 0; background:#fffbeb; }
+    .regime-panel h4{ margin:0 0 8px 0; font-size:14px; color:#92400e; }
+    .regime-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:10px 0; }
+    @media (max-width:640px){ .regime-grid{ grid-template-columns:1fr; } }
+    .regime-card{ border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .regime-card.pre{ background:#f8fafc; }
+    .regime-card.post{ background:#ecfdf5; border-color:#6ee7b7; }
+    .regime-bar{ height:8px; background:#e9ecef; border-radius:3px; overflow:hidden; margin:3px 0; }
+    .regime-bar > span{ display:block; height:100%; border-radius:3px; }
+    .regime-bar .bar-allow{ background:#10b981; }
+    .regime-bar .bar-edd{ background:#f59e0b; }
+    .regime-bar .bar-block{ background:#ef4444; }
+    .regime-badge{ display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:600; }
+    .regime-badge.high{ background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
+    .regime-badge.moderate{ background:#fffbeb; color:#d97706; border:1px solid #fcd34d; }
+    .regime-badge.low{ background:#f8fafc; color:#64748b; border:1px solid #cbd5e1; }
+    .pi-case.regime-limited{ border-left:3px solid #7c3aed; }
+    .regime-warning{ background:#faf5ff; border:1px solid #c4b5fd; border-radius:6px; padding:8px 12px; margin-bottom:8px; font-size:12px; color:#6d28d9; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -209,7 +229,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">cross-border-routine</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-10T22:55:23.254910</div>
+        <div class="value mono">2026-02-10T23:04:55.673503</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -544,7 +564,11 @@
       <strong style="color:#1e40af; margin-top:10px; display:block;">Institutional Posture</strong>
       <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Institutional precedent strongly supports NO REPORT as the appropriate disposition for this case profile. All 35 comparable terminal precedents resulted in the same outcome.</p>
       
+      
     </div>
+    
+
+    
     
 
     
@@ -553,12 +577,14 @@
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">78c1e9f0...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">b6299937...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">78%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -573,12 +599,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">74eb905e...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">75a40cc9...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">78%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -593,12 +621,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">be386195...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">d578e94c...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">78%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -613,12 +643,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">54bdfb9c...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">584c879d...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">78%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -633,12 +665,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">e03fb403...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">75135e9e...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: PEP status, High-risk jurisdiction, High-risk industry.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">PEP status, High-risk jurisdiction, High-risk industry</span></div>
@@ -1038,7 +1072,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">78c1e9f0...</span>
+            <span class="match-id">b6299937...</span>
             <span class="match-sim">78%
               
               
@@ -1096,7 +1130,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">74eb905e...</span>
+            <span class="match-id">75a40cc9...</span>
             <span class="match-sim">78%
               
               
@@ -1154,7 +1188,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">be386195...</span>
+            <span class="match-id">d578e94c...</span>
             <span class="match-sim">78%
               
               
@@ -1212,7 +1246,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">54bdfb9c...</span>
+            <span class="match-id">584c879d...</span>
             <span class="match-sim">78%
               
               
@@ -1270,7 +1304,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">e03fb403...</span>
+            <span class="match-id">75135e9e...</span>
             <span class="match-sim">77%
               
               
@@ -1328,7 +1362,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">f0da2169...</span>
+            <span class="match-id">d914eee1...</span>
             <span class="match-sim">77%
               
               
@@ -1386,7 +1420,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">6fdf9dbb...</span>
+            <span class="match-id">ab85bdce...</span>
             <span class="match-sim">76%
               
               
@@ -1444,7 +1478,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">bb52aaf7...</span>
+            <span class="match-id">a60f8914...</span>
             <span class="match-sim">75%
               
               
@@ -1502,7 +1536,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">ec7f9548...</span>
+            <span class="match-id">c8689ae6...</span>
             <span class="match-sim">75%
               
               
@@ -1560,7 +1594,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">ead1435a...</span>
+            <span class="match-id">36d33885...</span>
             <span class="match-sim">75%
               
               
@@ -1916,7 +1950,7 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-10T22:55:23.254808Z</div>
+        <div class="value mono">2026-02-10T23:04:55.673338Z</div>
         <div class="label">EDD Deadline</div>
         <div class="value mono">N/A</div>
         <div class="label">Final Disposition Due</div>
@@ -1964,7 +1998,7 @@
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-10T22:55:23.254910
+      Generated 2026-02-10T23:04:55.673503
     </div>
   </div>
 </body>

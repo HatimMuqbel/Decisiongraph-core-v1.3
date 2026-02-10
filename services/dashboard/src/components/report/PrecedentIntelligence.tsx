@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReportViewModel } from '../../types';
 import GovernedAlignmentCard from './GovernedAlignmentCard';
 import TerminalConfidenceCard from './TerminalConfidenceCard';
+import PolicyRegimeContext from './PolicyRegimeContext';
 import InstitutionalPosture from './InstitutionalPosture';
 import PrecedentCaseCard from './PrecedentCaseCard';
 import DivergenceJustification from './DivergenceJustification';
@@ -40,6 +41,7 @@ export default function PrecedentIntelligence({ report }: Props) {
   const visibleCases = showAll ? cases : cases.slice(0, 5);
   const driverCausality = ep?.driver_causality;
   const divergence = ep?.divergence_justification;
+  const regimeAnalysis = ep?.regime_analysis;
   const isV3 = !!confidenceLevel && dimensions.length > 0;
 
   return (
@@ -90,10 +92,16 @@ export default function PrecedentIntelligence({ report }: Props) {
         )}
       </div>
 
+      {/* Row 1.5: Policy Regime Context (only when shifts detected) */}
+      {regimeAnalysis && regimeAnalysis.shifts_detected?.length > 0 && (
+        <PolicyRegimeContext regimeAnalysis={regimeAnalysis} />
+      )}
+
       {/* Row 2: Institutional Posture */}
       <InstitutionalPosture
         patternSummary={ep?.pattern_summary}
         institutionalPosture={ep?.institutional_posture}
+        regimeAnalysis={regimeAnalysis}
       />
 
       {/* Row 3: Top Comparable Cases */}

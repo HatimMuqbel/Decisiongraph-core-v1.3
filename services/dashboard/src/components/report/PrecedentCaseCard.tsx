@@ -66,9 +66,12 @@ function getDisplayClassification(
 }
 
 export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition }: Props) {
+  const isRegimeLimited = sc.regime_limited === true;
   const displayCls = sc.non_transferable
     ? { label: '⚠ Non-Transferable', variant: 'warning' as const, border: 'border-l-amber-500' }
-    : getDisplayClassification(sc.classification, sc.disposition, caseDisposition);
+    : isRegimeLimited
+      ? { ...getDisplayClassification(sc.classification, sc.disposition, caseDisposition), border: 'border-l-purple-500' }
+      : getDisplayClassification(sc.classification, sc.disposition, caseDisposition);
 
   const borderColor = displayCls.border;
 
@@ -91,10 +94,24 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition }: 
         <Badge variant={displayCls.variant}>
           {displayCls.label}
         </Badge>
+        {isRegimeLimited && (
+          <span className="inline-flex items-center rounded-full bg-purple-600/20 px-2 py-0.5 text-[10px] font-medium text-purple-400 border border-purple-500/30">
+            PRE-SHIFT
+          </span>
+        )}
         {sc.appealed && <Badge variant="warning">APPEALED</Badge>}
       </summary>
 
       <div className="space-y-3 px-4 pb-4 pt-1 text-xs">
+        {/* Regime-limited warning */}
+        {isRegimeLimited && (
+          <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-2">
+            <p className="text-purple-300">
+              &#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.
+            </p>
+          </div>
+        )}
+
         {/* Non-transferable warning */}
         {sc.non_transferable && sc.non_transferable_reasons && sc.non_transferable_reasons.length > 0 && (
           <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2">

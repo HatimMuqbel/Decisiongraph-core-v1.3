@@ -120,6 +120,26 @@
     .pi-chip{ display:inline-block; padding:2px 8px; margin:2px; border-radius:3px; font-size:11px; }
     .pi-chip.driver{ background:#d8f3dc; color:#2d6a4f; }
     .pi-chip.divergent{ background:#fde8e8; color:#9b2226; }
+    .pi-chip.pre-shift{ background:#f3e8ff; color:#7c3aed; }
+    /* Regime context panel */
+    .regime-panel{ border:2px solid #d97706; border-radius:10px; padding:16px; margin:12px 0; background:#fffbeb; }
+    .regime-panel h4{ margin:0 0 8px 0; font-size:14px; color:#92400e; }
+    .regime-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:10px 0; }
+    @media (max-width:640px){ .regime-grid{ grid-template-columns:1fr; } }
+    .regime-card{ border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .regime-card.pre{ background:#f8fafc; }
+    .regime-card.post{ background:#ecfdf5; border-color:#6ee7b7; }
+    .regime-bar{ height:8px; background:#e9ecef; border-radius:3px; overflow:hidden; margin:3px 0; }
+    .regime-bar > span{ display:block; height:100%; border-radius:3px; }
+    .regime-bar .bar-allow{ background:#10b981; }
+    .regime-bar .bar-edd{ background:#f59e0b; }
+    .regime-bar .bar-block{ background:#ef4444; }
+    .regime-badge{ display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:600; }
+    .regime-badge.high{ background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
+    .regime-badge.moderate{ background:#fffbeb; color:#d97706; border:1px solid #fcd34d; }
+    .regime-badge.low{ background:#f8fafc; color:#64748b; border:1px solid #cbd5e1; }
+    .pi-case.regime-limited{ border-left:3px solid #7c3aed; }
+    .regime-warning{ background:#faf5ff; border:1px solid #c4b5fd; border-radius:6px; padding:8px 12px; margin-bottom:8px; font-size:12px; color:#6d28d9; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -244,7 +264,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">pep-plus-adverse-media</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-10T22:55:24.708506</div>
+        <div class="value mono">2026-02-10T23:04:57.256419</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -619,6 +639,67 @@
       <strong style="color:#1e40af; margin-top:10px; display:block;">Institutional Posture</strong>
       <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Institutional precedent diverges from STR REQUIRED. 100% of comparable terminal precedents resulted in a different outcome. Senior compliance review is recommended.</p>
       
+      
+      
+      
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+        <p class="small" style="color:#d97706; font-style:italic;">Note: Historical practice spans two policy regimes. Under current policy (post 2026-04-01), 41 comparable cases available. 46.1% of pool decided under prior policy. Current posture reflects PEP Risk Appetite Tightened.</p>
+      </div>
+      
+    </div>
+    
+
+    
+    
+    
+    <div class="regime-panel break">
+      <h4>&#9888; Policy Regime Context
+        <span class="regime-badge moderate" style="margin-left:8px;">MODERATE IMPACT</span>
+      </h4>
+      
+      <p style="font-size:14px; font-weight:600; margin:8px 0 2px 0;">Active shift: PEP Risk Appetite Tightened</p>
+      <p class="small" style="color:var(--muted);">Effective: 2026-04-01 &middot; PEP + ≥$25K → Senior Management sign-off</p>
+      <div class="regime-grid">
+        <div class="regime-card pre">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px;">Pre-Shift</strong>
+            <span class="small" style="color:var(--muted);">Superseded policy</span>
+          </div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">35 <span class="small" style="font-weight:400;">cases</span></div>
+          
+          
+          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>30 (86%)</span></div>
+          <div class="regime-bar"><span class="bar-edd" style="width:86%;"></span></div>
+          
+          
+          <div style="display:flex; justify-content:space-between;" class="small"><span>ALLOW</span><span>5 (14%)</span></div>
+          <div class="regime-bar"><span class="bar-allow" style="width:14%;"></span></div>
+          
+        </div>
+        <div class="regime-card post">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px; color:#059669;">Post-Shift</strong>
+            <span class="small" style="color:#059669;">Current policy &#10003;</span>
+          </div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">41 <span class="small" style="font-weight:400;">cases</span></div>
+          
+          
+          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>37 (90%)</span></div>
+          <div class="regime-bar"><span class="bar-edd" style="width:90%;"></span></div>
+          
+          
+          <div style="display:flex; justify-content:space-between;" class="small"><span>ALLOW</span><span>4 (10%)</span></div>
+          <div class="regime-bar"><span class="bar-allow" style="width:10%;"></span></div>
+          
+        </div>
+      </div>
+      
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid #fcd34d;">
+        <p class="small"><strong style="color:#d97706;">46.1%</strong> of comparable pool decided under superseded policy. Post-shift pool: <strong>41</strong> cases (effective pool for confidence).</p>
+        
+        <p class="small" style="color:var(--muted); font-style:italic; margin-top:4px;">Significant portion of pool predates policy change. Post-shift pool is smaller than total.</p>
+        
+      </div>
     </div>
     
 
@@ -626,14 +707,20 @@
     
     <h3 style="margin-top:16px;">Top Comparable Cases</h3>
     
-    <details class="pi-case break" open>
+    <details class="pi-case break regime-limited" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">2329798b...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">e6ee7cef...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">86%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
+        
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Key factors: PEP customer, PEP customer, PEP customer.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status (driver), High-risk jurisdiction</span></div>
@@ -646,14 +733,20 @@
       </div>
     </details>
     
-    <details class="pi-case break" >
+    <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">743cfc85...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">77968c1c...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">84%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
+        
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Key factors: PEP customer, PEP customer, PEP customer.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">PEP status (driver), High-risk jurisdiction, High-risk industry</span></div>
@@ -666,14 +759,20 @@
       </div>
     </details>
     
-    <details class="pi-case break" >
+    <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">6083e271...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">0626ed4c...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">84%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
+        
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Key factors: PEP customer, PEP customer, PEP customer.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">PEP status (driver), High-risk jurisdiction, High-risk industry</span></div>
@@ -686,14 +785,20 @@
       </div>
     </details>
     
-    <details class="pi-case break" >
+    <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">4e20366d...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">b93980db...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">82%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
+        
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Key factors: PEP customer, PEP customer, PEP customer.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status (driver), High-risk jurisdiction</span></div>
@@ -706,14 +811,20 @@
       </div>
     </details>
     
-    <details class="pi-case break" >
+    <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">59a801d0...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">7cf7214c...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">80%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
+        
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Key factors: PEP customer, PEP customer, PEP customer.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">PEP status (driver), High-risk jurisdiction, High-risk industry</span></div>
@@ -749,35 +860,35 @@
         <tbody>
           
           <tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:4px 8px;" class="mono">2329798b...</td>
+            <td style="padding:4px 8px;" class="mono">e6ee7cef...</td>
             <td style="padding:4px 8px;">NO REPORT</td>
             <td style="padding:4px 8px;">86%</td>
             <td style="padding:4px 8px; font-size:12px;">No clear differentiating factor identified</td>
           </tr>
           
           <tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:4px 8px;" class="mono">743cfc85...</td>
+            <td style="padding:4px 8px;" class="mono">77968c1c...</td>
             <td style="padding:4px 8px;">NO REPORT</td>
             <td style="padding:4px 8px;">84%</td>
             <td style="padding:4px 8px; font-size:12px;">Relationship length (50%)</td>
           </tr>
           
           <tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:4px 8px;" class="mono">6083e271...</td>
+            <td style="padding:4px 8px;" class="mono">0626ed4c...</td>
             <td style="padding:4px 8px;">NO REPORT</td>
             <td style="padding:4px 8px;">84%</td>
             <td style="padding:4px 8px; font-size:12px;">Relationship length (50%)</td>
           </tr>
           
           <tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:4px 8px;" class="mono">4e20366d...</td>
+            <td style="padding:4px 8px;" class="mono">b93980db...</td>
             <td style="padding:4px 8px;">NO REPORT</td>
             <td style="padding:4px 8px;">82%</td>
             <td style="padding:4px 8px; font-size:12px;">No clear differentiating factor identified</td>
           </tr>
           
           <tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:4px 8px;" class="mono">59a801d0...</td>
+            <td style="padding:4px 8px;" class="mono">7cf7214c...</td>
             <td style="padding:4px 8px;">NO REPORT</td>
             <td style="padding:4px 8px;">80%</td>
             <td style="padding:4px 8px; font-size:12px;">No clear differentiating factor identified</td>
@@ -853,15 +964,15 @@
       <p class="small" style="margin-bottom:6px;"><em>Contrary precedent dates — older cases may reflect superseded guidance.</em></p>
       <ul style="font-size:13px; margin:0; padding-left:20px;">
         
-        <li><span class="mono">2329798b...</span>: 2026-02-10T22:55:19Z</li>
+        <li><span class="mono">e6ee7cef...</span>: 2026-02-10T23:04:51Z</li>
         
-        <li><span class="mono">743cfc85...</span>: 2026-01-20T22:55:19Z</li>
+        <li><span class="mono">77968c1c...</span>: 2026-01-20T23:04:51Z</li>
         
-        <li><span class="mono">6083e271...</span>: 2026-02-03T22:55:19Z</li>
+        <li><span class="mono">0626ed4c...</span>: 2026-02-03T23:04:51Z</li>
         
-        <li><span class="mono">4e20366d...</span>: 2026-01-06T22:55:19Z</li>
+        <li><span class="mono">b93980db...</span>: 2026-01-06T23:04:51Z</li>
         
-        <li><span class="mono">59a801d0...</span>: 2026-01-13T22:55:19Z</li>
+        <li><span class="mono">7cf7214c...</span>: 2026-01-13T23:04:51Z</li>
         
       </ul>
     </div>
@@ -1241,7 +1352,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">2329798b...</span>
+            <span class="match-id">e6ee7cef...</span>
             <span class="match-sim">86%
               
               
@@ -1299,7 +1410,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">743cfc85...</span>
+            <span class="match-id">77968c1c...</span>
             <span class="match-sim">84%
               
               
@@ -1357,7 +1468,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">6083e271...</span>
+            <span class="match-id">0626ed4c...</span>
             <span class="match-sim">84%
               
               
@@ -1415,7 +1526,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">4e20366d...</span>
+            <span class="match-id">b93980db...</span>
             <span class="match-sim">82%
               
               
@@ -1473,7 +1584,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">59a801d0...</span>
+            <span class="match-id">7cf7214c...</span>
             <span class="match-sim">80%
               
               
@@ -1531,7 +1642,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">10b57209...</span>
+            <span class="match-id">9033a8e5...</span>
             <span class="match-sim">67%
               
               
@@ -1589,7 +1700,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">92de9655...</span>
+            <span class="match-id">5adefc9e...</span>
             <span class="match-sim">64%
               
               
@@ -1647,7 +1758,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">aeb48a79...</span>
+            <span class="match-id">32a06d0b...</span>
             <span class="match-sim">64%
               
               
@@ -1705,7 +1816,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">cbe0ae43...</span>
+            <span class="match-id">08c080b5...</span>
             <span class="match-sim">61%
               
               
@@ -1763,7 +1874,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">b8da6a6b...</span>
+            <span class="match-id">1ac0ef9d...</span>
             <span class="match-sim">99%
               
               
@@ -2161,13 +2272,13 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-10T22:55:24.708266Z</div>
+        <div class="value mono">2026-02-10T23:04:57.256271Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-19T23:59:59.708288Z</div>
+        <div class="value mono">2026-02-19T23:59:59.256287Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
-        <div class="value">2026-03-12T22:55:24.708266Z (30 days per PCMLTFA s. 7)</div>
+        <div class="value">2026-03-12T23:04:57.256271Z (30 days per PCMLTFA s. 7)</div>
       </div>
     </div>
     
@@ -2215,7 +2326,7 @@
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-10T22:55:24.708506
+      Generated 2026-02-10T23:04:57.256419
     </div>
   </div>
 </body>

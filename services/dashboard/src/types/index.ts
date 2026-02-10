@@ -182,6 +182,8 @@ export interface SampleCase {
   mismatched_drivers?: string[];
   non_transferable?: boolean;
   non_transferable_reasons?: string[];
+  // B1 regime fields
+  regime_limited?: boolean;
 }
 
 export interface AppealStatistics {
@@ -199,6 +201,29 @@ export interface ConfidenceDimension {
   value: number;
   bottleneck: boolean;
   note?: string;
+}
+
+// ── Regime Analysis Types (Phase B1/B2) ──────────────────────────────────
+
+export interface RegimeShiftDetected {
+  id: string;
+  name: string;
+  description: string;
+  effective_date: string;
+}
+
+export interface RegimeAnalysis {
+  shifts_detected: RegimeShiftDetected[];
+  total_pool: number;
+  pre_shift_count: number;
+  post_shift_count: number;
+  regime_limited_count: number;
+  pct_regime_limited: number;
+  magnitude: string;
+  guidance: string;
+  pre_shift_distribution: Record<string, number>;
+  post_shift_distribution: Record<string, number>;
+  effective_pool_size: number;
 }
 
 export interface EnhancedPrecedent {
@@ -236,6 +261,7 @@ export interface EnhancedPrecedent {
   override_statement?: string | null;
   outcome_distribution?: Record<string, number>;
   temporal_context?: unknown[];
+  regime_analysis?: RegimeAnalysis;
 }
 
 export interface PrecedentAnalysis {

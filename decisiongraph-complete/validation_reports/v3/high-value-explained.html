@@ -120,6 +120,26 @@
     .pi-chip{ display:inline-block; padding:2px 8px; margin:2px; border-radius:3px; font-size:11px; }
     .pi-chip.driver{ background:#d8f3dc; color:#2d6a4f; }
     .pi-chip.divergent{ background:#fde8e8; color:#9b2226; }
+    .pi-chip.pre-shift{ background:#f3e8ff; color:#7c3aed; }
+    /* Regime context panel */
+    .regime-panel{ border:2px solid #d97706; border-radius:10px; padding:16px; margin:12px 0; background:#fffbeb; }
+    .regime-panel h4{ margin:0 0 8px 0; font-size:14px; color:#92400e; }
+    .regime-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:10px 0; }
+    @media (max-width:640px){ .regime-grid{ grid-template-columns:1fr; } }
+    .regime-card{ border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .regime-card.pre{ background:#f8fafc; }
+    .regime-card.post{ background:#ecfdf5; border-color:#6ee7b7; }
+    .regime-bar{ height:8px; background:#e9ecef; border-radius:3px; overflow:hidden; margin:3px 0; }
+    .regime-bar > span{ display:block; height:100%; border-radius:3px; }
+    .regime-bar .bar-allow{ background:#10b981; }
+    .regime-bar .bar-edd{ background:#f59e0b; }
+    .regime-bar .bar-block{ background:#ef4444; }
+    .regime-badge{ display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:600; }
+    .regime-badge.high{ background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
+    .regime-badge.moderate{ background:#fffbeb; color:#d97706; border:1px solid #fcd34d; }
+    .regime-badge.low{ background:#f8fafc; color:#64748b; border:1px solid #cbd5e1; }
+    .pi-case.regime-limited{ border-left:3px solid #7c3aed; }
+    .regime-warning{ background:#faf5ff; border:1px solid #c4b5fd; border-radius:6px; padding:8px 12px; margin-bottom:8px; font-size:12px; color:#6d28d9; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -209,7 +229,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">high-value-explained</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-10T22:55:22.909363</div>
+        <div class="value mono">2026-02-10T23:04:55.319546</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -542,7 +562,11 @@
       <strong style="color:#1e40af; margin-top:10px; display:block;">Institutional Posture</strong>
       <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Institutional precedent strongly supports NO REPORT as the appropriate disposition for this case profile. All 35 comparable terminal precedents resulted in the same outcome.</p>
       
+      
     </div>
+    
+
+    
     
 
     
@@ -551,12 +575,14 @@
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">a6aa242b...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">76c76daa...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">82%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction. Key difference from current case: Amount band.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -573,12 +599,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">1c1551d4...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">990dab25...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">78%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -593,12 +621,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">bf68c93c...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">faeab049...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction. Key difference from current case: Amount band.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -615,12 +645,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">7bb839cb...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">c0517ac9...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -635,12 +667,14 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">92d41d0d...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">cf0f90cb...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
+        
       </summary>
       <div class="pi-case-body">
+        
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction. Key difference from current case: Amount band.</p>
         
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status, High-risk jurisdiction</span></div>
@@ -1042,7 +1076,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">a6aa242b...</span>
+            <span class="match-id">76c76daa...</span>
             <span class="match-sim">82%
               
               
@@ -1100,7 +1134,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">1c1551d4...</span>
+            <span class="match-id">990dab25...</span>
             <span class="match-sim">78%
               
               
@@ -1158,7 +1192,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">bf68c93c...</span>
+            <span class="match-id">faeab049...</span>
             <span class="match-sim">77%
               
               
@@ -1216,7 +1250,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">7bb839cb...</span>
+            <span class="match-id">c0517ac9...</span>
             <span class="match-sim">77%
               
               
@@ -1274,65 +1308,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">92d41d0d...</span>
-            <span class="match-sim">77%
-              
-              
-            </span>
-          </div>
-          <div class="match-meta">
-            <span class="meta-chip supporting">NO REPORT</span>
-            <span class="meta-chip">analyst</span>
-            
-          </div>
-          <div class="sim-bars">
-            
-            
-            <span class="sim-label">Rules</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Gates</span>
-            <span class="sim-track"><span class="sim-fill med" style="width:77%"></span></span>
-            <span class="sim-pct ">77%</span>
-            
-            <span class="sim-label">Typology</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Amount</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:33%"></span></span>
-            <span class="sim-pct ">33%</span>
-            
-            <span class="sim-label">Corridor</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Channel</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">PEP</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Customer</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Geo Risk</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-          </div>
-          <div class="match-codes">RC-TXN-NORMAL · RC-TXN-PROFILE-MATCH</div>
-        </div>
-        
-        
-        
-        <div class="match-card break">
-          <div class="match-card-header">
-            <span class="match-id">288ada11...</span>
+            <span class="match-id">cf0f90cb...</span>
             <span class="match-sim">77%
               
               
@@ -1390,7 +1366,65 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">7dc9ad42...</span>
+            <span class="match-id">3e489233...</span>
+            <span class="match-sim">77%
+              
+              
+            </span>
+          </div>
+          <div class="match-meta">
+            <span class="meta-chip supporting">NO REPORT</span>
+            <span class="meta-chip">analyst</span>
+            
+          </div>
+          <div class="sim-bars">
+            
+            
+            <span class="sim-label">Rules</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Gates</span>
+            <span class="sim-track"><span class="sim-fill med" style="width:77%"></span></span>
+            <span class="sim-pct ">77%</span>
+            
+            <span class="sim-label">Typology</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Amount</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:33%"></span></span>
+            <span class="sim-pct ">33%</span>
+            
+            <span class="sim-label">Corridor</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Channel</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">PEP</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Customer</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Geo Risk</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+          </div>
+          <div class="match-codes">RC-TXN-NORMAL · RC-TXN-PROFILE-MATCH</div>
+        </div>
+        
+        
+        
+        <div class="match-card break">
+          <div class="match-card-header">
+            <span class="match-id">9cc68122...</span>
             <span class="match-sim">76%
               
               
@@ -1448,7 +1482,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">728976ea...</span>
+            <span class="match-id">6c66ada7...</span>
             <span class="match-sim">76%
               
               
@@ -1506,7 +1540,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">950acba3...</span>
+            <span class="match-id">089622a3...</span>
             <span class="match-sim">76%
               
               
@@ -1564,7 +1598,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d48917ef...</span>
+            <span class="match-id">2685c522...</span>
             <span class="match-sim">75%
               
               
@@ -1920,7 +1954,7 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-10T22:55:22.909259Z</div>
+        <div class="value mono">2026-02-10T23:04:55.319447Z</div>
         <div class="label">EDD Deadline</div>
         <div class="value mono">N/A</div>
         <div class="label">Final Disposition Due</div>
@@ -1968,7 +2002,7 @@
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-10T22:55:22.909363
+      Generated 2026-02-10T23:04:55.319546
     </div>
   </div>
 </body>

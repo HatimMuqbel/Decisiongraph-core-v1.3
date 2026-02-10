@@ -120,6 +120,26 @@
     .pi-chip{ display:inline-block; padding:2px 8px; margin:2px; border-radius:3px; font-size:11px; }
     .pi-chip.driver{ background:#d8f3dc; color:#2d6a4f; }
     .pi-chip.divergent{ background:#fde8e8; color:#9b2226; }
+    .pi-chip.pre-shift{ background:#f3e8ff; color:#7c3aed; }
+    /* Regime context panel */
+    .regime-panel{ border:2px solid #d97706; border-radius:10px; padding:16px; margin:12px 0; background:#fffbeb; }
+    .regime-panel h4{ margin:0 0 8px 0; font-size:14px; color:#92400e; }
+    .regime-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:10px 0; }
+    @media (max-width:640px){ .regime-grid{ grid-template-columns:1fr; } }
+    .regime-card{ border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .regime-card.pre{ background:#f8fafc; }
+    .regime-card.post{ background:#ecfdf5; border-color:#6ee7b7; }
+    .regime-bar{ height:8px; background:#e9ecef; border-radius:3px; overflow:hidden; margin:3px 0; }
+    .regime-bar > span{ display:block; height:100%; border-radius:3px; }
+    .regime-bar .bar-allow{ background:#10b981; }
+    .regime-bar .bar-edd{ background:#f59e0b; }
+    .regime-bar .bar-block{ background:#ef4444; }
+    .regime-badge{ display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:600; }
+    .regime-badge.high{ background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
+    .regime-badge.moderate{ background:#fffbeb; color:#d97706; border:1px solid #fcd34d; }
+    .regime-badge.low{ background:#f8fafc; color:#64748b; border:1px solid #cbd5e1; }
+    .pi-case.regime-limited{ border-left:3px solid #7c3aed; }
+    .regime-warning{ background:#faf5ff; border:1px solid #c4b5fd; border-radius:6px; padding:8px 12px; margin-bottom:8px; font-size:12px; color:#6d28d9; }
     @media print {
       body { padding: 12px; }
       .page { max-width: 100%; }
@@ -659,6 +679,59 @@
       <strong style="color:#1e40af; {% if enhanced_precedent.pattern_summary %}margin-top:10px; display:block;{% endif %}">Institutional Posture</strong>
       <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">{{ enhanced_precedent.institutional_posture }}</p>
       {% endif %}
+      {% if enhanced_precedent.regime_analysis and enhanced_precedent.regime_analysis.shifts_detected %}
+      {% set _ra = enhanced_precedent.regime_analysis %}
+      {% set _shift0 = _ra.shifts_detected[0] %}
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+        <p class="small" style="color:#d97706; font-style:italic;">Note: Historical practice spans two policy regimes. Under current policy (post {{ _shift0.effective_date }}), {{ _ra.post_shift_count }} comparable cases available. {{ _ra.pct_regime_limited }}% of pool decided under prior policy. Current posture reflects {{ _shift0.name }}.</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ── Row 1.5: Policy Regime Context (only when shifts detected) ── #}
+    {% if enhanced_precedent and enhanced_precedent.regime_analysis and enhanced_precedent.regime_analysis.shifts_detected %}
+    {% set ra = enhanced_precedent.regime_analysis %}
+    <div class="regime-panel break">
+      <h4>&#9888; Policy Regime Context
+        <span class="regime-badge {{ ra.magnitude }}" style="margin-left:8px;">{{ ra.magnitude | upper }} IMPACT</span>
+      </h4>
+      {% for shift in ra.shifts_detected %}
+      <p style="font-size:14px; font-weight:600; margin:8px 0 2px 0;">Active shift: {{ shift.name }}</p>
+      <p class="small" style="color:var(--muted);">Effective: {{ shift.effective_date }} &middot; {{ shift.description }}</p>
+      <div class="regime-grid">
+        <div class="regime-card pre">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px;">Pre-Shift</strong>
+            <span class="small" style="color:var(--muted);">Superseded policy</span>
+          </div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">{{ ra.pre_shift_count }} <span class="small" style="font-weight:400;">cases</span></div>
+          {% for disp, count in ra.pre_shift_distribution.items() %}
+          {% set pct = (count / ra.pre_shift_count * 100) | round | int if ra.pre_shift_count else 0 %}
+          <div style="display:flex; justify-content:space-between;" class="small"><span>{{ disp }}</span><span>{{ count }} ({{ pct }}%)</span></div>
+          <div class="regime-bar"><span class="bar-{{ disp | lower }}" style="width:{{ [pct, 3] | max }}%;"></span></div>
+          {% endfor %}
+        </div>
+        <div class="regime-card post">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px; color:#059669;">Post-Shift</strong>
+            <span class="small" style="color:#059669;">Current policy &#10003;</span>
+          </div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">{{ ra.post_shift_count }} <span class="small" style="font-weight:400;">cases</span></div>
+          {% for disp, count in ra.post_shift_distribution.items() %}
+          {% set pct = (count / ra.post_shift_count * 100) | round | int if ra.post_shift_count else 0 %}
+          <div style="display:flex; justify-content:space-between;" class="small"><span>{{ disp }}</span><span>{{ count }} ({{ pct }}%)</span></div>
+          <div class="regime-bar"><span class="bar-{{ disp | lower }}" style="width:{{ [pct, 3] | max }}%;"></span></div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid #fcd34d;">
+        <p class="small"><strong style="color:#d97706;">{{ ra.pct_regime_limited }}%</strong> of comparable pool decided under superseded policy. Post-shift pool: <strong>{{ ra.post_shift_count }}</strong> cases (effective pool for confidence).</p>
+        {% if ra.guidance %}
+        <p class="small" style="color:var(--muted); font-style:italic; margin-top:4px;">{{ ra.guidance }}</p>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
 
@@ -666,14 +739,20 @@
     {% if enhanced_precedent and enhanced_precedent.case_thumbnails and enhanced_precedent.case_thumbnails|length > 0 %}
     <h3 style="margin-top:16px;">Top Comparable Cases</h3>
     {% for thumb in enhanced_precedent.case_thumbnails %}
-    <details class="pi-case break" {% if loop.first %}open{% endif %}>
+    <details class="pi-case break{% if thumb.regime_limited is defined and thumb.regime_limited %} regime-limited{% endif %}" {% if loop.first %}open{% endif %}>
       <summary>
         <span class="mono" style="font-weight:600; min-width:80px;">{{ thumb.precedent_id }}</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">{{ thumb.similarity_pct }}%</span>
         {% set is_aligned = thumb.classification == 'supporting' and thumb.disposition not in ['ALLOW', 'BLOCK'] %}
         <span class="pill {% if thumb.classification == 'supporting' and not is_aligned %}pass{% elif is_aligned %}req{% elif thumb.classification == 'contrary' %}trig{% else %}req{% endif %}" style="margin-left:auto;{% if is_aligned %} background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);{% endif %}">{{ 'ALIGNED' if is_aligned else thumb.outcome_label }}</span>
+        {% if thumb.regime_limited is defined and thumb.regime_limited %}
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        {% endif %}
       </summary>
       <div class="pi-case-body">
+        {% if thumb.regime_limited is defined and thumb.regime_limited %}
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        {% endif %}
         <p style="margin:0 0 6px 0;">{{ thumb.description }}</p>
         {% if thumb.key_matches %}
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">{{ thumb.key_matches | join(', ') }}</span></div>
