@@ -94,11 +94,12 @@ from decisiongraph.governed_confidence import (
 from decisiongraph.policy_shift_shadows import (
     detect_applicable_shifts,
     compute_shadow_outcome,
+    extract_case_signals,
     SHIFT_EFFECTIVE_DATES,
 )
 
 # Import routers
-from service.routers import demo, report, verify, templates, policy_shifts
+from service.routers import demo, report, verify, templates, policy_shifts, simulate
 from service.template_loader import TemplateLoader, set_cache_decision, set_precedent_query
 from service.suspicion_classifier import CLASSIFIER_VERSION, classify as classify_suspicion
 from service.validate_output import validate_decision_output
@@ -318,6 +319,7 @@ app.include_router(report.router)
 app.include_router(verify.router)
 app.include_router(templates.router)
 app.include_router(policy_shifts.router)
+app.include_router(simulate.router)
 
 # Static files for landing page
 STATIC_DIR = Path(__file__).parent / "static"
@@ -3068,7 +3070,10 @@ def query_similar_precedents_v3(
                 ))
 
         # ── Regime Detection & Temporal Partitioning (B1) ────────────
-        applicable_shifts = detect_applicable_shifts(case_scoring_facts)
+        case_signals = extract_case_signals(case_scoring_facts)
+        applicable_shifts = detect_applicable_shifts(
+            case_signals=case_signals, case_facts=case_scoring_facts,
+        )
         regime_shift_ids = [s["id"] for s in applicable_shifts]
 
         # Partition scored_matches into pre-shift and post-shift pools

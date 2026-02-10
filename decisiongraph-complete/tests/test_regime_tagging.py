@@ -91,7 +91,7 @@ def test_detect_shifts_cash_3k_10k():
         "txn.type": "cash",
         "txn.amount_band": "3k_10k",
     }
-    shifts = detect_applicable_shifts(facts)
+    shifts = detect_applicable_shifts(case_facts=facts)
     ids = [s["id"] for s in shifts]
     assert "lctr_threshold" in ids
 
@@ -102,7 +102,7 @@ def test_detect_shifts_pep_over_25k():
         "customer.pep": True,
         "txn.amount_band": "25k_100k",
     }
-    shifts = detect_applicable_shifts(facts)
+    shifts = detect_applicable_shifts(case_facts=facts)
     ids = [s["id"] for s in shifts]
     assert "pep_risk_appetite" in ids
 
@@ -110,7 +110,7 @@ def test_detect_shifts_pep_over_25k():
 def test_detect_shifts_crypto():
     """Crypto transaction should trigger crypto_classification."""
     facts = {"txn.type": "crypto"}
-    shifts = detect_applicable_shifts(facts)
+    shifts = detect_applicable_shifts(case_facts=facts)
     ids = [s["id"] for s in shifts]
     assert "crypto_classification" in ids
 
@@ -122,7 +122,7 @@ def test_detect_shifts_structuring():
         "txn.multiple_same_day": True,
         "flag.structuring": False,
     }
-    shifts = detect_applicable_shifts(facts)
+    shifts = detect_applicable_shifts(case_facts=facts)
     ids = [s["id"] for s in shifts]
     assert "structuring_window" in ids
 
@@ -134,7 +134,7 @@ def test_detect_shifts_no_match():
         "txn.amount_band": "10k_25k",
         "customer.pep": False,
     }
-    shifts = detect_applicable_shifts(facts)
+    shifts = detect_applicable_shifts(case_facts=facts)
     assert shifts == []
 
 
@@ -145,7 +145,7 @@ def test_detect_shifts_returns_sorted_by_date():
         "customer.pep": True,
         "txn.amount_band": "25k_100k",
     }
-    shifts = detect_applicable_shifts(facts)
+    shifts = detect_applicable_shifts(case_facts=facts)
     dates = [s["effective_date"] for s in shifts]
     assert dates == sorted(dates)
 

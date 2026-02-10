@@ -123,6 +123,57 @@ def _new_outcome_structuring(
 
 
 # ---------------------------------------------------------------------------
+# Signal extraction — domain-portable signal names from case facts
+# ---------------------------------------------------------------------------
+
+def extract_case_signals(case_facts: dict) -> list[str]:
+    """Extract domain-portable signal names from case facts.
+
+    These signals form the universal language for policy shift matching.
+    Banking signals trigger banking shifts; insurance signals (future)
+    would trigger insurance shifts — the kernel mechanism is identical.
+    """
+    signals: list[str] = []
+    txn_type = case_facts.get("txn.type", "")
+    amount_band = case_facts.get("txn.amount_band", "")
+
+    # Virtual asset signals
+    if txn_type in ("crypto", "crypto_purchase", "crypto_sale"):
+        signals.append("VIRTUAL_ASSET_TRANSACTION")
+        if case_facts.get("flag.layering") or case_facts.get("flag.structuring"):
+            signals.append("VIRTUAL_ASSET_LAUNDERING")
+
+    # PEP signals
+    if case_facts.get("customer.pep") or case_facts.get("screening.pep_match"):
+        signals.append("PEP_MATCH")
+        if (case_facts.get("customer.high_risk_jurisdiction")
+                or case_facts.get("txn.destination_country_risk") == "high"):
+            signals.append("PEP_FOREIGN_DOMESTIC")
+
+    # Value signals
+    if amount_band in ("25k_100k", "100k_500k", "500k_1m", "over_1m"):
+        signals.append("HIGH_VALUE")
+
+    # Cash signals
+    if txn_type in ("cash", "cash_deposit", "cash_withdrawal"):
+        if amount_band == "3k_10k":
+            signals.append("LARGE_CASH_TRANSACTION")
+
+    # Cross-border signal
+    if case_facts.get("txn.cross_border"):
+        signals.append("CROSS_BORDER")
+
+    # Structuring signals
+    if case_facts.get("flag.structuring"):
+        signals.append("STRUCTURING_PATTERN")
+    if (case_facts.get("txn.just_below_threshold")
+            and case_facts.get("txn.multiple_same_day")):
+        signals.append("THRESHOLD_AVOIDANCE")
+
+    return signals
+
+
+# ---------------------------------------------------------------------------
 # Policy Shift Definitions
 # ---------------------------------------------------------------------------
 
@@ -133,6 +184,7 @@ POLICY_SHIFTS: list[dict[str, Any]] = [
         "description": "$10K → $8K",
         "policy_version": "2026.04.01",
         "citation": "PCMLTFA s. 12 (amended)",
+        "trigger_signals": ["HIGH_VALUE", "LARGE_CASH_TRANSACTION"],
         "rule_change": {
             "rule_id": "LCTR_THRESHOLD",
             "before": {"cash_reporting_threshold": 10_000},
@@ -148,6 +200,7 @@ POLICY_SHIFTS: list[dict[str, Any]] = [
         "policy_version": "2026.04.01",
         "citation": "Internal Policy 3.4.1 (revised)",
         "trigger": "FINTRAC Examination Finding #2026-EX-014",
+        "trigger_signals": ["PEP_MATCH", "PEP_FOREIGN_DOMESTIC"],
         "rule_change": {
             "rule_id": "PEP_ESCALATION",
             "before": {"pep_any_amount": "edd_analyst"},
@@ -162,6 +215,7 @@ POLICY_SHIFTS: list[dict[str, Any]] = [
         "description": "All crypto → automatic EDD; unhosted wallet → BLOCK",
         "policy_version": "2026.07.01",
         "citation": "FINTRAC Guideline 5 (updated)",
+        "trigger_signals": ["VIRTUAL_ASSET_TRANSACTION", "VIRTUAL_ASSET_LAUNDERING"],
         "rule_change": {
             "rule_id": "CRYPTO_RISK_CLASS",
             "before": {"crypto_treatment": "standard"},
@@ -177,6 +231,7 @@ POLICY_SHIFTS: list[dict[str, Any]] = [
         "policy_version": "2026.04.15",
         "citation": "Internal Policy 4.2.1 (revised)",
         "trigger": "Internal Audit Report IA-2026-007",
+        "trigger_signals": ["STRUCTURING_PATTERN", "THRESHOLD_AVOIDANCE"],
         "rule_change": {
             "rule_id": "STRUCTURING_WINDOW",
             "before": {"aggregation_hours": 24},
@@ -211,15 +266,40 @@ def _case_facts_to_seed_like(case_facts: dict) -> dict:
     }
 
 
-def detect_applicable_shifts(case_facts: dict) -> list[dict]:
-    """Return serializable metadata for each shift that affects *case_facts*."""
-    seed_like = _case_facts_to_seed_like(case_facts)
+def detect_applicable_shifts(
+    case_signals: list[str] | None = None,
+    case_facts: dict | None = None,
+) -> list[dict]:
+    """Return serializable metadata for each shift that affects the case.
+
+    Uses signal-based matching when *case_signals* provided (domain-portable).
+    Falls back to field-based matching via *case_facts* (backward compat).
+    When both are provided, signal matching is primary with field validation.
+    """
+    seed_like = _case_facts_to_seed_like(case_facts) if case_facts else None
     applicable = []
+
     for shift in POLICY_SHIFTS:
-        if shift["_affects"](seed_like):
-            meta = {k: v for k, v in shift.items() if not k.startswith("_")}
-            meta["effective_date"] = SHIFT_EFFECTIVE_DATES[shift["id"]].isoformat()
-            applicable.append(meta)
+        trigger_signals = shift.get("trigger_signals", [])
+
+        if case_signals is not None and trigger_signals:
+            # Signal-based matching (domain-portable)
+            if not any(sig in case_signals for sig in trigger_signals):
+                continue
+            # When case_facts also provided, validate with _affects for precision
+            if seed_like is not None and not shift["_affects"](seed_like):
+                continue
+        elif seed_like is not None:
+            # Fallback: field-based matching only (backward compat)
+            if not shift["_affects"](seed_like):
+                continue
+        else:
+            continue
+
+        meta = {k: v for k, v in shift.items() if not k.startswith("_")}
+        meta["effective_date"] = SHIFT_EFFECTIVE_DATES[shift["id"]].isoformat()
+        applicable.append(meta)
+
     applicable.sort(key=lambda s: s["effective_date"])
     return applicable
 
