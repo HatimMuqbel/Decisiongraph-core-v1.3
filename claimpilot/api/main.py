@@ -35,6 +35,7 @@ from kernel.foundation.judgment import create_judgment_cell
 from claimpilot.precedent.cli import generate_all_insurance_seeds
 
 from api.routes import policies, evaluate, demo, verify, memo, templates
+from api.routes.dashboard import router as dashboard_router
 from api.template_loader import TemplateLoader
 
 
@@ -196,9 +197,11 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:5173",
         "https://claimpilot.io",
         "https://claimpilot.ca",
         "https://*.vercel.app",
+        "https://*.railway.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -212,21 +215,33 @@ app.include_router(demo.router)
 app.include_router(verify.router)
 app.include_router(memo.router)
 app.include_router(templates.router)
+app.include_router(dashboard_router)
 
-# Mount static files (for CSS, JS, images if needed)
+# Mount static files
 static_path = Path(__file__).parent / "static"
-if static_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+DASHBOARD_DIR = static_path / "dashboard"
+try:
+    if static_path.exists():
+        app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+    if DASHBOARD_DIR.exists() and (DASHBOARD_DIR / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(DASHBOARD_DIR / "assets")), name="dashboard-assets")
+        print(f"[startup] Dashboard SPA mounted from {DASHBOARD_DIR}")
+except Exception as e:
+    print(f"Warning: Could not mount static files: {e}")
 
 
-@app.get("/", tags=["Landing"], include_in_schema=False)
+@app.get("/", tags=["Dashboard"], include_in_schema=False)
 async def root():
-    """Serve the landing page."""
-    static_dir = Path(__file__).parent / "static"
-    index_file = static_dir / "index.html"
+    """Serve the React dashboard SPA or fallback landing page."""
+    # Prefer React dashboard
+    spa_index = DASHBOARD_DIR / "index.html"
+    if spa_index.exists():
+        return FileResponse(spa_index, media_type="text/html")
+    # Fallback to static landing page
+    index_file = static_path / "index.html"
     if index_file.exists():
         return FileResponse(index_file, media_type="text/html")
-    # Fallback to JSON if no landing page
+    # Fallback to JSON
     return {
         "service": "ClaimPilot API",
         "version": "1.0.0",
@@ -261,6 +276,27 @@ async def health():
         "precedents_loaded": PRECEDENT_COUNT,
         "precedent_system_available": PRECEDENTS_LOADED
     }
+
+
+# =============================================================================
+# SPA Catch-All — serves React dashboard for all frontend routes
+# MUST be the LAST route registered
+# =============================================================================
+
+_SPA_ROUTES = {"/cases", "/seeds", "/policy-shifts", "/sandbox", "/audit", "/registry", "/reports"}
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa_catchall(full_path: str):
+    """Catch-all: serve the React SPA index.html for frontend routes."""
+    from fastapi.responses import FileResponse as FR
+    normalized = f"/{full_path}".rstrip("/")
+    is_spa_route = any(normalized.startswith(r) for r in _SPA_ROUTES)
+    spa_index = DASHBOARD_DIR / "index.html"
+    if is_spa_route and spa_index.exists():
+        return FR(spa_index, media_type="text/html")
+    from fastapi import HTTPException as HE
+    raise HE(status_code=404, detail=f"Not found: /{full_path}")
 
 
 if __name__ == "__main__":

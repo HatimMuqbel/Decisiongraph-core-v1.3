@@ -19,6 +19,9 @@ COPY decisiongraph-complete/src/domains/ /app/domains/
 # Copy ClaimPilot application
 COPY claimpilot/ /app/claimpilot/
 
+# Copy React dashboard build (shared with banking)
+COPY services/dashboard/dist/ /app/claimpilot/api/static/dashboard/
+
 # Purge stale bytecode
 RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
