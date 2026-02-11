@@ -168,10 +168,20 @@ def _enrich_standardized_fields(flat: dict[str, Any], case: dict) -> None:
         if flat.get(key):
             _set("claim.loss_cause", flat[key])
             break
+    # Derive from context if not already set
+    if "claim.loss_cause" not in flat:
+        if flat.get("driver.impairment_indicated") or (flat.get("driver.bac_level") or 0) > 0.05:
+            _set("claim.loss_cause", "collision")
+        elif flat.get("vehicle.use_at_loss") in ("delivery", "rideshare"):
+            _set("claim.loss_cause", "collision")
+        elif flat.get("loss.racing_activity"):
+            _set("claim.loss_cause", "collision")
 
     # --- claim.injury_type ---
     if flat.get("claim.injury_type") is None:
         if flat.get("injury.work_related") or flat.get("injury.arose_out_of_employment"):
+            _set("claim.injury_type", "moderate")
+        elif lob == "auto":
             _set("claim.injury_type", "moderate")
 
     # --- claim.time_to_report ---

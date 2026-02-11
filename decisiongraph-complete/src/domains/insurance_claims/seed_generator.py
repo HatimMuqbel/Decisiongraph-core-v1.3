@@ -70,6 +70,8 @@ _SCENARIO_REASON_CODES: dict[str, list[str]] = {
     "high_value_claim":         ["RC-CLM-HIGH-VALUE", "RC-CLM-REVIEW"],
     "siu_referral_pattern":     ["RC-SIU-REFERRAL", "RC-FRD-INDICATOR"],
     "policy_exclusion_deny":    ["RC-POL-EXCLUSION", "RC-POL-OUTSIDE-PERIOD"],
+    "auto_impairment_deny":     ["RC-POL-EXCLUSION", "RC-FRD-INDICATOR"],
+    "property_vacancy_deny":    ["RC-POL-EXCLUSION", "RC-CLM-PROPERTY"],
     "prior_denied_multiple":    ["RC-PRIOR-DENIED", "RC-PRIOR-MULTIPLE"],
 }
 
@@ -159,7 +161,7 @@ SCENARIOS = [
         },
         "outcome": {"disposition": "PAY_CLAIM", "disposition_basis": "DISCRETIONARY", "reporting": "NO_FILING"},
         "decision_level": "adjuster",
-        "weight": 0.15,
+        "weight": 0.12,
         "decision_drivers": ["claim.coverage_line", "claim.amount_band", "claim.claimant_type"],
         "driver_typology": "",
     },
@@ -174,7 +176,7 @@ SCENARIOS = [
         },
         "outcome": {"disposition": "PAY_CLAIM", "disposition_basis": "DISCRETIONARY", "reporting": "NO_FILING"},
         "decision_level": "adjuster",
-        "weight": 0.10,
+        "weight": 0.08,
         "decision_drivers": ["claim.coverage_line", "claim.amount_band"],
         "driver_typology": "",
     },
@@ -457,6 +459,43 @@ SCENARIOS = [
         "weight": 0.04,
         "decision_drivers": ["claim.occurred_during_policy"],
         "driver_typology": "policy_exclusion",
+    },
+
+    # == DENY_CLAIM (BLOCK) — driver impairment exclusion ==
+    {
+        "name": "auto_impairment_deny",
+        "description": "Auto claim denied due to driver impairment (alcohol/drugs), policy exclusion triggered",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "claim.coverage_line": "auto",
+            "claim.claimant_type": "first_party",
+            "claim.loss_cause": "collision",
+            "claim.injury_type": "moderate",
+            "flag.fraud_indicator": True,
+            "evidence.police_report": True,
+        },
+        "outcome": {"disposition": "DENY_CLAIM", "disposition_basis": "DISCRETIONARY", "reporting": "NO_FILING"},
+        "decision_level": "adjuster",
+        "weight": 0.03,
+        "decision_drivers": ["flag.fraud_indicator", "claim.coverage_line", "evidence.police_report"],
+        "driver_typology": "impairment",
+    },
+
+    # == DENY_CLAIM (BLOCK) — property vacancy exclusion ==
+    {
+        "name": "property_vacancy_deny",
+        "description": "Property claim denied due to vacancy exceeding policy limit",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "claim.coverage_line": "property",
+            "claim.claimant_type": "first_party",
+            "claim.occurred_during_policy": True,
+        },
+        "outcome": {"disposition": "DENY_CLAIM", "disposition_basis": "DISCRETIONARY", "reporting": "NO_FILING"},
+        "decision_level": "adjuster",
+        "weight": 0.02,
+        "decision_drivers": ["claim.coverage_line", "claim.occurred_during_policy"],
+        "driver_typology": "vacancy_exclusion",
     },
 
     # == INVESTIGATE (EDD) — prior denials ==
@@ -755,6 +794,14 @@ _NOISE_OUTCOMES: dict[str, dict] = {
     "siu_referral_pattern": {
         "outcome": {"disposition": "DENY_CLAIM", "disposition_basis": "DISCRETIONARY", "reporting": "FRAUD_REPORT"},
         "decision_level": "claims_manager",
+    },
+    "auto_impairment_deny": {
+        "outcome": {"disposition": "INVESTIGATE", "disposition_basis": "DISCRETIONARY", "reporting": "NO_FILING"},
+        "decision_level": "examiner",
+    },
+    "property_vacancy_deny": {
+        "outcome": {"disposition": "INVESTIGATE", "disposition_basis": "DISCRETIONARY", "reporting": "NO_FILING"},
+        "decision_level": "examiner",
     },
 }
 
