@@ -29,10 +29,10 @@ from claimpilot.models import Policy
 
 # Precedent system imports
 try:
-    from decisiongraph.chain import Chain
-    from decisiongraph.cell import NULL_HASH
-    from decisiongraph.precedent_registry import PrecedentRegistry
-    from decisiongraph.judgment import create_judgment_cell
+    from kernel.foundation.chain import Chain
+    from kernel.foundation.cell import NULL_HASH
+    from kernel.precedent.precedent_registry import PrecedentRegistry
+    from kernel.foundation.judgment import create_judgment_cell
     from claimpilot.precedent.cli import generate_all_insurance_seeds
     PRECEDENT_SYSTEM_AVAILABLE = True
 except ImportError as e:

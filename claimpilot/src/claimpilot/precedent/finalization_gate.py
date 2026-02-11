@@ -38,13 +38,13 @@ from typing import Any, Optional, TYPE_CHECKING
 
 # DecisionGraph imports are optional - the module may not be installed
 try:
-    from decisiongraph.judgment import (
+    from kernel.foundation.judgment import (
         AnchorFact,
         JudgmentPayload,
         create_judgment_cell,
         compute_case_id_hash,
     )
-    from decisiongraph.cell import DecisionCell, get_current_timestamp
+    from kernel.foundation.cell import DecisionCell, get_current_timestamp
     DECISIONGRAPH_AVAILABLE = True
 except ImportError:
     # Create stub types for when decisiongraph is not available
@@ -62,7 +62,7 @@ except ImportError:
 from .fingerprint_schema import FingerprintSchemaRegistry
 
 if TYPE_CHECKING:
-    from decisiongraph.chain import Chain
+    from kernel.foundation.chain import Chain
     from ..models.disposition import FinalDisposition
     from ..models.recommendation import RecommendationRecord
     from ..models.claim import ClaimContext

@@ -31,7 +31,7 @@ from typing import Any, Optional
 
 # DecisionGraph imports are optional - the module may not be installed
 try:
-    from decisiongraph.judgment import AnchorFact, JudgmentPayload, compute_case_id_hash
+    from kernel.foundation.judgment import AnchorFact, JudgmentPayload, compute_case_id_hash
     DECISIONGRAPH_AVAILABLE = True
 except ImportError:
     # Create stub types for when decisiongraph is not available

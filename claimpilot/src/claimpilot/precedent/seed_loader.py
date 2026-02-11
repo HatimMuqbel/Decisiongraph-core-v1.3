@@ -29,7 +29,7 @@ from typing import Any, Optional, TYPE_CHECKING
 
 # DecisionGraph imports are optional - the module may not be installed
 try:
-    from decisiongraph.judgment import (
+    from kernel.foundation.judgment import (
         JudgmentPayload,
         create_judgment_cell,
         parse_judgment_payload,
@@ -53,7 +53,7 @@ from .seed_generator import SeedGenerator, SeedConfig, CleanApprovalConfig
 from .seeds import load_seed_config, load_all_seed_configs, SEEDS_DIR
 
 if TYPE_CHECKING:
-    from decisiongraph.chain import Chain
+    from kernel.foundation.chain import Chain
 
 
 # =============================================================================

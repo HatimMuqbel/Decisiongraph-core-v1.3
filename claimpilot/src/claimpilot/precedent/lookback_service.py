@@ -29,7 +29,7 @@ from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from decisiongraph.chain import Chain
+    from kernel.foundation.chain import Chain
 
 
 # =============================================================================

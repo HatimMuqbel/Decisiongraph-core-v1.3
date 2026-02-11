@@ -51,8 +51,8 @@ from uuid import uuid4
 
 # DecisionGraph imports are optional - the module may not be installed
 try:
-    from decisiongraph.judgment import JudgmentPayload
-    from decisiongraph.precedent_registry import (
+    from kernel.foundation.judgment import JudgmentPayload
+    from kernel.precedent.precedent_registry import (
         PrecedentRegistry,
         PrecedentStatistics,
         AppealStatistics,
@@ -69,7 +69,7 @@ except ImportError:
 from .fingerprint_schema import FingerprintSchemaRegistry
 
 if TYPE_CHECKING:
-    from decisiongraph.chain import Chain
+    from kernel.foundation.chain import Chain
 
 
 # =============================================================================
