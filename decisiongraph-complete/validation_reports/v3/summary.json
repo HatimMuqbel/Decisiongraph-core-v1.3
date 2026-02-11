@@ -9,14 +9,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 12.0,
+        "value": 11.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8854,
+        "value": 0.8616,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -45,28 +45,28 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "42/47"
+    "governed_alignment": "45/61"
   },
   {
     "case_id": "high-value-explained",
     "name": "High Value Wire - Documented (PASS)",
     "category": "PASS",
-    "confidence_level": "VERY_HIGH",
-    "confidence_bottleneck": "pool_adequacy",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "similarity_quality",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 64.0,
+        "value": 69.0,
         "level": "VERY_HIGH",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8755,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
+        "value": 0.8067,
+        "level": "HIGH",
+        "bottleneck": true,
         "note": ""
       },
       {
@@ -92,28 +92,28 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "64/64"
+    "governed_alignment": "68/69"
   },
   {
     "case_id": "cross-border-routine",
     "name": "Cross-Border - Routine (PASS)",
     "category": "PASS",
-    "confidence_level": "VERY_HIGH",
-    "confidence_bottleneck": "pool_adequacy",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "similarity_quality",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 154.0,
+        "value": 130.0,
         "level": "VERY_HIGH",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8564,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
+        "value": 0.8191,
+        "level": "HIGH",
+        "bottleneck": true,
         "note": ""
       },
       {
@@ -139,7 +139,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "154/154"
+    "governed_alignment": "126/130"
   },
   {
     "case_id": "sanctions-hit",
@@ -151,14 +151,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 19.0,
+        "value": 16.0,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8786,
+        "value": 0.8792,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -185,7 +185,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "19/19"
+    "governed_alignment": "16/16"
   },
   {
     "case_id": "structuring-pattern",
@@ -197,22 +197,22 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 44.0,
+        "value": 43.0,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7593,
+        "value": 0.764,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
-        "level": "VERY_HIGH",
+        "value": 0.9286,
+        "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
@@ -230,41 +230,44 @@
         "flag.structuring",
         "flag.unusual_for_profile",
         "txn.just_below_threshold",
-        "txn.multiple_same_day"
+        "txn.multiple_same_day",
+        "txn.pattern_matches_profile"
       ],
-      "divergent_drivers": []
+      "divergent_drivers": [
+        "txn.source_of_funds_clear"
+      ]
     },
-    "non_transferable_count": 0,
-    "governed_alignment": "62/66"
+    "non_transferable_count": 5,
+    "governed_alignment": "51/65"
   },
   {
     "case_id": "shell-company-layering",
     "name": "Shell Company - BVI (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "MODERATE",
+    "confidence_level": "LOW",
     "confidence_bottleneck": "outcome_consistency",
-    "confidence_hard_rule": "0 terminal precedents (ALLOW/BLOCK)",
+    "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 42.0,
-        "level": "HIGH",
+        "value": 74.0,
+        "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8475,
+        "value": 0.8303,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 0.0,
-        "level": "MODERATE",
+        "value": 0.4545,
+        "level": "LOW",
         "bottleneck": true,
-        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+        "note": ""
       },
       {
         "name": "evidence_completeness",
@@ -278,12 +281,12 @@
       "shared_drivers": [
         "flag.layering",
         "flag.shell_company",
-        "txn.cross_border"
+        "txn.amount_band"
       ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "42/42"
+    "governed_alignment": "41/74"
   },
   {
     "case_id": "pep-plus-adverse-media",
@@ -295,21 +298,21 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 41.0,
+        "value": 40.0,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7648,
+        "value": 0.7747,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 0.0,
+        "value": 0.5789,
         "level": "LOW",
         "bottleneck": true,
         "note": ""
@@ -326,13 +329,12 @@
       "shared_drivers": [
         "customer.pep",
         "screening.adverse_media",
-        "screening.pep_match",
-        "txn.amount_band"
+        "screening.pep_match"
       ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "0/76"
+    "governed_alignment": "11/90"
   },
   {
     "case_id": "crypto-high-risk-corridor",
@@ -344,22 +346,22 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 3.0,
+        "value": 1.0,
         "level": "LOW",
         "bottleneck": true,
         "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
-        "value": 0.747,
+        "value": 0.757,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 0.0,
-        "level": "LOW",
+        "value": 1.0,
+        "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
@@ -375,17 +377,14 @@
       "shared_drivers": [
         "flag.rapid_movement",
         "flag.unusual_for_profile",
-        "txn.amount_band",
-        "txn.pattern_matches_profile",
-        "txn.round_amount",
-        "txn.source_of_funds_clear"
+        "txn.destination_country_risk"
       ],
       "divergent_drivers": [
-        "txn.stated_purpose"
+        "txn.source_of_funds_clear"
       ]
     },
-    "non_transferable_count": 2,
-    "governed_alignment": "25/27"
+    "non_transferable_count": 10,
+    "governed_alignment": "17/44"
   },
   {
     "case_id": "velocity-spike",
@@ -397,21 +396,21 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 58.0,
+        "value": 108.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7149,
+        "value": 0.7066,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 0.0,
+        "value": 0.5111,
         "level": "LOW",
         "bottleneck": true,
         "note": ""
@@ -429,16 +428,15 @@
         "flag.rapid_movement",
         "flag.unusual_for_profile",
         "txn.amount_band",
-        "txn.pattern_matches_profile",
-        "txn.round_amount",
-        "txn.source_of_funds_clear"
+        "txn.pattern_matches_profile"
       ],
       "divergent_drivers": [
-        "txn.stated_purpose"
+        "flag.layering",
+        "flag.shell_company"
       ]
     },
-    "non_transferable_count": 3,
-    "governed_alignment": "56/58"
+    "non_transferable_count": 6,
+    "governed_alignment": "63/108"
   },
   {
     "case_id": "beneficial-owner-pep",
@@ -446,28 +444,28 @@
     "category": "EDGE",
     "confidence_level": "LOW",
     "confidence_bottleneck": "pool_adequacy",
-    "confidence_hard_rule": "0 terminal precedents (ALLOW/BLOCK)",
+    "confidence_hard_rule": "pool below minimum (5)",
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 3.0,
+        "value": 4.0,
         "level": "LOW",
         "bottleneck": true,
         "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
-        "value": 0.6819,
-        "level": "MODERATE",
+        "value": 0.7028,
+        "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
         "value": 0.0,
-        "level": "MODERATE",
+        "level": "LOW",
         "bottleneck": false,
-        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+        "note": ""
       },
       {
         "name": "evidence_completeness",
@@ -486,6 +484,6 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "21/21"
+    "governed_alignment": "17/21"
   }
 ]

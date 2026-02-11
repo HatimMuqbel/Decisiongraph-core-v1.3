@@ -6,7 +6,7 @@ registry.  Every seed uses three-field banking outcomes (disposition /
 disposition_basis / reporting) -- no insurance vocabulary.
 
 Design:
-- 20 scenarios with base_facts that define the pattern
+- 26 scenarios with base_facts that define the pattern
 - Each scenario has a weight that determines how many seeds to generate
 - Remaining fields are filled with realistic random values
 - ~10 % noise: minority-outcome variants per scenario
@@ -71,6 +71,12 @@ _SCENARIO_REASON_CODES: dict[str, list[str]] = {
     "multiple_prior_sars":      ["RC-MON-ALERT", "RC-MON-VELOCITY"],
     "heavy_sar_history":        ["RC-MON-VELOCITY", "RC-MON-ALERT"],
     "previous_closure":         ["RC-MON-ALERT", "RC-MON-UNUSUAL"],
+    "pep_adverse_media_block":  ["RC-TXN-PEP", "RC-KYC-ADVERSE-MAJOR", "RC-KYC-PEP-APPROVED"],
+    "layering_high_value_block": ["RC-TXN-LAYER", "RC-TXN-RAPID", "RC-TXN-UNUSUAL"],
+    "shell_entity_cleared":     ["RC-TXN-LAYER", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
+    "crypto_corridor_cleared":  ["RC-TXN-FATF-GREY", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
+    "velocity_spike_cleared":   ["RC-TXN-RAPID", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
+    "structuring_cleared":      ["RC-TXN-STRUCT", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
 }
 
 
@@ -93,7 +99,7 @@ def _schema_for_codes(codes: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 20 scenarios  (matches task spec)
+# 26 scenarios  (matches task spec)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -144,7 +150,7 @@ SCENARIOS = [
         },
         "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
         "decision_level": "analyst",
-        "weight": 0.25,
+        "weight": 0.17,
         "decision_drivers": ["txn.pattern_matches_profile", "txn.source_of_funds_clear"],
         "driver_typology": "",
     },
@@ -158,7 +164,7 @@ SCENARIOS = [
         },
         "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_LCTR"},
         "decision_level": "analyst",
-        "weight": 0.08,
+        "weight": 0.06,
         "decision_drivers": ["txn.amount_band", "txn.source_of_funds_clear"],
         "driver_typology": "",
     },
@@ -194,7 +200,7 @@ SCENARIOS = [
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
-        "weight": 0.04,
+        "weight": 0.03,
         "decision_drivers": ["txn.round_amount", "txn.amount_band", "txn.pattern_matches_profile"],
         "driver_typology": "structuring",
     },
@@ -209,7 +215,7 @@ SCENARIOS = [
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
-        "weight": 0.05,
+        "weight": 0.04,
         "decision_drivers": ["txn.source_of_funds_clear", "txn.stated_purpose"],
         "driver_typology": "",
     },
@@ -446,6 +452,121 @@ SCENARIOS = [
         "decision_drivers": ["prior.account_closures"],
         "driver_typology": "",
     },
+
+    # ── BLOCK (discretionary — corroborated risk) ──
+    {
+        "name": "pep_adverse_media_block",
+        "description": "PEP + adverse media + cross-border → block for STR",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.pep": True,
+            "screening.adverse_media": True,
+            "screening.pep_match": True,
+            "txn.cross_border": True,
+            "customer.high_risk_jurisdiction": True,
+            "txn.amount_band": "100k_500k",
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": False,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.02,
+        "decision_drivers": ["customer.pep", "screening.adverse_media", "screening.pep_match"],
+        "driver_typology": "pep_adverse_media",
+    },
+    {
+        "name": "layering_high_value_block",
+        "description": "Shell + layering + high value → block for STR",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "flag.shell_company": True,
+            "flag.layering": True,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+            "customer.type": "corporation",
+            "txn.amount_band": "500k_1m",
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": False,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.02,
+        "decision_drivers": ["flag.layering", "flag.shell_company", "txn.amount_band"],
+        "driver_typology": "layering",
+    },
+
+    # ── ALLOW (cleared after investigation) ──
+    {
+        "name": "shell_entity_cleared",
+        "description": "Shell company flags but cleared — source of funds verified",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "flag.shell_company": True,
+            "flag.layering": True,
+            "txn.cross_border": True,
+            "customer.type": "corporation",
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["flag.shell_company", "txn.cross_border", "txn.source_of_funds_clear"],
+        "driver_typology": "",
+    },
+    {
+        "name": "crypto_corridor_cleared",
+        "description": "Crypto high-risk corridor but cleared — funds verified",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "txn.type": "crypto",
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+            "flag.unusual_for_profile": True,
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["txn.type", "txn.destination_country_risk", "txn.source_of_funds_clear"],
+        "driver_typology": "",
+    },
+    {
+        "name": "velocity_spike_cleared",
+        "description": "Rapid movement cleared — funds verified",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "flag.rapid_movement": True,
+            "flag.unusual_for_profile": True,
+            "txn.amount_band": "25k_100k",
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["flag.rapid_movement", "flag.unusual_for_profile", "txn.source_of_funds_clear"],
+        "driver_typology": "",
+    },
+    {
+        "name": "structuring_cleared",
+        "description": "Structuring pattern cleared — below threshold, funds verified",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "txn.just_below_threshold": True,
+            "txn.multiple_same_day": True,
+            "flag.structuring": True,
+            "txn.round_amount": True,
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["flag.structuring", "txn.source_of_funds_clear"],
+        "driver_typology": "structuring",
+    },
 ]
 
 
@@ -679,6 +800,30 @@ _NOISE_OUTCOMES: dict[str, dict] = {
         "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
         "decision_level": "manager",
     },
+    "pep_adverse_media_block": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    "layering_high_value_block": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    "shell_entity_cleared": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    "crypto_corridor_cleared": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    "velocity_spike_cleared": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    "structuring_cleared": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
 }
 
 
@@ -689,7 +834,7 @@ def generate_all_banking_seeds(
 ) -> list[JudgmentPayload]:
     """Generate all banking seed precedents.
 
-    Returns ~1,500 JudgmentPayload objects covering all 20 AML
+    Returns ~1,500 JudgmentPayload objects covering all 26 AML
     scenarios with full 28-field coverage.
     """
     rng = random.Random(random_seed)
