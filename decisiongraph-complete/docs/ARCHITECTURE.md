@@ -10,6 +10,33 @@ DecisionGraph is a **Universal Operating System for Deterministic Reasoning**. I
 4. **Complete Audit Trail**: Every cell traces back to Genesis
 5. **Bitemporal Queries**: "What was true when" vs "what did we know when"
 
+## Code Organization (v1.3)
+
+v1.3 restructures the codebase into three physical layers:
+
+```
+decisiongraph-complete/src/
+├── kernel/                    # Source of truth — domain-portable primitives
+│   ├── foundation/  (11)      #   cell, chain, genesis, signing, WAL, etc.
+│   ├── precedent/   (6)       #   registry, scorer, confidence, comparators
+│   ├── policy/      (3)       #   simulation, regime detection
+│   ├── evidence/    (2)       #   TriBool, evidence gate
+│   └── calendars/   (3)       #   US federal, Ontario holidays
+│
+├── domains/                   # Domain-specific implementations
+│   ├── banking_aml/           #   field registry, seeds, fingerprints, reason codes
+│   └── insurance_claims/      #   (stub — future)
+│
+└── decisiongraph/             # Backward-compatible re-export shims
+    └── *.py → kernel.* / domains.*
+```
+
+- **`kernel/`** contains all domain-portable decision primitives (26 modules)
+- **`domains/`** contains domain-specific logic (6 banking AML modules)
+- **`decisiongraph/`** contains thin re-export shims (25 files) so existing imports keep working
+
+See `SCHEMA_V1.3.md` for the full migration record, commit history, and shim pattern.
+
 ## The Eight Layers
 
 ```
@@ -220,7 +247,7 @@ create_bridge_rule(
 
 ## Layer 5: Resolver (The Scholar)
 
-*Not yet implemented*
+Implementation: `kernel/foundation/scholar.py`
 
 The query engine that reads the vault:
 
@@ -397,15 +424,25 @@ Categories:
 
 ## Use Cases
 
-### Banking AML
+### Banking AML (`domains/banking_aml/`)
 ```
 namespace: bank.compliance.aml
 facts: customer risk ratings, transaction flags
 rules: SAR filing thresholds, enhanced due diligence triggers
 decisions: "File SAR" with complete audit trail
+modules: field_registry, seed_generator, fingerprint, reason_codes, policy_shifts
 ```
 
-### HR Performance
+### Insurance Claims (`claimpilot/`)
+```
+namespace: insurance.claims
+facts: policy terms, claim details, evidence documents
+rules: coverage eligibility, exclusion matching, FSRA timelines
+decisions: "Pay claim" / "Deny claim" with precedent-backed confidence
+modules: policy_engine, evidence_gate, precedent_finder, calendars
+```
+
+### HR Performance (example)
 ```
 namespace: corp.hr.performance
 facts: employee ratings, certifications, tenure
@@ -413,7 +450,7 @@ rules: promotion eligibility criteria
 decisions: "Eligible for promotion" with evidence chain
 ```
 
-### Sales Discounts
+### Sales Discounts (example)
 ```
 namespace: corp.sales.discounts
 facts: deal size, customer tier, rep assignment
