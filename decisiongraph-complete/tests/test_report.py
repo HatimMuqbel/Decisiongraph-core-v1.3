@@ -13,13 +13,13 @@ import hashlib
 import pytest
 from dataclasses import dataclass
 
-from src.decisiongraph import (
+from decisiongraph import (
     DecisionCell, Header, Fact, LogicAnchor,
     CellType, SourceQuality,
     HASH_SCHEME_CANONICAL, NULL_HASH, get_current_timestamp
 )
-from src.decisiongraph.pack import create_universal_pack
-from src.decisiongraph.report import (
+from decisiongraph.pack import create_universal_pack
+from decisiongraph.report import (
     ReportError,
     IncompleteReportError,
     JudgmentError,

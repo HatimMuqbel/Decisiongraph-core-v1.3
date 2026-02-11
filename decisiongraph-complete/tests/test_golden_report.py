@@ -17,7 +17,7 @@ import pytest
 import hashlib
 from typing import List
 
-from src.decisiongraph import (
+from decisiongraph import (
     # Core cell types
     DecisionCell, Header, Fact, LogicAnchor, Evidence, Proof,
     CellType, SourceQuality,
