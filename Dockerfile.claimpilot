@@ -1,0 +1,32 @@
+FROM python:3.11-slim
+
+# ClaimPilot API — must build from repo root so kernel modules are available.
+#
+# Railway config:
+#   Root Directory:   /  (blank — repo root)
+#   Dockerfile Path:  Dockerfile.claimpilot
+
+WORKDIR /app
+
+# Install dependencies (claimpilot's own requirements)
+COPY claimpilot/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy kernel + domains (the shared engine)
+COPY decisiongraph-complete/src/kernel/ /app/kernel/
+COPY decisiongraph-complete/src/domains/ /app/domains/
+
+# Copy ClaimPilot application
+COPY claimpilot/ /app/claimpilot/
+
+# Purge stale bytecode
+RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+
+# PYTHONPATH: kernel/domains at /app, claimpilot source at /app/claimpilot/src,
+# claimpilot root at /app/claimpilot (for api.main)
+ENV PYTHONPATH=/app:/app/claimpilot/src:/app/claimpilot
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000} --app-dir /app/claimpilot"]
