@@ -735,6 +735,14 @@
     </div>
     {% endif %}
 
+    {# ── Row 2: Policy Simulation Pointer (minimal C2.7) ──────── #}
+    {% if enhanced_precedent and enhanced_precedent.regime_analysis and enhanced_precedent.regime_analysis.shifts_detected %}
+    <div style="margin-top:8px; padding:10px 14px; border:1px dashed rgba(52,211,153,0.3); border-radius:8px; background:rgba(16,185,129,0.05);">
+      <p class="small" style="margin:0; color:#34d399; font-weight:600;">&#9881; POLICY SIMULATION AVAILABLE</p>
+      <p class="small" style="margin:4px 0 0; color:var(--muted);">3 draft policies can be simulated via the dashboard. Visit <strong>/sandbox</strong> to run simulations before enacting changes.</p>
+    </div>
+    {% endif %}
+
     {# ── Row 3: Top 5 Comparable Cases ─────────────────────────── #}
     {% if enhanced_precedent and enhanced_precedent.case_thumbnails and enhanced_precedent.case_thumbnails|length > 0 %}
     <h3 style="margin-top:16px;">Top Comparable Cases</h3>
