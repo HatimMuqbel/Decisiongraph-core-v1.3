@@ -36,28 +36,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional, TYPE_CHECKING
 
-# DecisionGraph imports are optional - the module may not be installed
-try:
-    from kernel.foundation.judgment import (
-        AnchorFact,
-        JudgmentPayload,
-        create_judgment_cell,
-        compute_case_id_hash,
-    )
-    from kernel.foundation.cell import DecisionCell, get_current_timestamp
-    DECISIONGRAPH_AVAILABLE = True
-except ImportError:
-    # Create stub types for when decisiongraph is not available
-    AnchorFact = Any  # type: ignore
-    JudgmentPayload = Any  # type: ignore
-    DecisionCell = Any  # type: ignore
-    def create_judgment_cell(*args, **kwargs) -> Any:  # type: ignore
-        return None
-    def compute_case_id_hash(*args, **kwargs) -> str:  # type: ignore
-        return hashlib.sha256(str(args).encode()).hexdigest()[:16]
-    def get_current_timestamp() -> datetime:  # type: ignore
-        return datetime.now(timezone.utc)
-    DECISIONGRAPH_AVAILABLE = False
+from kernel.foundation.judgment import (
+    AnchorFact,
+    JudgmentPayload,
+    create_judgment_cell,
+    compute_case_id_hash,
+)
+from kernel.foundation.cell import DecisionCell, get_current_timestamp
 
 from .fingerprint_schema import FingerprintSchemaRegistry
 

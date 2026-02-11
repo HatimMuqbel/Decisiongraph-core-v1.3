@@ -28,18 +28,11 @@ from claimpilot.packs.loader import PolicyPackLoader
 from claimpilot.models import Policy
 
 # Precedent system imports
-try:
-    from kernel.foundation.chain import Chain
-    from kernel.foundation.cell import NULL_HASH
-    from kernel.precedent.precedent_registry import PrecedentRegistry
-    from kernel.foundation.judgment import create_judgment_cell
-    from claimpilot.precedent.cli import generate_all_insurance_seeds
-    PRECEDENT_SYSTEM_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: Precedent system not available: {e}")
-    PRECEDENT_SYSTEM_AVAILABLE = False
-    Chain = None
-    PrecedentRegistry = None
+from kernel.foundation.chain import Chain
+from kernel.foundation.cell import NULL_HASH
+from kernel.precedent.precedent_registry import PrecedentRegistry
+from kernel.foundation.judgment import create_judgment_cell
+from claimpilot.precedent.cli import generate_all_insurance_seeds
 
 from api.routes import policies, evaluate, demo, verify, memo, templates
 from api.template_loader import TemplateLoader
@@ -68,10 +61,6 @@ def load_precedent_seeds() -> int:
         Number of precedents loaded
     """
     global PRECEDENT_CHAIN, PRECEDENT_REGISTRY, PRECEDENTS_LOADED, PRECEDENT_COUNT
-
-    if not PRECEDENT_SYSTEM_AVAILABLE:
-        print("  [SKIP] Precedent system not available")
-        return 0
 
     try:
         # Generate all seed precedents
