@@ -735,12 +735,32 @@ INSURANCE_DECISION_LEVELS = {"adjuster", "senior_adjuster", "examiner",
 
 Source: `domains/insurance_claims/seed_generator.py`
 
-- 20 scenarios across 8 coverage lines, ~1,618 seeds
+- 22 scenarios across 8 coverage lines, ~1,618 seeds
 - Salt: `decisiongraph-insurance-seed-v1`
 - Policy: `CA-FSRA-INSURANCE` v2026.01.01
 - Coverage lines: auto, property, health, workers_comp, cgl, eo, marine, travel
 - ~10% noise (minority-outcome variants)
 - 3 policy shifts with post-shift seeds
+- Outcome distribution: ~57% pay, ~31% escalate, ~12% deny
+
+#### Scenario-Specific Deny Seeds
+
+Two scenario-specific deny scenarios ensure meaningful precedent support for
+denial cases that correspond to common policy exclusions:
+
+| Scenario | Weight | Coverage | Key Facts | Basis |
+|----------|--------|----------|-----------|-------|
+| `auto_impairment_deny` | 3% (~48 seeds) | auto | `fraud_indicator=True`, `loss_cause=collision`, `injury_type=moderate`, `police_report=True` | DISCRETIONARY |
+| `property_vacancy_deny` | 2% (~32 seeds) | property | `occurred_during_policy=True`, first_party | DISCRETIONARY |
+
+Both use DISCRETIONARY basis to avoid INV-008 cross-basis neutralization against
+demo cases (which default to DISCRETIONARY). Decision drivers are chosen to avoid
+non-transferable classification (INV-011) — e.g. vacancy deny uses
+`coverage_line` + `occurred_during_policy` rather than `loss_cause` since vacancy
+denial is about duration, not loss type.
+
+Weight budget: `clean_auto_claim` reduced 15% → 12%, `clean_property_claim`
+reduced 10% → 8% to accommodate the new scenarios (total weights sum to 1.00).
 
 ### 6.9 Policy Shifts (3)
 
@@ -1042,14 +1062,44 @@ Source: `claimpilot/api/report_builder.py`
 v3 engine and returns a `ReportViewModel` dict:
 
 ```
-1. Enrich case facts (policy-specific -> standardized registry fields)
-2. Layer 1: evaluate_gates()      -- filter to comparable seeds
-3. Layer 2: score_similarity()    -- rank seeds, apply floor
-4. Layer 2: classify_match_v3()   -- supporting / contrary / neutral
-5. Layer 3: compute_governed_confidence() -- four-dimension min()
-6. Detect applicable policy shifts
-7. Assemble ReportViewModel dict (~40 fields)
+1. Map expected_outcome -> proposed disposition (see 11.4.1)
+2. Enrich case facts (policy-specific -> standardized registry fields)
+3. Layer 1: evaluate_gates()      -- filter to comparable seeds
+4. Layer 2: score_similarity()    -- rank seeds, apply floor
+5. Layer 2: classify_match_v3()   -- supporting / contrary / neutral
+6. Layer 3: compute_governed_confidence() -- four-dimension min()
+7. Compute alignment (see 11.4.2)
+8. Detect applicable policy shifts
+9. Assemble ReportViewModel dict (~40 fields)
 ```
+
+#### 11.4.1 Disposition Mapping (expected_outcome -> proposed)
+
+The demo case `expected_outcome` string is mapped to an insurance disposition,
+then to a v3 canonical disposition for precedent comparison:
+
+```
+expected_outcome  ->  proposed_disp_raw     ->  v3 canonical
+─────────────────────────────────────────────────────────────
+pay               ->  PAY_CLAIM             ->  ALLOW
+deny              ->  DENY_CLAIM            ->  BLOCK
+investigate       ->  INVESTIGATE           ->  EDD
+escalate          ->  INVESTIGATE           ->  EDD
+partial           ->  PARTIAL_PAY           ->  ALLOW
+request_info      ->  INVESTIGATE           ->  EDD
+(default)         ->  PAY_CLAIM             ->  ALLOW
+```
+
+#### 11.4.2 Alignment Calculation
+
+Alignment percentage is computed differently for EDD vs terminal dispositions:
+
+- **Terminal (ALLOW / BLOCK)**: `alignment = decisive_supporting / decisive_total * 100`
+  where "decisive" means classified as `supporting` or `contrary` (excludes `neutral`).
+- **EDD (investigate / escalate / request_info)**: `alignment = investigate_pool / pool_size * 100`
+  where `investigate_pool` counts seeds with `v3_disposition == "EDD"`. This avoids
+  the 0% problem: INV-005 makes all non-EDD seeds neutral, so `decisive_total` would
+  always be 0 and the normal formula would yield 0%.
 
 #### ReportViewModel Shape
 
@@ -1078,7 +1128,8 @@ enrichment function that derives standardized fields from raw case facts:
 | `claim.claimant_type` | Default `first_party` |
 | `claim.amount_band` | `claim.reserve_amount` (banded: 0_5k / 5k_25k / 25k_100k / 100k_500k / over_500k) |
 | `claim.occurred_during_policy` | `occurrence.during_policy_period` or `policy.status == "active"` |
-| `claim.loss_cause` | `loss.cause` or `loss.primary_cause` or `loss.type` |
+| `claim.loss_cause` | `loss.cause` or `loss.primary_cause` or `loss.type`; **auto-derived**: `"collision"` when `driver.impairment_indicated`, `driver.bac_level > 0.05`, `vehicle.use_at_loss ∈ {delivery, rideshare}`, or `loss.racing_activity` |
+| `claim.injury_type` | Direct passthrough; **auto-derived**: `"moderate"` for auto coverage line when absent |
 | `flag.fraud_indicator` | `loss.intentional_indicators` or `flag.staged_accident` or `injury.self_inflicted` or `driver.bac_level > 0.05` |
 | `flag.staged_accident` | Direct passthrough |
 | `flag.late_reporting` | Direct passthrough |
@@ -1189,7 +1240,7 @@ domains/
 └── insurance_claims/
     ├── registry.py          24 canonical field definitions
     ├── domain.py            DomainRegistry factory + create_registry alias
-    ├── seed_generator.py    20 scenarios, ~1,618 seeds
+    ├── seed_generator.py    22 scenarios, ~1,618 seeds
     ├── reason_codes.py      51 reason codes (5 registries)
     └── policy_shifts.py     3 policy shifts + shadow projections
 ```
