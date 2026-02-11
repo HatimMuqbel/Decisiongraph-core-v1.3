@@ -390,10 +390,15 @@ def create_banking_domain_registry() -> DomainRegistry:
     )
 
 
+# Convenience alias for domain_loader generic discovery
+create_registry = create_banking_domain_registry
+
+
 # ---------------------------------------------------------------------------
 # Exports
 # ---------------------------------------------------------------------------
 
 __all__ = [
     "create_banking_domain_registry",
+    "create_registry",
 ]
