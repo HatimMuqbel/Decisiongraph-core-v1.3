@@ -1,4 +1,5 @@
 import { useDemoCases } from '../hooks/useApi';
+import { useDomain } from '../hooks/useDomain';
 import { StatsCard, Loading, ErrorMessage, Badge, dispositionVariant } from '../components';
 import { Link } from 'react-router-dom';
 import {
@@ -13,20 +14,17 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const COLORS = {
-  PASS: '#10b981',
-  ESCALATE: '#f59e0b',
-  EDGE: '#ef4444',
-};
-
 const OUTCOME_COLORS: Record<string, string> = {
   ALLOW: '#10b981',
   EDD: '#f59e0b',
   BLOCK: '#ef4444',
+  PAY_CLAIM: '#10b981',
+  INVESTIGATE: '#f59e0b',
+  DENY_CLAIM: '#ef4444',
 };
 
-// Scenario distribution for the 20 AML scenarios (from seed generator weights)
-const SCENARIO_DATA = [
+// ── Banking scenario data ──────────────────────────────────────────────────
+const BANKING_SCENARIO_DATA = [
   { name: 'Clean Customer', weight: 25, disposition: 'ALLOW' },
   { name: 'New Large Clear', weight: 8, disposition: 'ALLOW' },
   { name: 'Structuring', weight: 6, disposition: 'EDD' },
@@ -37,35 +35,46 @@ const SCENARIO_DATA = [
   { name: 'Rapid Movement', weight: 4, disposition: 'EDD' },
   { name: 'Profile Deviation', weight: 4, disposition: 'EDD' },
   { name: 'Third Party', weight: 3, disposition: 'EDD' },
-  { name: 'Layering/Shell', weight: 4, disposition: 'EDD' },
-  { name: 'High Risk Country', weight: 4, disposition: 'EDD' },
-  { name: 'Cash Intensive', weight: 4, disposition: 'EDD' },
-  { name: 'PEP Large', weight: 4, disposition: 'EDD' },
-  { name: 'PEP Screening', weight: 3, disposition: 'EDD' },
-  { name: 'Sanctions Match', weight: 3, disposition: 'BLOCK' },
-  { name: '1 Prior SAR', weight: 3, disposition: 'ALLOW' },
-  { name: 'Multiple SARs', weight: 3, disposition: 'EDD' },
-  { name: 'Heavy SAR Hist', weight: 2, disposition: 'BLOCK' },
-  { name: 'Prev Closure', weight: 3, disposition: 'EDD' },
 ];
-
-const OUTCOME_PIE = [
+const BANKING_OUTCOME_PIE = [
   { name: 'ALLOW', value: 36, fill: OUTCOME_COLORS.ALLOW },
   { name: 'EDD', value: 56, fill: OUTCOME_COLORS.EDD },
   { name: 'BLOCK', value: 8, fill: OUTCOME_COLORS.BLOCK },
 ];
 
+// ── Insurance scenario data ────────────────────────────────────────────────
+const INSURANCE_SCENARIO_DATA = [
+  { name: 'Auto Standard', weight: 15, disposition: 'PAY_CLAIM' },
+  { name: 'Property Fire', weight: 10, disposition: 'PAY_CLAIM' },
+  { name: 'Health Formulary', weight: 8, disposition: 'PAY_CLAIM' },
+  { name: 'WSIB Work Injury', weight: 8, disposition: 'PAY_CLAIM' },
+  { name: 'Marine Storm', weight: 5, disposition: 'PAY_CLAIM' },
+  { name: 'Auto Impaired', weight: 8, disposition: 'DENY_CLAIM' },
+  { name: 'Fraud Indicator', weight: 6, disposition: 'INVESTIGATE' },
+  { name: 'SIU Referral', weight: 5, disposition: 'INVESTIGATE' },
+  { name: 'Property Vacancy', weight: 5, disposition: 'DENY_CLAIM' },
+  { name: 'Edge Cases', weight: 12, disposition: 'INVESTIGATE' },
+];
+const INSURANCE_OUTCOME_PIE = [
+  { name: 'PAY_CLAIM', value: 55, fill: OUTCOME_COLORS.PAY_CLAIM },
+  { name: 'INVESTIGATE', value: 28, fill: OUTCOME_COLORS.INVESTIGATE },
+  { name: 'DENY_CLAIM', value: 17, fill: OUTCOME_COLORS.DENY_CLAIM },
+];
+
 export default function Dashboard() {
   const { data: cases, isLoading, error } = useDemoCases();
+  const { branding, isInsurance } = useDomain();
 
-  if (isLoading) return <Loading text="Loading dashboard…" />;
+  if (isLoading) return <Loading text="Loading dashboard..." />;
   if (error) return <ErrorMessage error={error as Error} />;
 
-  const categoryCounts = { PASS: 0, ESCALATE: 0, EDGE: 0 };
-  cases?.forEach((c) => {
-    const cat = c.category as keyof typeof categoryCounts;
-    if (cat in categoryCounts) categoryCounts[cat]++;
-  });
+  const scenarioData = isInsurance ? INSURANCE_SCENARIO_DATA : BANKING_SCENARIO_DATA;
+  const outcomePie = isInsurance ? INSURANCE_OUTCOME_PIE : BANKING_OUTCOME_PIE;
+  const seedLabel = isInsurance ? '20 insurance scenarios' : '20 AML scenarios';
+  const seedCount = isInsurance ? '1,618' : '1,500';
+  const shiftCount = isInsurance ? '3' : '4';
+  const fieldCount = isInsurance ? '23' : '28';
+  const filingAuthority = isInsurance ? 'FSRA' : 'FINTRAC';
 
   return (
     <div className="space-y-6">
@@ -73,16 +82,16 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
         <p className="mt-1 text-sm text-slate-400">
-          DecisionGraph AML Decision Engine — Overview
+          {branding.dashboardHeading}
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard label="Total Seeds" value="1,500" sub="20 AML scenarios" />
-        <StatsCard label="Demo Cases" value={cases?.length ?? 0} sub="10 pre-built" />
-        <StatsCard label="Policy Shifts" value="4" sub="Shadow projections active" />
-        <StatsCard label="Registry Fields" value="28" sub="5 field groups" />
+        <StatsCard label="Total Seeds" value={seedCount} sub={seedLabel} />
+        <StatsCard label="Demo Cases" value={cases?.length ?? 0} sub={`${cases?.length ?? 0} pre-built`} />
+        <StatsCard label="Policy Shifts" value={shiftCount} sub="Shadow projections active" />
+        <StatsCard label="Registry Fields" value={fieldCount} sub="Weighted scoring fields" />
       </div>
 
       {/* Charts */}
@@ -95,16 +104,16 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
-                data={OUTCOME_PIE}
+                data={outcomePie}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
                 outerRadius={100}
                 paddingAngle={3}
                 dataKey="value"
-                label={({ name, value }) => `${name} ${value}%`}
+                label={({ name, value }) => `${name.replace('_', ' ')} ${value}%`}
               >
-                {OUTCOME_PIE.map((entry) => (
+                {outcomePie.map((entry) => (
                   <Cell key={entry.name} fill={entry.fill} />
                 ))}
               </Pie>
@@ -122,7 +131,7 @@ export default function Dashboard() {
             Scenario Weight Distribution (%)
           </h2>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={SCENARIO_DATA.slice(0, 10)} layout="vertical" margin={{ left: 80 }}>
+            <BarChart data={scenarioData} layout="vertical" margin={{ left: 80 }}>
               <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} />
               <YAxis
                 dataKey="name"
@@ -135,7 +144,7 @@ export default function Dashboard() {
                 itemStyle={{ color: '#e2e8f0' }}
               />
               <Bar dataKey="weight" radius={[0, 4, 4, 0]}>
-                {SCENARIO_DATA.slice(0, 10).map((entry, idx) => (
+                {scenarioData.map((entry, idx) => (
                   <Cell key={idx} fill={OUTCOME_COLORS[entry.disposition] || '#64748b'} />
                 ))}
               </Bar>
@@ -217,13 +226,13 @@ export default function Dashboard() {
         <p className="text-xs text-slate-400 mb-3">
           Run any demo case through the engine, then view the full 3-tier compliance report.
           Reports include risk heatmaps, typology analysis, negative path search, verbatim
-          citations, and full audit metadata for FINTRAC examination.
+          citations, and full audit metadata for {filingAuthority} examination.
         </p>
         <Link
           to="/cases"
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition"
         >
-          Open Demo Cases to Generate Reports →
+          Open Demo Cases to Generate Reports &rarr;
         </Link>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { useDomain } from '../hooks/useDomain';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: '◉' },
@@ -14,6 +15,8 @@ const NAV_ITEMS = [
 // Note: Report Viewer is at /reports/:decisionId — accessed by clicking decisions from all pages
 
 export default function Layout() {
+  const { branding } = useDomain();
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
@@ -21,11 +24,11 @@ export default function Layout() {
         {/* Logo */}
         <div className="flex items-center gap-3 border-b border-slate-700/60 px-5 py-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-bold">
-            DG
+            {branding.logo}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-100">DecisionGraph</p>
-            <p className="text-[10px] text-slate-500">Core v1.3 — AML</p>
+            <p className="text-sm font-semibold text-slate-100">{branding.title}</p>
+            <p className="text-[10px] text-slate-500">{branding.subtitle}</p>
           </div>
         </div>
 
@@ -53,8 +56,8 @@ export default function Layout() {
 
         {/* Footer */}
         <div className="border-t border-slate-700/60 px-5 py-3">
-          <p className="text-[10px] text-slate-600">Bank-Grade Compliance Engine</p>
-          <p className="text-[10px] text-slate-600">PCMLTFA / FINTRAC</p>
+          <p className="text-[10px] text-slate-600">{branding.footerLine1}</p>
+          <p className="text-[10px] text-slate-600">{branding.footerLine2}</p>
         </div>
       </aside>
 

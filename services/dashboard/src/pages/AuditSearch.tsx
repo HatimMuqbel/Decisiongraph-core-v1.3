@@ -79,7 +79,7 @@ export default function AuditSearch() {
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Audit Search</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Search and filter case decisions for PCMLTFA/FINTRAC compliance audit trails
+            Search and filter case decisions for compliance audit trails
           </p>
         </div>
         <button

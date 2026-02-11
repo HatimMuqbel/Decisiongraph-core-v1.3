@@ -70,7 +70,7 @@ export default function SeedExplorer() {
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Seed Explorer</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Browse 20 AML scenarios and 1,500 generated seed precedents
+          Browse scenarios and generated seed precedents
         </p>
       </div>
 

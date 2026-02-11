@@ -1,5 +1,6 @@
 // =============================================================================
-// API Client — connects to DecisionGraph FastAPI backend
+// API Client — connects to DecisionGraph / ClaimPilot FastAPI backend
+// Auto-detects domain via /api/domain and routes to correct API paths.
 // =============================================================================
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -9,6 +10,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error || body.detail || `${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+// Try the first path; if 404, try the fallback
+async function requestWithFallback<T>(primary: string, fallback: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${primary}`, {
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    ...init,
+  });
+  if (res.status === 404 && fallback) {
+    return request<T>(fallback, init);
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body.error || body.detail || `${res.status} ${res.statusText}`);
@@ -39,10 +56,17 @@ export const api = {
   ready: () => request<ReadyResponse>('/ready'),
   version: () => request<VersionResponse>('/version'),
 
-  // Demo cases
+  // Domain detection
+  domain: () => request<{ domain: string; name: string; terminology: Record<string, string> }>('/api/domain'),
+
+  // Demo cases — ClaimPilot uses /api/cases, banking uses /demo/cases
   demoCases: (category?: string) =>
-    request<DemoCase[]>(category ? `/demo/cases?category=${category}` : '/demo/cases'),
-  demoCase: (id: string) => request<DemoCase>(`/demo/cases/${id}`),
+    requestWithFallback<DemoCase[]>(
+      category ? `/api/cases?category=${category}` : '/api/cases',
+      category ? `/demo/cases?category=${category}` : '/demo/cases',
+    ),
+  demoCase: (id: string) =>
+    requestWithFallback<DemoCase>(`/api/cases/${id}`, `/demo/cases/${id}`),
 
   // Decisions
   decide: (caseData: Record<string, unknown>) =>
@@ -51,10 +75,11 @@ export const api = {
       body: JSON.stringify(caseData),
     }),
 
-  // Reports
+  // Reports — ClaimPilot uses /api/report/{id}/json, banking uses /report/{id}/json
   reportJson: (decisionId: string, includeRaw = false) =>
-    request<ReportJsonResponse>(
-      `/report/${decisionId}/json${includeRaw ? '?include_raw=true' : ''}`
+    requestWithFallback<ReportJsonResponse>(
+      `/api/report/${decisionId}/json${includeRaw ? '?include_raw=true' : ''}`,
+      `/report/${decisionId}/json${includeRaw ? '?include_raw=true' : ''}`,
     ),
   reportMarkdown: (decisionId: string) =>
     request<{ decision_id: string; format: string; content: string; generated_at: string }>(

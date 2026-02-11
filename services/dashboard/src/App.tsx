@@ -12,6 +12,12 @@ import {
   AuditSearch,
   FieldRegistry,
 } from './pages';
+import {
+  DomainContext,
+  useDomainQuery,
+  BANKING_DEFAULT,
+  deriveBranding,
+} from './hooks/useDomain';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,9 +29,14 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function App() {
+function AppWithDomain() {
+  const { data: domainInfo } = useDomainQuery();
+  const info = domainInfo ?? BANKING_DEFAULT;
+  const branding = deriveBranding(info);
+  const isInsurance = info.domain === 'insurance_claims';
+
   return (
-    <QueryClientProvider client={queryClient}>
+    <DomainContext.Provider value={{ info, branding, isInsurance }}>
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -42,6 +53,14 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+    </DomainContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppWithDomain />
     </QueryClientProvider>
   );
 }
