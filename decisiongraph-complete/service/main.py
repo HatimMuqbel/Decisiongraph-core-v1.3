@@ -58,16 +58,16 @@ from decisiongraph.escalation_gate import run_escalation_gate, EscalationDecisio
 from decisiongraph.str_gate import run_str_gate, dual_gate_decision
 
 # Precedent system imports
-from decisiongraph.chain import Chain
-from decisiongraph.cell import NULL_HASH
-from decisiongraph.precedent_registry import PrecedentRegistry
+from kernel.foundation.chain import Chain
+from kernel.foundation.cell import NULL_HASH
+from kernel.precedent.precedent_registry import PrecedentRegistry
 from decisiongraph.aml_seed_generator import generate_all_banking_seeds
 from decisiongraph.aml_fingerprint import (
     AMLFingerprintSchemaRegistry,
     apply_aml_banding,
     create_txn_amount_banding,
 )
-from decisiongraph.judgment import (
+from kernel.foundation.judgment import (
     create_judgment_cell,
     normalize_scenario_code,
     normalize_seed_category,
@@ -75,19 +75,19 @@ from decisiongraph.judgment import (
 
 # v3 Precedent Engine imports (conditional usage based on DG_PRECEDENT_VERSION)
 from decisiongraph.banking_domain import create_banking_domain_registry
-from decisiongraph.comparability_gate import (
+from kernel.precedent.comparability_gate import (
     evaluate_gates,
     extract_gate_facts_from_case,
     extract_gate_facts_from_precedent,
 )
-from decisiongraph.precedent_scorer_v3 import (
+from kernel.precedent.precedent_scorer import (
     SimilarityResult,
     score_similarity,
     classify_match_v3,
     detect_primary_typology,
     anchor_facts_to_dict,
 )
-from decisiongraph.governed_confidence import (
+from kernel.precedent.governed_confidence import (
     compute_governed_confidence,
     GovernedConfidenceResult,
 )

@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from decisiongraph.aml_seed_generator import generate_all_banking_seeds
-from decisiongraph.policy_simulation import (
+from kernel.policy.policy_simulation import (
     DEMO_DRAFTS,
     DEMO_DRAFTS_BY_ID,
     PolicySimulator,

@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from decisiongraph.judgment import normalize_scenario_code, normalize_seed_category
+from kernel.foundation.judgment import normalize_scenario_code, normalize_seed_category
 
 # Import report cache function (will be set by main.py)
 _cache_decision = None
