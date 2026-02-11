@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useDemoCase, useDecide, useReportJson } from '../hooks/useApi';
+import { useDomain } from '../hooks/useDomain';
 import {
   Loading,
   ErrorMessage,
@@ -10,13 +11,20 @@ import {
   dispositionVariant,
 } from '../components';
 import { PrecedentIntelligence } from '../components/report';
+import { api } from '../api/client';
 
 export default function DecisionViewer() {
   const { caseId: id } = useParams<{ caseId: string }>();
   const navigate = useNavigate();
+  const { isInsurance } = useDomain();
   const { data: demoCase, isLoading: loadingCase, error: caseError } = useDemoCase(id ?? '');
   const decideMut = useDecide();
   const [decisionId, setDecisionId] = useState<string | null>(null);
+  // For insurance, fetch report directly by case ID; for banking, fetch after /decide
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [insuranceReport, setInsuranceReport] = useState<any>(null);
+  const [insuranceRunning, setInsuranceRunning] = useState(false);
+  const [insuranceError, setInsuranceError] = useState<Error | null>(null);
   const { data: report } = useReportJson(decisionId ?? '');
 
   if (!id) return <p className="text-slate-400">No case ID provided.</p>;
@@ -24,10 +32,23 @@ export default function DecisionViewer() {
   if (caseError) return <ErrorMessage error={caseError as Error} />;
   if (!demoCase) return <ErrorMessage error={new Error('Case not found')} />;
 
-  async function handleRun() {
+  async function handleRunInsurance() {
+    if (!id) return;
+    setInsuranceRunning(true);
+    setInsuranceError(null);
+    try {
+      const data = await api.reportJson(id);
+      setInsuranceReport(data.report);
+      setDecisionId(id);
+    } catch (e) {
+      setInsuranceError(e as Error);
+    } finally {
+      setInsuranceRunning(false);
+    }
+  }
+
+  async function handleRunBanking() {
     if (!demoCase) return;
-    // Send facts array to /decide — the backend will detect demo format
-    // and convert the facts array into engine-compatible inputs.
     try {
       const pack = await decideMut.mutateAsync({
         case_id: demoCase.id,
@@ -43,8 +64,13 @@ export default function DecisionViewer() {
     }
   }
 
+  const handleRun = isInsurance ? handleRunInsurance : handleRunBanking;
+  const isRunning = isInsurance ? insuranceRunning : decideMut.isPending;
+  const runError = isInsurance ? insuranceError : (decideMut.error as Error | null);
+
   const pack = decideMut.data;
-  const vm = report?.report;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const vm: any = isInsurance ? insuranceReport : report?.report;
 
   return (
     <div className="space-y-6">
@@ -59,10 +85,10 @@ export default function DecisionViewer() {
         </div>
         <button
           onClick={handleRun}
-          disabled={decideMut.isPending}
+          disabled={isRunning}
           className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 transition"
         >
-          {decideMut.isPending ? 'Running…' : 'Run Through Engine'}
+          {isRunning ? 'Running...' : 'Run Through Engine'}
         </button>
       </div>
 
@@ -73,15 +99,15 @@ export default function DecisionViewer() {
             onClick={() => navigate(`/reports/${decisionId}`)}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition"
           >
-            View Full Report →
+            View Full Report &rarr;
           </button>
           <span className="text-xs text-slate-500">
-            Decision: <span className="font-mono">{decisionId.slice(0, 16)}</span>
+            Decision: <span className="font-mono">{(decisionId ?? '').slice(0, 24)}</span>
           </span>
         </div>
       )}
 
-      {decideMut.error && <ErrorMessage error={decideMut.error as Error} />}
+      {runError && <ErrorMessage error={runError} />}
 
       {/* Case Facts */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
@@ -93,8 +119,74 @@ export default function DecisionViewer() {
         />
       </div>
 
-      {/* Decision Result */}
-      {pack && (
+      {/* Insurance Report Result */}
+      {isInsurance && vm && (
+        <div className="space-y-5">
+          {/* Verdict Stats */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatsCard label="Verdict" value={vm.verdict ?? 'N/A'} />
+            <StatsCard label="Action" value={vm.action ?? 'N/A'} />
+            <StatsCard label="Confidence" value={vm.decision_confidence ?? 'N/A'} />
+            <StatsCard label="Comparable Cases" value={vm.scored_precedent_count ?? 0} />
+          </div>
+
+          {/* Disposition */}
+          <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Decision Outcome
+            </h2>
+            <div className="flex items-center gap-3">
+              <Badge variant={dispositionVariant(vm.verdict ?? '')} size="md">
+                {vm.action ?? vm.verdict ?? ''}
+              </Badge>
+              <span className="text-sm text-slate-300">{vm.decision_explainer ?? ''}</span>
+            </div>
+          </div>
+
+          {/* Precedent Metrics */}
+          <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Precedent Analysis
+            </h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <div>
+                <p className="text-xs text-slate-500">Alignment</p>
+                <p className="text-lg font-bold text-slate-100">{vm.precedent_alignment_pct ?? 0}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Match Rate</p>
+                <p className="text-lg font-bold text-slate-100">{vm.precedent_match_rate ?? 0}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Supporting</p>
+                <p className="text-lg font-bold text-emerald-400">{vm.precedent_analysis?.supporting_precedents ?? 0}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Contrary</p>
+                <p className="text-lg font-bold text-red-400">{vm.precedent_analysis?.contrary_precedents ?? 0}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Neutral</p>
+                <p className="text-lg font-bold text-slate-400">{vm.precedent_analysis?.neutral_precedents ?? 0}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Escalation */}
+          {vm.escalation_summary && vm.escalation_summary !== 'No escalation factors' && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
+              <h2 className="mb-2 text-sm font-semibold text-amber-400">Escalation Factors</h2>
+              <p className="text-sm text-slate-300">{vm.escalation_summary}</p>
+            </div>
+          )}
+
+          {/* Precedent Intelligence — full v3 panel */}
+          {vm.precedent_analysis && <PrecedentIntelligence report={vm} />}
+        </div>
+      )}
+
+      {/* Banking Decision Result */}
+      {!isInsurance && pack && (
         <div className="space-y-5">
           {/* Verdict Stats */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -184,8 +276,8 @@ export default function DecisionViewer() {
           </div>
 
           {/* Precedent Intelligence — uses report JSON when available */}
-          {vm?.precedent_analysis?.available ? (
-            <PrecedentIntelligence report={vm} />
+          {report?.report?.precedent_analysis?.available ? (
+            <PrecedentIntelligence report={report.report} />
           ) : pack.precedent_analysis?.available ? (
             <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
