@@ -449,6 +449,148 @@ def render_markdown(ctx: dict) -> str:
             analyst_actions_md += f"- {marker}{_md_escape(act.get('label', ''))}\n"
         analyst_actions_md += "\n"
 
+    # ── FIX-028: Gate Override Analysis ───────────────────────────────────
+    gate_overrides = ctx.get("gate_override_explanations", [])
+    gate_override_md = ""
+    if gate_overrides:
+        has_conflict = any(g.get("conflict") for g in gate_overrides)
+        if has_conflict:
+            gate_override_md = "### Gate Override Analysis\n\n"
+            for g in gate_overrides:
+                if not g.get("conflict"):
+                    continue
+                gate_override_md += f"**{_md_escape(g.get('gate', ''))}**\n\n"
+                gate_override_md += "| | |\n|---|---|\n"
+                gate_override_md += f"| Gate Result | `{_md_escape(g.get('gate_result', ''))}` |\n"
+                gate_override_md += f"| Final Disposition | **{_md_escape(g.get('final_disposition', ''))}** |\n"
+                gate_override_md += f"| Override Mechanism | {_md_escape(g.get('override_mechanism', ''))} |\n"
+                gate_override_md += f"| Authority | {_md_escape(g.get('authority', ''))} |\n\n"
+                if g.get("override_basis"):
+                    gate_override_md += "**Override Basis:**\n\n"
+                    for basis in g["override_basis"]:
+                        gate_override_md += f"- {_md_escape(basis)}\n"
+                    gate_override_md += "\n"
+        else:
+            gate_override_md = "### Gate Override Analysis\n\n> All gates consistent with final disposition.\n\n"
+
+    # ── FIX-029: Disposition Reconciliation ────────────────────────────────
+    reconciliation = ctx.get("disposition_reconciliation", {})
+    reconciliation_md = ""
+    if reconciliation:
+        if reconciliation.get("consistent"):
+            reconciliation_md = "## Disposition Reconciliation\n\n> All disposition layers consistent. No override applied.\n\n"
+        else:
+            reconciliation_md = "## Disposition Reconciliation\n\n"
+            reconciliation_md += f"*{_md_escape(reconciliation.get('summary', ''))}*\n\n"
+            for diff in reconciliation.get("differences", []):
+                reconciliation_md += (
+                    f"**{_md_escape(diff.get('component_a', ''))}** determined "
+                    f"`{_md_escape(diff.get('value_a', ''))}` — "
+                    f"**{_md_escape(diff.get('component_b', ''))}** "
+                    f"{'overrode to' if diff.get('value_a') != diff.get('value_b') else 'agrees:'} "
+                    f"`{_md_escape(diff.get('value_b', ''))}`\n\n"
+                    f"> {_md_escape(diff.get('reason', ''))}\n\n"
+                    f"> Authority: {_md_escape(diff.get('authority', ''))}\n\n"
+                )
+
+    # ── FIX-030: Precedent Divergence Narrative ────────────────────────────
+    divergence = ctx.get("precedent_divergence")
+    divergence_md = ""
+    if divergence:
+        pool = divergence.get("pool_breakdown", {})
+        pool_line = ", ".join(f"{k}: {v}" for k, v in sorted(pool.items())) if pool else "N/A"
+        if divergence.get("divergent"):
+            divergence_md = "### Institutional Divergence Explanation\n\n"
+            divergence_md += (
+                f"Historical pattern: {divergence.get('alignment_pct', 0)}% of "
+                f"{divergence.get('alignment_total', 0)} comparable cases aligned with "
+                f"current disposition.\n\n"
+                f"Dominant historical outcome: **{_md_escape(divergence.get('dominant_historical', 'N/A'))}** "
+                f"({divergence.get('dominant_count', 0)} cases)\n\n"
+                f"Comparable pool outcomes: {pool_line}\n\n"
+                "**Current disposition diverges. Basis:**\n\n"
+            )
+            for reason in divergence.get("divergence_reasons", []):
+                divergence_md += f"- {_md_escape(reason)}\n"
+            divergence_md += "\n"
+        else:
+            divergence_md = (
+                f"### Precedent Pool Outcomes\n\n"
+                f"Comparable pool outcomes: {pool_line}\n\n"
+                f"Alignment: {divergence.get('alignment_pct', 0)}% "
+                f"({divergence.get('alignment_count', 0)}/{divergence.get('alignment_total', 0)})\n\n"
+            )
+
+    # ── FIX-031: Unmapped Indicator Independence ───────────────────────────
+    unmapped_checks = ctx.get("unmapped_indicator_checks", [])
+    unmapped_md = ""
+    if unmapped_checks:
+        unmapped_md = "### Unmapped Indicator Independence Check\n\n"
+        for check in unmapped_checks:
+            if check.get("independent"):
+                unmapped_md += (
+                    f"**{_md_escape(check.get('indicator_code', ''))}**: "
+                    f"Determination Independence: CONFIRMED. {_md_escape(check.get('basis', ''))}\n\n"
+                )
+            else:
+                unmapped_md += (
+                    f"**{_md_escape(check.get('indicator_code', ''))}**: "
+                    f"DEFENSIBILITY WARNING: Disposition DEPENDS on unmapped indicator. "
+                    f"{_md_escape(check.get('basis', ''))}. "
+                    "Manual classification required before filing.\n\n"
+                )
+
+    # ── FIX-032: Policy Regime Exception ───────────────────────────────────
+    regime_exception = ctx.get("policy_regime_exception")
+    regime_exception_md = ""
+    if regime_exception:
+        if regime_exception.get("exception"):
+            regime_exception_md = "### Policy Pattern Exception\n\n"
+            regime_exception_md += f"> {_md_escape(regime_exception.get('summary', ''))}\n\n"
+            regime_exception_md += "**Exception basis:**\n\n"
+            for basis in regime_exception.get("exception_basis", []):
+                regime_exception_md += f"- {_md_escape(basis)}\n"
+            regime_exception_md += "\n"
+        else:
+            regime_exception_md = (
+                "### Policy Regime Consistency\n\n"
+                "> Disposition consistent with post-shift institutional pattern.\n\n"
+            )
+
+    # ── FIX-033: Risk Heatmap Context ──────────────────────────────────────
+    heatmap_ctx = ctx.get("risk_heatmap_context")
+    heatmap_note_md = ""
+    if heatmap_ctx and heatmap_ctx.get("elevated"):
+        heatmap_note_md = f"\n> {_md_escape(heatmap_ctx.get('note', ''))}\n\n"
+
+    # ── FIX-034: Required Actions ──────────────────────────────────────────
+    req_actions = ctx.get("required_actions", [])
+    required_actions_md = ""
+    if req_actions:
+        required_actions_md = "## Required Actions\n\n"
+        for i, act in enumerate(req_actions, 1):
+            priority = act.get("priority", "")
+            marker = f"**[{priority}]** " if priority else ""
+            required_actions_md += f"{i}. {marker}{_md_escape(act.get('action', ''))}\n"
+        required_actions_md += "\n"
+
+    # ── FIX-035: Related Activity ──────────────────────────────────────────
+    related = ctx.get("related_activity", {})
+    related_activity_md = ""
+    if related:
+        screening = related.get("screening", {})
+        related_activity_md = "## Related Activity\n\n"
+        related_activity_md += "| Field | Value |\n|-------|-------|\n"
+        related_activity_md += f"| Prior STRs Filed | {related.get('prior_sars_filed', 0)} |\n"
+        related_activity_md += f"| Prior Account Closures | {'Yes' if related.get('prior_account_closures') else 'No'} |\n"
+        related_activity_md += f"| PEP Status | {'Yes' if related.get('pep_status') else 'No'} |\n"
+        related_activity_md += f"| Sanctions Match | {'Yes' if screening.get('sanctions_match') else 'No'} |\n"
+        related_activity_md += f"| PEP Screening | {'Yes' if screening.get('pep_match') else 'No'} |\n"
+        related_activity_md += f"| Adverse Media | {'Yes' if screening.get('adverse_media') else 'No'} |\n\n"
+        for flag in related.get("flags", []):
+            related_activity_md += f"> {_md_escape(flag)}\n\n"
+        related_activity_md += f"Connected accounts: {_md_escape(related.get('connected_accounts', 'N/A'))}\n\n"
+
     # ── FIX-009: SLA timeline ─────────────────────────────────────────────
     sla = ctx.get("sla_timeline", {})
     timeline_md = ""
@@ -827,6 +969,8 @@ def render_markdown(ctx: dict) -> str:
 
 {override_justification_md}
 
+{required_actions_md}
+
 ---
 
 ## Case Classification
@@ -854,6 +998,8 @@ def render_markdown(ctx: dict) -> str:
 {escalation_summary}
 
 {decision_confidence_block}
+
+{reconciliation_md}
 
 ---
 
@@ -901,6 +1047,7 @@ def render_markdown(ctx: dict) -> str:
 |---------|--------|--------|
 {gate2_rows_output}
 
+{gate_override_md}
 
 ---
 
@@ -918,9 +1065,15 @@ def render_markdown(ctx: dict) -> str:
 
 {enhanced_precedent_md}
 
+{divergence_md}
+
+{regime_exception_md}
+
 {deviation_alert_md}
 
 {defensibility_md}
+
+{unmapped_md}
 
 ---
 
@@ -929,6 +1082,7 @@ def render_markdown(ctx: dict) -> str:
 | Field | Value |
 |-------|-------|
 {risk_factors_md}
+{heatmap_note_md}
 
 ---
 
@@ -947,6 +1101,8 @@ def render_markdown(ctx: dict) -> str:
 {analyst_actions_md}
 
 {timeline_md}
+
+{related_activity_md}
 
 ## Auditability & Governance
 
@@ -1041,4 +1197,12 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         governed_disposition_display=governed_display,
         engine_disposition_display=engine_display,
         disposition_note=disposition_note,
+        gate_override_md=gate_override_md,
+        reconciliation_md=reconciliation_md,
+        divergence_md=divergence_md,
+        unmapped_md=unmapped_md,
+        regime_exception_md=regime_exception_md,
+        heatmap_note_md=heatmap_note_md,
+        required_actions_md=required_actions_md,
+        related_activity_md=related_activity_md,
     )

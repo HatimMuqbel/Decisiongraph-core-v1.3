@@ -294,6 +294,24 @@
       {% endif %}
     </div>
 
+    {# ── FIX-034: Required Actions ──────────────────────────────────── #}
+    {% if required_actions and required_actions|length > 0 %}
+    <h3>Required Actions</h3>
+    <div class="status {% if str_required %}bad{% elif governed_disposition == 'EDD_REQUIRED' or governed_disposition == 'ESCALATE' %}warn{% else %}ok{% endif %} break">
+      <ul style="margin:0; padding-left:20px;">
+        {% for act in required_actions %}
+        <li style="margin:4px 0;">
+          {% if act.priority == 'MANDATORY' %}<strong style="color:var(--bad);">[{{ act.priority }}]</strong>
+          {% elif act.priority == 'REQUIRED' %}<strong style="color:var(--warn);">[{{ act.priority }}]</strong>
+          {% elif act.priority %}<span class="small">[{{ act.priority }}]</span>
+          {% endif %}
+          {{ act.action }}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
     <div class="card break">
       <div class="kv">
         <div class="label">Investigation State</div>
@@ -513,6 +531,31 @@
         {% endfor %}
       </ol>
     </div>
+    {% endif %}
+
+    {# ── FIX-029: Disposition Reconciliation ────────────────────────── #}
+    {% if disposition_reconciliation %}
+    <h2>Disposition Reconciliation</h2>
+    {% if disposition_reconciliation.consistent %}
+    <div class="status ok break">
+      <p>All disposition layers consistent. No override applied.</p>
+    </div>
+    {% else %}
+    <div class="card break">
+      <p class="small" style="margin-bottom:12px; font-style:italic;">{{ disposition_reconciliation.summary }}</p>
+      {% for diff in disposition_reconciliation.differences %}
+      <div style="border-left:3px solid var(--warn); padding-left:12px; margin-bottom:12px;">
+        <p style="margin:0 0 4px 0; font-size:13px;">
+          <strong>{{ diff.component_a }}</strong> determined <code class="mono">{{ diff.value_a | replace('_', ' ') }}</code>
+          — <strong>{{ diff.component_b }}</strong> {% if diff.value_a != diff.value_b %}overrode to{% else %}agrees:{% endif %}
+          <code class="mono" style="font-weight:700;">{{ diff.value_b | replace('_', ' ') }}</code>
+        </p>
+        <p class="small" style="margin:0 0 2px 0;">{{ diff.reason }}</p>
+        <p class="small" style="margin:0; color:var(--muted); font-style:italic;">Authority: {{ diff.authority }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% endif %}
 
     <h2>Suspicion Classification</h2>
@@ -882,6 +925,52 @@
     {% endif %}
     {% endif %}
 
+    {# ── FIX-030: Precedent Divergence Narrative ──────────────── #}
+    {% if precedent_divergence %}
+    <div class="status {% if precedent_divergence.severity == 'high' %}bad{% else %}warn{% endif %}" style="margin-top:12px; padding:12px;">
+      <strong>Precedent Divergence Analysis</strong>
+      <p class="small" style="margin:8px 0 4px;">{{ precedent_divergence.narrative }}</p>
+      {% if precedent_divergence.pool_distribution %}
+      <div style="margin-top:8px; font-size:13px;">
+        <span style="font-weight:600;">Pool Distribution:</span>
+        {% for outcome, count in precedent_divergence.pool_distribution.items() %}
+        <span class="pi-chip {% if outcome == governed_disposition %}driver{% else %}divergent{% endif %}">{{ outcome | replace('_', ' ') }}: {{ count }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if precedent_divergence.divergence_reasons %}
+      <ul class="small" style="margin-top:6px;">
+        {% for reason in precedent_divergence.divergence_reasons %}
+        <li>{{ reason }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ── FIX-032: Policy Regime Exception ──────────────────────── #}
+    {% if policy_regime_exception %}
+    <div class="status warn" style="margin-top:12px; padding:12px;">
+      <strong>Policy Regime Exception</strong>
+      <p class="small" style="margin:8px 0 4px;">{{ policy_regime_exception.narrative }}</p>
+      {% if policy_regime_exception.pre_shift_pattern %}
+      <div style="font-size:13px; margin-top:6px;">
+        <span style="font-weight:600;">Pre-Shift Pattern:</span> {{ policy_regime_exception.pre_shift_pattern }}
+      </div>
+      {% endif %}
+      {% if policy_regime_exception.post_shift_pattern %}
+      <div style="font-size:13px;">
+        <span style="font-weight:600;">Post-Shift Pattern:</span> {{ policy_regime_exception.post_shift_pattern }}
+      </div>
+      {% endif %}
+      {% if policy_regime_exception.exception_basis %}
+      <div style="font-size:13px; margin-top:4px;">
+        <span style="font-weight:600;">Exception Basis:</span> {{ policy_regime_exception.exception_basis }}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% elif precedent_analysis %}
     <h2>Precedent Intelligence</h2>
     <div class="status warn" style="margin-top:12px; padding:12px;">
@@ -967,6 +1056,41 @@
         <p class="small">No sections evaluated</p>
       {% endif %}
     </div>
+
+    {# ── FIX-028: Gate Override Analysis ──────────────────────────── #}
+    {% if gate_override_explanations %}
+    <h3>Gate Override Analysis</h3>
+    {% set has_gate_conflict = gate_override_explanations | selectattr('conflict') | list | length > 0 %}
+    {% if has_gate_conflict %}
+    {% for g in gate_override_explanations if g.conflict %}
+    <div class="status {% if 'correction' in (g.override_mechanism|default('')|lower) %}warn{% else %}bad{% endif %} break">
+      <h3 style="margin-bottom:8px;">{{ g.gate }}</h3>
+      <div class="kv" style="font-size:13px;">
+        <div class="label">Gate Result</div>
+        <div class="value mono">{{ g.gate_result }}</div>
+        <div class="label">Final Disposition</div>
+        <div class="value" style="font-weight:700;">{{ g.final_disposition | replace('_', ' ') }}</div>
+        <div class="label">Override Mechanism</div>
+        <div class="value">{{ g.override_mechanism }}</div>
+        <div class="label">Authority</div>
+        <div class="value small">{{ g.authority }}</div>
+      </div>
+      {% if g.override_basis %}
+      <p class="small" style="font-weight:600; margin:8px 0 4px 0;">Override Basis:</p>
+      <ul style="margin:0; padding-left:20px; font-size:13px;">
+        {% for basis in g.override_basis %}
+        <li>{{ basis }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="status ok break">
+      <p>All gates consistent with final disposition.</p>
+    </div>
+    {% endif %}
+    {% endif %}
 
     <h2>Rules Evaluated</h2>
     {% set rule_evidence_map = {
@@ -1224,6 +1348,38 @@
     </div>
     {% endif %}
 
+    {# ── FIX-031: Unmapped Indicator Independence Check ────────── #}
+    {% if unmapped_indicator_checks %}
+    <div class="status {% if unmapped_indicator_checks | selectattr('independent_support') | list | length == unmapped_indicator_checks | length %}ok{% else %}warn{% endif %}" style="margin-top:12px; padding:12px;">
+      <strong>Unmapped Indicator Independence Check</strong>
+      <p class="small" style="margin:8px 0 6px;">Verifies that mapped Tier 1 indicators independently support the outcome without relying on unmapped signals.</p>
+      <table style="width:100%; font-size:13px; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:4px 8px; border-bottom:1px solid var(--border);">Indicator</th>
+            <th style="text-align:left; padding:4px 8px; border-bottom:1px solid var(--border);">Source</th>
+            <th style="text-align:center; padding:4px 8px; border-bottom:1px solid var(--border);">Independent?</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for check in unmapped_indicator_checks %}
+          <tr>
+            <td class="mono" style="padding:4px 8px;">{{ check.indicator }}</td>
+            <td class="small" style="padding:4px 8px;">{{ check.source | default('unmapped') }}</td>
+            <td style="text-align:center; padding:4px 8px;">
+              {% if check.independent_support %}
+                <span style="color:#059669; font-weight:700;">Yes</span>
+              {% else %}
+                <span style="color:#dc2626; font-weight:700;">No</span> — {{ check.gap_note | default('') }}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
     <h2>Risk Factors</h2>
     <table class="break">
       <thead>
@@ -1254,6 +1410,34 @@
         {% endif %}
       </tbody>
     </table>
+
+    {# ── FIX-033: Risk Heatmap Context ────────────────────────── #}
+    {% if risk_heatmap_context %}
+    <div class="status {% if risk_heatmap_context.severity_mismatch %}warn{% else %}ok{% endif %}" style="margin-top:12px; padding:12px;">
+      <strong>Risk Severity Context</strong>
+      <div style="font-size:13px; margin-top:6px;">
+        <span style="font-weight:600;">Expected Severity:</span>
+        <span class="pill {% if risk_heatmap_context.expected_severity == 'HIGH' %}trig{% elif risk_heatmap_context.expected_severity == 'MEDIUM' %}req{% else %}pass{% endif %}">
+          {{ risk_heatmap_context.expected_severity }}
+        </span>
+      </div>
+      {% if risk_heatmap_context.severity_mismatch %}
+      <p class="small" style="margin-top:6px;">{{ risk_heatmap_context.mismatch_narrative }}</p>
+      {% endif %}
+      {% if risk_heatmap_context.elevated_factors %}
+      <div style="margin-top:6px; font-size:13px;">
+        <span style="font-weight:600;">Elevated Factors:</span>
+        {% for f in risk_heatmap_context.elevated_factors %}<span class="pi-chip divergent">{{ f | replace('_', ' ') }}</span>{% endfor %}
+      </div>
+      {% endif %}
+      {% if risk_heatmap_context.mitigating_factors %}
+      <div style="margin-top:4px; font-size:13px;">
+        <span style="font-weight:600;">Mitigating Factors:</span>
+        {% for f in risk_heatmap_context.mitigating_factors %}<span class="pi-chip driver">{{ f | replace('_', ' ') }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
 
     <h2>Evidence Considered</h2>
     <p class="small" style="margin-bottom:8px;">Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.</p>
@@ -1311,6 +1495,56 @@
         <div class="label">STR Filing Window</div>
         <div class="value">{{ sla_timeline.str_filing_window | default('N/A') }}</div>
       </div>
+    </div>
+    {% endif %}
+
+    {# ── FIX-035: Related Activity ────────────────────────────── #}
+    {% if related_activity and (related_activity.prior_sars or related_activity.account_closures or related_activity.pep_connections or related_activity.screening_alerts) %}
+    <h2>Related Activity</h2>
+    <div class="card break">
+      {% if related_activity.prior_sars %}
+      <div style="margin-bottom:10px;">
+        <span style="font-weight:600; font-size:13px;">Prior SARs:</span>
+        <span class="pill trig" style="margin-left:6px;">{{ related_activity.prior_sars | length }}</span>
+        <ul class="small" style="margin-top:4px;">
+          {% for sar in related_activity.prior_sars[:5] %}
+          <li>{{ sar }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if related_activity.account_closures %}
+      <div style="margin-bottom:10px;">
+        <span style="font-weight:600; font-size:13px;">Account Closures:</span>
+        <span class="pill req" style="margin-left:6px;">{{ related_activity.account_closures | length }}</span>
+        <ul class="small" style="margin-top:4px;">
+          {% for ac in related_activity.account_closures[:5] %}
+          <li>{{ ac }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if related_activity.pep_connections %}
+      <div style="margin-bottom:10px;">
+        <span style="font-weight:600; font-size:13px;">PEP Connections:</span>
+        <ul class="small" style="margin-top:4px;">
+          {% for pep in related_activity.pep_connections[:5] %}
+          <li>{{ pep }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if related_activity.screening_alerts %}
+      <div>
+        <span style="font-weight:600; font-size:13px;">Screening Alerts:</span>
+        <span class="pill {% if related_activity.screening_alerts | length > 2 %}trig{% else %}req{% endif %}" style="margin-left:6px;">{{ related_activity.screening_alerts | length }}</span>
+        <ul class="small" style="margin-top:4px;">
+          {% for alert in related_activity.screening_alerts[:5] %}
+          <li>{{ alert }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
 

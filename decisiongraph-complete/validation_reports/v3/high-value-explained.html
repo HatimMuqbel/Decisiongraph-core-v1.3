@@ -229,7 +229,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">high-value-explained</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-11T23:05:44.613874</div>
+        <div class="value mono">2026-02-11T23:41:27.490081</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -262,6 +262,34 @@
       </div>
       
     </div>
+
+    
+    
+    <h3>Required Actions</h3>
+    <div class="status ok break">
+      <ul style="margin:0; padding-left:20px;">
+        
+        <li style="margin:4px 0;">
+          <strong style="color:var(--warn);">[REQUIRED]</strong>
+          
+          Document rationale for no-action determination
+        </li>
+        
+        <li style="margin:4px 0;">
+          <span class="small">[STANDARD]</span>
+          
+          Next scheduled review: 12 months (standard cycle)
+        </li>
+        
+        <li style="margin:4px 0;">
+          <span class="small">[STANDARD]</span>
+          
+          File retention: per PCMLTFA s. 6
+        </li>
+        
+      </ul>
+    </div>
+    
 
     <div class="card break">
       <div class="kv">
@@ -411,6 +439,37 @@
     </div>
     
 
+    
+
+    
+    
+    <h2>Disposition Reconciliation</h2>
+    
+    <div class="card break">
+      <p class="small" style="margin-bottom:12px; font-style:italic;">2 disposition difference(s) detected between engine, classifier, and governed layers.</p>
+      
+      <div style="border-left:3px solid var(--warn); padding-left:12px; margin-bottom:12px;">
+        <p style="margin:0 0 4px 0; font-size:13px;">
+          <strong>Classification</strong> determined <code class="mono">EDD REQUIRED</code>
+          — <strong>Governed</strong> overrode to
+          <code class="mono" style="font-weight:700;">NO REPORT</code>
+        </p>
+        <p class="small" style="margin:0 0 2px 0;">Classification outcome (EDD_REQUIRED) differs from governed disposition (NO_REPORT). Governed disposition follows gate evaluation and governance framework.</p>
+        <p class="small" style="margin:0; color:var(--muted); font-style:italic;">Authority: Final disposition follows governed authority per policy framework</p>
+      </div>
+      
+      <div style="border-left:3px solid var(--warn); padding-left:12px; margin-bottom:12px;">
+        <p style="margin:0 0 4px 0; font-size:13px;">
+          <strong>Engine</strong> determined <code class="mono">NO REPORT</code>
+          — <strong>Classification</strong> overrode to
+          <code class="mono" style="font-weight:700;">EDD REQUIRED</code>
+        </p>
+        <p class="small" style="margin:0 0 2px 0;">Engine produced NO_REPORT from rules/gates. Classifier independently determined EDD_REQUIRED from suspicion indicators.</p>
+        <p class="small" style="margin:0; color:var(--muted); font-style:italic;">Authority: Both assessments feed into governed disposition</p>
+      </div>
+      
+    </div>
+    
     
 
     <h2>Suspicion Classification</h2>
@@ -578,7 +637,7 @@
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">baf5c25b...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">b03e967d...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">82%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -602,7 +661,7 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">d696966a...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">ff9b959b...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -624,7 +683,7 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">ff574a21...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">663f8b86...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -648,7 +707,7 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">8f67f2ac...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">acb4db8f...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">76%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -672,7 +731,7 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">1f1c5524...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">b682d930...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">76%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -721,6 +780,19 @@
     
     
     
+    
+    
+
+    
+    
+    <div class="status warn" style="margin-top:12px; padding:12px;">
+      <strong>Precedent Divergence Analysis</strong>
+      <p class="small" style="margin:8px 0 4px;"></p>
+      
+      
+    </div>
+    
+
     
     
 
@@ -881,6 +953,17 @@
         
       
     </div>
+
+    
+    
+    <h3>Gate Override Analysis</h3>
+    
+    
+    <div class="status ok break">
+      <p>All gates consistent with final disposition.</p>
+    </div>
+    
+    
 
     <h2>Rules Evaluated</h2>
     
@@ -1093,7 +1176,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">baf5c25b...</span>
+            <span class="match-id">b03e967d...</span>
             <span class="match-sim">82%
               
               
@@ -1151,7 +1234,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d696966a...</span>
+            <span class="match-id">ff9b959b...</span>
             <span class="match-sim">77%
               
               
@@ -1209,7 +1292,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">ff574a21...</span>
+            <span class="match-id">663f8b86...</span>
             <span class="match-sim">77%
               
               
@@ -1267,7 +1350,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">8f67f2ac...</span>
+            <span class="match-id">acb4db8f...</span>
             <span class="match-sim">76%
               
               
@@ -1325,7 +1408,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">1f1c5524...</span>
+            <span class="match-id">b682d930...</span>
             <span class="match-sim">76%
               
               
@@ -1383,7 +1466,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">0f7f172b...</span>
+            <span class="match-id">8ba84242...</span>
             <span class="match-sim">76%
               
               
@@ -1441,7 +1524,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">c1aa35b5...</span>
+            <span class="match-id">1fdba415...</span>
             <span class="match-sim">75%
               
               
@@ -1499,7 +1582,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">98f2dc2c...</span>
+            <span class="match-id">e35ff8de...</span>
             <span class="match-sim">75%
               
               
@@ -1557,7 +1640,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">52f951bb...</span>
+            <span class="match-id">ec2d6f95...</span>
             <span class="match-sim">73%
               
               
@@ -1615,7 +1698,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">9cde5169...</span>
+            <span class="match-id">a1994dc2...</span>
             <span class="match-sim">73%
               
               
@@ -1716,6 +1799,36 @@
     </div>
     
 
+    
+    
+    <div class="status warn" style="margin-top:12px; padding:12px;">
+      <strong>Unmapped Indicator Independence Check</strong>
+      <p class="small" style="margin:8px 0 6px;">Verifies that mapped Tier 1 indicators independently support the outcome without relying on unmapped signals.</p>
+      <table style="width:100%; font-size:13px; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:4px 8px; border-bottom:1px solid var(--border);">Indicator</th>
+            <th style="text-align:left; padding:4px 8px; border-bottom:1px solid var(--border);">Source</th>
+            <th style="text-align:center; padding:4px 8px; border-bottom:1px solid var(--border);">Independent?</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td class="mono" style="padding:4px 8px;"></td>
+            <td class="small" style="padding:4px 8px;">unmapped</td>
+            <td style="text-align:center; padding:4px 8px;">
+              
+                <span style="color:#dc2626; font-weight:700;">No</span> — 
+              
+            </td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+    
+
     <h2>Risk Factors</h2>
     <table class="break">
       <thead>
@@ -1738,6 +1851,9 @@
         
       </tbody>
     </table>
+
+    
+    
 
     <h2>Evidence Considered</h2>
     <p class="small" style="margin-bottom:8px;">Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.</p>
@@ -1971,7 +2087,7 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-11T23:05:44.613767Z</div>
+        <div class="value mono">2026-02-11T23:41:27.489918Z</div>
         <div class="label">EDD Deadline</div>
         <div class="value mono">N/A</div>
         <div class="label">Final Disposition Due</div>
@@ -1980,6 +2096,9 @@
         <div class="value">N/A (no STR determination)</div>
       </div>
     </div>
+    
+
+    
     
 
     <h2>Auditability &amp; Governance</h2>
@@ -2019,7 +2138,7 @@
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-11T23:05:44.613874
+      Generated 2026-02-11T23:41:27.490081
     </div>
   </div>
 </body>

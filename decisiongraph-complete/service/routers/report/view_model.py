@@ -197,6 +197,16 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
 
         # FIX-015: Analyst actions (outcome-aware)
         "analyst_actions": derived.get("analyst_actions", []),
+
+        # FIX-028 through FIX-035: Narrative coherence
+        "gate_override_explanations": derived.get("gate_override_explanations", []),
+        "disposition_reconciliation": derived.get("disposition_reconciliation", {}),
+        "precedent_divergence": derived.get("precedent_divergence"),
+        "unmapped_indicator_checks": derived.get("unmapped_indicator_checks", []),
+        "policy_regime_exception": derived.get("policy_regime_exception"),
+        "risk_heatmap_context": derived.get("risk_heatmap_context"),
+        "required_actions": derived.get("required_actions", []),
+        "related_activity": derived.get("related_activity", {}),
     }
 
 

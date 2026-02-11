@@ -488,6 +488,79 @@ def derive_regulatory_model(normalized: dict) -> dict:
             "Compliance officer review required."
         )
 
+    # ── FIX-028: Gate Override Explanations ────────────────────────────
+    gate_override_explanations = _build_gate_override_explanations(
+        gate1_passed=gate1_passed,
+        gate1_decision=normalized.get("gate1_decision", ""),
+        gate1_sections=normalized.get("gate1_sections", []),
+        gate2_decision=normalized.get("gate2_decision", ""),
+        gate2_status=normalized.get("gate2_status", ""),
+        gate2_sections=normalized.get("gate2_sections", []),
+        governed_disposition=governed_disposition,
+        str_required=str_required,
+        integrity_alert=integrity_alert,
+        rules_fired=rules_fired,
+    )
+
+    # ── FIX-029: Disposition Reconciliation ────────────────────────────
+    disposition_reconciliation = _build_disposition_reconciliation(
+        engine_disposition=engine_disposition,
+        governed_disposition=governed_disposition,
+        classification_outcome=classification.outcome,
+        integrity_alert=integrity_alert,
+        corrections=corrections,
+        gate1_passed=gate1_passed,
+        str_required=str_required,
+    )
+
+    # ── FIX-030: Precedent Divergence Narrative ────────────────────────
+    precedent_divergence = _build_precedent_divergence_narrative(
+        precedent_analysis=precedent_analysis,
+        governed_disposition=governed_disposition,
+        classification_outcome=classification.outcome,
+        integrity_alert=integrity_alert,
+        enhanced_precedent=enhanced_precedent,
+    )
+
+    # ── FIX-031: Unmapped Indicator Independence Check ─────────────────
+    unmapped_indicator_checks = _build_unmapped_indicator_checks(
+        tier1_signals=classification.tier1_signals,
+        tier2_signals=classification.tier2_signals,
+        governed_disposition=governed_disposition,
+        rules_fired=rules_fired,
+        gate1_passed=gate1_passed,
+        str_required=str_required,
+    )
+
+    # ── FIX-032: Policy Regime Exception ───────────────────────────────
+    policy_regime_exception = _build_policy_regime_exception(
+        precedent_analysis=precedent_analysis,
+        governed_disposition=governed_disposition,
+        integrity_alert=integrity_alert,
+        classification_outcome=classification.outcome,
+    )
+
+    # ── FIX-033: Risk Heatmap Context ──────────────────────────────────
+    risk_heatmap_context = _build_risk_heatmap_context(
+        risk_factors=risk_factors,
+        governed_disposition=governed_disposition,
+        integrity_alert=integrity_alert,
+    )
+
+    # ── FIX-034: Required Actions (dynamic) ────────────────────────────
+    required_actions = _build_required_actions(
+        governed_disposition=governed_disposition,
+        str_required=str_required,
+        sla_timeline=sla_timeline,
+        edd_recommendations=edd_recommendations,
+        risk_factors=risk_factors,
+        evidence_used=evidence_used,
+        classification=classification,
+    )
+
+    # ── FIX-035: Related Activity ──────────────────────────────────────
+    related_activity = _build_related_activity(evidence_used=evidence_used)
+
     return {
         # Classification
         "classification": classification.to_dict(),
@@ -574,6 +647,16 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # FIX-016: EDD consistency
         "edd_consistency_alert": edd_consistency_alert,
+
+        # FIX-028 through FIX-035: Narrative coherence
+        "gate_override_explanations": gate_override_explanations,
+        "disposition_reconciliation": disposition_reconciliation,
+        "precedent_divergence": precedent_divergence,
+        "unmapped_indicator_checks": unmapped_indicator_checks,
+        "policy_regime_exception": policy_regime_exception,
+        "risk_heatmap_context": risk_heatmap_context,
+        "required_actions": required_actions,
+        "related_activity": related_activity,
     }
 
 
@@ -2666,3 +2749,671 @@ def _build_risk_factors(normalized: dict) -> list[dict]:
         })
 
     return risk_factors
+
+
+# ── FIX-028: Gate Override Explanations ──────────────────────────────────────
+
+def _build_gate_override_explanations(
+    gate1_passed: bool,
+    gate1_decision: str,
+    gate1_sections: list,
+    gate2_decision: str,
+    gate2_status: str,
+    gate2_sections: list,
+    governed_disposition: str,
+    str_required: bool,
+    integrity_alert: dict | None,
+    rules_fired: list,
+) -> list[dict]:
+    """Build explanations for each gate whose result conflicts with final disposition."""
+    final_is_escalation = governed_disposition in ("STR_REQUIRED", "ESCALATE") or str_required
+    final_is_cleared = governed_disposition in ("NO_REPORT", "CLEARED")
+
+    explanations: list[dict] = []
+
+    # Gate 1 conflict: blocked but final is escalation
+    gate1_blocked = not gate1_passed
+    if gate1_blocked and final_is_escalation:
+        override_mechanism = "Classifier sovereignty"
+        override_basis = []
+        authority = "PCMLTFA s. 7(1) — Reasonable Grounds to Suspect"
+        if integrity_alert:
+            atype = integrity_alert.get("type", "")
+            if atype == "CLASSIFIER_UPGRADE":
+                override_mechanism = "Classifier sovereignty — Tier 1 indicators override gate"
+                override_basis.append("Classifier identified Tier 1 suspicion indicators")
+            elif atype == "CLASSIFICATION_DISPOSITION_CONFLICT":
+                override_mechanism = "Compliance review pending — conflict deferred"
+                override_basis.append("Classifier and gate disagree; deferred to compliance officer")
+            else:
+                override_mechanism = f"Integrity correction ({atype})"
+        for section in gate1_sections:
+            if not section.get("passed"):
+                override_basis.append(f"{section.get('name', 'Unknown')}: {section.get('reason', 'failed')}")
+        if not override_basis:
+            override_basis.append("Hard stop rule triggered — mandatory escalation")
+        explanations.append({
+            "gate": "Gate 1: Zero-False-Escalation Check",
+            "gate_result": gate1_decision or "PROHIBITED",
+            "final_disposition": governed_disposition,
+            "conflict": True,
+            "override_mechanism": override_mechanism,
+            "override_basis": override_basis,
+            "authority": authority,
+        })
+
+    # Gate 1 conflict: permitted but final is cleared due to governance correction
+    elif not gate1_blocked and final_is_cleared:
+        if integrity_alert and integrity_alert.get("type") in (
+            "CONTROL_CONTRADICTION", "ESCALATION_WITHOUT_SUSPICION",
+        ):
+            override_basis = ["0 Tier 1 suspicion indicators — escalation not justified"]
+            explanations.append({
+                "gate": "Gate 1: Zero-False-Escalation Check",
+                "gate_result": gate1_decision or "ALLOWED",
+                "final_disposition": governed_disposition,
+                "conflict": True,
+                "override_mechanism": "Governance correction — false escalation prevention",
+                "override_basis": override_basis,
+                "authority": "PCMLTFA s. 7 — STR requires Tier 1 suspicion, not risk alone",
+            })
+
+    # Gate 2 conflict: insufficient but STR filed
+    gate2_says_str = "STR" in str(gate2_decision).upper() or "STR" in str(gate2_status).upper()
+    gate2_says_insufficient = (
+        "INSUFFICIENT" in str(gate2_decision).upper()
+        or "EDD" in str(gate2_decision).upper()
+        or (gate2_status and "REVIEW" in str(gate2_status).upper())
+    )
+    if gate2_says_insufficient and str_required:
+        override_mechanism = "Classifier sovereignty"
+        if integrity_alert and integrity_alert.get("type") == "CLASSIFIER_UPGRADE":
+            override_mechanism = "Classifier sovereignty — Tier 1 indicators independently meet RGS threshold"
+        override_basis = []
+        for section in gate2_sections:
+            if not section.get("passed"):
+                override_basis.append(f"{section.get('name', 'Unknown')}: {section.get('reason', 'insufficient')}")
+        triggered = [
+            r for r in rules_fired
+            if str(r.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
+        ]
+        for rule in triggered[:3]:
+            override_basis.append(f"Rule {rule.get('code', 'N/A')}: {rule.get('reason', '')}")
+        explanations.append({
+            "gate": "Gate 2: STR Threshold",
+            "gate_result": gate2_decision or gate2_status or "INSUFFICIENT",
+            "final_disposition": governed_disposition,
+            "conflict": True,
+            "override_mechanism": override_mechanism,
+            "override_basis": override_basis or ["Classifier identified sufficient Tier 1 indicators"],
+            "authority": "PCMLTFA s. 7(1) — Reasonable Grounds to Suspect threshold",
+        })
+
+    # Gate 2 conflict: said STR but didn't file
+    elif gate2_says_str and not str_required:
+        override_basis = ["0 Tier 1 suspicion indicators — STR threshold not met"]
+        if integrity_alert:
+            override_basis.append(f"Integrity alert: {integrity_alert.get('type', 'N/A')}")
+        explanations.append({
+            "gate": "Gate 2: STR Threshold",
+            "gate_result": gate2_decision or "STR_REQUIRED",
+            "final_disposition": governed_disposition,
+            "conflict": True,
+            "override_mechanism": "Governance correction — false STR prevention",
+            "override_basis": override_basis,
+            "authority": "PCMLTFA s. 7 — STR requires Tier 1 suspicion indicators",
+        })
+
+    if not explanations:
+        return [{"gate": "All Gates", "conflict": False, "final_disposition": governed_disposition}]
+    return explanations
+
+
+# ── FIX-029: Disposition Reconciliation ──────────────────────────────────────
+
+def _build_disposition_reconciliation(
+    engine_disposition: str,
+    governed_disposition: str,
+    classification_outcome: str,
+    integrity_alert: dict | None,
+    corrections: dict | None,
+    gate1_passed: bool,
+    str_required: bool,
+) -> dict:
+    """Compare engine, governed, and classification dispositions.
+
+    For each pair that differs, produce a dynamic explanation tracing
+    back to the specific mechanism that produced the difference.
+    """
+    components = {
+        "engine": engine_disposition,
+        "governed": governed_disposition,
+        "classification": classification_outcome,
+    }
+    all_same = len(set(components.values())) == 1
+
+    if all_same:
+        return {
+            "consistent": True,
+            "summary": "All disposition layers consistent. No override applied.",
+            "differences": [],
+        }
+
+    differences: list[dict] = []
+
+    # Engine vs Governed
+    if engine_disposition != governed_disposition:
+        if corrections:
+            mechanism = "Governance correction"
+            alert_type = integrity_alert.get("type", "") if integrity_alert else ""
+            if alert_type == "CONTROL_CONTRADICTION":
+                reason = "STR REQUIRED removed — 0 Tier 1 indicators; STR filing would be unjustified (PCMLTFA s. 7)"
+            elif alert_type == "ESCALATION_WITHOUT_SUSPICION":
+                reason = "Escalation downgraded — 0 Tier 1 indicators; risk indicators alone insufficient"
+            elif alert_type == "CLASSIFIER_UPGRADE":
+                reason = "Reporting upgraded — Tier 1 suspicion indicators independently meet RGS threshold"
+            elif alert_type == "CLASSIFIER_OVERRIDE":
+                reason = "Rules engine overridden — classifier found insufficient suspicion basis"
+            else:
+                reason = "Governance correction applied per classifier sovereignty framework"
+        else:
+            mechanism = "Classifier sovereignty"
+            reason = "Classification outcome differs from engine; governed disposition follows classifier authority"
+
+        differences.append({
+            "component_a": "Engine",
+            "value_a": engine_disposition,
+            "component_b": "Governed",
+            "value_b": governed_disposition,
+            "mechanism": mechanism,
+            "reason": reason,
+            "authority": "Classifier sovereignty framework — governed disposition is authoritative",
+        })
+
+    # Classification vs Governed
+    if classification_outcome != governed_disposition:
+        # Normalize for comparison
+        _clf_norm = classification_outcome.upper().replace(" ", "_")
+        _gov_norm = governed_disposition.upper().replace(" ", "_")
+        if _clf_norm != _gov_norm:
+            if not gate1_passed and "STR" in _clf_norm:
+                reason = (
+                    f"Classifier determined {classification_outcome} but Gate 1 blocked escalation — "
+                    "insufficient lawful basis. Deferred to compliance officer."
+                )
+            elif integrity_alert and integrity_alert.get("type") == "CLASSIFICATION_DISPOSITION_CONFLICT":
+                reason = (
+                    f"Classifier determined {classification_outcome} but governed disposition "
+                    f"is {governed_disposition}. Conflict deferred to compliance officer review."
+                )
+            else:
+                reason = (
+                    f"Classification outcome ({classification_outcome}) differs from "
+                    f"governed disposition ({governed_disposition}). "
+                    "Governed disposition follows gate evaluation and governance framework."
+                )
+            differences.append({
+                "component_a": "Classification",
+                "value_a": classification_outcome,
+                "component_b": "Governed",
+                "value_b": governed_disposition,
+                "mechanism": "Gate evaluation / governance framework",
+                "reason": reason,
+                "authority": f"Final disposition follows governed authority per policy framework",
+            })
+
+    # Engine vs Classification
+    if engine_disposition != classification_outcome:
+        _eng_norm = engine_disposition.upper().replace(" ", "_")
+        _clf_norm = classification_outcome.upper().replace(" ", "_")
+        if _eng_norm != _clf_norm:
+            differences.append({
+                "component_a": "Engine",
+                "value_a": engine_disposition,
+                "component_b": "Classification",
+                "value_b": classification_outcome,
+                "mechanism": "Independent assessment",
+                "reason": (
+                    f"Engine produced {engine_disposition} from rules/gates. "
+                    f"Classifier independently determined {classification_outcome} from suspicion indicators."
+                ),
+                "authority": "Both assessments feed into governed disposition",
+            })
+
+    return {
+        "consistent": False,
+        "summary": f"{len(differences)} disposition difference(s) detected between engine, classifier, and governed layers.",
+        "differences": differences,
+    }
+
+
+# ── FIX-030: Precedent Divergence Narrative ──────────────────────────────────
+
+def _build_precedent_divergence_narrative(
+    precedent_analysis: dict,
+    governed_disposition: str,
+    classification_outcome: str,
+    integrity_alert: dict | None,
+    enhanced_precedent: dict,
+) -> dict | None:
+    """Build divergence narrative when precedent alignment < 50%.
+
+    Shows pool outcome distribution and explains WHY current disposition
+    diverges from historical pattern.
+    """
+    if not precedent_analysis or not precedent_analysis.get("available"):
+        return None
+
+    alignment_count = enhanced_precedent.get("governed_alignment_count", 0)
+    alignment_total = enhanced_precedent.get("governed_alignment_total", 0)
+
+    if alignment_total == 0:
+        return None
+
+    alignment_pct = int(alignment_count / alignment_total * 100) if alignment_total else 0
+
+    # Get full outcome distribution
+    match_distribution = (
+        precedent_analysis.get("match_outcome_distribution")
+        or precedent_analysis.get("outcome_distribution")
+        or {}
+    )
+    pool_breakdown = {str(k).upper(): int(v) for k, v in match_distribution.items()}
+
+    # Find dominant historical outcome
+    dominant_outcome = ""
+    dominant_count = 0
+    for k, v in pool_breakdown.items():
+        if v > dominant_count:
+            dominant_outcome = k
+            dominant_count = v
+
+    if alignment_pct >= 50:
+        return {
+            "divergent": False,
+            "alignment_pct": alignment_pct,
+            "alignment_count": alignment_count,
+            "alignment_total": alignment_total,
+            "pool_breakdown": pool_breakdown,
+        }
+
+    # Alignment < 50% — build divergence reasons
+    divergence_reasons: list[str] = []
+
+    if integrity_alert:
+        atype = integrity_alert.get("type", "")
+        if atype == "CLASSIFIER_UPGRADE":
+            divergence_reasons.append(
+                "Classifier sovereignty: Tier 1 suspicion indicators triggered STR upgrade "
+                "despite historical pattern favoring lower disposition."
+            )
+        elif atype == "CONTROL_CONTRADICTION":
+            divergence_reasons.append(
+                "Governance correction: STR determination removed due to 0 Tier 1 indicators, "
+                "overriding historical STR pattern for this risk profile."
+            )
+        elif atype == "ESCALATION_WITHOUT_SUSPICION":
+            divergence_reasons.append(
+                "Governance correction: Escalation downgraded due to insufficient "
+                "Tier 1 suspicion indicators."
+            )
+        elif atype == "CLASSIFICATION_DISPOSITION_CONFLICT":
+            divergence_reasons.append(
+                f"Classification conflict: Classifier determined {classification_outcome} "
+                f"but governed disposition is {governed_disposition}. "
+                "Deferred to compliance officer."
+            )
+        elif atype:
+            divergence_reasons.append(f"Integrity alert ({atype}) may explain divergence.")
+
+    # Check for policy regime shift
+    regime = precedent_analysis.get("policy_regime_analysis", {})
+    if regime and regime.get("pre_shift_count", 0) > 0:
+        pre_pct = regime.get("pre_shift_pct", 0)
+        if pre_pct > 30:
+            divergence_reasons.append(
+                f"Policy regime shift: {pre_pct}% of comparable pool was decided under "
+                "prior policy. Current disposition reflects updated regulatory guidance."
+            )
+
+    # Check if case has unique risk factors not in pool
+    if not divergence_reasons:
+        divergence_reasons.append(
+            "Current case may contain risk factor combinations not represented "
+            "in the comparable precedent pool."
+        )
+
+    return {
+        "divergent": True,
+        "alignment_pct": alignment_pct,
+        "alignment_count": alignment_count,
+        "alignment_total": alignment_total,
+        "dominant_historical": dominant_outcome,
+        "dominant_count": dominant_count,
+        "pool_breakdown": pool_breakdown,
+        "divergence_reasons": divergence_reasons,
+    }
+
+
+# ── FIX-031: Unmapped Indicator Independence Check ───────────────────────────
+
+def _build_unmapped_indicator_checks(
+    tier1_signals: list,
+    tier2_signals: list,
+    governed_disposition: str,
+    rules_fired: list,
+    gate1_passed: bool,
+    str_required: bool,
+) -> list[dict]:
+    """Check if any unmapped/unclassified indicator is load-bearing.
+
+    For each unmapped indicator, determine whether MAPPED Tier 1 indicators
+    independently support the outcome via hard stop or gate logic.
+    """
+    all_signals = list(tier1_signals or []) + list(tier2_signals or [])
+    unmapped = [s for s in all_signals if s.get("status", "").upper() in ("UNCLASSIFIED", "UNMAPPED", "")]
+
+    if not unmapped:
+        return []
+
+    # Determine if mapped Tier 1 indicators independently reach the same outcome
+    mapped_tier1 = [s for s in (tier1_signals or []) if s.get("status", "").upper() not in ("UNCLASSIFIED", "UNMAPPED", "")]
+
+    # Check for hard-stop rules that independently support the outcome
+    hard_stop_triggered = any(
+        str(r.get("code", "")).upper().startswith(("AML_BLOCK", "SANCTIONS", "HARD_STOP"))
+        and str(r.get("result", "")).upper() in {"TRIGGERED", "ACTIVATED", "FAIL", "FAILED"}
+        for r in rules_fired
+    )
+
+    results: list[dict] = []
+    for signal in unmapped:
+        code = signal.get("code", "UNKNOWN")
+        source = signal.get("source", "")
+
+        # Independence check: can we reach the same outcome without this indicator?
+        if hard_stop_triggered:
+            independent = True
+            basis = "Hard stop rule independently triggers this disposition"
+        elif len(mapped_tier1) >= 1 and str_required:
+            independent = True
+            basis = f"{len(mapped_tier1)} mapped Tier 1 indicator(s) independently meet STR threshold"
+        elif len(mapped_tier1) >= 1 and governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
+            independent = True
+            basis = f"{len(mapped_tier1)} mapped Tier 1 indicator(s) independently support escalation"
+        elif governed_disposition == "NO_REPORT":
+            independent = True
+            basis = "Disposition is NO_REPORT — unmapped indicator does not affect clearance"
+        else:
+            independent = False
+            basis = "No mapped Tier 1 indicators independently support this disposition"
+
+        results.append({
+            "indicator_code": code,
+            "indicator_source": source,
+            "independent": independent,
+            "basis": basis,
+            "mapped_tier1_count": len(mapped_tier1),
+            "hard_stop_active": hard_stop_triggered,
+        })
+
+    return results
+
+
+# ── FIX-032: Policy Regime Exception ─────────────────────────────────────────
+
+def _build_policy_regime_exception(
+    precedent_analysis: dict,
+    governed_disposition: str,
+    integrity_alert: dict | None,
+    classification_outcome: str,
+) -> dict | None:
+    """Check if current disposition departs from post-shift pool pattern."""
+    if not precedent_analysis or not precedent_analysis.get("available"):
+        return None
+
+    regime = precedent_analysis.get("policy_regime_analysis", {})
+    if not regime:
+        return None
+
+    post_shift_dist = regime.get("post_shift_distribution", {})
+    if not post_shift_dist:
+        return None
+
+    # Find dominant post-shift outcome
+    total_post = sum(post_shift_dist.values())
+    if total_post == 0:
+        return None
+
+    dominant_key = max(post_shift_dist, key=post_shift_dist.get)
+    dominant_count = post_shift_dist[dominant_key]
+    dominant_pct = int(dominant_count / total_post * 100)
+    dominant_label = str(dominant_key).upper().replace("_", " ")
+
+    # Normalize for comparison
+    _gov_canon = governed_disposition.upper().replace(" ", "_")
+    _dom_canon = str(dominant_key).upper().replace(" ", "_")
+
+    # Check aliases
+    _GOV_ALIASES = {
+        "NO_REPORT": {"NO_REPORT", "ALLOW", "CLEARED", "PASS"},
+        "STR_REQUIRED": {"STR_REQUIRED", "FILE_STR", "BLOCK"},
+        "EDD_REQUIRED": {"EDD_REQUIRED", "EDD", "REVIEW", "ESCALATE"},
+    }
+    gov_set = _GOV_ALIASES.get(_gov_canon, {_gov_canon})
+    matches = _dom_canon in gov_set
+
+    if matches:
+        return {
+            "exception": False,
+            "summary": "Disposition consistent with post-shift institutional pattern.",
+            "post_shift_dominant": dominant_label,
+            "post_shift_dominant_pct": dominant_pct,
+            "post_shift_total": total_post,
+        }
+
+    # Exception: disposition differs from post-shift pattern
+    exception_basis = []
+    if integrity_alert:
+        atype = integrity_alert.get("type", "")
+        if atype:
+            exception_basis.append(f"Integrity alert ({atype}) applied — disposition adjusted from historical pattern.")
+    if classification_outcome:
+        exception_basis.append(f"Classifier determined {classification_outcome}.")
+    if not exception_basis:
+        exception_basis.append("Unique risk combination in current case not represented in post-shift pool.")
+
+    return {
+        "exception": True,
+        "summary": (
+            f"Post-shift institutional pattern: {dominant_pct}% of {total_post} cases "
+            f"resolved as {dominant_label}. Current disposition ({governed_disposition.replace('_', ' ')}) "
+            "departs from pattern."
+        ),
+        "post_shift_dominant": dominant_label,
+        "post_shift_dominant_pct": dominant_pct,
+        "post_shift_total": total_post,
+        "exception_basis": exception_basis,
+    }
+
+
+# ── FIX-033: Risk Heatmap Context ────────────────────────────────────────────
+
+_DISPOSITION_SEVERITY_MAP = {
+    "STR_REQUIRED": "High", "BLOCK": "High", "FILE_STR": "High",
+    "EDD_REQUIRED": "Medium", "ESCALATE": "Medium",
+    "NO_REPORT": "Low", "CLEARED": "Low", "ALLOW": "Low",
+}
+
+_SEVERITY_RANK = {"High": 3, "Medium": 2, "Low": 1}
+
+
+def _build_risk_heatmap_context(
+    risk_factors: list,
+    governed_disposition: str,
+    integrity_alert: dict | None,
+) -> dict | None:
+    """Check if risk factor severity matches disposition severity."""
+    expected_severity = _DISPOSITION_SEVERITY_MAP.get(governed_disposition, "Medium")
+
+    # Estimate heatmap severity from risk factors
+    high_risk_count = 0
+    for rf in risk_factors:
+        val = rf.get("value", "")
+        field = rf.get("field", "")
+        if any(kw in str(val).lower() for kw in ("present", "true", "yes", "high", "sanctions", "pep")):
+            high_risk_count += 1
+        if any(kw in str(field).lower() for kw in ("sanctions", "pep", "adverse", "layering", "structuring")):
+            high_risk_count += 1
+
+    if high_risk_count >= 3:
+        heatmap_severity = "High"
+    elif high_risk_count >= 1:
+        heatmap_severity = "Medium"
+    else:
+        heatmap_severity = "Low"
+
+    if _SEVERITY_RANK.get(heatmap_severity, 0) >= _SEVERITY_RANK.get(expected_severity, 0):
+        return None  # Consistent — no note needed
+
+    # Heatmap severity < expected — explain elevation
+    mechanism = "classifier sovereignty"
+    if integrity_alert:
+        atype = integrity_alert.get("type", "")
+        if "UPGRADE" in atype:
+            mechanism = "classifier upgrade"
+        elif "CORRECTION" in atype or "CONTRADICTION" in atype:
+            mechanism = "governance correction"
+        elif atype:
+            mechanism = f"integrity correction ({atype})"
+
+    return {
+        "elevated": True,
+        "heatmap_severity": heatmap_severity,
+        "disposition_severity": expected_severity,
+        "mechanism": mechanism,
+        "note": (
+            f"Pre-classification risk assessment rated {heatmap_severity}. "
+            f"Final disposition elevated to {expected_severity} by {mechanism}."
+        ),
+    }
+
+
+# ── FIX-034: Required Actions (dynamic, per disposition) ────────────────────
+
+def _build_required_actions(
+    governed_disposition: str,
+    str_required: bool,
+    sla_timeline: dict,
+    edd_recommendations: list,
+    risk_factors: list,
+    evidence_used: list,
+    classification,
+) -> list[dict]:
+    """Generate dynamic action items based on disposition + case data."""
+    actions: list[dict] = []
+    ev_map = {str(ev.get("field", "")).lower(): ev.get("value") for ev in (evidence_used or [])}
+
+    pep_flag = (
+        ev_map.get("customer.pep") or ev_map.get("flag.pep") or ev_map.get("customer.pep_flag")
+    )
+    is_pep = pep_flag is True or str(pep_flag).lower() == "true"
+    prior_sars = ev_map.get("prior.sars_filed") or ev_map.get("screen.prior_sars_filed") or 0
+    try:
+        prior_sars = int(prior_sars)
+    except (ValueError, TypeError):
+        prior_sars = 0
+
+    if str_required or governed_disposition == "STR_REQUIRED":
+        str_window = sla_timeline.get("str_filing_window", "30 days per PCMLTFA s. 7")
+        actions.append({"action": f"File STR by {str_window}", "priority": "MANDATORY"})
+        actions.append({
+            "action": "Transaction hold: ASSESS — determine if block required based on risk level",
+            "priority": "REQUIRED",
+        })
+        # EDD completeness
+        gaps = [r.get("action", "") for r in edd_recommendations if "gap" in r.get("action", "").lower()]
+        if gaps:
+            actions.append({"action": f"EDD status: INCOMPLETE — resolve: {'; '.join(gaps[:2])}", "priority": "REQUIRED"})
+        else:
+            actions.append({"action": "EDD status: COMPLETE if all evidence present", "priority": "REQUIRED"})
+        if is_pep:
+            actions.append({"action": "Account restriction: RECOMMENDED — PEP + STR disposition", "priority": "RECOMMENDED"})
+        if is_pep or prior_sars > 0:
+            actions.append({"action": "Related party review: REQUIRED", "priority": "REQUIRED"})
+        else:
+            actions.append({"action": "Related party review: RECOMMENDED", "priority": "RECOMMENDED"})
+
+    elif governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
+        edd_deadline = sla_timeline.get("edd_deadline", "5 business days")
+        actions.append({"action": f"Complete EDD by {edd_deadline}", "priority": "REQUIRED"})
+        for rec in edd_recommendations[:3]:
+            actions.append({"action": rec.get("action", ""), "priority": "REQUIRED"})
+        if is_pep and len(risk_factors) >= 2:
+            actions.append({"action": "Senior management approval: REQUIRED (PEP + elevated risk)", "priority": "REQUIRED"})
+        actions.append({"action": "Re-evaluation trigger: upon EDD completion", "priority": "STANDARD"})
+
+    elif governed_disposition == "NO_REPORT":
+        actions.append({"action": "Document rationale for no-action determination", "priority": "REQUIRED"})
+        if len(risk_factors) >= 2:
+            actions.append({"action": "Next scheduled review: 6 months (elevated risk factors present)", "priority": "STANDARD"})
+        else:
+            actions.append({"action": "Next scheduled review: 12 months (standard cycle)", "priority": "STANDARD"})
+        actions.append({"action": "File retention: per PCMLTFA s. 6", "priority": "STANDARD"})
+
+    else:
+        actions.append({"action": f"Review disposition ({governed_disposition}) and determine next steps", "priority": "REQUIRED"})
+
+    return actions
+
+
+# ── FIX-035: Related Activity ────────────────────────────────────────────────
+
+def _build_related_activity(evidence_used: list) -> dict:
+    """Extract related activity indicators from evidence fields."""
+    ev_map = {str(ev.get("field", "")).lower(): ev.get("value") for ev in (evidence_used or [])}
+
+    prior_sars = ev_map.get("prior.sars_filed") or ev_map.get("screen.prior_sars_filed") or 0
+    try:
+        prior_sars = int(prior_sars)
+    except (ValueError, TypeError):
+        prior_sars = 0
+
+    account_closures = ev_map.get("prior.account_closures") or ev_map.get("screen.previous_account_closures") or False
+    if isinstance(account_closures, str):
+        account_closures = account_closures.lower() in ("true", "yes", "1")
+
+    pep = ev_map.get("customer.pep") or ev_map.get("flag.pep") or ev_map.get("customer.pep_flag") or False
+    if isinstance(pep, str):
+        pep = pep.lower() in ("true", "yes", "1")
+
+    sanctions = ev_map.get("screening.sanctions_match") or ev_map.get("flag.sanctions_proximity") or False
+    if isinstance(sanctions, str):
+        sanctions = sanctions.lower() in ("true", "yes", "1")
+
+    pep_match = ev_map.get("screening.pep_match") or False
+    if isinstance(pep_match, str):
+        pep_match = pep_match.lower() in ("true", "yes", "1")
+
+    adverse = ev_map.get("screening.adverse_media") or ev_map.get("flag.adverse_media") or False
+    if isinstance(adverse, str):
+        adverse = adverse.lower() in ("true", "yes", "1")
+
+    flags: list[str] = []
+    if prior_sars > 0:
+        flags.append(f"Prior STR history ({prior_sars} filed) — review previous filings for pattern consistency")
+    if account_closures:
+        flags.append("Prior account closure on record — assess re-entry risk")
+
+    return {
+        "prior_sars_filed": prior_sars,
+        "prior_account_closures": account_closures,
+        "pep_status": pep,
+        "screening": {
+            "sanctions_match": sanctions,
+            "pep_match": pep_match,
+            "adverse_media": adverse,
+        },
+        "flags": flags,
+        "connected_accounts": "Not assessed — requires manual review",
+    }
