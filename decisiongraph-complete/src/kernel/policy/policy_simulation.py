@@ -23,12 +23,12 @@ from typing import Any
 from kernel.policy.regime_partitioner import extract_case_signals, DISP_SEVERITY
 from kernel.precedent.governed_confidence import compute_governed_confidence
 
-# Banking-domain imports (will move to domains/banking_aml/ in Phase 2)
-from decisiongraph.policy_shift_shadows import (
+# Banking-domain imports
+from domains.banking_aml.policy_shifts import (
     POLICY_SHIFTS,
     compute_shadow_outcome,
 )
-from decisiongraph.banking_domain import create_banking_domain_registry
+from domains.banking_aml.domain import create_banking_domain_registry
 
 
 # ---------------------------------------------------------------------------
