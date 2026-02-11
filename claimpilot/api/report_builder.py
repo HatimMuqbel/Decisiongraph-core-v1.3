@@ -423,6 +423,7 @@ def build_report(case: dict, seeds: list, registry: DomainRegistry | None = None
         "investigate": "INVESTIGATE",
         "escalate": "INVESTIGATE",
         "partial": "PARTIAL_PAY",
+        "request_info": "INVESTIGATE",
     }.get(expected_verdict, "PAY_CLAIM")
 
     proposed_v3 = _INSURANCE_TO_V3_DISPOSITION.get(proposed_disp_raw, "ALLOW")
@@ -550,11 +551,21 @@ def build_report(case: dict, seeds: list, registry: DomainRegistry | None = None
     # ------------------------------------------------------------------
     # 7. Build precedent alignment metrics
     # ------------------------------------------------------------------
-    alignment_pct = (
-        round(decisive_supporting / decisive_total * 100)
-        if decisive_total > 0
-        else 0
-    )
+    if proposed_v3 == "EDD":
+        # For investigate cases, alignment = % of pool that also recommended
+        # investigation (EDD).  The standard decisive_supporting metric is
+        # always 0 for EDD cases because INV-005 makes all non-EDD seeds
+        # neutral, so we need a different measure.
+        investigate_pool = sum(1 for e in scored_pool if e["v3_disposition"] == "EDD")
+        alignment_pct = (
+            round(investigate_pool / pool_size * 100) if pool_size > 0 else 0
+        )
+    else:
+        alignment_pct = (
+            round(decisive_supporting / decisive_total * 100)
+            if decisive_total > 0
+            else 0
+        )
     match_rate = round(avg_similarity * 100) if pool_size > 0 else 0
 
     # ------------------------------------------------------------------
