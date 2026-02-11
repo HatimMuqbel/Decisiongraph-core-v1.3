@@ -19,7 +19,8 @@
 8. [Governed Confidence](#8-governed-confidence)
 9. [Match Classification](#9-match-classification)
 10. [Invariants](#10-invariants)
-11. [Module Map](#11-module-map)
+11. [ClaimPilot Service Layer](#11-claimpilot-service-layer)
+12. [Module Map](#12-module-map)
 
 ---
 
@@ -589,7 +590,7 @@ Source: `domains/insurance_claims/`
 |-----------|-------|
 | domain | `insurance_claims` |
 | version | `3.0` |
-| total fields | 24 |
+| total fields | 23 |
 | similarity_floor | 0.55 |
 | pool_minimum | 5 |
 | critical_fields | `claim.coverage_line`, `claim.amount_band`, `claim.claimant_type` |
@@ -602,7 +603,7 @@ Similarity floor overrides:
 | siu_referral | 0.70 |
 | catastrophic_injury | 0.50 |
 
-### 6.2 Field Definitions (24 fields)
+### 6.2 Field Definitions (23 fields)
 
 #### Claim Structural (3)
 
@@ -972,7 +973,164 @@ From the v3 Precedent Engine Specification.
 
 ---
 
-## 11. Module Map
+## 11. ClaimPilot Service Layer
+
+Source: `claimpilot/api/`
+
+The ClaimPilot API exposes the insurance domain through the same React dashboard
+consumed by the banking service. The service layer sits on top of the kernel and
+insurance domain modules.
+
+### 11.1 Architecture
+
+```
+React Dashboard (shared SPA)
+        |
+        v
+claimpilot/api/routes/dashboard.py   <-- 11 dashboard endpoints
+        |
+        v
+claimpilot/api/report_builder.py     <-- v3 pipeline adapter
+        |
+        +--> kernel.precedent.*       <-- domain-agnostic engine
+        +--> domains.insurance_claims.*
+```
+
+### 11.2 Dashboard API Contract (11 endpoints)
+
+| Method | Path | Response | Notes |
+|--------|------|----------|-------|
+| GET | `/api/domain` | `{domain, name, terminology}` | Insurance terminology |
+| GET | `/api/stats` | `{total_seeds, demo_cases, policy_shifts, registry_fields, engine_version}` | Dashboard header stats |
+| GET | `/api/cases` | `[{id, name, description, category, expected_verdict, key_levers, tags, facts}]` | 31 demo cases |
+| GET | `/api/cases/{case_id}` | Single case object | 404 if not found |
+| GET | `/api/report/{case_id}/json` | `{format, generated_at, report: ReportViewModel}` | Full v3 precedent report |
+| GET | `/api/audit` | Filtered case list | Query params: `q`, `outcome`, `scenario` |
+| GET | `/api/policy-shifts` | `[{id, name, description, citation, cases_affected, pct_affected, magnitude}]` | 3 insurance shifts |
+| GET | `/api/policy-shifts/{shift_id}/cases` | `{shift_id, shift_name, total_affected, cases: [...]}` | Shadow records per shift |
+| GET | `/api/simulate/drafts` | `[{id, name, description, parameter, old_value, new_value, trigger_signals}]` | Available draft shifts |
+| POST | `/api/simulate` | `{draft, timestamp, total_cases_evaluated, affected_cases, disposition_changes, magnitude}` | Body: `{draft_id}` |
+| POST | `/api/simulate/compare` | `[{draft, affected_cases, disposition_changes, magnitude}]` | Body: `{draft_ids: [...]}` |
+
+### 11.3 Domain Detection
+
+`GET /api/domain` returns the insurance domain context:
+
+```json
+{
+  "domain": "insurance_claims",
+  "name": "ClaimPilot",
+  "terminology": {
+    "entity": "claim",
+    "institution": "insurer",
+    "decision_maker": "claims adjuster",
+    "review_process": "investigation",
+    "escalation_target": "Special Investigations Unit",
+    "filing_authority": "FSRA"
+  }
+}
+```
+
+The dashboard uses this to adapt labels (e.g. "transaction" -> "claim",
+"compliance officer" -> "claims adjuster").
+
+### 11.4 Report Builder Pipeline
+
+Source: `claimpilot/api/report_builder.py`
+
+`build_report(case, seeds, registry) -> dict` runs a case through the full
+v3 engine and returns a `ReportViewModel` dict:
+
+```
+1. Enrich case facts (policy-specific -> standardized registry fields)
+2. Layer 1: evaluate_gates()      -- filter to comparable seeds
+3. Layer 2: score_similarity()    -- rank seeds, apply floor
+4. Layer 2: classify_match_v3()   -- supporting / contrary / neutral
+5. Layer 3: compute_governed_confidence() -- four-dimension min()
+6. Detect applicable policy shifts
+7. Assemble ReportViewModel dict (~40 fields)
+```
+
+#### ReportViewModel Shape
+
+| Section | Key Fields |
+|---------|-----------|
+| Identity | `decision_id`, `case_id`, `timestamp`, `jurisdiction`, `domain`, `engine_version`, `policy_version` |
+| Decision | `verdict`, `action`, `decision_status`, `decision_explainer`, `canonical_outcome` |
+| Classification | `primary_typology`, `regulatory_status`, `investigation_state` |
+| Confidence | `decision_confidence` (Low/Moderate/High), `decision_confidence_score` (0-100), `decision_confidence_reason` |
+| Precedent Metrics | `precedent_alignment_pct`, `precedent_match_rate`, `scored_precedent_count`, `total_comparable_pool` |
+| Enhanced Precedent (v3) | `confidence_dimensions[]`, `sample_cases[]`, `driver_causality`, `outcome_distribution`, `regime_analysis`, `institutional_posture` |
+| Precedent Analysis | `supporting_precedents`, `contrary_precedents`, `neutral_precedents`, `precedent_confidence` |
+| Facts | `transaction_facts[]`, `risk_factors[]`, `decision_drivers[]` |
+| Escalation | `escalation_summary` |
+
+### 11.5 Fact Enrichment Layer
+
+Demo cases use policy-specific field IDs (e.g. `vehicle.use_at_loss`,
+`driver.bac_level`, `dwelling.habitable`) that do not overlap with the 23
+standardized registry fields used by seeds. The report builder includes an
+enrichment function that derives standardized fields from raw case facts:
+
+| Standardized Field | Derived From |
+|-------------------|-------------|
+| `claim.coverage_line` | `case.line_of_business` (auto, property, marine, etc.) |
+| `claim.claimant_type` | Default `first_party` |
+| `claim.amount_band` | `claim.reserve_amount` (banded: 0_5k / 5k_25k / 25k_100k / 100k_500k / over_500k) |
+| `claim.occurred_during_policy` | `occurrence.during_policy_period` or `policy.status == "active"` |
+| `claim.loss_cause` | `loss.cause` or `loss.primary_cause` or `loss.type` |
+| `flag.fraud_indicator` | `loss.intentional_indicators` or `flag.staged_accident` or `injury.self_inflicted` or `driver.bac_level > 0.05` |
+| `flag.staged_accident` | Direct passthrough |
+| `flag.late_reporting` | Direct passthrough |
+| `flag.inconsistent_statements` | Direct passthrough |
+| `flag.pre_existing_damage` | `flag.pre_existing_damage` or `condition.preexisting` |
+| `screening.siu_referral` | Direct passthrough |
+| `evidence.police_report` | `police_report.impaired_charges` |
+| `evidence.medical_report` | `condition.last_treatment_date` or `treatment.type` |
+
+Enriched fields are only set when absent — explicit demo case values take
+precedence.
+
+### 11.6 Case Categories
+
+Demo cases are classified for the dashboard:
+
+| Category | Mapped From |
+|----------|------------|
+| `PASS` | `pay`, `deny` outcomes |
+| `ESCALATE` | `escalate`, `request_info` outcomes |
+| `EDGE` | Name contains "edge", "fraud", "threshold", "boundary" |
+
+### 11.7 SPA Serving
+
+The React dashboard (shared with banking) is served from the same FastAPI
+instance:
+
+- `/` — React SPA `index.html`
+- `/assets/*` — Static JS/CSS bundles
+- `/{path}` — Catch-all for SPA client-side routes (`/cases`, `/seeds`, `/policy-shifts`, `/sandbox`, `/audit`, `/registry`, `/reports`)
+
+API routes are NOT intercepted by the catch-all — only known SPA routes serve `index.html`.
+
+### 11.8 Deployment
+
+```
+Dockerfile.claimpilot (repo root)
+├── COPY kernel/ + domains/    -> /app/kernel/, /app/domains/
+├── COPY claimpilot/           -> /app/claimpilot/
+├── COPY dashboard/dist/       -> /app/claimpilot/api/static/dashboard/
+└── CMD uvicorn api.main:app --app-dir /app/claimpilot
+```
+
+Railway config:
+- Root Directory: `/` (blank — repo root)
+- Builder: Dockerfile
+- Dockerfile Path: `Dockerfile.claimpilot`
+- Health check: `/health`
+
+---
+
+## 12. Module Map
 
 ### Kernel (27 modules)
 
@@ -1034,6 +1192,32 @@ domains/
     ├── seed_generator.py    20 scenarios, ~1,618 seeds
     ├── reason_codes.py      51 reason codes (5 registries)
     └── policy_shifts.py     3 policy shifts + shadow projections
+```
+
+### ClaimPilot Service
+
+```
+claimpilot/
+├── api/
+│   ├── main.py                FastAPI app, lifespan, CORS, SPA serving
+│   ├── report_builder.py      v3 pipeline adapter (764 lines)
+│   ├── demo_cases.py          31 demo cases across 8 coverage lines
+│   ├── template_loader.py     Case template YAML loader
+│   └── routes/
+│       ├── dashboard.py       11 dashboard endpoints (495 lines)
+│       ├── policies.py        Policy CRUD
+│       ├── evaluate.py        Claim evaluation
+│       ├── demo.py            Demo case routes
+│       ├── verify.py          Chain verification
+│       ├── memo.py            Memo endpoints
+│       └── templates.py       Template routes
+├── packs/                     8 policy packs (YAML)
+├── precedent/
+│   └── cli.py                 Seed generation (2,150 seeds)
+├── src/claimpilot/
+│   ├── models.py              Pydantic models
+│   └── packs/loader.py        PolicyPackLoader
+└── templates/                 8 case templates
 ```
 
 ### Backward-Compatible Shims
