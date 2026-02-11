@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/cases', label: 'Demo Cases', icon: '⬡' },
   { to: '/seeds', label: 'Seed Explorer', icon: '◎' },
   { to: '/policy-shifts', label: 'Policy Shifts', icon: '⇄' },
+  { to: '/sandbox', label: 'Policy Sandbox', icon: '⚗' },
   { to: '/registry', label: 'Field Registry', icon: '▤' },
   { to: '/audit', label: 'Audit Search', icon: '⌕' },
 ];

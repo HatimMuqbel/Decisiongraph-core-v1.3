@@ -29,6 +29,8 @@ import type {
   TemplateDetail,
   PolicyShiftSummary,
   PolicyShiftDetail,
+  DraftShift,
+  SimulationReport,
 } from '../types';
 
 export const api = {
@@ -77,6 +79,19 @@ export const api = {
   policyShifts: () => request<PolicyShiftSummary[]>('/api/policy-shifts'),
   policyShiftCases: (shiftId: string) =>
     request<PolicyShiftDetail>(`/api/policy-shifts/${shiftId}/cases`),
+
+  // Policy Simulation
+  simulationDrafts: () => request<DraftShift[]>('/api/simulate/drafts'),
+  simulate: (draftId: string) =>
+    request<SimulationReport>('/api/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ draft_id: draftId }),
+    }),
+  simulateCompare: (draftIds: string[]) =>
+    request<SimulationReport[]>('/api/simulate/compare', {
+      method: 'POST',
+      body: JSON.stringify({ draft_ids: draftIds }),
+    }),
 };
 
 export default api;

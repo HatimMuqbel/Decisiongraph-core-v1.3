@@ -4,5 +4,6 @@ export { default as DecisionViewer } from './DecisionViewer';
 export { default as ReportViewer } from './ReportViewer';
 export { default as SeedExplorer } from './SeedExplorer';
 export { default as PolicyShifts } from './PolicyShifts';
+export { default as PolicySandbox } from './PolicySandbox';
 export { default as AuditSearch } from './AuditSearch';
 export { default as FieldRegistry } from './FieldRegistry';

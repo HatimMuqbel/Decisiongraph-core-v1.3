@@ -121,3 +121,25 @@ export function usePolicyShiftCases(shiftId: string) {
     staleTime: 5 * 60_000,
   });
 }
+
+// ── Policy Simulation ──────────────────────────────────────────────────────
+
+export function useSimulationDrafts() {
+  return useQuery({
+    queryKey: ['simulationDrafts'],
+    queryFn: api.simulationDrafts,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSimulate() {
+  return useMutation({
+    mutationFn: (draftId: string) => api.simulate(draftId),
+  });
+}
+
+export function useSimulateCompare() {
+  return useMutation({
+    mutationFn: (draftIds: string[]) => api.simulateCompare(draftIds),
+  });
+}

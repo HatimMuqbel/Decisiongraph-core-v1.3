@@ -8,6 +8,7 @@ import {
   ReportViewer,
   SeedExplorer,
   PolicyShifts,
+  PolicySandbox,
   AuditSearch,
   FieldRegistry,
 } from './pages';
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/reports/:decisionId" element={<ReportViewer />} />
             <Route path="/seeds" element={<SeedExplorer />} />
             <Route path="/policy-shifts" element={<PolicyShifts />} />
+            <Route path="/sandbox" element={<PolicySandbox />} />
             <Route path="/audit" element={<AuditSearch />} />
             <Route path="/registry" element={<FieldRegistry />} />
             <Route path="*" element={<Navigate to="/" replace />} />

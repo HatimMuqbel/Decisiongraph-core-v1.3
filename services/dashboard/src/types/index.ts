@@ -738,3 +738,69 @@ export function getMinimumTier(report: ReportViewModel): ReportTier {
   if (reasons.some((r) => r.tier === 2)) return 2;
   return 1;
 }
+
+// =============================================================================
+// Policy Simulation Types (Phase C1/C2)
+// =============================================================================
+
+export interface DraftShift {
+  id: string;
+  name: string;
+  description: string;
+  parameter: string;
+  old_value: unknown;
+  new_value: unknown;
+  trigger_signals: string[];
+  affected_typologies: string[];
+  citation: string | null;
+}
+
+export interface SimulationResult {
+  case_id: string;
+  original_disposition: string;
+  simulated_disposition: string;
+  original_reporting: string;
+  simulated_reporting: string;
+  disposition_changed: boolean;
+  reporting_changed: boolean;
+  escalation_direction: 'UP' | 'DOWN' | 'UNCHANGED';
+}
+
+export interface CascadeImpact {
+  typology: string;
+  pool_before: Record<string, number>;
+  pool_after: Record<string, number>;
+  pool_size: number;
+  confidence_before: string;
+  confidence_after: string;
+  confidence_direction: 'IMPROVED' | 'DEGRADED' | 'UNCHANGED';
+  posture_before: string;
+  posture_after: string;
+  posture_reversal: boolean;
+  post_shift_pool_size: number;
+  pool_adequacy: string;
+}
+
+export interface SimulationReport {
+  draft: DraftShift;
+  timestamp: string;
+  total_cases_evaluated: number;
+  affected_cases: number;
+  unaffected_cases: number;
+  disposition_changes: Record<string, number>;
+  escalation_count: number;
+  de_escalation_count: number;
+  reporting_changes: Record<string, number>;
+  new_str_filings: number;
+  new_lctr_filings: number;
+  risk_before: Record<string, number>;
+  risk_after: Record<string, number>;
+  magnitude: string;
+  additional_edd_cases: number;
+  additional_str_filings: number;
+  estimated_analyst_hours_month: number;
+  estimated_filing_cost_month: number;
+  cascade_impacts: CascadeImpact[];
+  warnings: string[];
+  case_results: SimulationResult[];
+}

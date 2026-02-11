@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Badge,
   Loading,
@@ -24,11 +25,19 @@ export default function PolicyShifts() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100">Policy Shifts</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Track how regulatory and internal policy changes affect decision outcomes
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100">Policy Shifts</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Track how regulatory and internal policy changes affect decision outcomes
+          </p>
+        </div>
+        <Link
+          to="/sandbox"
+          className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+        >
+          Simulate new policies {'\u2192'}
+        </Link>
       </div>
 
       {/* Summary Stats */}
