@@ -99,14 +99,14 @@ def _schema_for_codes(codes: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 26 scenarios  (matches task spec)
+# 28 scenarios  (26 original + 2 trade finance)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Clean defaults — every scenario starts from this base; scenario-specific
 # overrides are applied on top.  This ensures ALL 27 fields are populated
 # with coherent values rather than random noise, which is critical for v3
-# field-by-field similarity scoring.
+# field-by-field similarity scoring.  Includes 3 trade finance fields.
 # ---------------------------------------------------------------------------
 
 # Boolean / flag defaults only.  The 6 high-variation enum fields
@@ -134,9 +134,13 @@ _CLEAN_PROFILE: dict[str, Any] = {
     "flag.shell_company": False,
     "screening.sanctions_match": False,
     "screening.pep_match": False,
+    "screening.adverse_media_level": "none",
     "screening.adverse_media": False,
     "prior.sars_filed": 0,
     "prior.account_closures": False,
+    "trade.goods_description": "detailed",
+    "trade.pricing_consistent": True,
+    "trade.is_letter_of_credit": False,
 }
 
 
@@ -238,13 +242,14 @@ SCENARIOS = [
         "description": "Adverse media match",
         "base_facts": {
             **_CLEAN_PROFILE,
+            "screening.adverse_media_level": "confirmed",
             "screening.adverse_media": True,
             "txn.pattern_matches_profile": False,
         },
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
         "decision_level": "analyst",
         "weight": 0.04,
-        "decision_drivers": ["screening.adverse_media"],
+        "decision_drivers": ["screening.adverse_media_level"],
         "driver_typology": "adverse_media",
     },
     {
@@ -456,10 +461,11 @@ SCENARIOS = [
     # ── BLOCK (discretionary — corroborated risk) ──
     {
         "name": "pep_adverse_media_block",
-        "description": "PEP + adverse media + cross-border → block for STR",
+        "description": "PEP + adverse media (confirmed ML/TF) + cross-border → block for STR",
         "base_facts": {
             **_CLEAN_PROFILE,
             "customer.pep": True,
+            "screening.adverse_media_level": "confirmed_mltf",
             "screening.adverse_media": True,
             "screening.pep_match": True,
             "txn.cross_border": True,
@@ -471,7 +477,7 @@ SCENARIOS = [
         "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
         "decision_level": "manager",
         "weight": 0.02,
-        "decision_drivers": ["customer.pep", "screening.adverse_media", "screening.pep_match"],
+        "decision_drivers": ["customer.pep", "screening.adverse_media_level", "screening.pep_match"],
         "driver_typology": "pep_adverse_media",
     },
     {
@@ -567,6 +573,47 @@ SCENARIOS = [
         "decision_drivers": ["flag.structuring", "txn.source_of_funds_clear"],
         "driver_typology": "structuring",
     },
+
+    # ── TRADE FINANCE ──
+    {
+        "name": "trade_based_ml",
+        "description": "Trade-based ML: vague goods, inconsistent pricing, LC to high-risk destination",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
+            "txn.cross_border": True,
+            "txn.source_of_funds_clear": False,
+            "txn.pattern_matches_profile": False,
+            "trade.goods_description": "vague",
+            "trade.pricing_consistent": False,
+            "trade.is_letter_of_credit": True,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.03,
+        "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
+        "driver_typology": "trade_based",
+    },
+    {
+        "name": "trade_finance_clean",
+        "description": "Legitimate trade finance: detailed goods, consistent pricing, established importer",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
+            "customer.relationship_length": "established",
+            "txn.cross_border": True,
+            "txn.source_of_funds_clear": True,
+            "txn.pattern_matches_profile": True,
+            "trade.goods_description": "detailed",
+            "trade.pricing_consistent": True,
+            "trade.is_letter_of_credit": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "analyst",
+        "weight": 0.03,
+        "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
+        "driver_typology": "trade_based",
+    },
 ]
 
 
@@ -591,6 +638,12 @@ def _random_realistic_value(
             return rng.random() < 0.02
         if field_name == "prior.account_closures" and is_clean:
             return rng.random() < 0.02
+        if field_name == "trade.is_letter_of_credit":
+            return rng.random() < 0.08  # ~8% of seeds are LC transactions
+        if field_name == "trade.pricing_consistent":
+            if is_clean:
+                return rng.random() < 0.92  # mostly consistent for clean cases
+            return rng.random() < 0.40  # often inconsistent for suspicious
         if field_name.startswith("flag.") and is_edd:
             return rng.random() < 0.15
         return rng.random() < 0.20
@@ -609,7 +662,8 @@ def _random_realistic_value(
                 return rng.choices(values, weights=[25, 30, 20, 15, 7, 2, 1])[0]
             return rng.choices(values, weights=[10, 20, 25, 25, 12, 5, 3])[0]
         if field_name == "txn.type":
-            return rng.choices(values, weights=[25, 20, 20, 10, 15, 10])[0]
+            # [wire_domestic, wire_international, cash, cheque, eft, crypto, trade_finance]
+            return rng.choices(values, weights=[23, 18, 18, 9, 14, 10, 8])[0]
         if field_name == "txn.destination_country_risk":
             if is_clean:
                 return rng.choices(values, weights=[80, 15, 5])[0]
@@ -618,10 +672,24 @@ def _random_realistic_value(
             if is_clean:
                 return rng.choices(values, weights=[35, 30, 20, 10, 5])[0]
             return rng.choices(values, weights=[20, 20, 15, 10, 35])[0]
+        if field_name == "screening.adverse_media_level":
+            # [none, unconfirmed, confirmed, confirmed_mltf]
+            if is_clean:
+                return rng.choices(values, weights=[95, 3, 1.5, 0.5])[0]
+            if is_edd:
+                return rng.choices(values, weights=[60, 20, 15, 5])[0]
+            return rng.choices(values, weights=[40, 15, 25, 20])[0]
         if field_name == "prior.sars_filed":
             if is_clean:
                 return rng.choices(values, weights=[85, 10, 3, 1, 1])[0]
             return rng.choices(values, weights=[40, 25, 20, 10, 5])[0]
+        if field_name == "trade.goods_description":
+            # [detailed, adequate, vague, missing]
+            if is_clean:
+                return rng.choices(values, weights=[50, 35, 12, 3])[0]
+            if is_edd:
+                return rng.choices(values, weights=[15, 25, 40, 20])[0]
+            return rng.choices(values, weights=[5, 15, 45, 35])[0]
         return rng.choice(values)
 
     return None
@@ -685,6 +753,14 @@ def _generate_seed(
     for field_name, field_def in BANKING_FIELDS.items():
         if field_name not in facts:
             facts[field_name] = _random_realistic_value(field_name, field_def, scenario, rng)
+
+    # 2b. Keep derived boolean in sync with level field
+    _am_level = facts.get("screening.adverse_media_level", "none")
+    facts["screening.adverse_media"] = _am_level not in ("none", None, False, "")
+
+    # 2c. LC transactions → trade_finance channel for comparability gate
+    if facts.get("trade.is_letter_of_credit"):
+        facts["txn.type"] = "trade_finance"
 
     # 3. Validate every field
     for field_name, value in facts.items():

@@ -682,6 +682,7 @@ def _convert_demo_facts(body: dict) -> dict:
     reg_pep_match = fmap.get("screening.pep_match", False)
     reg_pep = fmap.get("customer.pep", False)
     reg_adverse_media = fmap.get("screening.adverse_media", False)
+    reg_adverse_media_level = fmap.get("screening.adverse_media_level", "none")
     reg_structuring = fmap.get("flag.structuring", False)
     reg_layering = fmap.get("flag.layering", False)
     reg_rapid_movement = fmap.get("flag.rapid_movement", False)
@@ -696,6 +697,9 @@ def _convert_demo_facts(body: dict) -> dict:
     reg_cross_border = fmap.get("txn.cross_border", False)
     reg_dest_risk = fmap.get("txn.destination_country_risk", "")
     reg_customer_type = fmap.get("customer.type", "")
+    reg_trade_goods_desc = fmap.get("trade.goods_description", None)
+    reg_trade_pricing = fmap.get("trade.pricing_consistent", None)
+    reg_trade_is_lc = fmap.get("trade.is_letter_of_credit", False)
 
     # ── Derive engine facts (merge both vocabularies) ───────────────────
 
@@ -707,8 +711,13 @@ def _convert_demo_facts(body: dict) -> dict:
         if isinstance(demo_match_score, (int, float)) and demo_match_score >= 85:
             sanctions_result = "MATCH"
 
-    # Adverse media: registry flag OR demo MLTF link
-    adverse_media_mltf = bool(reg_adverse_media) or bool(demo_mltf_linked)
+    # Adverse media: derive from level field, fall back to boolean + demo flag
+    if reg_adverse_media_level == "confirmed_mltf":
+        adverse_media_mltf = True
+    elif reg_adverse_media_level in ("confirmed", "unconfirmed"):
+        adverse_media_mltf = False  # only confirmed_mltf is a hard stop
+    else:
+        adverse_media_mltf = bool(reg_adverse_media) and bool(demo_mltf_linked)
 
     # PEP: registry flag OR demo flag OR beneficial owner PEP
     ben_owner_pep_flag = fmap.get("screening.beneficial_owner_pep", False)
@@ -731,6 +740,14 @@ def _convert_demo_facts(body: dict) -> dict:
     structuring = bool(demo_structuring) or bool(reg_structuring)
     layering = bool(demo_layering) or bool(reg_layering)
     velocity_spike = bool(demo_velocity_spike) or bool(reg_rapid_movement)
+
+    # Derived flag values (consistent between _flag_count and canonical_facts)
+    _derived_shell = bool(reg_shell_company) or bool(
+        fmap.get("docs.ownership_clear") is False
+        and str(fmap.get("customer.type", "")).upper() == "CORP"
+    )
+    _derived_unusual = velocity_spike or bool(reg_unusual_for_profile)
+    _derived_third_party = bool(reg_third_party)
 
     # Prior SARs
     prior_sars = int(reg_sars_filed) if isinstance(reg_sars_filed, (int, float)) else 0
@@ -758,11 +775,11 @@ def _convert_demo_facts(body: dict) -> dict:
         indicators.append({"code": "VELOCITY_SPIKE", "type": "UNUSUAL", "corroborated": True})
     if adverse_media_mltf or demo_list_type == "ADVERSE_MEDIA":
         indicators.append({"code": "ADVERSE_MEDIA", "type": "ADVERSE_MEDIA", "corroborated": adverse_media_mltf})
-    if reg_unusual_for_profile:
+    if _derived_unusual:
         indicators.append({"code": "UNUSUAL_FOR_PROFILE", "type": "UNUSUAL", "corroborated": True})
-    if reg_third_party:
+    if _derived_third_party:
         indicators.append({"code": "THIRD_PARTY", "type": "THIRD_PARTY", "corroborated": True})
-    if reg_shell_company:
+    if _derived_shell:
         indicators.append({"code": "SHELL_COMPANY", "type": "LAYERING", "corroborated": True})
     if prior_sars >= 2:
         indicators.append({"code": "PRIOR_SARS", "type": "HISTORY", "corroborated": True})
@@ -770,14 +787,22 @@ def _convert_demo_facts(body: dict) -> dict:
         indicators.append({"code": "PRIOR_CLOSURE", "type": "HISTORY", "corroborated": True})
 
     # ── Suspicion evidence ──────────────────────────────────────────────
+    # Count active red flags for combinatorial intent assessment
+    _flag_count = sum([
+        structuring, layering, velocity_spike,
+        _derived_shell, _derived_third_party,
+        _derived_unusual,
+    ])
     has_intent = (
         sanctions_result == "MATCH"
         or adverse_media_mltf
         or structuring
+        # Combinatorial: 3+ flags + prior issues collectively demonstrate intent
+        or (_flag_count >= 3 and (prior_sars >= 1 or bool(reg_account_closures)))
     )
     has_deception = (
         layering
-        or bool(reg_shell_company)
+        or _derived_shell
         or (not docs_complete and not source_verified and not ownership_clear)
     )
     has_sustained_pattern = structuring or velocity_spike or prior_sars >= 2
@@ -798,6 +823,9 @@ def _convert_demo_facts(body: dict) -> dict:
     if sanctions_result == "MATCH" or adverse_media_mltf:
         typology_maturity = "CONFIRMED"
     elif structuring or layering or prior_sars >= 4:
+        typology_maturity = "EMERGING"
+    elif (str(reg_trade_goods_desc).lower() in ("vague", "missing")
+          and reg_trade_pricing is False):
         typology_maturity = "EMERGING"
 
     # ── Build canonical registry facts from demo vocabulary ─────────────
@@ -891,8 +919,8 @@ def _convert_demo_facts(body: dict) -> dict:
         "customer.high_risk_industry": False,  # Not captured in demo format
         "customer.cash_intensive": str(demo_method).upper() == "CASH",
 
-        # Transaction
-        "txn.type": _DEMO_METHOD_TO_TXN_TYPE.get(str(demo_method).upper(), instrument_type if instrument_type != "unknown" else None),
+        # Transaction (LC overrides method → trade channel family for comparability gate)
+        "txn.type": "trade_finance" if reg_trade_is_lc else _DEMO_METHOD_TO_TXN_TYPE.get(str(demo_method).upper(), instrument_type if instrument_type != "unknown" else None),
         "txn.amount_band": amount_band,
         "txn.cross_border": is_cross_border,
         "txn.destination_country_risk": dest_risk,
@@ -907,16 +935,22 @@ def _convert_demo_facts(body: dict) -> dict:
         "flag.structuring": structuring,
         "flag.rapid_movement": velocity_spike,
         "flag.layering": layering,
-        "flag.unusual_for_profile": velocity_spike or bool(reg_unusual_for_profile),
-        "flag.third_party": bool(reg_third_party),
-        "flag.shell_company": bool(fmap.get("docs.ownership_clear") is False and str(fmap.get("customer.type", "")).upper() == "CORP"),
+        "flag.unusual_for_profile": _derived_unusual,
+        "flag.third_party": _derived_third_party,
+        "flag.shell_company": _derived_shell,
 
         # Screening
         "screening.sanctions_match": sanctions_result == "MATCH",
         "screening.pep_match": is_pep,
-        "screening.adverse_media": adverse_media_mltf,
+        "screening.adverse_media_level": reg_adverse_media_level if reg_adverse_media_level != "none" else ("confirmed_mltf" if adverse_media_mltf else "none"),
+        "screening.adverse_media": adverse_media_mltf or reg_adverse_media_level not in ("none", None, False, ""),
         "prior.sars_filed": prior_sars,
         "prior.account_closures": bool(reg_account_closures),
+
+        # Trade finance (None values stripped below — only present for trade cases)
+        "trade.goods_description": reg_trade_goods_desc,
+        "trade.pricing_consistent": reg_trade_pricing,
+        "trade.is_letter_of_credit": reg_trade_is_lc if reg_trade_is_lc else None,
     }
 
     # Remove None values so they appear as gaps in Evidence Gap Tracker
@@ -1121,12 +1155,15 @@ async def decide(request: Request):
             "txn.pattern_matches_profile", "txn.source_of_funds_clear", "txn.stated_purpose",
             "flag.structuring", "flag.rapid_movement", "flag.layering",
             "flag.unusual_for_profile", "flag.third_party", "flag.shell_company",
-            "screening.sanctions_match", "screening.pep_match", "screening.adverse_media",
+            "screening.sanctions_match", "screening.pep_match",
+            "screening.adverse_media_level", "screening.adverse_media",
             "prior.sars_filed", "prior.account_closures",
+            "trade.goods_description", "trade.pricing_consistent", "trade.is_letter_of_credit",
         ]
         # Also derive some from engine facts
         _derived_reg = {
             "screening.sanctions_match": facts.get("sanctions_result") == "MATCH",
+            "screening.adverse_media_level": "confirmed_mltf" if facts.get("adverse_media_mltf") else "none",
             "screening.adverse_media": bool(facts.get("adverse_media_mltf")),
             "customer.pep": has_pep,
             "txn.type": instrument_type if instrument_type != "unknown" else None,
@@ -1410,6 +1447,45 @@ async def decide(request: Request):
                     ),
                 }
 
+        # ── Must-investigate EDD enforcement ──────────────────────────────
+        # Certain Tier 2 signals represent regulatory investigation requirements
+        # that must not be cleared without EDD, even when the engine says PASS.
+        # Contextual signals (HIGH_VALUE, CROSS_BORDER) do NOT force EDD alone.
+        _MUST_INVESTIGATE_T2 = frozenset({
+            "ADVERSE_MEDIA_UNCONFIRMED",
+            "TRADE_FINANCE_SUSPICIOUS",
+            "COMBO_MODERATE_MULTI_FLAG",
+        })
+        if (
+            not classifier_override_applied
+            and classifier_result.suspicion_count == 0
+            and classifier_result.investigative_count >= 1
+            and final_decision.get("final_decision") == "PASS"
+        ):
+            t2_codes = {s.get("code") for s in classifier_result.tier2_signals}
+            must_investigate = t2_codes & _MUST_INVESTIGATE_T2
+            if must_investigate:
+                classifier_override_applied = True
+                classifier_original_verdict = "PASS"
+                logger.info(
+                    "CLASSIFIER SOVEREIGNTY: PASS upgraded to EDD — "
+                    "must-investigate Tier 2 signal(s): %s",
+                    ", ".join(sorted(must_investigate)),
+                    extra={"request_id": request_id, "external_id": external_id},
+                )
+                final_decision = {
+                    "verdict": "REVIEW",
+                    "action": "EDD_REQUIRED",
+                    "str_required": False,
+                    "must_investigate_edd": True,
+                    "classifier_override_reason": (
+                        f"Tier 1 suspicion indicators: 0. "
+                        f"Must-investigate Tier 2 signal(s): "
+                        f"{', '.join(sorted(must_investigate))}. "
+                        "Engine PASS overridden — investigation required before clearing."
+                    ),
+                }
+
         # Build decision pack
         decision_pack = build_decision_pack(
             case_id=external_id,
@@ -1488,6 +1564,10 @@ async def decide(request: Request):
         fingerprint_facts.setdefault(
             "screening.sanctions_match",
             True if facts.get("sanctions_result") == "MATCH" else False,
+        )
+        fingerprint_facts.setdefault(
+            "screening.adverse_media_level",
+            "confirmed_mltf" if facts.get("adverse_media_mltf") else ("confirmed" if facts.get("adverse_media") else "none"),
         )
         fingerprint_facts.setdefault(
             "screening.adverse_media",

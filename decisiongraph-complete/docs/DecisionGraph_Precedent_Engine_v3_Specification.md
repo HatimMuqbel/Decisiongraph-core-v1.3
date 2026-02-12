@@ -1,4 +1,5 @@
-# DecisionGraph Core — Precedent Engine v3 Specification
+
+
 
 **Three-Layer Comparability Model with Governed Confidence for Regulated Decision Intelligence**
 

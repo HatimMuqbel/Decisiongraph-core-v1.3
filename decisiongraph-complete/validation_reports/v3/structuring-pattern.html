@@ -165,7 +165,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Export PDF
       </button>
-      <a class="btn-export primary" href="/report/fd7cc27949a2f35748263a64d82ddec893d07de9db7f9dc230444b6298fe3f65/export-html" download="decision-report-fd7cc27949a2f357-2026-02-12.html" title="Download self-contained HTML report file">
+      <a class="btn-export primary" href="/report/ff752f80fcdf1487e0839b589909656264834899e94fcecda11cdb59414cf134/export-html" download="decision-report-ff752f80fcdf1487-2026-02-12.html" title="Download self-contained HTML report file">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export HTML
       </a>
@@ -224,7 +224,7 @@
         
         <span class="override-badge">COMPLIANCE REVIEW REQUIRED</span>
       </div>
-      <div class="alert-body">Classifier identified 2 Tier 1 suspicion indicator(s) and determined STR_REQUIRED, but governed disposition is NO_REPORT. Gate 1 determined insufficient legal basis for escalation. A compliance officer must review the Tier 1 indicators and make the final STR determination. Until reviewed, EDD applies.</div>
+      <div class="alert-body">Classifier identified 2 Tier 1 suspicion indicator(s) and determined STR_REQUIRED, but governed disposition is EDD_REQUIRED. Gate 1 determined insufficient legal basis for escalation. A compliance officer must review the Tier 1 indicators and make the final STR determination. Until reviewed, EDD applies.</div>
       
       <div class="alert-detail">
         Original verdict: PASS → Classifier outcome: STR_REQUIRED
@@ -239,11 +239,11 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Decision ID</div>
-        <div class="value mono">fd7cc27949a2f357...</div>
+        <div class="value mono">ff752f80fcdf1487...</div>
         <div class="label">Case ID</div>
         <div class="value mono">structuring-pattern</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-12T00:32:17.622576</div>
+        <div class="value mono">2026-02-12T01:50:27.512902</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -294,7 +294,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--warn);">[REQUIRED]</strong>
           
-          Complete EDD by 2026-02-19T23:59:59.622368Z
+          Complete EDD by 2026-02-19T23:59:59.512687Z
         </li>
         
         <li style="margin:4px 0;">
@@ -318,7 +318,7 @@
         <div class="label">Investigation State</div>
         <div class="value">COMPLIANCE REVIEW REQUIRED</div>
         <div class="label">Primary Typology</div>
-        <div class="value">Evasion behavior</div>
+        <div class="value">Structuring</div>
         
         
         <div class="label">Regulatory Position</div>
@@ -348,7 +348,7 @@
           </tr>
           <tr>
             <td>Precedent Match Rate</td>
-            <td class="mono">27% (18 / 65)</td>
+            <td class="mono">32% (18 / 55)</td>
             <td class="small">Percentage of comparable pool meeting similarity threshold</td>
           </tr>
         </tbody>
@@ -414,7 +414,7 @@
         
         <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; padding:12px; margin-bottom:12px;">
           <strong style="color:#dc2626;">⚠ CLASSIFICATION DISPOSITION CONFLICT</strong><br>
-          <span class="small" style="color:#1f2937;">Classifier identified 2 Tier 1 suspicion indicator(s) and determined STR_REQUIRED, but governed disposition is NO_REPORT. Gate 1 determined insufficient legal basis for escalation. A compliance officer must review the Tier 1 indicators and make the final STR determination. Until reviewed, EDD applies.</span>
+          <span class="small" style="color:#1f2937;">Classifier identified 2 Tier 1 suspicion indicator(s) and determined STR_REQUIRED, but governed disposition is EDD_REQUIRED. Gate 1 determined insufficient legal basis for escalation. A compliance officer must review the Tier 1 indicators and make the final STR determination. Until reviewed, EDD applies.</span>
         </div>
         
         
@@ -447,7 +447,7 @@
       
       
       
-      <p class="small" style="margin-top:10px;"><strong>Precedent alignment:</strong> 51/65 (78%) of comparable precedents match the governed disposition.</p>
+      <p class="small" style="margin-top:10px;"><strong>Precedent alignment:</strong> 43/55 (78%) of comparable precedents match the governed disposition.</p>
       
     </div>
 
@@ -576,11 +576,11 @@
         <thead><tr><th>Code</th><th>Source</th><th>Detail</th></tr></thead>
         <tbody>
           
-          <tr><td class="mono">HIGH_VALUE</td><td>evidence</td><td>Amount band: 3k_10k</td></tr>
-          
           <tr><td class="mono">UNCLASSIFIED_HAS_INTENT</td><td>suspicion_element</td><td>Suspicion element &#39;has_intent&#39; could not be mapped to a known Tier 1 indicator code. Classified as Tier 2 (investigative) pending manual review. If this element represents genuine suspicion, a compliance officer must explicitly reclassify it.</td></tr>
           
           <tr><td class="mono">UNCLASSIFIED_HAS_SUSTAINED_PATTERN</td><td>suspicion_element</td><td>Suspicion element &#39;has_sustained_pattern&#39; could not be mapped to a known Tier 1 indicator code. Classified as Tier 2 (investigative) pending manual review. If this element represents genuine suspicion, a compliance officer must explicitly reclassify it.</td></tr>
+          
+          <tr><td class="mono">COMBO_MODERATE_MULTI_FLAG</td><td>composite</td><td>3 red flags active with unusual profile. Combinatorial pattern warrants enhanced investigation.</td></tr>
           
         </tbody>
       </table>
@@ -620,11 +620,11 @@
         
         
         <div class="pi-big" style="color:var(--warn);">
-          51/65 <span style="font-size:16px; font-weight:400;">(78%)</span>
+          43/55 <span style="font-size:16px; font-weight:400;">(78%)</span>
         </div>
         <div class="bar" style="margin:8px 0;"><span style="width:78%; background:#d97706;"></span></div>
         <p class="small" style="margin:4px 0 0 0;">
-          Majority match (51/65).
+          Majority match (43/55).
           
         </p>
         
@@ -694,17 +694,17 @@
     <div class="statement break" style="margin-top:12px;">
       
       <strong style="color:#1e40af;">Institutional Pattern</strong>
-      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Of 10 comparable cases, 14 have reached terminal resolution — 92% resulted in ALLOW. Current case is pending EDD; terminal guidance is directional. The bank has never escalated a comparable case to STR at the pre-EDD stage. Classifier determination of STR REQUIRED diverges from the governed disposition of EDD REQUIRED.</p>
+      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Of 10 comparable cases, 12 have reached terminal resolution — 91% resulted in ALLOW. Current case is pending EDD; terminal guidance is directional. The bank has never escalated a comparable case to STR at the pre-EDD stage. Classifier determination of STR REQUIRED diverges from the governed disposition of EDD REQUIRED.</p>
       
       
       <strong style="color:#1e40af; margin-top:10px; display:block;">Institutional Posture</strong>
-      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">All 2 comparable precedent(s) were also referred for enhanced due diligence — consistent with the current EDD REQUIRED disposition. The bank&#39;s institutional practice for this case profile is uniform EDD referral.</p>
+      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">All 3 comparable precedent(s) were also referred for enhanced due diligence — consistent with the current EDD REQUIRED disposition. The bank&#39;s institutional practice for this case profile is uniform EDD referral.</p>
       
       
       
       
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
-        <p class="small" style="color:#d97706; font-style:italic;">Note: Historical practice spans two policy regimes. Under current policy (post 2026-04-01), 43 comparable cases available. 33.8% of pool decided under prior policy. Current posture reflects LCTR Reporting Threshold.</p>
+        <p class="small" style="color:#d97706; font-style:italic;">Note: Historical practice spans two policy regimes. Under current policy (post 2026-04-01), 36 comparable cases available. 34.5% of pool decided under prior policy. Current posture reflects LCTR Reporting Threshold.</p>
       </div>
       
     </div>
@@ -726,15 +726,15 @@
             <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px;">Pre-Shift</strong>
             <span class="small" style="color:var(--muted);">Superseded policy</span>
           </div>
-          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">22 <span class="small" style="font-weight:400;">cases</span></div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">19 <span class="small" style="font-weight:400;">cases</span></div>
           
           
-          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>17 (77%)</span></div>
-          <div class="regime-bar"><span class="bar-edd" style="width:77%;"></span></div>
+          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>13 (68%)</span></div>
+          <div class="regime-bar"><span class="bar-edd" style="width:68%;"></span></div>
           
           
-          <div style="display:flex; justify-content:space-between;" class="small"><span>ALLOW</span><span>5 (23%)</span></div>
-          <div class="regime-bar"><span class="bar-allow" style="width:23%;"></span></div>
+          <div style="display:flex; justify-content:space-between;" class="small"><span>ALLOW</span><span>6 (32%)</span></div>
+          <div class="regime-bar"><span class="bar-allow" style="width:32%;"></span></div>
           
         </div>
         <div class="regime-card post">
@@ -742,25 +742,25 @@
             <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px; color:#059669;">Post-Shift</strong>
             <span class="small" style="color:#059669;">Current policy &#10003;</span>
           </div>
-          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">43 <span class="small" style="font-weight:400;">cases</span></div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">36 <span class="small" style="font-weight:400;">cases</span></div>
           
           
-          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>34 (79%)</span></div>
-          <div class="regime-bar"><span class="bar-edd" style="width:79%;"></span></div>
+          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>30 (83%)</span></div>
+          <div class="regime-bar"><span class="bar-edd" style="width:83%;"></span></div>
           
           
-          <div style="display:flex; justify-content:space-between;" class="small"><span>ALLOW</span><span>8 (19%)</span></div>
-          <div class="regime-bar"><span class="bar-allow" style="width:19%;"></span></div>
+          <div style="display:flex; justify-content:space-between;" class="small"><span>ALLOW</span><span>5 (14%)</span></div>
+          <div class="regime-bar"><span class="bar-allow" style="width:14%;"></span></div>
           
           
-          <div style="display:flex; justify-content:space-between;" class="small"><span>BLOCK</span><span>1 (2%)</span></div>
+          <div style="display:flex; justify-content:space-between;" class="small"><span>BLOCK</span><span>1 (3%)</span></div>
           <div class="regime-bar"><span class="bar-block" style="width:3%;"></span></div>
           
         </div>
       </div>
       
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid #fcd34d;">
-        <p class="small"><strong style="color:#d97706;">33.8%</strong> of comparable pool decided under superseded policy. Post-shift pool: <strong>43</strong> cases (effective pool for confidence).</p>
+        <p class="small"><strong style="color:#d97706;">34.5%</strong> of comparable pool decided under superseded policy. Post-shift pool: <strong>36</strong> cases (effective pool for confidence).</p>
         
         <p class="small" style="color:var(--muted); font-style:italic; margin-top:4px;">Significant portion of pool predates policy change. Post-shift pool is smaller than total.</p>
         
@@ -782,7 +782,7 @@
     
     <details class="pi-case break regime-limited" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">cd17366f...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">f99f8212...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">82%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -808,7 +808,7 @@
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">92104c59...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">41f4d17f...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill pass" style="margin-left:auto;">NO REPORT</span>
@@ -834,7 +834,7 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">72168689...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">1c2b251d...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">72%</span>
         
         <span class="pill trig" style="margin-left:auto;">BLOCKED — NO STR</span>
@@ -856,7 +856,7 @@
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">62a6dffe...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">cc2a41f2...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">80%</span>
         
         <span class="pill req" style="margin-left:auto;">EDD REQUIRED</span>
@@ -884,8 +884,8 @@
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">178ddd76...</span>
-        <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">bb44aa51...</span>
+        <span style="font-weight:700; font-size:16px; margin:0 4px;">76%</span>
         
         <span class="pill req" style="margin-left:auto;">EDD REQUIRED</span>
         
@@ -918,7 +918,7 @@
       
       <div style="margin-bottom:8px;">
         <span class="small" style="color:#2d6a4f; font-weight:600;">Shared Drivers:</span>
-        <div style="margin-top:4px;"><span class="pi-chip driver">flag › rapid movement</span><span class="pi-chip driver">flag › structuring</span><span class="pi-chip driver">flag › unusual for profile</span><span class="pi-chip driver">txn › just below threshold</span><span class="pi-chip driver">txn › multiple same day</span><span class="pi-chip driver">txn › pattern matches profile</span></div>
+        <div style="margin-top:4px;"><span class="pi-chip driver">flag › structuring</span><span class="pi-chip driver">flag › unusual for profile</span><span class="pi-chip driver">txn › just below threshold</span><span class="pi-chip driver">txn › multiple same day</span><span class="pi-chip driver">txn › pattern matches profile</span></div>
       </div>
       
       
@@ -934,14 +934,14 @@
     
     
     <div class="status warn" style="margin-top:12px; padding:12px;">
-      <strong>Non-Transferable Precedents (5)</strong>
+      <strong>Non-Transferable Precedents (4)</strong>
       <ul class="small" style="margin-top:6px;">
         
-        <li>62a6dffe...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>cc2a41f2...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
-        <li>b999119f...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>3a002a64...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
-        <li>c6561f2e...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>bd2e511e...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
       </ul>
       <span class="small">These precedents were scored but cannot be classified as "supporting" due to driver mismatches.</span>
@@ -960,7 +960,7 @@
       <p class="small" style="margin-bottom:6px;"><em>Contrary precedent dates — older cases may reflect superseded guidance.</em></p>
       <ul style="font-size:13px; margin:0; padding-left:20px;">
         
-        <li><span class="mono">72168689...</span>: 2026-02-12T00:32:12Z</li>
+        <li><span class="mono">1c2b251d...</span>: 2026-02-12T01:50:22Z</li>
         
       </ul>
     </div>
@@ -1197,6 +1197,10 @@
     
       
     
+      
+    
+      
+    
     <table class="break">
       <thead>
         <tr>
@@ -1307,7 +1311,7 @@
           <div class="label">Neutral / Procedural</div>
           <div class="value" style="color: var(--muted);">15 <span class="small">(enhanced review)</span></div>
           <div class="label">Comparable Matches</div>
-          <div class="value">65</div>
+          <div class="value">55</div>
           <div class="label">Raw Overlaps</div>
           <div class="value">710</div>
           <div class="label">Exact Matches</div>
@@ -1326,14 +1330,14 @@
           
           <tr>
             <td>EDD</td>
-            <td class="mono">51</td>
+            <td class="mono">43</td>
             <td><div class="bar"><span style="width: 78%;"></span></div></td>
           </tr>
           
           
           <tr>
             <td>ALLOW</td>
-            <td class="mono">13</td>
+            <td class="mono">11</td>
             <td><div class="bar"><span style="width: 20%;"></span></div></td>
           </tr>
           
@@ -1358,15 +1362,15 @@
           
           <tr>
             <td>EDD</td>
-            <td class="mono">524</td>
+            <td class="mono">523</td>
             <td><div class="bar"><span style="width: 74%;"></span></div></td>
           </tr>
           
           
           <tr>
             <td>ALLOW</td>
-            <td class="mono">117</td>
-            <td><div class="bar"><span style="width: 16%;"></span></div></td>
+            <td class="mono">118</td>
+            <td><div class="bar"><span style="width: 17%;"></span></div></td>
           </tr>
           
           
@@ -1389,7 +1393,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">cd17366f...</span>
+            <span class="match-id">f99f8212...</span>
             <span class="match-sim">82%
               
               
@@ -1447,7 +1451,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">92104c59...</span>
+            <span class="match-id">41f4d17f...</span>
             <span class="match-sim">77%
               
               
@@ -1505,7 +1509,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">72168689...</span>
+            <span class="match-id">1c2b251d...</span>
             <span class="match-sim">72%
               
               
@@ -1563,7 +1567,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">62a6dffe...</span>
+            <span class="match-id">cc2a41f2...</span>
             <span class="match-sim">80%
               
               
@@ -1621,8 +1625,8 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">178ddd76...</span>
-            <span class="match-sim">77%
+            <span class="match-id">bb44aa51...</span>
+            <span class="match-sim">76%
               
               
             </span>
@@ -1640,8 +1644,8 @@
             <span class="sim-pct ">100%</span>
             
             <span class="sim-label">Gates</span>
-            <span class="sim-track"><span class="sim-fill med" style="width:77%"></span></span>
-            <span class="sim-pct ">77%</span>
+            <span class="sim-track"><span class="sim-fill med" style="width:76%"></span></span>
+            <span class="sim-pct ">76%</span>
             
             <span class="sim-label">Typology</span>
             <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
@@ -1679,7 +1683,7 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">b999119f...</span>
+            <span class="match-id">3a002a64...</span>
             <span class="match-sim">75%
               
               
@@ -1737,7 +1741,123 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">c6561f2e...</span>
+            <span class="match-id">bd2e511e...</span>
+            <span class="match-sim">73%
+              
+              
+            </span>
+          </div>
+          <div class="match-meta">
+            <span class="meta-chip neutral">NO REPORT</span>
+            <span class="meta-chip">senior_analyst</span>
+            
+          </div>
+          <div class="sim-bars">
+            
+            
+            <span class="sim-label">Rules</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Gates</span>
+            <span class="sim-track"><span class="sim-fill med" style="width:73%"></span></span>
+            <span class="sim-pct ">73%</span>
+            
+            <span class="sim-label">Typology</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Amount</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Corridor</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Channel</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">PEP</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Customer</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Geo Risk</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+          </div>
+          <div class="match-codes">RC-TXN-STRUCT · RC-TXN-UNUSUAL · RC-TXN-NORMAL</div>
+        </div>
+        
+        
+        
+        <div class="match-card break">
+          <div class="match-card-header">
+            <span class="match-id">b30b8977...</span>
+            <span class="match-sim">72%
+              
+              
+            </span>
+          </div>
+          <div class="match-meta">
+            <span class="meta-chip neutral">EDD REQUIRED</span>
+            <span class="meta-chip">analyst</span>
+            
+          </div>
+          <div class="sim-bars">
+            
+            
+            <span class="sim-label">Rules</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Gates</span>
+            <span class="sim-track"><span class="sim-fill med" style="width:72%"></span></span>
+            <span class="sim-pct ">72%</span>
+            
+            <span class="sim-label">Typology</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Amount</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Corridor</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Channel</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">PEP</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+            <span class="sim-label">Customer</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
+            
+            <span class="sim-label">Geo Risk</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
+            
+          </div>
+          <div class="match-codes">RC-TXN-STRUCT · RC-TXN-STRUCT-MULTI</div>
+        </div>
+        
+        
+        
+        <div class="match-card break">
+          <div class="match-card-header">
+            <span class="match-id">ed72739b...</span>
             <span class="match-sim">70%
               
               
@@ -1795,66 +1915,8 @@
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">fcb39c6f...</span>
-            <span class="match-sim">70%
-              
-              
-            </span>
-          </div>
-          <div class="match-meta">
-            <span class="meta-chip neutral">NO REPORT</span>
-            <span class="meta-chip">senior_analyst</span>
-            
-          </div>
-          <div class="sim-bars">
-            
-            
-            <span class="sim-label">Rules</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Gates</span>
-            <span class="sim-track"><span class="sim-fill med" style="width:70%"></span></span>
-            <span class="sim-pct ">70%</span>
-            
-            <span class="sim-label">Typology</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Amount</span>
-            <span class="sim-track"><span class="sim-fill med" style="width:67%"></span></span>
-            <span class="sim-pct ">67%</span>
-            
-            <span class="sim-label">Corridor</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Channel</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">PEP</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Customer</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Geo Risk</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-          </div>
-          <div class="match-codes">RC-TXN-RAPID · RC-TXN-UNUSUAL · RC-TXN-NORMAL</div>
-        </div>
-        
-        
-        
-        <div class="match-card break">
-          <div class="match-card-header">
-            <span class="match-id">b38e1cae...</span>
-            <span class="match-sim">70%
+            <span class="match-id">5e184554...</span>
+            <span class="match-sim">69%
               
               
             </span>
@@ -1872,74 +1934,16 @@
             <span class="sim-pct ">100%</span>
             
             <span class="sim-label">Gates</span>
-            <span class="sim-track"><span class="sim-fill med" style="width:70%"></span></span>
-            <span class="sim-pct ">70%</span>
-            
-            <span class="sim-label">Typology</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Amount</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Corridor</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Channel</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">PEP</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-            <span class="sim-label">Customer</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Geo Risk</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
-            
-          </div>
-          <div class="match-codes">RC-TXN-STRUCT · RC-TXN-STRUCT-MULTI · RC-TXN-FATF-GREY</div>
-        </div>
-        
-        
-        
-        <div class="match-card break">
-          <div class="match-card-header">
-            <span class="match-id">d2a0c0ee...</span>
-            <span class="match-sim">69%
-              
-              
-            </span>
-          </div>
-          <div class="match-meta">
-            <span class="meta-chip neutral">NO REPORT</span>
-            <span class="meta-chip">senior_analyst</span>
-            
-          </div>
-          <div class="sim-bars">
-            
-            
-            <span class="sim-label">Rules</span>
-            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
-            <span class="sim-pct zero">—</span>
-            
-            <span class="sim-label">Gates</span>
             <span class="sim-track"><span class="sim-fill med" style="width:69%"></span></span>
             <span class="sim-pct ">69%</span>
             
             <span class="sim-label">Typology</span>
-            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
-            <span class="sim-pct ">100%</span>
+            <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
+            <span class="sim-pct zero">—</span>
             
             <span class="sim-label">Amount</span>
-            <span class="sim-track"><span class="sim-fill med" style="width:67%"></span></span>
-            <span class="sim-pct ">67%</span>
+            <span class="sim-track"><span class="sim-fill high" style="width:100%"></span></span>
+            <span class="sim-pct ">100%</span>
             
             <span class="sim-label">Corridor</span>
             <span class="sim-track"><span class="sim-fill low" style="width:0%"></span></span>
@@ -1962,7 +1966,7 @@
             <span class="sim-pct ">100%</span>
             
           </div>
-          <div class="match-codes">RC-TXN-RAPID · RC-TXN-UNUSUAL · RC-TXN-NORMAL</div>
+          <div class="match-codes">RC-TXN-STRUCT · RC-TXN-STRUCT-MULTI</div>
         </div>
         
         
@@ -2111,6 +2115,15 @@
         </tr>
         
         <tr>
+          <td class="mono">UNUSUAL_FOR_PROFILE</td>
+          <td>
+            
+              Corroborated
+            
+          </td>
+        </tr>
+        
+        <tr>
           <td class="mono">Typology</td>
           <td>
             
@@ -2248,6 +2261,12 @@
         </tr>
         
         <tr>
+          <td class="mono">indicator.UNUSUAL_FOR_PROFILE</td>
+          <td class="small">indicator.UNUSUAL_FOR_PROFILE</td>
+          <td>Yes</td>
+        </tr>
+        
+        <tr>
           <td class="mono">indicator.VELOCITY_SPIKE</td>
           <td class="small">indicator.VELOCITY_SPIKE</td>
           <td>Yes</td>
@@ -2281,6 +2300,12 @@
           <td class="mono">screening.adverse_media</td>
           <td class="small">screening.adverse_media</td>
           <td>No</td>
+        </tr>
+        
+        <tr>
+          <td class="mono">screening.adverse_media_level</td>
+          <td class="small">screening.adverse_media_level</td>
+          <td>none</td>
         </tr>
         
         <tr>
@@ -2382,9 +2407,9 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-12T00:32:17.622368Z</div>
+        <div class="value mono">2026-02-12T01:50:27.512687Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-19T23:59:59.622368Z</div>
+        <div class="value mono">2026-02-19T23:59:59.512687Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
@@ -2401,9 +2426,9 @@
     <div class="provenance break">
       <div class="kv">
         <div class="label">Decision Hash (SHA-256)</div>
-        <div class="value mono hash">fd7cc27949a2f35748263a64d82ddec893d07de9db7f9dc230444b6298fe3f65</div>
+        <div class="value mono hash">ff752f80fcdf1487e0839b589909656264834899e94fcecda11cdb59414cf134</div>
         <div class="label">Input Hash</div>
-        <div class="value mono hash">46f63df4dee0a60f82f21da7dc388dc3cfccdfe13043b6f9d1a390f96b6da481</div>
+        <div class="value mono hash">789405630d1c85149108fe9922b6f2317521125f7bec489e8e582a607892c293</div>
         <div class="label">Policy Hash</div>
         <div class="value mono hash">7dbc3567f93ab289f74b45b386f045aadce3328d08be59268642a56b98b0fcfe</div>
         <div class="label">Decision Path</div>
@@ -2433,7 +2458,7 @@
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-12T00:32:17.622576
+      Generated 2026-02-12T01:50:27.512902
     </div>
   </div>
 </body>

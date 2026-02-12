@@ -1113,7 +1113,9 @@ def _detect_integrity_issues(
         and not str_required
         and decision_status != "escalate"
     ):
-        governed_label = _disposition_label(decision_status, str_required)
+        original_label = _disposition_label(decision_status, str_required)
+        # Corrections force to EDD — governed label reflects post-correction state
+        governed_label = "EDD_REQUIRED"
         alert = {
             "type": "CLASSIFICATION_DISPOSITION_CONFLICT",
             "severity": "CRITICAL",
@@ -1128,6 +1130,7 @@ def _detect_integrity_issues(
             "original_verdict": verdict,
             "classifier_outcome": classification.outcome,
             "governed_disposition": governed_label,
+            "pre_correction_disposition": original_label,
             "tier1_count": classification.suspicion_count,
             "gate1_blocked": not gate1_passed,
         }

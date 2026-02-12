@@ -39,7 +39,8 @@ TIER1_SUSPICION_CODES: dict[str, str] = {
     "flag.sar_pattern": "SAR_PATTERN",
     # Registry-keyed evidence (from Evidence Gap Tracker fields)
     "screening.sanctions_match": "SANCTIONS_SIGNAL",
-    "screening.adverse_media": "ADVERSE_MEDIA_CONFIRMED",
+    # screening.adverse_media (boolean) is now a derived convenience field.
+    # Classification uses screening.adverse_media_level (value-based routing below).
     "flag.structuring": "STRUCTURING_PATTERN",
     "flag.shell_company": "SHELL_ENTITY",
     "flag.third_party": "THIRD_PARTY_UNEXPLAINED",
@@ -204,9 +205,45 @@ def classify(
                     "detail": f"Evidence flag {field_name} = {value}",
                 })
                 seen_t2.add(code)
-        # Tier 2: amount band (always present, value-based)
+        # ── Adverse media level: value-based tier routing ──────────────
+        elif field_name == "screening.adverse_media_level" and value:
+            level = str(value).lower()
+            if level == "confirmed_mltf":
+                code = "ADVERSE_MEDIA_MLTF"
+                if code not in seen_t1:
+                    tier1.append({
+                        "code": code,
+                        "source": "evidence",
+                        "field": field_name,
+                        "detail": f"Adverse media: confirmed, linked to ML/TF",
+                    })
+                    seen_t1.add(code)
+            elif level == "confirmed":
+                code = "ADVERSE_MEDIA_CONFIRMED"
+                if code not in seen_t1:
+                    tier1.append({
+                        "code": code,
+                        "source": "evidence",
+                        "field": field_name,
+                        "detail": f"Adverse media: confirmed (charges/regulatory action)",
+                    })
+                    seen_t1.add(code)
+            elif level == "unconfirmed":
+                code = "ADVERSE_MEDIA_UNCONFIRMED"
+                if code not in seen_t2:
+                    tier2.append({
+                        "code": code,
+                        "source": "evidence",
+                        "field": field_name,
+                        "detail": f"Adverse media: unconfirmed (requires EDD investigation)",
+                    })
+                    seen_t2.add(code)
+            # level == "none" → no signal
+        # Tier 2: amount band — only high bands (100K+) are investigative signals.
+        # Lower amounts are normal commercial activity and should not trigger EDD.
         elif field_name == "txn.amount_band" and value:
-            if "HIGH_VALUE" not in seen_t2:
+            _HIGH_BANDS = {"100k_500k", "500k_1m", "over_1m"}
+            if str(value) in _HIGH_BANDS and "HIGH_VALUE" not in seen_t2:
                 tier2.append({
                     "code": "HIGH_VALUE",
                     "source": "evidence",
@@ -378,6 +415,116 @@ def classify(
                 "detail": "PEP status combined with suspicion indicators",
             })
             seen_t1.add(pep_t1_code)
+
+    # ── Combinatorial flag escalation ─────────────────────────────────────
+    # Count active red flags across evidence to detect multi-flag patterns
+    # that individually might not trigger but collectively indicate risk.
+    _RED_FLAG_FIELDS = {
+        "flag.structuring", "flag.layering", "flag.rapid_movement",
+        "flag.shell_company", "flag.third_party", "flag.unusual_for_profile",
+    }
+    _active_flags: set[str] = set()
+    for ev in (evidence_used or []):
+        fn = str(ev.get("field", "")).lower()
+        val = ev.get("value")
+        _is_true = val is True or str(val).lower() in {"true", "yes", "1"}
+        if fn in _RED_FLAG_FIELDS and _is_true:
+            _active_flags.add(fn)
+
+    _has_prior_issues = any(
+        str(ev.get("field", "")).lower() == "prior.sars_filed"
+        and ev.get("value") not in (0, "0", None, False)
+        for ev in (evidence_used or [])
+    ) or any(
+        str(ev.get("field", "")).lower() == "prior.account_closures"
+        and ev.get("value") in (True, "true", "True", "yes", "1")
+        for ev in (evidence_used or [])
+    )
+
+    # COMBO_HIGH_RISK: 3+ flags + prior issues → Tier 1 (STR-capable)
+    # NOTE: prior.sars_filed is a count with no temporal dimension — a single
+    # resolved SAR from years ago looks the same as a recent SAR-for-cause.
+    # Future refinement: add temporal weighting to prior issue assessment.
+    if len(_active_flags) >= 3 and _has_prior_issues:
+        _combo_code = "COMBO_HIGH_RISK_MULTI_FLAG"
+        if _combo_code not in seen_t1:
+            tier1.append({
+                "code": _combo_code,
+                "source": "composite",
+                "field": ", ".join(sorted(_active_flags)),
+                "detail": (
+                    f"{len(_active_flags)} red flags active "
+                    f"({', '.join(sorted(_active_flags))}) with prior issues. "
+                    f"Combinatorial risk exceeds individual flag assessment."
+                ),
+            })
+            seen_t1.add(_combo_code)
+
+    # COMBO_MODERATE: 2+ flags + unusual_for_profile → Tier 2 (EDD only)
+    elif len(_active_flags) >= 2 and "flag.unusual_for_profile" in _active_flags:
+        _combo_code = "COMBO_MODERATE_MULTI_FLAG"
+        if _combo_code not in seen_t2:
+            tier2.append({
+                "code": _combo_code,
+                "source": "composite",
+                "field": ", ".join(sorted(_active_flags)),
+                "detail": (
+                    f"{len(_active_flags)} red flags active with unusual profile. "
+                    f"Combinatorial pattern warrants enhanced investigation."
+                ),
+            })
+            seen_t2.add(_combo_code)
+
+    # ── Trade finance composite indicators ──────────────────────────────
+    # Scan evidence for trade-based ML indicators per FINTRAC TBML typology.
+    _trade_goods_desc = None
+    _trade_pricing_ok = None
+    for ev in (evidence_used or []):
+        fn = str(ev.get("field", "")).lower()
+        val = ev.get("value")
+        if fn == "trade.goods_description":
+            _trade_goods_desc = str(val).lower() if val else None
+        elif fn == "trade.pricing_consistent":
+            _trade_pricing_ok = val is True or str(val).lower() in {"true", "yes", "1"}
+
+    _goods_suspicious = _trade_goods_desc in ("vague", "missing")
+    _pricing_suspicious = _trade_pricing_ok is False  # explicit False, not None
+
+    # TRADE_BASED_LAUNDERING: both indicators → Tier 1 (STR-capable)
+    if _goods_suspicious and _pricing_suspicious:
+        _tbml_code = "TRADE_BASED_LAUNDERING"
+        if _tbml_code not in seen_t1:
+            tier1.append({
+                "code": _tbml_code,
+                "source": "composite",
+                "field": "trade.goods_description, trade.pricing_consistent",
+                "detail": (
+                    f"Trade-based ML indicators: goods description is "
+                    f"'{_trade_goods_desc}' and pricing is inconsistent. "
+                    f"FINTRAC TBML typology — both indicators present."
+                ),
+            })
+            seen_t1.add(_tbml_code)
+
+    # TRADE_FINANCE_SUSPICIOUS: one indicator → Tier 2 (EDD only)
+    elif _goods_suspicious or _pricing_suspicious:
+        _tf_code = "TRADE_FINANCE_SUSPICIOUS"
+        if _tf_code not in seen_t2:
+            detail_parts = []
+            if _goods_suspicious:
+                detail_parts.append(f"goods description is '{_trade_goods_desc}'")
+            if _pricing_suspicious:
+                detail_parts.append("pricing is inconsistent")
+            tier2.append({
+                "code": _tf_code,
+                "source": "composite",
+                "field": "trade.goods_description, trade.pricing_consistent",
+                "detail": (
+                    f"Trade finance indicator: {' and '.join(detail_parts)}. "
+                    f"Single indicator warrants enhanced investigation."
+                ),
+            })
+            seen_t2.add(_tf_code)
 
     # ── MITIGATION CHECK (Safety Valve) ──────────────────────────────────
     # Verified legitimate explanation can downgrade Tier 1 to Tier 2

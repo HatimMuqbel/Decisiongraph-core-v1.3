@@ -307,8 +307,14 @@ class TemplateLoader:
                         facts.get("screen.sanctions_match"),
                     )
                     precedent_facts.setdefault(
+                        "screening.adverse_media_level",
+                        facts.get("screen.adverse_media_level", "none"),
+                    )
+                    # Derive boolean from level for backward compatibility
+                    _am_level = precedent_facts.get("screening.adverse_media_level", "none")
+                    precedent_facts.setdefault(
                         "screening.adverse_media",
-                        facts.get("screen.adverse_media"),
+                        _am_level not in ("none", None, False, ""),
                     )
 
                     # --- txn.destination_country_risk: BYOC uses txn.destination_country ---
@@ -433,7 +439,23 @@ def _infer_reason_codes(rule_code: str, facts: dict) -> list[str]:
     if facts.get("flag.unusual_for_profile"):
         codes.append("RC-TXN-UNUSUAL")
 
-    if facts.get("screen.adverse_media"):
+    # Trade finance indicators
+    _goods = str(facts.get("trade.goods_description", "")).lower()
+    _pricing = facts.get("trade.pricing_consistent")
+    if _goods in ("vague", "missing") and _pricing is False:
+        codes.append("RC-TXN-TBML")
+    elif _goods in ("vague", "missing") or _pricing is False:
+        codes.append("RC-TXN-TRADE-SUSPICIOUS")
+
+    _am_lvl = facts.get("screen.adverse_media_level", "none")
+    if _am_lvl == "confirmed_mltf":
+        codes.append("RC-KYC-ADVERSE-MAJOR")
+    elif _am_lvl == "confirmed":
+        codes.append("RC-KYC-ADVERSE-MAJOR")
+    elif _am_lvl == "unconfirmed":
+        codes.append("RC-KYC-ADVERSE-MINOR")
+    elif facts.get("screen.adverse_media"):
+        # Backward compat: boolean True without level → minor
         codes.append("RC-KYC-ADVERSE-MINOR")
 
     if not codes:

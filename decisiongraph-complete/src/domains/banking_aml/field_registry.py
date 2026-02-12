@@ -97,7 +97,7 @@ BANKING_FIELDS: dict[str, dict[str, Any]] = {
         "type": "enum",
         "values": [
             "wire_domestic", "wire_international", "cash",
-            "cheque", "eft", "crypto",
+            "cheque", "eft", "crypto", "trade_finance",
         ],
         "website_values": {
             "wire_transfer": "wire_domestic",
@@ -261,12 +261,26 @@ BANKING_FIELDS: dict[str, dict[str, Any]] = {
         "fingerprint": True,
         "required": True,
     },
-    "screening.adverse_media": {
-        "website_name": "screen.adverse_media",
-        "display_name": "Adverse media indicator",
-        "type": "boolean",
+    "screening.adverse_media_level": {
+        "website_name": "screen.adverse_media_level",
+        "display_name": "Adverse media severity level",
+        "type": "enum",
+        "values": ["none", "unconfirmed", "confirmed", "confirmed_mltf"],
+        "website_values": {
+            "none": "none",
+            "unconfirmed": "unconfirmed",
+            "confirmed": "confirmed",
+            "confirmed_mltf": "confirmed_mltf",
+        },
         "fingerprint": True,
         "required": True,
+    },
+    "screening.adverse_media": {
+        "website_name": "screen.adverse_media",
+        "display_name": "Adverse media indicator (derived)",
+        "type": "boolean",
+        "fingerprint": False,
+        "required": False,
     },
     "prior.sars_filed": {
         "website_name": "screen.prior_sars_filed",
@@ -289,6 +303,36 @@ BANKING_FIELDS: dict[str, dict[str, Any]] = {
         "type": "boolean",
         "fingerprint": True,
         "required": True,
+    },
+
+    # === TRADE FINANCE ===
+    "trade.goods_description": {
+        "website_name": "trade.goods_description",
+        "display_name": "Trade goods description quality",
+        "type": "enum",
+        "values": ["detailed", "adequate", "vague", "missing"],
+        "website_values": {
+            "detailed": "detailed",
+            "adequate": "adequate",
+            "vague": "vague",
+            "missing": "missing",
+        },
+        "fingerprint": True,
+        "required": False,
+    },
+    "trade.pricing_consistent": {
+        "website_name": "trade.pricing_consistent",
+        "display_name": "Trade pricing consistency",
+        "type": "boolean",
+        "fingerprint": True,
+        "required": False,
+    },
+    "trade.is_letter_of_credit": {
+        "website_name": "trade.is_letter_of_credit",
+        "display_name": "Letter of credit transaction",
+        "type": "boolean",
+        "fingerprint": True,
+        "required": False,
     },
 }
 

@@ -222,11 +222,18 @@ _FIELD_ENRICHMENTS: dict[str, dict] = {
         "weight": 0.04,
         "tier": FieldTier.BEHAVIORAL,
     },
+    "screening.adverse_media_level": {
+        "type": FieldType.ORDINAL,
+        "comparison": ComparisonFn.STEP,
+        "weight": 0.04,
+        "tier": FieldTier.BEHAVIORAL,
+        "ordered_values": ["none", "unconfirmed", "confirmed", "confirmed_mltf"],
+    },
     "screening.adverse_media": {
         "type": FieldType.BOOLEAN,
         "comparison": ComparisonFn.EXACT,
-        "weight": 0.04,
-        "tier": FieldTier.BEHAVIORAL,
+        "weight": 0.00,
+        "tier": FieldTier.CONTEXTUAL,
     },
     "prior.sars_filed": {
         "type": FieldType.NUMERIC,
@@ -240,6 +247,27 @@ _FIELD_ENRICHMENTS: dict[str, dict] = {
         "comparison": ComparisonFn.EXACT,
         "weight": 0.02,
         "tier": FieldTier.BEHAVIORAL,
+    },
+
+    # --- TRADE FINANCE ---
+    "trade.goods_description": {
+        "type": FieldType.ORDINAL,
+        "comparison": ComparisonFn.STEP,
+        "weight": 0.05,
+        "tier": FieldTier.BEHAVIORAL,
+        "ordered_values": ["detailed", "adequate", "vague", "missing"],
+    },
+    "trade.pricing_consistent": {
+        "type": FieldType.BOOLEAN,
+        "comparison": ComparisonFn.EXACT,
+        "weight": 0.04,
+        "tier": FieldTier.BEHAVIORAL,
+    },
+    "trade.is_letter_of_credit": {
+        "type": FieldType.BOOLEAN,
+        "comparison": ComparisonFn.EXACT,
+        "weight": 0.02,
+        "tier": FieldTier.CONTEXTUAL,
     },
 }
 
