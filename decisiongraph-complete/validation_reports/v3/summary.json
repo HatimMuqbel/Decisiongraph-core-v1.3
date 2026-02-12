@@ -485,5 +485,488 @@
     },
     "non_transferable_count": 0,
     "governed_alignment": "17/21"
+  },
+  {
+    "case_id": "dormant-account-reactivation",
+    "name": "Dormant Account Reactivation (PASS)",
+    "category": "PASS",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 28.0,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8706,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "43/45"
+  },
+  {
+    "case_id": "cash-intensive-lctr",
+    "name": "Cash-Intensive Business - LCTR (PASS)",
+    "category": "PASS",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 35.0,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8338,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "35/35"
+  },
+  {
+    "case_id": "sanctions-exact-match",
+    "name": "Sanctions Exact Match - SEMA (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "MODERATE",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 7.0,
+        "level": "MODERATE",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8992,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 0.963,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "screening.sanctions_match"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "7/7"
+  },
+  {
+    "case_id": "domestic-pep-routine",
+    "name": "Domestic PEP - Mortgage (PASS)",
+    "category": "PASS",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 61.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8186,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "45/61"
+  },
+  {
+    "case_id": "structuring-three-deposits",
+    "name": "Structuring - Three Same-Day Deposits (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 40.0,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7624,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.9286,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.rapid_movement",
+        "flag.structuring",
+        "flag.unusual_for_profile",
+        "txn.just_below_threshold",
+        "txn.multiple_same_day",
+        "txn.pattern_matches_profile"
+      ],
+      "divergent_drivers": [
+        "txn.source_of_funds_clear"
+      ]
+    },
+    "non_transferable_count": 5,
+    "governed_alignment": "48/62"
+  },
+  {
+    "case_id": "trade-finance-unusual-docs",
+    "name": "Trade Finance - Unusual Docs (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "similarity_quality",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 69.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7441,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.cross_border",
+        "txn.pattern_matches_profile"
+      ],
+      "divergent_drivers": [
+        "flag.shell_company",
+        "txn.source_of_funds_clear"
+      ]
+    },
+    "non_transferable_count": 10,
+    "governed_alignment": "68/69"
+  },
+  {
+    "case_id": "profile-deviation-complete-evidence",
+    "name": "Profile Deviation - Complete Evidence (PASS)",
+    "category": "PASS",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "similarity_quality",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 130.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8281,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "126/130"
+  },
+  {
+    "case_id": "adverse-media-unconfirmed",
+    "name": "Adverse Media - Unconfirmed (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "MODERATE",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 40.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8107,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.75,
+        "level": "MODERATE",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "screening.adverse_media"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "9/40"
+  },
+  {
+    "case_id": "multiple-flags-commercial-exit",
+    "name": "MSB - Multiple Red Flags (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 135.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7421,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.4884,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.layering",
+        "flag.rapid_movement",
+        "flag.shell_company",
+        "flag.unusual_for_profile",
+        "txn.amount_band",
+        "txn.pattern_matches_profile"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "92/135"
+  },
+  {
+    "case_id": "pep-foreign-large-wire-clean",
+    "name": "Foreign PEP - Large Wire Clean (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 11.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8634,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "45/61"
   }
 ]

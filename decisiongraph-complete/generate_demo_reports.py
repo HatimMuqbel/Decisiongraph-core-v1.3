@@ -1,4 +1,4 @@
-"""Batch demo report generator — runs all 10 demo cases through the v3 pipeline.
+"""Batch demo report generator — runs all demo cases through the v3 pipeline.
 
 Usage:
     python generate_demo_reports.py
@@ -121,7 +121,7 @@ def main():
 
     # Summary table
     print(f"\n\n{'='*80}")
-    print("  V3 CONFIDENCE SUMMARY — ALL 10 DEMO CASES")
+    print(f"  V3 CONFIDENCE SUMMARY — ALL {len(results)} DEMO CASES")
     print(f"{'='*80}")
     print(f"  {'Case':<30s} {'Cat':<10s} {'Confidence':<12s} {'Bottleneck':<25s} {'Align':<8s}")
     print(f"  {'-'*30} {'-'*10} {'-'*12} {'-'*25} {'-'*8}")
