@@ -565,7 +565,12 @@
         <div class="value"><strong>{{ classification_outcome }}</strong></div>
         <div class="label">Classifier Authority</div>
         {% if classification_outcome != governed_disposition %}
+        {% set _has_upheld_gate = gate_override_explanations | default([]) | selectattr('upheld', 'defined') | selectattr('upheld') | list | length > 0 %}
+        {% if _has_upheld_gate %}
+        <div class="value" style="color:#059669; font-weight:600;">GATE AUTHORITY — Gate blocked {{ classification_outcome | replace('_', ' ') }}; governed disposition is {{ governed_disposition | replace('_', ' ') }}</div>
+        {% else %}
         <div class="value" style="color:var(--warn); font-weight:600;">OVERRIDDEN — Classifier recommends {{ classification_outcome | replace('_', ' ') }}, governed disposition is {{ governed_disposition | replace('_', ' ') }}</div>
+        {% endif %}
         {% else %}
         <div class="value" style="color:#059669; font-weight:600;">SOVEREIGN — Hard Gate</div>
         {% endif %}
