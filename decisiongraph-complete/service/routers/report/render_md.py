@@ -471,7 +471,20 @@ def render_markdown(ctx: dict) -> str:
                         gate_override_md += f"- {_md_escape(basis)}\n"
                     gate_override_md += "\n"
         else:
-            gate_override_md = "### Gate Override Analysis\n\n> All gates consistent with final disposition.\n\n"
+            # Check for UPHELD gates
+            upheld = [g for g in gate_overrides if g.get("upheld")]
+            if upheld:
+                gate_override_md = "### Gate Override Analysis\n\n"
+                for g in upheld:
+                    gate_override_md += f"**{_md_escape(g.get('gate', ''))}** — UPHELD\n\n"
+                    gate_override_md += f"> {_md_escape(g.get('upheld_detail', ''))}\n\n"
+                    if g.get("upheld_basis"):
+                        gate_override_md += "**Gate Basis:**\n\n"
+                        for b in g["upheld_basis"]:
+                            gate_override_md += f"- {_md_escape(b)}\n"
+                        gate_override_md += "\n"
+            else:
+                gate_override_md = "### Gate Override Analysis\n\n> All gates consistent with final disposition.\n\n"
 
     # ── FIX-029: Disposition Reconciliation ────────────────────────────────
     reconciliation = ctx.get("disposition_reconciliation", {})

@@ -24,6 +24,21 @@ from typing import Optional
 
 from service.suspicion_classifier import classify as classify_suspicion, CLASSIFIER_VERSION
 
+
+# ── Canonical disposition mapping (INV-004, INV-005) ─────────────────────────
+
+def _to_canonical_disposition(governed_disposition: str) -> str:
+    """Map governed disposition to canonical form (ALLOW/EDD/BLOCK/UNKNOWN)."""
+    gd = governed_disposition.upper().replace(" ", "_")
+    if "EDD" in gd or gd in ("REVIEW", "ESCALATE", "PENDING_REVIEW", "PASS_WITH_EDD"):
+        return "EDD"
+    if gd in ("STR_REQUIRED", "FILE_STR", "BLOCK", "HARD_STOP"):
+        return "BLOCK"
+    if gd in ("NO_REPORT", "CLEARED", "ALLOW", "PASS"):
+        return "ALLOW"
+    return "UNKNOWN"
+
+
 # ── TYPOLOGY CODE MAP ─────────────────────────────────────────────────────────
 
 _TYPOLOGY_CODE_MAP: dict[str, str] = {
@@ -376,6 +391,40 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # Precedent alignment: supporting_decisive / decisive_count
     _supporting = int(_pa.get("supporting_precedents", 0) or 0)
     _contrary = int(_pa.get("contrary_precedents", 0) or 0)
+    _neutral = int(_pa.get("neutral_precedents", 0) or 0)
+
+    # ── Governed reclassification for consistency alert counts (INV-005) ──
+    _proposed_canonical = _pa.get("proposed_canonical", {})
+    _engine_canonical_disp = _proposed_canonical.get("disposition", "UNKNOWN")
+    _governed_canonical_disp = _to_canonical_disposition(governed_disposition)
+    if _governed_canonical_disp != _engine_canonical_disp:
+        _sample_cases = _pa.get("sample_cases", []) or []
+        _supporting, _contrary, _neutral = 0, 0, 0
+        for _sc in _sample_cases:
+            _pd = _sc.get("disposition", "UNKNOWN")
+            _pb = _sc.get("disposition_basis", "UNKNOWN")
+            _cb = _proposed_canonical.get("disposition_basis", "UNKNOWN")
+            _nt = _sc.get("non_transferable", False)
+            if _pd == "UNKNOWN" or _governed_canonical_disp == "UNKNOWN":
+                _neutral += 1
+            elif _governed_canonical_disp == "EDD" or _pd == "EDD":
+                if _governed_canonical_disp == "EDD" and _pd == "EDD" and not _nt:
+                    _supporting += 1
+                else:
+                    _neutral += 1
+            elif (_cb not in ("UNKNOWN", "") and _pb not in ("UNKNOWN", "")
+                  and _cb != _pb):
+                _neutral += 1
+            elif _pd == _governed_canonical_disp:
+                if _nt:
+                    _neutral += 1
+                else:
+                    _supporting += 1
+            elif {_pd, _governed_canonical_disp} == {"ALLOW", "BLOCK"}:
+                _contrary += 1
+            else:
+                _neutral += 1
+
     decisive_count = _supporting + _contrary
     precedent_alignment_pct = (
         int(_supporting / decisive_count * 100) if decisive_count > 0 else 0
@@ -384,7 +433,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # FIX-019: Precedent minimum pool threshold
     _MIN_PRECEDENT_POOL = 5
     precedent_pool_warning = None
-    _total_scored = _supporting + _contrary + int(_pa.get("neutral_precedents", 0) or 0)
+    _total_scored = _supporting + _contrary + _neutral
     if _pa.get("available") and 0 < _total_scored < _MIN_PRECEDENT_POOL:
         precedent_pool_warning = {
             "type": "THIN_PRECEDENT_POOL",
@@ -500,6 +549,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         str_required=str_required,
         integrity_alert=integrity_alert,
         rules_fired=rules_fired,
+        classification_outcome=classification.outcome,
     )
 
     # ── FIX-029: Disposition Reconciliation ────────────────────────────
@@ -1620,7 +1670,8 @@ def _detect_precedent_deviation(
 
     proposed_canonical = precedent_analysis.get("proposed_canonical", {})
     case_basis = proposed_canonical.get("disposition_basis", "UNKNOWN")
-    case_disposition = proposed_canonical.get("disposition", "UNKNOWN")
+    _engine_disposition = proposed_canonical.get("disposition", "UNKNOWN")
+    case_disposition = _to_canonical_disposition(governed_disposition)
     case_reporting = proposed_canonical.get("reporting", "UNKNOWN")
 
     # ── Disposition Deviation (Consistency Check) ─────────────────────
@@ -1740,6 +1791,37 @@ def _detect_precedent_deviation(
     # ── Fallback: v1-style supporting/contrary check ──────────────────
     supporting = int(precedent_analysis.get("supporting_precedents", 0) or 0)
     contrary = int(precedent_analysis.get("contrary_precedents", 0) or 0)
+
+    # Apply governed reclassification to v1 fallback counts (INV-005)
+    _prop_can = precedent_analysis.get("proposed_canonical", {})
+    _eng_disp = _prop_can.get("disposition", "UNKNOWN")
+    _gov_disp = _to_canonical_disposition(governed_disposition)
+    if _gov_disp != _eng_disp:
+        _sc_list = precedent_analysis.get("sample_cases", []) or []
+        supporting, contrary = 0, 0
+        _neutral_fb = 0
+        for _sc in _sc_list:
+            _pd = _sc.get("disposition", "UNKNOWN")
+            _pb = _sc.get("disposition_basis", "UNKNOWN")
+            _cb = _prop_can.get("disposition_basis", "UNKNOWN")
+            _nt = _sc.get("non_transferable", False)
+            if _pd == "UNKNOWN" or _gov_disp == "UNKNOWN":
+                _neutral_fb += 1
+            elif _gov_disp == "EDD" or _pd == "EDD":
+                if _gov_disp == "EDD" and _pd == "EDD" and not _nt:
+                    supporting += 1
+                else:
+                    _neutral_fb += 1
+            elif (_cb not in ("UNKNOWN", "") and _pb not in ("UNKNOWN", "")
+                  and _cb != _pb):
+                _neutral_fb += 1
+            elif _pd == _gov_disp:
+                supporting += 1 if not _nt else 0
+            elif {_pd, _gov_disp} == {"ALLOW", "BLOCK"}:
+                contrary += 1
+            else:
+                _neutral_fb += 1
+
     total = supporting + contrary
 
     if total < 3:
@@ -1872,6 +1954,50 @@ def _build_enhanced_precedent_analysis(
     neutral = int(precedent_analysis.get("neutral_precedents", 0) or 0)
     total_decisive = supporting + contrary
     total_all = supporting + contrary + neutral
+
+    # ── Governed reclassification (INV-005) ──────────────────────────
+    # Engine classified against engine verdict. When governed disposition
+    # differs, reclassify all sample_cases against governed canonical.
+    proposed_canonical = precedent_analysis.get("proposed_canonical", {})
+    engine_canonical_disp = proposed_canonical.get("disposition", "UNKNOWN")
+    governed_canonical_disp = _to_canonical_disposition(governed_disposition)
+
+    if governed_canonical_disp != engine_canonical_disp:
+        # Recount using governed canonical disposition
+        supporting, contrary, neutral = 0, 0, 0
+        for sc in sample_cases:
+            prec_disp = sc.get("disposition", "UNKNOWN")
+            prec_basis = sc.get("disposition_basis", "UNKNOWN")
+            case_basis = proposed_canonical.get("disposition_basis", "UNKNOWN")
+            nt = sc.get("non_transferable", False)
+
+            # INV-003: UNKNOWN is always neutral
+            if prec_disp == "UNKNOWN" or governed_canonical_disp == "UNKNOWN":
+                neutral += 1
+            # INV-005: EDD is always neutral (except EDD == EDD)
+            elif governed_canonical_disp == "EDD" or prec_disp == "EDD":
+                if governed_canonical_disp == "EDD" and prec_disp == "EDD" and not nt:
+                    supporting += 1
+                else:
+                    neutral += 1
+            # INV-008: cross-basis is neutral
+            elif (case_basis not in ("UNKNOWN", "") and prec_basis not in ("UNKNOWN", "")
+                  and case_basis != prec_basis):
+                neutral += 1
+            # Same disposition = supporting (unless non-transferable)
+            elif prec_disp == governed_canonical_disp:
+                if nt:
+                    neutral += 1
+                else:
+                    supporting += 1
+            # INV-004: only ALLOW vs BLOCK is contrary
+            elif {prec_disp, governed_canonical_disp} == {"ALLOW", "BLOCK"}:
+                contrary += 1
+            else:
+                neutral += 1
+
+        total_decisive = supporting + contrary
+        total_all = supporting + contrary + neutral
 
     # Get outcome distribution for pattern analysis — prefer matched, fall
     # back to raw overlap pool for broader context when matches are sparse.
@@ -2281,8 +2407,46 @@ def _build_pattern_summary(
     # Build the story
     parts = []
 
+    # ── Spec §10.2: Non-terminal (EDD) handling ──────────────────────
+    governed_canonical = _to_canonical_disposition(governed_disposition)
+    _is_edd = governed_canonical == "EDD"
+
+    if _is_edd:
+        # Count terminal outcomes in the pool (ALLOW/BLOCK) for directional guidance
+        terminal_allow = sum(
+            v for k, v in (match_distribution or {}).items()
+            if str(k).upper() in ("ALLOW", "NO_REPORT", "PASS", "CLEARED")
+        )
+        terminal_block = sum(
+            v for k, v in (match_distribution or {}).items()
+            if str(k).upper() in ("BLOCK", "STR_REQUIRED", "FILE_STR")
+        )
+        terminal_total = terminal_allow + terminal_block
+        edd_count = sum(
+            v for k, v in (match_distribution or {}).items()
+            if "EDD" in str(k).upper() or "REVIEW" in str(k).upper()
+        )
+
+        if terminal_total > 0:
+            majority = "ALLOW" if terminal_allow >= terminal_block else "BLOCK"
+            majority_count = max(terminal_allow, terminal_block)
+            majority_pct = int(majority_count / terminal_total * 100)
+            parts.append(
+                f"Of {total_all} comparable cases, {terminal_total} have reached "
+                f"terminal resolution — {majority_pct}% resulted in "
+                f"{majority.replace('_', ' ')}. Current case is pending EDD; "
+                f"terminal guidance is directional."
+            )
+        elif edd_count > 0:
+            parts.append(
+                f"All {edd_count} comparable case(s) remain in enhanced review. "
+                f"No terminal outcomes exist in the comparable pool."
+            )
+        else:
+            parts.append(f"{total_all} comparable precedents found.")
+
     # Opening: how many comparable cases and what they resulted in
-    if total_decisive > 0:
+    elif total_decisive > 0:
         if supporting == total_decisive:
             parts.append(
                 f"Of {total_all} comparable cases, all {total_decisive} terminal "
@@ -2308,7 +2472,7 @@ def _build_pattern_summary(
                 f"evenly split ({supporting} supporting, {contrary} contrary)."
             )
 
-    if neutral > 0:
+    if not _is_edd and neutral > 0:
         parts.append(
             f"{neutral} case(s) resolved through enhanced review "
             f"processes (EDD/review states) rather than immediate determination."
@@ -2407,6 +2571,16 @@ def _build_institutional_posture(
         )
 
     support_pct = int(supporting / total_decisive * 100) if total_decisive > 0 else 0
+
+    governed_canonical = _to_canonical_disposition(governed_disposition)
+    if governed_canonical == "EDD" and supporting > 0 and contrary == 0:
+        # All matches are EDD-vs-EDD supporting — not terminal
+        return (
+            f"All {supporting} comparable precedent(s) were also referred for "
+            f"enhanced due diligence — consistent with the current "
+            f"{governed_label} disposition. The bank's institutional practice "
+            f"for this case profile is uniform EDD referral."
+        )
 
     if support_pct == 100:
         posture = (
@@ -2764,6 +2938,7 @@ def _build_gate_override_explanations(
     str_required: bool,
     integrity_alert: dict | None,
     rules_fired: list,
+    classification_outcome: str = "",
 ) -> list[dict]:
     """Build explanations for each gate whose result conflicts with final disposition."""
     final_is_escalation = governed_disposition in ("STR_REQUIRED", "ESCALATE") or str_required
@@ -2863,6 +3038,33 @@ def _build_gate_override_explanations(
             "override_basis": override_basis,
             "authority": "PCMLTFA s. 7 — STR requires Tier 1 suspicion indicators",
         })
+
+    # ── Gate UPHELD: gate blocked, classifier wanted STR, governed follows gate ──
+    if not explanations and gate1_blocked:
+        classifier_wanted_str = classification_outcome in ("STR_REQUIRED",)
+        governed_is_not_str = governed_disposition not in ("STR_REQUIRED", "ESCALATE")
+        if classifier_wanted_str and governed_is_not_str:
+            upheld_basis = []
+            for section in gate1_sections:
+                if not section.get("passed"):
+                    upheld_basis.append(
+                        f"{section.get('name', 'Unknown')}: {section.get('reason', '')}"
+                    )
+            explanations.append({
+                "gate": "Gate 1: Zero-False-Escalation Check",
+                "gate_result": gate1_decision or "PROHIBITED",
+                "final_disposition": governed_disposition,
+                "conflict": False,
+                "upheld": True,
+                "classifier_recommendation": classification_outcome,
+                "upheld_detail": (
+                    f"Gate determination followed. Classifier recommendation "
+                    f"({classification_outcome.replace('_', ' ')}) was not applied. "
+                    f"Governed disposition reflects gate authority."
+                ),
+                "upheld_basis": upheld_basis,
+                "authority": "PCMLTFA s. 7 — Gate authority over classifier recommendation",
+            })
 
     if not explanations:
         return [{"gate": "All Gates", "conflict": False, "final_disposition": governed_disposition}]

@@ -1848,6 +1848,7 @@ _EDD_TERMS = frozenset({
     "review", "investigate", "investigation", "hold", "pending",
     "manual review", "needs info", "request more info", "pass with edd",
     "escalate", "escalated",
+    "edd", "edd required",
 })
 
 _BLOCK_TERMS = frozenset({

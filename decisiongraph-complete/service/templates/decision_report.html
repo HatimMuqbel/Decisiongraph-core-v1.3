@@ -1086,9 +1086,27 @@
     </div>
     {% endfor %}
     {% else %}
+    {% set has_upheld = gate_override_explanations | selectattr('upheld') | list | length > 0 %}
+    {% if has_upheld %}
+    {% for g in gate_override_explanations if g.upheld %}
+    <div class="status ok break">
+      <h3 style="margin-bottom:8px;">{{ g.gate }} — UPHELD</h3>
+      <p class="small">{{ g.upheld_detail }}</p>
+      {% if g.upheld_basis %}
+      <p class="small" style="font-weight:600; margin:8px 0 4px;">Gate Basis:</p>
+      <ul style="margin:0; padding-left:20px; font-size:13px;">
+        {% for basis in g.upheld_basis %}
+        <li>{{ basis }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
     <div class="status ok break">
       <p>All gates consistent with final disposition.</p>
     </div>
+    {% endif %}
     {% endif %}
     {% endif %}
 
