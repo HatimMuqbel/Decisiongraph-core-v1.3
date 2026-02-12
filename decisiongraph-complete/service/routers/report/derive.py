@@ -253,11 +253,14 @@ def derive_regulatory_model(normalized: dict) -> dict:
     similarity_summary = _derive_similarity_summary(precedent_analysis)
 
     # ── 10b. FIX-018: Enhanced precedent analysis ─────────────────────────
+    disposition_basis = _derive_disposition_basis(rules_fired, governed_disposition)
     enhanced_precedent = _build_enhanced_precedent_analysis(
         precedent_analysis=precedent_analysis,
         governed_disposition=governed_disposition,
         deviation_alert=deviation_alert,
         classification_outcome=classification.outcome,
+        disposition_basis=disposition_basis,
+        integrity_alert=integrity_alert,
     )
 
     # ── 11. Escalation summary ────────────────────────────────────────────
@@ -270,7 +273,6 @@ def derive_regulatory_model(normalized: dict) -> dict:
         regulatory_position = "Suspicion threshold not met based on available indicators."
 
     # ── 13. FIX-001: Canonical outcome (three-field) ─────────────────────
-    disposition_basis = _derive_disposition_basis(rules_fired, governed_disposition)
     reporting, reporting_note = _derive_reporting(governed_disposition, str_required)
     canonical_outcome = {
         "disposition": governed_disposition,
@@ -1932,6 +1934,8 @@ def _build_enhanced_precedent_analysis(
     governed_disposition: str,
     deviation_alert: dict | None,
     classification_outcome: str = "",
+    disposition_basis: str = "",
+    integrity_alert: dict | None = None,
 ) -> dict:
     """Build enhanced precedent analysis with institutional learning features.
 
@@ -2148,6 +2152,7 @@ def _build_enhanced_precedent_analysis(
             "outcome_label": outcome_label,
             "classification": classification,
             "disposition": match.get("disposition", "UNKNOWN"),
+            "reporting": match.get("reporting", "UNKNOWN"),
             "description": description,
             "key_matches": key_matches[:3],
             "key_differences": key_diffs[:3],
@@ -2233,6 +2238,34 @@ def _build_enhanced_precedent_analysis(
         raw_overlap_count=raw_overlap_count,
         raw_distribution=raw_distribution,
     )
+
+    # ── e2) Post-shift STR gap statement ─────────────────────────────
+    # When current disposition is completely absent from post-shift pool
+    # outcomes, explain that determination is precedent-independent.
+    regime = precedent_analysis.get("policy_regime_analysis", {})
+    post_dist = regime.get("post_shift_distribution", {}) if regime else {}
+    if post_dist:
+        governed_canonical = _to_canonical_disposition(governed_disposition)
+        post_outcomes = {_to_canonical_disposition(str(k)) for k in post_dist}
+        if governed_canonical not in post_outcomes:
+            if disposition_basis == "MANDATORY":
+                basis = "hard stop rule"
+            elif integrity_alert and integrity_alert.get("type") in (
+                "CLASSIFIER_OVERRIDE", "CLASSIFIER_UPGRADE",
+            ):
+                basis = "classifier sovereignty"
+            elif integrity_alert and integrity_alert.get("type") == "CLASSIFICATION_DISPOSITION_CONFLICT":
+                basis = "gate authority constraining classifier determination"
+            elif classification_outcome:
+                basis = f"classifier {classification_outcome.replace('_', ' ').lower()} determination"
+            else:
+                basis = "current rule evaluation"
+            governed_label = governed_disposition.replace("_", " ")
+            result["post_shift_gap_statement"] = (
+                f"No post-shift precedent exists for {governed_label} "
+                f"on this case profile. Determination is based on {basis} "
+                f"which operates independently of policy regime precedent."
+            )
 
     # ── f) Divergence Justification ──────────────────────────────────
     has_deviation = deviation_alert is not None

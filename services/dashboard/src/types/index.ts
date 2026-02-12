@@ -262,6 +262,7 @@ export interface EnhancedPrecedent {
   outcome_distribution?: Record<string, number>;
   temporal_context?: unknown[];
   regime_analysis?: RegimeAnalysis;
+  post_shift_gap_statement?: string;
 }
 
 export interface PrecedentAnalysis {

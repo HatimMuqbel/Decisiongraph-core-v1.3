@@ -4,9 +4,10 @@ interface Props {
   patternSummary?: string;
   institutionalPosture?: string;
   regimeAnalysis?: RegimeAnalysis;
+  postShiftGapStatement?: string;
 }
 
-export default function InstitutionalPosture({ patternSummary, institutionalPosture, regimeAnalysis }: Props) {
+export default function InstitutionalPosture({ patternSummary, institutionalPosture, regimeAnalysis, postShiftGapStatement }: Props) {
   if (!patternSummary && !institutionalPosture) {
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
@@ -53,6 +54,11 @@ export default function InstitutionalPosture({ patternSummary, institutionalPost
       {regimeNote && (
         <div className="mt-3 border-t border-slate-700/60 pt-3">
           <p className="text-xs leading-relaxed text-amber-300/80 italic">{regimeNote}</p>
+        </div>
+      )}
+      {postShiftGapStatement && (
+        <div className="mt-3 border-t border-slate-700/60 pt-3">
+          <p className="text-xs leading-relaxed text-red-300/80 italic">{postShiftGapStatement}</p>
         </div>
       )}
     </div>

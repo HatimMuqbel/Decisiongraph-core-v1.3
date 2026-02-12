@@ -7,6 +7,7 @@ interface Props {
   sc: SampleCase;
   defaultOpen?: boolean;
   caseDisposition?: string;
+  caseReporting?: string;
 }
 
 const V3_FIELD_LABELS: Record<string, string> = {
@@ -45,6 +46,15 @@ function formatDriverLabel(d: string): string {
 
 const TERMINAL_DISPOSITIONS = ['ALLOW', 'BLOCK'];
 
+const REPORTING_LABELS: Record<string, string> = {
+  FILE_STR: 'STR',
+  NO_REPORT: 'NO STR',
+  FILE_LCTR: 'LCTR',
+  FILE_TPR: 'TPR',
+  PENDING_COMPLIANCE_REVIEW: 'PENDING',
+  PENDING_EDD: 'PENDING EDD',
+};
+
 function getDisplayClassification(
   classification: string,
   precedentDisposition: string,
@@ -65,7 +75,7 @@ function getDisplayClassification(
   return { label: classification?.toUpperCase() ?? 'NEUTRAL', variant: 'neutral', border: 'border-l-slate-600' };
 }
 
-export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition }: Props) {
+export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, caseReporting }: Props) {
   const isRegimeLimited = sc.regime_limited === true;
   const displayCls = sc.non_transferable
     ? { label: '⚠ Non-Transferable', variant: 'warning' as const, border: 'border-l-amber-500' }
@@ -74,6 +84,16 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition }: 
       : getDisplayClassification(sc.classification, sc.disposition, caseDisposition);
 
   const borderColor = displayCls.border;
+
+  // Reporting dimension divergence: show when comparable case's reporting
+  // status differs from the current case's reporting status.
+  const reportingDiverges =
+    caseReporting &&
+    sc.reporting &&
+    sc.reporting !== 'UNKNOWN' &&
+    caseReporting !== 'UNKNOWN' &&
+    sc.reporting !== caseReporting;
+  const precReportingLabel = REPORTING_LABELS[sc.reporting] ?? sc.reporting?.replace(/_/g, ' ');
 
   return (
     <details
@@ -91,9 +111,20 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition }: 
           {sc.outcome_label || sc.disposition}
         </Badge>
         <span className="text-base font-bold text-slate-200">{sc.similarity_pct}%</span>
-        <Badge variant={displayCls.variant}>
-          {displayCls.label}
-        </Badge>
+        {reportingDiverges ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <Badge variant={displayCls.variant}>
+              DISPOSITION: {displayCls.label}
+            </Badge>
+            <Badge variant="warning">
+              REPORTING: DIVERGENT ({precReportingLabel})
+            </Badge>
+          </div>
+        ) : (
+          <Badge variant={displayCls.variant}>
+            {displayCls.label}
+          </Badge>
+        )}
         {isRegimeLimited && (
           <span className="inline-flex items-center rounded-full bg-purple-600/20 px-2 py-0.5 text-[10px] font-medium text-purple-400 border border-purple-500/30">
             PRE-SHIFT

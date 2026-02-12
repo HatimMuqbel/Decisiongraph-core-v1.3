@@ -102,6 +102,7 @@ export default function PrecedentIntelligence({ report }: Props) {
         patternSummary={ep?.pattern_summary}
         institutionalPosture={ep?.institutional_posture}
         regimeAnalysis={regimeAnalysis}
+        postShiftGapStatement={ep?.post_shift_gap_statement}
       />
 
       {/* Row 3: Top Comparable Cases */}
@@ -112,7 +113,7 @@ export default function PrecedentIntelligence({ report }: Props) {
           </h4>
           <div className="space-y-2">
             {visibleCases.map((sc, i) => (
-              <PrecedentCaseCard key={i} sc={sc} defaultOpen={i === 0} caseDisposition={report.governed_disposition} />
+              <PrecedentCaseCard key={i} sc={sc} defaultOpen={i === 0} caseDisposition={report.governed_disposition} caseReporting={report.canonical_outcome?.reporting} />
             ))}
           </div>
           {cases.length > 5 && (

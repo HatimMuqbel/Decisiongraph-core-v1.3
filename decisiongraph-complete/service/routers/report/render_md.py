@@ -669,8 +669,21 @@ def render_markdown(ctx: dict) -> str:
                 f"> *{_md_escape(ip)}*\n\n"
             )
 
+        # Post-shift STR gap statement
+        gap_stmt = enhanced_prec.get("post_shift_gap_statement", "")
+        if gap_stmt:
+            enhanced_precedent_md += (
+                f"> ⚠ *{_md_escape(gap_stmt)}*\n\n"
+            )
+
         # FIX-027: Case Thumbnails (readable precedent summaries)
         ct = enhanced_prec.get("case_thumbnails", [])
+        case_reporting = ctx.get("canonical_outcome", {}).get("reporting", "UNKNOWN")
+        _REPORTING_LABELS_MD = {
+            "FILE_STR": "STR", "NO_REPORT": "NO STR", "FILE_LCTR": "LCTR",
+            "FILE_TPR": "TPR", "PENDING_COMPLIANCE_REVIEW": "PENDING",
+            "PENDING_EDD": "PENDING EDD",
+        }
         if ct:
             enhanced_precedent_md += "### Precedent Case Summaries\n\n"
             for thumb in ct:
@@ -680,10 +693,24 @@ def render_markdown(ctx: dict) -> str:
                 desc = _md_escape(thumb.get("description", ""))
                 km = ", ".join(thumb.get("key_matches", [])) or "None"
                 kd = ", ".join(thumb.get("key_differences", [])) or "None"
-                enhanced_precedent_md += (
-                    f"**{pid}** — {sim}% similarity · _{cls}_\n"
-                    f"> {desc}\n"
+                # Reporting dimension divergence
+                prec_reporting = thumb.get("reporting", "UNKNOWN")
+                reporting_diverges = (
+                    case_reporting != "UNKNOWN"
+                    and prec_reporting != "UNKNOWN"
+                    and prec_reporting != case_reporting
                 )
+                if reporting_diverges:
+                    prec_label = _REPORTING_LABELS_MD.get(prec_reporting, prec_reporting.replace("_", " "))
+                    enhanced_precedent_md += (
+                        f"**{pid}** — {sim}% similarity · _Disposition: {cls}_ · ⚠ _Reporting: DIVERGENT ({prec_label})_\n"
+                        f"> {desc}\n"
+                    )
+                else:
+                    enhanced_precedent_md += (
+                        f"**{pid}** — {sim}% similarity · _{cls}_\n"
+                        f"> {desc}\n"
+                    )
                 if thumb.get("key_matches"):
                     enhanced_precedent_md += f"> Matching: {km}\n"
                 if thumb.get("key_differences"):
