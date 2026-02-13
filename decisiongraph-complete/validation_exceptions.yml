@@ -1,0 +1,12 @@
+# Validation Harness — Known Acceptable Deviations
+#
+# Each exception suppresses a (case_id, check_id) pair with a documented reason.
+# Use '*' as wildcard for case_id or check_id.
+#
+# Format:
+#   exceptions:
+#     - case_id: "case-name"
+#       check_id: "M1"
+#       reason: "Explanation of why this is acceptable"
+
+exceptions: []
