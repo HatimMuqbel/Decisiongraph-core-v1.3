@@ -892,6 +892,11 @@
         {% if thumb.mismatched_drivers is defined and thumb.mismatched_drivers %}
         <div style="margin-top:2px;">{% for d in thumb.mismatched_drivers %}<span class="pi-chip divergent">{{ d }}</span>{% endfor %}</div>
         {% endif %}
+        {% if thumb.reporting_rationale %}
+        <div style="margin-top:6px; padding:6px 10px; background:rgba(30,64,175,0.04); border-left:2px solid #93c5fd; border-radius:2px; font-size:12px; color:#334155; line-height:1.5;">
+          <span style="font-weight:600;">Reporting rationale:</span> {{ thumb.reporting_rationale }}
+        </div>
+        {% endif %}
       </div>
     </details>
     {% endfor %}
@@ -1372,6 +1377,11 @@
             {% endfor %}
           </div>
           <div class="match-codes">{{ match.reason_codes | join(' · ') }}</div>
+          {% if match.reporting_rationale %}
+          <div style="margin-top:6px; padding:6px 10px; background:rgba(30,64,175,0.04); border-left:2px solid #93c5fd; border-radius:2px; font-size:11px; color:#334155; line-height:1.5;">
+            <span style="font-weight:600;">Reporting rationale:</span> {{ match.reporting_rationale }}
+          </div>
+          {% endif %}
         </div>
         {% endfor %}
         {% if not precedent_analysis.sample_cases %}

@@ -488,7 +488,7 @@ def test_seeds_have_reporting_dimension(banking_seeds):
     """Every banking seed must carry a valid reporting_obligation."""
     for seed in banking_seeds:
         assert seed.reporting_obligation in (
-            "NO_REPORT", "FILE_STR", "FILE_LCTR", "FILE_TPR", "PENDING_EDD",
+            "NO_REPORT", "FILE_STR", "FILE_LCTR", "FILE_TPR", "PENDING_EDD", "UNDETERMINED",
         ), f"Unexpected reporting: {seed.reporting_obligation} for {seed.scenario_code}"
 
 

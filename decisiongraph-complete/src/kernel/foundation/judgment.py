@@ -253,6 +253,10 @@ class JudgmentPayload:
     # None = legacy/untagged seed; populated dict for B1+ seeds
     policy_regime: dict | None = None
 
+    # Post-EDD reporting rationale — explains WHY the reporting determination was made
+    # Empty string = not yet determined (e.g. non-EDD seeds or legacy data)
+    reporting_rationale: str = ""
+
     def __post_init__(self) -> None:
         """Validate payload on construction."""
         self._validate()
@@ -460,6 +464,7 @@ class JudgmentPayload:
             "decision_drivers": self.decision_drivers,
             "driver_typology": self.driver_typology,
             "authority_hashes": self.authority_hashes,
+            "reporting_rationale": self.reporting_rationale,
         }
 
         # Include optional fields only if set
@@ -517,6 +522,7 @@ class JudgmentPayload:
             driver_typology=data.get("driver_typology", ""),
             authority_hashes=data.get("authority_hashes", []),
             policy_regime=data.get("policy_regime"),
+            reporting_rationale=data.get("reporting_rationale", ""),
         )
 
 

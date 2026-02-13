@@ -342,7 +342,7 @@ BANKING_FIELDS: dict[str, dict[str, Any]] = {
 # ---------------------------------------------------------------------------
 
 BANKING_DISPOSITIONS = {"ALLOW", "EDD", "BLOCK"}
-BANKING_REPORTING = {"NO_REPORT", "FILE_STR", "FILE_LCTR", "FILE_TPR", "PENDING_EDD"}
+BANKING_REPORTING = {"NO_REPORT", "FILE_STR", "FILE_LCTR", "FILE_TPR", "PENDING_EDD", "UNDETERMINED"}
 BANKING_BASIS = {"MANDATORY", "DISCRETIONARY"}
 BANKING_DECISION_LEVELS = {"analyst", "senior_analyst", "manager", "cco", "senior_management"}
 

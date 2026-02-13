@@ -2340,6 +2340,7 @@ def _build_enhanced_precedent_analysis(
             "classification": classification,
             "disposition": match.get("disposition", "UNKNOWN"),
             "reporting": match.get("reporting", "UNKNOWN"),
+            "reporting_rationale": match.get("reporting_rationale", ""),
             "description": description,
             "key_matches": key_matches[:3],
             "key_differences": key_diffs[:3],

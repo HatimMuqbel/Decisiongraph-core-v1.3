@@ -769,6 +769,10 @@ def render_markdown(ctx: dict) -> str:
                     if composite_desc:
                         enhanced_precedent_md += f">   \u25b8 {composite_desc}\n"
                     enhanced_precedent_md += f"> {desc}\n"
+                    # Reporting rationale (expandable context)
+                    rationale = thumb.get("reporting_rationale", "")
+                    if rationale:
+                        enhanced_precedent_md += f">   *Rationale: {_md_escape(rationale)}*\n"
                 else:
                     # Fallback: single-axis display
                     cls = thumb.get("classification", "neutral")
@@ -789,6 +793,10 @@ def render_markdown(ctx: dict) -> str:
                             f"**{pid}** — {sim}% similarity · _{cls}_\n"
                             f"> {desc}\n"
                         )
+                    # Reporting rationale (expandable context)
+                    rationale = thumb.get("reporting_rationale", "")
+                    if rationale:
+                        enhanced_precedent_md += f"> *Rationale: {_md_escape(rationale)}*\n"
                 if thumb.get("key_matches"):
                     enhanced_precedent_md += f"> Matching: {km}\n"
                 if thumb.get("key_differences"):

@@ -32,6 +32,7 @@ from .policy_shifts import (
     SHIFT_EFFECTIVE_DATES,
     _case_facts_to_seed_like,
 )
+from .reporting_determination import derive_reporting_status_and_rationale
 
 
 # ---------------------------------------------------------------------------
@@ -963,6 +964,56 @@ _NOISE_OUTCOMES: dict[str, dict] = {
 }
 
 
+def _extract_facts_from_seed(seed: JudgmentPayload) -> dict[str, Any]:
+    """Extract flat facts dict from a seed's anchor_facts."""
+    return {af.field_id: af.value for af in seed.anchor_facts}
+
+
+# Fraction of EDD seeds marked UNDETERMINED (abandoned mid-review)
+_ABANDONED_RATE = 0.025  # ~2.5%
+
+
+def _apply_edd_reporting_determination(
+    seeds: list[JudgmentPayload],
+    rng: random.Random,
+) -> None:
+    """Apply deterministic reporting determination to all EDD seeds.
+
+    Replaces PENDING_EDD with a terminal reporting outcome (FILE_STR or
+    NO_REPORT) derived from the seed's fact set.  ~2-3% of EDD seeds are
+    marked UNDETERMINED to represent abandoned mid-review cases.
+
+    Mutates seeds in place.
+    """
+    edd_indices = [
+        i for i, s in enumerate(seeds)
+        if s.reporting_obligation == "PENDING_EDD"
+    ]
+
+    # Select ~2.5% as abandoned (UNDETERMINED)
+    abandoned_count = max(0, round(len(edd_indices) * _ABANDONED_RATE))
+    abandoned_set = set(rng.sample(edd_indices, min(abandoned_count, len(edd_indices))))
+
+    for idx in edd_indices:
+        seed = seeds[idx]
+        if idx in abandoned_set:
+            # Abandoned mid-review — no terminal outcome
+            object.__setattr__(seed, "reporting_obligation", "UNDETERMINED")
+            object.__setattr__(
+                seed, "reporting_rationale",
+                "Review abandoned mid-process. No reporting determination reached.",
+            )
+            continue
+
+        facts = _extract_facts_from_seed(seed)
+        status, rationale = derive_reporting_status_and_rationale(facts)
+
+        # Map function output to JudgmentPayload vocabulary
+        # FILE_STR stays as FILE_STR; NO_REPORT stays as NO_REPORT
+        object.__setattr__(seed, "reporting_obligation", status)
+        object.__setattr__(seed, "reporting_rationale", rationale)
+
+
 def generate_all_banking_seeds(
     salt: str = SEED_SALT,
     random_seed: int = 42,
@@ -971,7 +1022,8 @@ def generate_all_banking_seeds(
     """Generate all banking seed precedents.
 
     Returns ~1,500 JudgmentPayload objects covering all 26 AML
-    scenarios with full 28-field coverage.
+    scenarios with full 28-field coverage.  EDD seeds carry
+    deterministic post-EDD reporting outcomes.
     """
     rng = random.Random(random_seed)
     seeds: list[JudgmentPayload] = []
@@ -996,6 +1048,10 @@ def generate_all_banking_seeds(
     # ── Post-shift seeds (B1.1) ─────────────────────────────────────
     post_shift = _generate_post_shift_seeds(seeds, rng, salt)
     seeds.extend(post_shift)
+
+    # ── Post-EDD reporting determination ────────────────────────────
+    # Derive terminal reporting status for all PENDING_EDD seeds
+    _apply_edd_reporting_determination(seeds, rng)
 
     return seeds
 
