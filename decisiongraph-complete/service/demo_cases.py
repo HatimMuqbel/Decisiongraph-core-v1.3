@@ -307,7 +307,7 @@ DEMO_CASES = [
         ]
     },
 
-    # ============== STRESS TEST CASES (10 additional scenarios) ==============
+    # ============== ADDITIONAL SCENARIOS ==============
 
     # ── PASS: Dormant account, low value, benign reactivation ──
     {
@@ -632,14 +632,14 @@ DEMO_CASES = [
         ],
     },
 
-    # ============== STRESS TEST — ROUND 1: BOUNDARY CONDITIONS ==============
+    # ============== BOUNDARY CONDITION CASES ==============
 
-    # ── STRESS-1: PEP isolation — domestic PEP, zero flags, clean path ──
+    # ── PEP isolation — domestic PEP, zero flags, clean path ──
     {
         "id": "pep-domestic-low-value-clean",
-        "name": "Domestic PEP - Low Value Clean (STRESS)",
+        "name": "Domestic PEP - Low Value Clean (EDGE)",
         "description": "Domestic PEP, under $10K, zero behavioral flags, verified source of funds, established customer. Tests PEP isolation gate.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "pass",
         "key_facts": ["Domestic PEP", "$8K EFT", "15yr tenure", "All clean"],
         "facts": [
@@ -668,12 +668,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-2: Crypto + sanctioned destination — hard stop evaluation ──
+    # ── Crypto + sanctioned destination — hard stop evaluation ──
     {
         "id": "crypto-unhosted-wallet-high-risk",
-        "name": "Crypto to Sanctioned Destination (STRESS)",
+        "name": "Crypto to Sanctioned Destination (ESCALATE)",
         "description": "Crypto exchange + sanctioned destination (Iran) + velocity spike. Tests hard stop evaluation and policy regime awareness.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Crypto method", "Iran destination", "Sanctions match", "Velocity spike"],
         "facts": [
@@ -701,12 +701,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-3: Shell + layering + structuring + prior STRs — maximum escalation ──
+    # ── Shell + layering + structuring + prior STRs — maximum escalation ──
     {
         "id": "shell-company-layering-prior-strs",
-        "name": "Shell + Layering + Prior STRs (STRESS)",
+        "name": "Shell + Layering + Prior STRs (ESCALATE)",
         "description": "Shell company + layering + structuring + 2 prior STR filings + ongoing unusual activity. Terminal strong classification.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Shell + layering + structuring", "2 prior STRs", "BVI to Cayman", "$2.1M"],
         "facts": [
@@ -737,12 +737,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-4: Unconfirmed adverse media, clean profile — clearable strong ──
+    # ── Unconfirmed adverse media, clean profile — clearable strong ──
     {
         "id": "adverse-media-generic-clean-rebuttal",
-        "name": "Adverse Media - Clean Rebuttal (STRESS)",
+        "name": "Adverse Media - Clean Rebuttal (EDGE)",
         "description": "Generic unconfirmed adverse media, no behavioral flags, verified source, 10yr customer. Tests clearable strong override.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "pass",
         "key_facts": ["Adverse media (unconfirmed)", "No MLTF link", "10yr tenure", "All docs clean"],
         "facts": [
@@ -771,12 +771,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-5: Foreign PEP + HR geo + missing purpose — administrative moderate ──
+    # ── Foreign PEP + HR geo + missing purpose — administrative moderate ──
     {
         "id": "foreign-pep-hr-geo-missing-purpose",
-        "name": "Foreign PEP + HR Geo + No Purpose (STRESS)",
+        "name": "Foreign PEP + HR Geo + No Purpose (ESCALATE)",
         "description": "Foreign PEP + high-risk jurisdiction + missing stated purpose. No behavioral flags. Tests administrative moderate vs substantive.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Foreign PEP", "Nigeria residence", "UAE destination", "No purpose stated"],
         "facts": [
@@ -803,12 +803,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-6: ALLOW disposition + STR reporting — two-axis split ──
+    # ── ALLOW disposition + STR reporting — two-axis split ──
     {
         "id": "allow-with-str-controlled-delivery",
-        "name": "Allow + STR Controlled Delivery (STRESS)",
+        "name": "Allow + STR Controlled Delivery (EDGE)",
         "description": "Transaction allowed despite suspicion (controlled delivery). STR filed. Tests ALLOW/STR two-axis combination.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Structuring", "Prior STR", "Confirmed MLTF", "8yr tenure"],
         "facts": [
@@ -837,12 +837,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-7: Zero flags, established customer — absolute baseline ──
+    # ── Zero flags, established customer — absolute baseline ──
     {
         "id": "zero-flags-established-customer",
-        "name": "Zero Flags - Established Customer (STRESS)",
+        "name": "Zero Flags - Established Customer (PASS)",
         "description": "20yr customer, all flags false, domestic, low value, clean screening. Absolute baseline — should produce ALLOW/NO_REPORT.",
-        "category": "STRESS",
+        "category": "PASS",
         "expected_outcome": "pass",
         "key_facts": ["Zero flags", "20yr tenure", "$1,500 EFT", "All clean"],
         "facts": [
@@ -869,12 +869,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-8: Everything adverse — maximum conviction ──
+    # ── Everything adverse — maximum conviction ──
     {
         "id": "everything-adverse",
-        "name": "Everything Adverse - Maximum Flags (STRESS)",
+        "name": "Everything Adverse - Maximum Flags (ESCALATE)",
         "description": "Foreign PEP + confirmed MLTF + shell + layering + structuring + prior STRs + sanctions + HR geo. Maximum adversity.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Foreign PEP + sanctions + MLTF", "Shell + layering + structuring", "4 prior STRs", "$4.8M"],
         "facts": [
@@ -908,14 +908,14 @@ DEMO_CASES = [
         ],
     },
 
-    # ============== STRESS TEST — ROUND 2: POOL DIVERSITY ==============
+    # ============== POOL DIVERSITY CASES ==============
 
-    # ── STRESS-9: First case new policy regime — zero post-shift precedents ──
+    # ── First case new policy regime — zero post-shift precedents ──
     {
         "id": "first-case-new-policy-regime",
-        "name": "First Case Under New Policy (STRESS)",
+        "name": "First Case Under New Policy (EDGE)",
         "description": "Novel case profile under recent policy shift. Zero post-shift precedents. Tests first-of-kind warning and confidence impact.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Novel profile", "Crypto + trade finance", "Vague goods", "No prior comparable"],
         "facts": [
@@ -945,12 +945,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-10: All precedents non-transferable ──
+    # ── All precedents non-transferable ──
     {
         "id": "all-precedents-non-transferable",
-        "name": "All Precedents Non-Transferable (STRESS)",
+        "name": "All Precedents Non-Transferable (EDGE)",
         "description": "Case where comparable pool exists but matches have contradicting drivers. Tests transferable count=0, effective pool messaging.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Corp + layering", "Cross-border HR", "Driver contradictions expected"],
         "facts": [
@@ -978,12 +978,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-11: Single comparable precedent ──
+    # ── Single comparable precedent ──
     {
         "id": "single-comparable-precedent",
-        "name": "Single Comparable Precedent (STRESS)",
+        "name": "Single Comparable Precedent (EDGE)",
         "description": "Unusual profile yielding exactly 1 comparable precedent above threshold. Tests pool adequacy=LOW, alignment on pool of 1.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Rare profile", "Trade finance + crypto", "Single match expected"],
         "facts": [
@@ -1012,12 +1012,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-12: Classifier STR, all precedents NO_REPORT ──
+    # ── Classifier STR, all precedents NO_REPORT ──
     {
         "id": "classifier-str-all-precedents-no-report",
-        "name": "Classifier STR vs All-Clear Pool (STRESS)",
+        "name": "Classifier STR vs All-Clear Pool (EDGE)",
         "description": "Classifier says STR_REQUIRED but comparable precedents all resolved NO_REPORT. Tests precedent deviation flag and conflict.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Confirmed MLTF", "Structuring", "But clean pool history"],
         "facts": [
@@ -1045,12 +1045,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-13: Classifier NO_REPORT, half precedents STR ──
+    # ── Classifier NO_REPORT, half precedents STR ──
     {
         "id": "classifier-no-report-half-str",
-        "name": "Classifier Clear vs Mixed STR Pool (STRESS)",
+        "name": "Classifier Clear vs Mixed STR Pool (EDGE)",
         "description": "Classifier says NO_REPORT but 50% of comparable precedents filed STR. Tests low confidence from outcome inconsistency.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "pass",
         "key_facts": ["Clean profile", "Domestic wire", "But similar profiles have STR history"],
         "facts": [
@@ -1077,12 +1077,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-14: Mixed undetermined/determined pool ──
+    # ── Mixed undetermined/determined pool ──
     {
         "id": "mixed-undetermined-determined-pool",
-        "name": "Mixed Determined/Undetermined Pool (STRESS)",
+        "name": "Mixed Determined/Undetermined Pool (EDGE)",
         "description": "Case where comparable pool has mix of determined (STR/NO_REPORT) and undetermined reporting. Tests partial regulatory alignment.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["PEP + cross-border", "Mixed pool expected", "Partial regulatory data"],
         "facts": [
@@ -1110,14 +1110,14 @@ DEMO_CASES = [
         ],
     },
 
-    # ============== STRESS TEST — ROUND 3: TYPOLOGY + NARRATIVE ==============
+    # ============== TYPOLOGY + NARRATIVE CASES ==============
 
-    # ── STRESS-15: Forming typology, strong classifier signal ──
+    # ── Forming typology, strong classifier signal ──
     {
         "id": "forming-typology-strong-classifier",
-        "name": "Forming Typology + Strong Signal (STRESS)",
+        "name": "Forming Typology + Strong Signal (ESCALATE)",
         "description": "Typology is FORMING but classifier signal is very strong (multiple indicators). Tests Gate 1 sovereignty over classifier.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Velocity spike + adverse media", "But no structuring/layering", "FORMING stage"],
         "facts": [
@@ -1145,12 +1145,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-16: Established typology, weak evidence ──
+    # ── Established typology, weak evidence ──
     {
         "id": "established-typology-weak-evidence",
-        "name": "Established Typology - Weak Evidence (STRESS)",
+        "name": "Established Typology - Weak Evidence (EDGE)",
         "description": "Typology is ESTABLISHED (structuring) but evidence is thin — only 1 indicator. Tests corroboration requirements.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Structuring detected", "But single indicator only", "Docs complete"],
         "facts": [
@@ -1176,12 +1176,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-17: Multiple typologies — shell company + structuring ──
+    # ── Multiple typologies — shell company + structuring ──
     {
         "id": "multiple-typologies-same-case",
-        "name": "Multiple Typologies - Shell + Structuring (STRESS)",
+        "name": "Multiple Typologies - Shell + Structuring (ESCALATE)",
         "description": "Case triggers both shell company and structuring typology families. Tests multi-typology handling.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Shell company + structuring", "Cross-border", "New customer"],
         "facts": [
@@ -1210,12 +1210,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-18: Near-threshold typology — one indicator short ──
+    # ── Near-threshold typology — one indicator short ──
     {
         "id": "near-threshold-typology",
-        "name": "Near Threshold Typology (STRESS)",
+        "name": "Near Threshold Typology (EDGE)",
         "description": "One additional indicator would shift typology from FORMING to ESTABLISHED. Tests boundary precision.",
-        "category": "STRESS",
+        "category": "EDGE",
         "expected_outcome": "escalate",
         "key_facts": ["Velocity spike only", "HR destination", "Missing docs"],
         "facts": [
@@ -1241,12 +1241,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-19: No typology, pure obligation (LCTR) ──
+    # ── No typology, pure obligation (LCTR) ──
     {
         "id": "no-typology-pure-obligation",
-        "name": "No Typology - Pure LCTR Obligation (STRESS)",
+        "name": "No Typology - Pure LCTR Obligation (PASS)",
         "description": "Cash over $10K triggers LCTR filing obligation. No suspicious typology. Tests obligation without suspicion.",
-        "category": "STRESS",
+        "category": "PASS",
         "expected_outcome": "pass",
         "key_facts": ["$12K cash (LCTR trigger)", "No flags", "Known business customer"],
         "facts": [
@@ -1273,12 +1273,12 @@ DEMO_CASES = [
         ],
     },
 
-    # ── STRESS-20: Duplicate indicator names from different sources ──
+    # ── Duplicate indicator names from different sources ──
     {
         "id": "duplicate-indicator-names",
-        "name": "Duplicate Indicators - Multi-Source (STRESS)",
+        "name": "Duplicate Indicators - Multi-Source (ESCALATE)",
         "description": "Same adverse media indicator from both screening system and manual review. Tests deduplication and signal count accuracy.",
-        "category": "STRESS",
+        "category": "ESCALATE",
         "expected_outcome": "escalate",
         "key_facts": ["Adverse media (dual source)", "PEP", "Cross-border HR"],
         "facts": [
@@ -1350,5 +1350,5 @@ def get_demo_case(case_id: str) -> dict | None:
 
 
 def get_demo_cases_by_category(category: str) -> list[dict]:
-    """Get demo cases filtered by category (PASS/ESCALATE/EDGE)."""
+    """Get demo cases filtered by category."""
     return [c for c in DEMO_CASES if c["category"] == category]
