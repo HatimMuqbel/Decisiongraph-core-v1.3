@@ -170,7 +170,14 @@ def _regenerate_summary(pack: dict) -> str:
         parts.append(f"Customer has {prior_sars} prior SAR(s) on record.")
 
     if highest_maturity not in ("none", ""):
-        parts.append(f"Typology indicators present (maturity: {highest_maturity}).")
+        if suspicion_count == 0 and highest_maturity in ("forming", "validating"):
+            parts.append(
+                f"Unclassified behavioral indicators (maturity: {highest_maturity})."
+            )
+        else:
+            parts.append(
+                f"Typology indicators present (maturity: {highest_maturity})."
+            )
 
     return " ".join(parts)
 

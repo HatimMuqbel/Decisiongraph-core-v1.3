@@ -873,8 +873,8 @@ class TestTypologyLabelGeneration:
         )
         assert result == "No suspicious typology identified"
 
-    def test_typology_forming_stage(self):
-        """Zero tier-1 signals + FORMING typology → 'Typology indicators present'."""
+    def test_typology_forming_stage_named(self):
+        """Zero tier-1 signals + FORMING typology with real name → named forming label."""
         from service.routers.report.derive import _resolve_typology
 
         result = _resolve_typology(
@@ -885,13 +885,29 @@ class TestTypologyLabelGeneration:
             layer6_suspicion={},
             classifier_result={"suspicion_count": 0, "tier1_signals": []},
         )
-        assert "Typology indicators present" in result
         assert "forming" in result.lower()
+        assert "Structuring" in result
         # Must NOT say "No suspicious typology"
         assert "No suspicious typology" not in result
 
+    def test_typology_forming_stage_positional(self):
+        """Zero tier-1 signals + FORMING typology with positional name → unclassified."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={
+                "typologies": [{"name": "primary", "maturity": "FORMING"}]
+            },
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result={"suspicion_count": 0, "tier1_signals": []},
+        )
+        assert "Unclassified behavioral indicators" in result
+        assert "forming" in result.lower()
+        assert "No suspicious typology" not in result
+
     def test_typology_validating_stage(self):
-        """Zero tier-1 signals + VALIDATING typology → 'Typology indicators present'."""
+        """Zero tier-1 signals + VALIDATING typology → forming-stage label."""
         from service.routers.report.derive import _resolve_typology
 
         result = _resolve_typology(
@@ -902,7 +918,7 @@ class TestTypologyLabelGeneration:
             layer6_suspicion={},
             classifier_result={"suspicion_count": 0, "tier1_signals": []},
         )
-        assert "Typology indicators present" in result
+        assert "forming" in result.lower() or "Layering" in result
 
     def test_typology_established_with_tier1(self):
         """Positive tier-1 signals → resolved typology name (not 'No suspicious')."""

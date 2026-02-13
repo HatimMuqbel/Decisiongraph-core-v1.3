@@ -961,10 +961,16 @@ def _resolve_typology(
         if tier1_count == 0:
             # Check if layer4 has FORMING typology — indicators exist but
             # haven't reached suspicion threshold. Distinguish from "nothing found".
+            _positional = {"primary", "secondary", "tertiary", "main", "default"}
             for _typ in (layer4_typologies.get("typologies", []) or []):
                 _mat = (_typ.get("maturity") or "").upper() if isinstance(_typ, dict) else ""
                 if _mat in ("FORMING", "VALIDATING"):
-                    return "Typology indicators present (maturity: forming)"
+                    _name = (_typ.get("name") or "") if isinstance(_typ, dict) else ""
+                    _code = _name.lower().replace(" ", "_").replace("-", "_")
+                    _resolved = _TYPOLOGY_CODE_MAP.get(_code, "")
+                    if _resolved and _name.lower() not in _positional:
+                        return f"{_resolved} (maturity: forming)"
+                    return "Unclassified behavioral indicators (maturity: forming)"
             return "No suspicious typology identified"
 
         tier1_codes = {
@@ -1024,7 +1030,10 @@ def _derive_typology_stage(
     Used for consistent rendering across Typology Map, Evidence Snapshot,
     and Primary Typology display.
     """
-    if "indicators present" in primary_typology.lower():
+    _pt_lower = primary_typology.lower()
+    if "indicators present" in _pt_lower or "unclassified behavioral" in _pt_lower:
+        return "FORMING"
+    if "(maturity: forming)" in _pt_lower:
         return "FORMING"
     if primary_typology == "No suspicious typology identified":
         return "NONE"
@@ -3241,7 +3250,11 @@ def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[di
             # Never combine "No suspicious typology" or "Typology indicators present"
             # with redundant maturity labels — these already convey the status.
             _is_no_typology = mapped_name == _NO_TYPOLOGY
-            _is_indicator_label = mapped_name.startswith("Typology indicators present")
+            _is_indicator_label = (
+                mapped_name.startswith("Typology indicators present")
+                or mapped_name.startswith("Unclassified behavioral")
+                or "(maturity: forming)" in mapped_name
+            )
             if (_is_no_typology or _is_indicator_label) and maturity:
                 if maturity.upper() == "FORMING":
                     value = (

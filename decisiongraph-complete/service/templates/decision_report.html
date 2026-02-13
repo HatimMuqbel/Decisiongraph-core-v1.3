@@ -1336,6 +1336,18 @@
             <span class="meta-chip">{{ match.decision_level | default('N/A') }}</span>
             {% if match.appealed %}<span class="meta-chip contrary">Appealed{% if match.appeal_outcome %} · {{ match.appeal_outcome }}{% endif %}</span>{% endif %}
           </div>
+          {% if match.two_axis is defined and match.two_axis %}
+          {% set mta = match.two_axis %}
+          <div style="margin:0 0 8px 0; padding:4px 10px; background:rgba(30,64,175,0.06); border-radius:4px; font-size:11px; line-height:1.6;">
+            <span>Operational: <strong style="color:{% if mta.op_alignment == 'ALIGNED' %}var(--ok){% elif mta.op_alignment == 'CONTRARY' %}var(--bad){% else %}var(--warn){% endif %};">{{ mta.op_alignment }}</strong></span>
+            &nbsp;
+            {% if mta.suspicion_alignment == 'UNDETERMINED' %}
+            <span>Regulatory: <strong style="color:var(--muted);">PENDING</strong> <span style="color:var(--muted);">(reporting not yet determined)</span></span>
+            {% else %}
+            <span>Regulatory: <strong style="color:{% if mta.suspicion_alignment == 'ALIGNED' %}var(--ok){% elif mta.suspicion_alignment == 'CONTRARY' %}var(--bad){% else %}var(--muted){% endif %};">{{ mta.suspicion_alignment }}</strong></span>
+            {% endif %}
+          </div>
+          {% endif %}
           <div class="sim-bars">
             {% set drivers = [
               ("Rules", sc.rules_overlap|default(0), 30),
