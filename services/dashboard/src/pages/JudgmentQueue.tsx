@@ -55,7 +55,7 @@ export default function JudgmentQueue() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Judgment Queue</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-white">
             Review demo cases and run them through the decision engine
           </p>
         </div>
@@ -72,22 +72,22 @@ export default function JudgmentQueue() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-700">
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                 Case ID
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                 Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                 Category
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                 Expected
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                 Signals
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                 Action
               </th>
             </tr>
@@ -95,10 +95,10 @@ export default function JudgmentQueue() {
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id} className="border-b border-slate-800 hover:bg-slate-700/30">
-                <td className="px-4 py-3 font-mono text-xs text-slate-400">{c.id}</td>
+                <td className="px-4 py-3 font-mono text-xs text-white">{c.id}</td>
                 <td className="px-4 py-3">
                   <p className="font-medium text-slate-200">{c.name}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{c.description}</p>
+                  <p className="mt-0.5 text-xs text-white">{c.description}</p>
                 </td>
                 <td className="px-4 py-3">
                   <Badge
@@ -157,7 +157,7 @@ export default function JudgmentQueue() {
               <Badge variant={dispositionVariant(result.decision.verdict)} size="md">
                 {result.decision.verdict}
               </Badge>
-              <span className="text-sm text-slate-400">{result.decision.action}</span>
+              <span className="text-sm text-white">{result.decision.action}</span>
               {result.decision.str_required && (
                 <Badge variant="danger" size="md">
                   STR REQUIRED
@@ -179,7 +179,7 @@ export default function JudgmentQueue() {
 
             {/* Decision ID */}
             <div className="rounded-lg bg-slate-900 p-3">
-              <p className="text-xs text-slate-500">Decision ID</p>
+              <p className="text-xs text-white">Decision ID</p>
               <p className="mt-0.5 break-all font-mono text-xs text-slate-300">
                 {result.meta.decision_id}
               </p>
@@ -203,7 +203,7 @@ export default function JudgmentQueue() {
                       {r.result}
                     </Badge>
                     <span className="font-mono text-slate-300">{r.code}</span>
-                    <span className="text-slate-500">{r.reason}</span>
+                    <span className="text-white">{r.reason}</span>
                   </div>
                 ))}
               </div>
@@ -215,19 +215,19 @@ export default function JudgmentQueue() {
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Classification</h3>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-slate-500">Outcome:</span>{' '}
+                    <span className="text-white">Outcome:</span>{' '}
                     <span className="text-slate-200">{result.classifier.outcome}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Tier 1 signals:</span>{' '}
+                    <span className="text-white">Tier 1 signals:</span>{' '}
                     <span className="text-slate-200">{result.classifier.suspicion_count}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Tier 2 signals:</span>{' '}
+                    <span className="text-white">Tier 2 signals:</span>{' '}
                     <span className="text-slate-200">{result.classifier.investigative_count}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Override:</span>{' '}
+                    <span className="text-white">Override:</span>{' '}
                     <Badge variant={result.classifier.override_applied ? 'warning' : 'success'}>
                       {result.classifier.override_applied ? 'YES' : 'NO'}
                     </Badge>
@@ -239,7 +239,7 @@ export default function JudgmentQueue() {
             {/* Rationale */}
             <div>
               <h3 className="mb-2 text-sm font-semibold text-slate-300">Rationale</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">{result.rationale.summary}</p>
+              <p className="text-xs text-white leading-relaxed">{result.rationale.summary}</p>
             </div>
           </div>
         )}

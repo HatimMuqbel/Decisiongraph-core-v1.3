@@ -23,10 +23,10 @@ export default function NegativePathSearch({ report }: NegativePathSearchProps) 
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-white">
         Negative Path Search
       </h3>
-      <p className="mb-4 text-[10px] text-slate-600">
+      <p className="mb-4 text-[10px] text-white">
         Policies verified as NOT applicable — audit evidence of comprehensive review
       </p>
 
@@ -44,8 +44,8 @@ export default function NegativePathSearch({ report }: NegativePathSearchProps) 
               <Badge variant="success">CLEAR</Badge>
               <div>
                 <span className="font-medium text-slate-300">{s.name}</span>
-                <span className="ml-2 text-slate-500">({s.gate})</span>
-                <p className="mt-0.5 text-slate-500">{s.reason}</p>
+                <span className="ml-2 text-white">({s.gate})</span>
+                <p className="mt-0.5 text-white">{s.reason}</p>
               </div>
             </div>
           ))}
@@ -57,12 +57,12 @@ export default function NegativePathSearch({ report }: NegativePathSearchProps) 
               <Badge variant="success">CLEAR</Badge>
               <div>
                 <span className="font-mono font-medium text-slate-300">{r.code}</span>
-                <p className="mt-0.5 text-slate-500">{r.reason}</p>
+                <p className="mt-0.5 text-white">{r.reason}</p>
               </div>
             </div>
           ))}
           {clearedRules.length > 10 && (
-            <p className="pl-3 text-[10px] text-slate-500">
+            <p className="pl-3 text-[10px] text-white">
               +{clearedRules.length - 10} more cleared rules
             </p>
           )}
@@ -84,8 +84,8 @@ export default function NegativePathSearch({ report }: NegativePathSearchProps) 
                 <Badge variant="danger">TRIGGERED</Badge>
                 <div>
                   <span className="font-medium text-slate-300">{s.name}</span>
-                  <span className="ml-2 text-slate-500">({s.gate})</span>
-                  <p className="mt-0.5 text-slate-500">{s.reason}</p>
+                  <span className="ml-2 text-white">({s.gate})</span>
+                  <p className="mt-0.5 text-white">{s.reason}</p>
                 </div>
               </div>
             ))}

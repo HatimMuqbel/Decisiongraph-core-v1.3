@@ -3,7 +3,7 @@ import type { CascadeImpact } from '../../types';
 
 function PoolBar({ counts, label }: { counts: Record<string, number>; label: string }) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  if (total === 0) return <div className="text-xs text-slate-500">{label}: empty</div>;
+  if (total === 0) return <div className="text-xs text-white">{label}: empty</div>;
 
   const segments = [
     { key: 'ALLOW', color: 'bg-emerald-500', text: 'text-emerald-100' },
@@ -13,7 +13,7 @@ function PoolBar({ counts, label }: { counts: Record<string, number>; label: str
 
   return (
     <div className="space-y-1">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wider text-white">{label}</p>
       <div className="flex h-7 overflow-hidden rounded-md">
         {segments.map(({ key, color, text }) => {
           const n = counts[key] ?? 0;
@@ -54,7 +54,7 @@ export default function CascadeImpactPanel({ cascade }: Props) {
       ? { sym: '\u25B2', cls: 'text-emerald-400' }
       : ci.confidence_direction === 'DEGRADED'
         ? { sym: '\u25BC', cls: 'text-red-400' }
-        : { sym: '\u2014', cls: 'text-slate-500' };
+        : { sym: '\u2014', cls: 'text-white' };
 
   return (
     <div
@@ -83,19 +83,19 @@ export default function CascadeImpactPanel({ cascade }: Props) {
 
       <div className="grid grid-cols-3 gap-4 text-xs">
         <div>
-          <p className="text-slate-500">Confidence</p>
+          <p className="text-white">Confidence</p>
           <p className="text-slate-200">
-            {ci.confidence_before} <span className="text-slate-500">{'\u2192'}</span> {ci.confidence_after}{' '}
+            {ci.confidence_before} <span className="text-white">{'\u2192'}</span> {ci.confidence_after}{' '}
             <span className={confIcon.cls}>{confIcon.sym} {ci.confidence_direction}</span>
           </p>
         </div>
         <div>
-          <p className="text-slate-500">Posture</p>
+          <p className="text-white">Posture</p>
           <p className="text-slate-200 leading-tight">{ci.posture_before}</p>
-          <p className="text-slate-400 leading-tight">{'\u2192'} {ci.posture_after}</p>
+          <p className="text-white leading-tight">{'\u2192'} {ci.posture_after}</p>
         </div>
         <div>
-          <p className="text-slate-500">Pool Size</p>
+          <p className="text-white">Pool Size</p>
           <p className={clsx('font-medium', adequacyColor[ci.pool_adequacy] ?? 'text-slate-300')}>
             {ci.post_shift_pool_size} cases ({ci.pool_adequacy})
           </p>

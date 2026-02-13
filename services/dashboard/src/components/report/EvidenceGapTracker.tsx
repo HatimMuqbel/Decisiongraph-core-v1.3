@@ -44,10 +44,10 @@ export default function EvidenceGapTracker({ report }: EvidenceGapTrackerProps) 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
           Evidence Gap Tracker
         </h3>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-white">
           {completeness}% complete ({present.length}/{ALL_REQUIRED_FIELDS.length} required)
         </span>
       </div>
@@ -70,7 +70,7 @@ export default function EvidenceGapTracker({ report }: EvidenceGapTrackerProps) 
             {present.map((f) => (
               <div key={f} className="rounded bg-emerald-500/5 px-2 py-1 text-[11px]">
                 <span className="text-slate-300">{getLabel(f)}</span>
-                <span className="ml-1 font-mono text-[10px] text-slate-500">{f}</span>
+                <span className="ml-1 font-mono text-[10px] text-white">{f}</span>
               </div>
             ))}
           </div>
@@ -83,12 +83,12 @@ export default function EvidenceGapTracker({ report }: EvidenceGapTrackerProps) 
           </h4>
           <div className="space-y-1 max-h-48 overflow-y-auto">
             {missing.length === 0 ? (
-              <p className="text-[11px] text-slate-500">All required fields present.</p>
+              <p className="text-[11px] text-white">All required fields present.</p>
             ) : (
               missing.map((f) => (
                 <div key={f} className="rounded bg-amber-500/5 px-2 py-1 text-[11px]">
                   <span className="text-slate-300">{getLabel(f)}</span>
-                  <span className="ml-1 font-mono text-[10px] text-slate-500">{f}</span>
+                  <span className="ml-1 font-mono text-[10px] text-white">{f}</span>
                 </div>
               ))
             )}
@@ -113,10 +113,10 @@ export default function EvidenceGapTracker({ report }: EvidenceGapTrackerProps) 
                   optPresent.includes(f) ? 'bg-blue-500/5' : 'bg-slate-700/30'
                 }`}
               >
-                <span className={optPresent.includes(f) ? 'text-slate-300' : 'text-slate-500'}>
+                <span className={optPresent.includes(f) ? 'text-slate-300' : 'text-white'}>
                   {getLabel(f)}
                 </span>
-                <span className="ml-1 font-mono text-[10px] text-slate-600">{f}</span>
+                <span className="ml-1 font-mono text-[10px] text-white">{f}</span>
                 {optPresent.includes(f) && (
                   <span className="ml-1 text-blue-400">✓</span>
                 )}

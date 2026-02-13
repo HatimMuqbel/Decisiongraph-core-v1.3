@@ -20,10 +20,10 @@ export default function PrecedentIntelligence({ report }: Props) {
   if (!pa?.available) {
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
           Precedent Intelligence
         </h3>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-white">
           {pa?.message ?? 'Precedent analysis unavailable for this case.'}
         </p>
       </div>
@@ -47,10 +47,10 @@ export default function PrecedentIntelligence({ report }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
           Precedent Intelligence
         </h3>
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-white">
           {pa.scoring_version === 'v3' ? 'v3 Governed Model' : 'v2 Legacy'}
         </span>
       </div>
@@ -81,7 +81,7 @@ export default function PrecedentIntelligence({ report }: Props) {
         ) : (
           /* v2 fallback: flat confidence */
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
               Precedent Confidence
             </h4>
             <div className="text-3xl font-bold text-slate-200">
@@ -89,16 +89,16 @@ export default function PrecedentIntelligence({ report }: Props) {
             </div>
             <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
               <div>
-                <p className="text-slate-500">Supporting</p>
+                <p className="text-white">Supporting</p>
                 <p className="text-lg font-bold text-emerald-400">{pa.supporting_precedents ?? 0}</p>
               </div>
               <div>
-                <p className="text-slate-500">Contrary</p>
+                <p className="text-white">Contrary</p>
                 <p className="text-lg font-bold text-red-400">{pa.contrary_precedents ?? 0}</p>
               </div>
               <div>
-                <p className="text-slate-500">Neutral</p>
-                <p className="text-lg font-bold text-slate-400">{pa.neutral_precedents ?? 0}</p>
+                <p className="text-white">Neutral</p>
+                <p className="text-lg font-bold text-white">{pa.neutral_precedents ?? 0}</p>
               </div>
             </div>
           </div>
@@ -127,11 +127,11 @@ export default function PrecedentIntelligence({ report }: Props) {
             const tCount = cases.length - ntCount;
             return (
               <div className="mb-2">
-                <h4 className="text-xs font-semibold text-slate-400">
+                <h4 className="text-xs font-semibold text-white">
                   Top Comparable Cases ({cases.length})
                 </h4>
                 {ntCount > 0 && (
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-white mt-0.5">
                     Comparable: {cases.length} | Transferable: {tCount} | Non-Transferable: {ntCount}
                     {tCount < 3 && (
                       <span className="text-amber-400 ml-1">⚠ Effective precedent support is minimal.</span>
@@ -182,7 +182,7 @@ export default function PrecedentIntelligence({ report }: Props) {
           <div className="space-y-2">
             {ep.non_transferable_explanations.slice(0, 3).map((nt, i) => (
               <div key={i} className="rounded-lg bg-slate-800 p-3">
-                <span className="font-mono text-xs text-slate-400">{nt.precedent_id}</span>
+                <span className="font-mono text-xs text-white">{nt.precedent_id}</span>
                 {nt.reasons.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {nt.reasons.map((r, j) => (

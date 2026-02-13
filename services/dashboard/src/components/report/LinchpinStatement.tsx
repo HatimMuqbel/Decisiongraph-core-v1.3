@@ -12,7 +12,7 @@ export default function LinchpinStatement({ report }: LinchpinStatementProps) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
         Decision Summary
       </h3>
       <p className="text-base font-medium leading-relaxed text-slate-100">

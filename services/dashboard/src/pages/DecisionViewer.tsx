@@ -27,7 +27,7 @@ export default function DecisionViewer() {
   const [insuranceError, setInsuranceError] = useState<Error | null>(null);
   const { data: report } = useReportJson(decisionId ?? '');
 
-  if (!id) return <p className="text-slate-400">No case ID provided.</p>;
+  if (!id) return <p className="text-white">No case ID provided.</p>;
   if (loadingCase) return <Loading />;
   if (caseError) return <ErrorMessage error={caseError as Error} />;
   if (!demoCase) return <ErrorMessage error={new Error('Case not found')} />;
@@ -77,11 +77,11 @@ export default function DecisionViewer() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/cases" className="text-xs text-slate-500 hover:text-slate-400">
+          <Link to="/cases" className="text-xs text-white hover:text-white">
             &larr; Back to Demo Cases
           </Link>
           <h1 className="mt-1 text-2xl font-bold text-slate-100">{demoCase.name}</h1>
-          <p className="mt-1 text-sm text-slate-400">{demoCase.description}</p>
+          <p className="mt-1 text-sm text-white">{demoCase.description}</p>
         </div>
         <button
           onClick={handleRun}
@@ -101,7 +101,7 @@ export default function DecisionViewer() {
           >
             View Full Report &rarr;
           </button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-white">
             Decision: <span className="font-mono">{(decisionId ?? '').slice(0, 24)}</span>
           </span>
         </div>
@@ -111,7 +111,7 @@ export default function DecisionViewer() {
 
       {/* Case Facts */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
           Input Facts ({demoCase.facts?.length ?? 0} fields)
         </h2>
         <EvidenceTable
@@ -132,7 +132,7 @@ export default function DecisionViewer() {
 
           {/* Disposition */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Decision Outcome
             </h2>
             <div className="flex items-center gap-3">
@@ -145,29 +145,29 @@ export default function DecisionViewer() {
 
           {/* Precedent Metrics */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Precedent Analysis
             </h2>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               <div>
-                <p className="text-xs text-slate-500">Alignment</p>
+                <p className="text-xs text-white">Alignment</p>
                 <p className="text-lg font-bold text-slate-100">{vm.precedent_alignment_pct ?? 0}%</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Match Rate</p>
+                <p className="text-xs text-white">Match Rate</p>
                 <p className="text-lg font-bold text-slate-100">{vm.precedent_match_rate ?? 0}%</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Supporting</p>
+                <p className="text-xs text-white">Supporting</p>
                 <p className="text-lg font-bold text-emerald-400">{vm.precedent_analysis?.supporting_precedents ?? 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Contrary</p>
+                <p className="text-xs text-white">Contrary</p>
                 <p className="text-lg font-bold text-red-400">{vm.precedent_analysis?.contrary_precedents ?? 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Neutral</p>
-                <p className="text-lg font-bold text-slate-400">{vm.precedent_analysis?.neutral_precedents ?? 0}</p>
+                <p className="text-xs text-white">Neutral</p>
+                <p className="text-lg font-bold text-white">{vm.precedent_analysis?.neutral_precedents ?? 0}</p>
               </div>
             </div>
           </div>
@@ -210,7 +210,7 @@ export default function DecisionViewer() {
 
           {/* Disposition */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Decision Outcome
             </h2>
             <div className="flex items-center gap-3">
@@ -228,7 +228,7 @@ export default function DecisionViewer() {
 
           {/* Elimination Trace */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Decision Path
             </h2>
             <p className="font-mono text-xs text-slate-300">
@@ -238,16 +238,16 @@ export default function DecisionViewer() {
 
           {/* Rules Fired */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Rules Fired
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-slate-400">Code</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-slate-400">Result</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-slate-400">Reason</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-white">Code</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-white">Result</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-white">Reason</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,7 +259,7 @@ export default function DecisionViewer() {
                           {r.result}
                         </Badge>
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-400">{r.reason}</td>
+                      <td className="px-3 py-2 text-xs text-white">{r.reason}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -269,7 +269,7 @@ export default function DecisionViewer() {
 
           {/* Evidence Used */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Evidence Used (Registry Labels)
             </h2>
             <EvidenceTable evidence={pack.evaluation_trace.evidence_used} />
@@ -280,31 +280,31 @@ export default function DecisionViewer() {
             <PrecedentIntelligence report={report.report} />
           ) : pack.precedent_analysis?.available ? (
             <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
                 Precedent Analysis
               </h2>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
-                  <p className="text-xs text-slate-500">Confidence</p>
+                  <p className="text-xs text-white">Confidence</p>
                   <p className="text-lg font-bold text-slate-100">
                     {pack.precedent_analysis.confidence_level ?? `${Math.round((pack.precedent_analysis.precedent_confidence ?? 0) * 100)}%`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Supporting</p>
+                  <p className="text-xs text-white">Supporting</p>
                   <p className="text-lg font-bold text-emerald-400">
                     {pack.precedent_analysis.supporting_precedents}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Contrary</p>
+                  <p className="text-xs text-white">Contrary</p>
                   <p className="text-lg font-bold text-red-400">
                     {pack.precedent_analysis.contrary_precedents}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Neutral</p>
-                  <p className="text-lg font-bold text-slate-400">
+                  <p className="text-xs text-white">Neutral</p>
+                  <p className="text-lg font-bold text-white">
                     {pack.precedent_analysis.neutral_precedents}
                   </p>
                 </div>
@@ -314,7 +314,7 @@ export default function DecisionViewer() {
 
           {/* Rationale */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
               Rationale
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed">{pack.rationale.summary}</p>

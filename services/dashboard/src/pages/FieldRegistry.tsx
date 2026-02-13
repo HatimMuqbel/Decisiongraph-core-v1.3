@@ -94,7 +94,7 @@ export default function FieldRegistry() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Field Registry</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-white">
           28 canonical banking fields used across all AML decision packs and seed generation
         </p>
       </div>
@@ -132,34 +132,34 @@ export default function FieldRegistry() {
         </select>
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-white">
         Showing {filtered.length} of {REGISTRY.length} fields
       </p>
 
       {/* Field Groups */}
       {Object.entries(groupedFields).map(([grp, fields]) => (
         <div key={grp}>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
             {grp}
-            <span className="ml-2 text-xs font-normal text-slate-500">({fields.length})</span>
+            <span className="ml-2 text-xs font-normal text-white">({fields.length})</span>
           </h2>
           <div className="overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-800">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-700">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                     Canonical Name
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                     Display Label
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                     Description
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                     Example
                   </th>
                 </tr>
@@ -176,8 +176,8 @@ export default function FieldRegistry() {
                         {f.type}
                       </span>
                     </td>
-                    <td className="max-w-xs px-4 py-3 text-xs text-slate-400">{f.description}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{f.example}</td>
+                    <td className="max-w-xs px-4 py-3 text-xs text-white">{f.description}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-white">{f.example}</td>
                   </tr>
                 ))}
               </tbody>
@@ -188,7 +188,7 @@ export default function FieldRegistry() {
 
       {filtered.length === 0 && (
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-8 text-center">
-          <p className="text-sm text-slate-400">No fields match the current filters.</p>
+          <p className="text-sm text-white">No fields match the current filters.</p>
         </div>
       )}
     </div>

@@ -111,7 +111,7 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
       open={defaultOpen}
     >
       <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700/30 transition-colors">
-        <span className="font-mono text-xs text-slate-400 min-w-[80px]">
+        <span className="font-mono text-xs text-white min-w-[80px]">
           {sc.precedent_id?.slice(0, 10)}…
         </span>
         <Badge variant={dispositionVariant(sc.outcome_normalized || sc.disposition)}>
@@ -124,12 +124,12 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
               <span className={clsx('text-[10px]', ta.op_alignment === 'ALIGNED' ? 'text-emerald-400' : ta.op_alignment === 'CONTRARY' ? 'text-red-400' : 'text-amber-400')}>
                 Op: {ta.op_alignment}
               </span>
-              <span className={clsx('text-[10px]', ta.suspicion_alignment === 'ALIGNED' ? 'text-emerald-400' : ta.suspicion_alignment === 'CONTRARY' ? 'text-red-400' : 'text-slate-400')}>
+              <span className={clsx('text-[10px]', ta.suspicion_alignment === 'ALIGNED' ? 'text-emerald-400' : ta.suspicion_alignment === 'CONTRARY' ? 'text-red-400' : 'text-white')}>
                 Reg: {ta.suspicion_alignment}
               </span>
             </div>
             {compositeDesc && (
-              <p className="text-[10px] text-slate-400 italic">{compositeDesc}</p>
+              <p className="text-[10px] text-white italic">{compositeDesc}</p>
             )}
           </div>
         ) : reportingDiverges ? (
@@ -221,7 +221,7 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
                 {topMatches.length > 0 ? topMatches.map(([k, v]) => (
                   <div key={k} className="py-0.5">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-400">{V3_FIELD_LABELS[k] ?? k}</span>
+                      <span className="text-white">{V3_FIELD_LABELS[k] ?? k}</span>
                       <span className={scoreColor(v)}>{v}%</span>
                     </div>
                     <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-700">
@@ -229,7 +229,7 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
                     </div>
                   </div>
                 )) : (
-                  <p className="text-[11px] text-slate-500">No strong matches</p>
+                  <p className="text-[11px] text-white">No strong matches</p>
                 )}
               </div>
               <div>
@@ -237,7 +237,7 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
                 {topDiffs.length > 0 ? topDiffs.map(([k, v]) => (
                   <div key={k} className="py-0.5">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-400">{V3_FIELD_LABELS[k] ?? k}</span>
+                      <span className="text-white">{V3_FIELD_LABELS[k] ?? k}</span>
                       <span className={scoreColor(v)}>{v}%</span>
                     </div>
                     <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-700">
@@ -245,7 +245,7 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
                     </div>
                   </div>
                 )) : (
-                  <p className="text-[11px] text-slate-500">No significant differences</p>
+                  <p className="text-[11px] text-white">No significant differences</p>
                 )}
               </div>
             </div>

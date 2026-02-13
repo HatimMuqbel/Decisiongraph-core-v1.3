@@ -60,7 +60,7 @@ export default function TypologyMap({ report }: TypologyMapProps) {
 
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
           Typology Map
         </h3>
         {isForming ? (
@@ -69,7 +69,7 @@ export default function TypologyMap({ report }: TypologyMapProps) {
             escalation threshold.
           </p>
         ) : (
-          <p className="text-sm text-slate-400">No suspicious typology patterns detected.</p>
+          <p className="text-sm text-white">No suspicious typology patterns detected.</p>
         )}
       </div>
     );
@@ -77,7 +77,7 @@ export default function TypologyMap({ report }: TypologyMapProps) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
         Typology Match Analysis
       </h3>
       <ResponsiveContainer width="100%" height={Math.max(120, data.length * 36)}>

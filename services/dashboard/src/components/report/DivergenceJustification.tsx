@@ -27,10 +27,10 @@ export default function DivergenceJustification({ divergence, overrideStatement 
             <tbody>
               {divergence.contrary_details.map((cd, i) => (
                 <tr key={i} className="border-b border-amber-500/10">
-                  <td className="px-2 py-1.5 font-mono text-slate-400">{cd.precedent_id?.slice(0, 10)}…</td>
+                  <td className="px-2 py-1.5 font-mono text-white">{cd.precedent_id?.slice(0, 10)}…</td>
                   <td className="px-2 py-1.5 text-red-400">{cd.outcome}</td>
                   <td className="px-2 py-1.5 text-slate-300">{cd.similarity_pct}%</td>
-                  <td className="px-2 py-1.5 text-slate-400">{cd.distinguishing_factors}</td>
+                  <td className="px-2 py-1.5 text-white">{cd.distinguishing_factors}</td>
                 </tr>
               ))}
             </tbody>
@@ -52,20 +52,20 @@ export default function DivergenceJustification({ divergence, overrideStatement 
         </h5>
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <span className="w-20 text-xs text-slate-500">Reviewer</span>
-            <div className="flex-1 border-b border-slate-700 py-1 text-xs text-slate-600 italic">
+            <span className="w-20 text-xs text-white">Reviewer</span>
+            <div className="flex-1 border-b border-slate-700 py-1 text-xs text-white italic">
               ____________________
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-20 text-xs text-slate-500">Date</span>
-            <div className="flex-1 border-b border-slate-700 py-1 text-xs text-slate-600 italic">
+            <span className="w-20 text-xs text-white">Date</span>
+            <div className="flex-1 border-b border-slate-700 py-1 text-xs text-white italic">
               ____________________
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="w-20 text-xs text-slate-500">Rationale</span>
-            <div className="flex-1 border-b border-slate-700 py-1 text-xs text-slate-600 italic">
+            <span className="w-20 text-xs text-white">Rationale</span>
+            <div className="flex-1 border-b border-slate-700 py-1 text-xs text-white italic">
               ____________________
             </div>
           </div>

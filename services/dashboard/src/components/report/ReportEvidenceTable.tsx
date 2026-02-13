@@ -25,10 +25,10 @@ export default function ReportEvidenceTable({ report }: ReportEvidenceTableProps
   if (allEvidence.length === 0) {
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
           Full Evidence Table
         </h3>
-        <p className="text-sm text-slate-500">No evidence recorded.</p>
+        <p className="text-sm text-white">No evidence recorded.</p>
       </div>
     );
   }
@@ -47,23 +47,23 @@ export default function ReportEvidenceTable({ report }: ReportEvidenceTableProps
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white">
         Full Evidence Table — Registry Labels ({allEvidence.length} fields)
       </h3>
 
       <div className="space-y-4">
         {grouped.map((group) => (
           <div key={group.label}>
-            <h4 className="mb-2 text-xs font-medium text-slate-400 border-b border-slate-700/40 pb-1">
+            <h4 className="mb-2 text-xs font-medium text-white border-b border-slate-700/40 pb-1">
               {group.label}
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left">
-                    <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-slate-500 w-40">Field</th>
-                    <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-slate-500">Label</th>
-                    <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-slate-500 w-32">Value</th>
+                    <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-white w-40">Field</th>
+                    <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-white">Label</th>
+                    <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-white w-32">Value</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -72,7 +72,7 @@ export default function ReportEvidenceTable({ report }: ReportEvidenceTableProps
                     const isTruthy = ev.value === true || ev.value === 'true';
                     return (
                       <tr key={i} className="border-t border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="px-3 py-1.5 font-mono text-[11px] text-slate-400">{ev.field}</td>
+                        <td className="px-3 py-1.5 font-mono text-[11px] text-white">{ev.field}</td>
                         <td className="px-3 py-1.5 text-xs text-slate-300">{getLabel(ev.field)}</td>
                         <td className="px-3 py-1.5">
                           {isFlag && isTruthy ? (
@@ -94,7 +94,7 @@ export default function ReportEvidenceTable({ report }: ReportEvidenceTableProps
 
         {uncategorized.length > 0 && (
           <div>
-            <h4 className="mb-2 text-xs font-medium text-slate-400 border-b border-slate-700/40 pb-1">
+            <h4 className="mb-2 text-xs font-medium text-white border-b border-slate-700/40 pb-1">
               Other
             </h4>
             <div className="overflow-x-auto">
@@ -102,7 +102,7 @@ export default function ReportEvidenceTable({ report }: ReportEvidenceTableProps
                 <tbody>
                   {uncategorized.map((ev, i) => (
                     <tr key={i} className="border-t border-slate-800/50">
-                      <td className="px-3 py-1.5 font-mono text-[11px] text-slate-400 w-40">{ev.field}</td>
+                      <td className="px-3 py-1.5 font-mono text-[11px] text-white w-40">{ev.field}</td>
                       <td className="px-3 py-1.5 text-xs text-slate-300">{getLabel(ev.field)}</td>
                       <td className="px-3 py-1.5 text-xs text-slate-200 w-32">{formatVal(ev.value)}</td>
                     </tr>

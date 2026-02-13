@@ -967,5 +967,970 @@
     },
     "non_transferable_count": 0,
     "governed_alignment": "41/60"
+  },
+  {
+    "case_id": "pep-domestic-low-value-clean",
+    "name": "Domestic PEP - Low Value Clean (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 60.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7788,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "41/60"
+  },
+  {
+    "case_id": "crypto-unhosted-wallet-high-risk",
+    "name": "Crypto to Sanctioned Destination (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "NONE",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": "0 precedents above floor",
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 0.0,
+        "level": "NONE",
+        "bottleneck": true,
+        "note": "No comparable precedents above similarity threshold"
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": false,
+        "note": "No strongly comparable cases found"
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "0/0"
+  },
+  {
+    "case_id": "shell-company-layering-prior-strs",
+    "name": "Shell + Layering + Prior STRs (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 27.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.6727,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.layering",
+        "flag.shell_company",
+        "txn.amount_band",
+        "txn.cross_border"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "16/27"
+  },
+  {
+    "case_id": "adverse-media-generic-clean-rebuttal",
+    "name": "Adverse Media - Clean Rebuttal (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 109.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8717,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "2/109"
+  },
+  {
+    "case_id": "foreign-pep-hr-geo-missing-purpose",
+    "name": "Foreign PEP + HR Geo + No Purpose (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 11.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8748,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 0.963,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "41/60"
+  },
+  {
+    "case_id": "allow-with-str-controlled-delivery",
+    "name": "Allow + STR Controlled Delivery (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 25.0,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.796,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "screening.adverse_media_level"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "0/25"
+  },
+  {
+    "case_id": "zero-flags-established-customer",
+    "name": "Zero Flags - Established Customer (PASS)",
+    "category": "PASS",
+    "confidence_level": "VERY_HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 109.0,
+        "level": "VERY_HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8991,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "107/109"
+  },
+  {
+    "case_id": "everything-adverse",
+    "name": "Everything Adverse - Maximum Flags (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "NONE",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": "0 precedents above floor",
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 0.0,
+        "level": "NONE",
+        "bottleneck": true,
+        "note": "No comparable precedents above similarity threshold"
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": false,
+        "note": "No strongly comparable cases found"
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "0/0"
+  },
+  {
+    "case_id": "first-case-new-policy-regime",
+    "name": "First Case Under New Policy (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "NONE",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": "0 precedents above floor",
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 0.0,
+        "level": "NONE",
+        "bottleneck": true,
+        "note": "No comparable precedents above similarity threshold"
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.6811,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.shell_company",
+        "flag.unusual_for_profile",
+        "txn.amount_band",
+        "txn.cross_border",
+        "txn.destination_country_risk",
+        "txn.pattern_matches_profile",
+        "txn.round_amount"
+      ],
+      "divergent_drivers": [
+        "flag.layering",
+        "txn.source_of_funds_clear"
+      ]
+    },
+    "non_transferable_count": 7,
+    "governed_alignment": "16/33"
+  },
+  {
+    "case_id": "all-precedents-non-transferable",
+    "name": "All Precedents Non-Transferable (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 117.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7468,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.layering",
+        "flag.shell_company",
+        "txn.amount_band",
+        "txn.cross_border"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "81/117"
+  },
+  {
+    "case_id": "single-comparable-precedent",
+    "name": "Single Comparable Precedent (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 9.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.6955,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.cross_border",
+        "txn.pattern_matches_profile"
+      ],
+      "divergent_drivers": [
+        "flag.shell_company",
+        "flag.structuring",
+        "txn.source_of_funds_clear"
+      ]
+    },
+    "non_transferable_count": 9,
+    "governed_alignment": "0/9"
+  },
+  {
+    "case_id": "classifier-str-all-precedents-no-report",
+    "name": "Classifier STR vs All-Clear Pool (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": "0 terminal precedents (ALLOW/BLOCK)",
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 4.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": "Precedent pool below minimum threshold"
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7839,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "screening.adverse_media_level"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "0/4"
+  },
+  {
+    "case_id": "classifier-no-report-half-str",
+    "name": "Classifier Clear vs Mixed STR Pool (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "similarity_quality",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 72.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8446,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "71/72"
+  },
+  {
+    "case_id": "mixed-undetermined-determined-pool",
+    "name": "Mixed Determined/Undetermined Pool (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 11.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8264,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "41/60"
+  },
+  {
+    "case_id": "forming-typology-strong-classifier",
+    "name": "Forming Typology + Strong Signal (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 141.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7192,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.rapid_movement",
+        "flag.unusual_for_profile",
+        "txn.pattern_matches_profile"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "128/141"
+  },
+  {
+    "case_id": "established-typology-weak-evidence",
+    "name": "Established Typology - Weak Evidence (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 5.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8406,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.structuring",
+        "txn.amount_band",
+        "txn.just_below_threshold",
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": [
+        "txn.multiple_same_day",
+        "txn.round_amount"
+      ]
+    },
+    "non_transferable_count": 8,
+    "governed_alignment": "13/15"
+  },
+  {
+    "case_id": "multiple-typologies-same-case",
+    "name": "Multiple Typologies - Shell + Structuring (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 69.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7164,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.layering",
+        "flag.shell_company",
+        "txn.amount_band",
+        "txn.cross_border"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "48/69"
+  },
+  {
+    "case_id": "near-threshold-typology",
+    "name": "Near Threshold Typology (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 153.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.7429,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.rapid_movement",
+        "flag.unusual_for_profile",
+        "txn.amount_band",
+        "txn.pattern_matches_profile",
+        "txn.round_amount"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "132/153"
+  },
+  {
+    "case_id": "no-typology-pure-obligation",
+    "name": "No Typology - Pure LCTR Obligation (PASS)",
+    "category": "PASS",
+    "confidence_level": "HIGH",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 29.0,
+        "level": "HIGH",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8521,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "txn.pattern_matches_profile",
+        "txn.source_of_funds_clear"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "27/29"
+  },
+  {
+    "case_id": "duplicate-indicator-names",
+    "name": "Duplicate Indicators - Multi-Source (ESCALATE)",
+    "category": "ESCALATE",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [
+      {
+        "name": "pool_adequacy",
+        "value": 11.0,
+        "level": "MODERATE",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "similarity_quality",
+        "value": 0.8255,
+        "level": "HIGH",
+        "bottleneck": false,
+        "note": ""
+      },
+      {
+        "name": "outcome_consistency",
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
+      },
+      {
+        "name": "evidence_completeness",
+        "value": 1.0,
+        "level": "VERY_HIGH",
+        "bottleneck": false,
+        "note": ""
+      }
+    ],
+    "driver_causality": {
+      "shared_drivers": [
+        "customer.pep",
+        "screening.adverse_media_level",
+        "screening.pep_match",
+        "txn.amount_band"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "41/60"
   }
 ]

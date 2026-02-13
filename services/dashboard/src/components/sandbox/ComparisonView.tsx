@@ -7,7 +7,7 @@ const magnitudeStyle: Record<string, string> = {
   FUNDAMENTAL: 'bg-red-500/20 text-red-400 border-red-500/30',
   SIGNIFICANT: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   MODERATE: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  MINOR: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+  MINOR: 'bg-slate-500/20 text-white border-slate-500/30',
 };
 
 interface Props {
@@ -44,7 +44,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-700/60 bg-slate-800">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
                 Metric
               </th>
               {reports.map((r) => (
@@ -60,7 +60,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
           <tbody className="divide-y divide-slate-700/30 bg-slate-800/50">
             {/* Magnitude */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Magnitude</td>
+              <td className="px-4 py-2.5 text-xs text-white">Magnitude</td>
               {reports.map((r) => (
                 <td key={r.draft.id} className="px-4 py-2.5 text-center">
                   <span
@@ -76,7 +76,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Affected */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Affected Cases</td>
+              <td className="px-4 py-2.5 text-xs text-white">Affected Cases</td>
               {reports.map((r) => (
                 <td
                   key={r.draft.id}
@@ -91,7 +91,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Escalated */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Escalated</td>
+              <td className="px-4 py-2.5 text-xs text-white">Escalated</td>
               {reports.map((r) => (
                 <td key={r.draft.id} className="px-4 py-2.5 text-center text-sm text-slate-200">
                   {r.escalation_count}
@@ -100,7 +100,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* New STRs */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">New STR Filings</td>
+              <td className="px-4 py-2.5 text-xs text-white">New STR Filings</td>
               {reports.map((r) => (
                 <td key={r.draft.id} className="px-4 py-2.5 text-center text-sm text-slate-200">
                   {r.new_str_filings}
@@ -109,7 +109,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Workload */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Analyst Hours/Mo</td>
+              <td className="px-4 py-2.5 text-xs text-white">Analyst Hours/Mo</td>
               {reports.map((r) => (
                 <td
                   key={r.draft.id}
@@ -128,7 +128,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Filing Cost */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Filing Cost/Mo</td>
+              <td className="px-4 py-2.5 text-xs text-white">Filing Cost/Mo</td>
               {reports.map((r) => (
                 <td key={r.draft.id} className="px-4 py-2.5 text-center text-sm text-slate-200">
                   ${r.estimated_filing_cost_month.toLocaleString()}
@@ -137,7 +137,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Warnings */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Warnings</td>
+              <td className="px-4 py-2.5 text-xs text-white">Warnings</td>
               {reports.map((r) => (
                 <td
                   key={r.draft.id}
@@ -158,7 +158,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Cascade Reversals */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Posture Reversals</td>
+              <td className="px-4 py-2.5 text-xs text-white">Posture Reversals</td>
               {reports.map((r) => {
                 const reversals = r.cascade_impacts.filter((c) => c.posture_reversal).length;
                 return (
@@ -176,7 +176,7 @@ export default function ComparisonView({ reports, onDiscard }: Props) {
             </tr>
             {/* Actions */}
             <tr>
-              <td className="px-4 py-2.5 text-xs text-slate-400">Actions</td>
+              <td className="px-4 py-2.5 text-xs text-white">Actions</td>
               {reports.map((r, idx) => (
                 <td key={r.draft.id} className="px-4 py-2.5 text-center">
                   <button

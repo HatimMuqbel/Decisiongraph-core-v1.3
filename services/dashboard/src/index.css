@@ -82,8 +82,8 @@ button:focus-visible {
   .text-slate-300 {
     color: #1e293b !important;
   }
-  .text-slate-400,
-  .text-slate-500 {
+  .text-white,
+  .text-white {
     color: #64748b !important;
   }
 }

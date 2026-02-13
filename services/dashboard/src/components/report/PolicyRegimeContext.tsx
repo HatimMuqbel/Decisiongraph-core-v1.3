@@ -7,7 +7,7 @@ interface Props {
 const MAGNITUDE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   high: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'HIGH' },
   moderate: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: 'MODERATE' },
-  low: { bg: 'bg-slate-500/20', text: 'text-slate-400', label: 'LOW' },
+  low: { bg: 'bg-slate-500/20', text: 'text-white', label: 'LOW' },
 };
 
 const DISPOSITION_COLORS: Record<string, string> = {
@@ -18,7 +18,7 @@ const DISPOSITION_COLORS: Record<string, string> = {
 
 function DistributionBars({ distribution, total }: { distribution: Record<string, number>; total: number }) {
   if (!total || Object.keys(distribution).length === 0) {
-    return <p className="text-[11px] text-slate-500 italic">No cases</p>;
+    return <p className="text-[11px] text-white italic">No cases</p>;
   }
   return (
     <div className="space-y-1">
@@ -30,8 +30,8 @@ function DistributionBars({ distribution, total }: { distribution: Record<string
           return (
             <div key={disp}>
               <div className="flex justify-between text-[11px]">
-                <span className="text-slate-400">{disp}</span>
-                <span className="text-slate-400">{count} ({pct}%)</span>
+                <span className="text-white">{disp}</span>
+                <span className="text-white">{count} ({pct}%)</span>
               </div>
               <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
                 <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(pct, 3)}%` }} />
@@ -66,7 +66,7 @@ export default function PolicyRegimeContext({ regimeAnalysis }: Props) {
           <p className="text-sm font-medium text-slate-200">
             Active shift: {shift.name}
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-white">
             Effective: {shift.effective_date} &middot; {shift.description}
           </p>
 
@@ -74,12 +74,12 @@ export default function PolicyRegimeContext({ regimeAnalysis }: Props) {
             {/* Pre-shift card */}
             <div className="rounded-lg bg-slate-700/50 p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-white">
                   Pre-Shift
                 </span>
-                <span className="text-[10px] text-slate-500">Superseded policy</span>
+                <span className="text-[10px] text-white">Superseded policy</span>
               </div>
-              <p className="mb-2 text-lg font-bold text-slate-300">{ra.pre_shift_count} <span className="text-xs font-normal text-slate-500">cases</span></p>
+              <p className="mb-2 text-lg font-bold text-slate-300">{ra.pre_shift_count} <span className="text-xs font-normal text-white">cases</span></p>
               <DistributionBars distribution={ra.pre_shift_distribution} total={ra.pre_shift_count} />
             </div>
 
@@ -91,7 +91,7 @@ export default function PolicyRegimeContext({ regimeAnalysis }: Props) {
                 </span>
                 <span className="text-[10px] text-emerald-500">Current policy &#10003;</span>
               </div>
-              <p className="mb-2 text-lg font-bold text-slate-200">{ra.post_shift_count} <span className="text-xs font-normal text-slate-500">cases</span></p>
+              <p className="mb-2 text-lg font-bold text-slate-200">{ra.post_shift_count} <span className="text-xs font-normal text-white">cases</span></p>
               <DistributionBars distribution={ra.post_shift_distribution} total={ra.post_shift_count} />
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function PolicyRegimeContext({ regimeAnalysis }: Props) {
           Post-shift pool: <span className="font-medium">{ra.post_shift_count}</span> cases (effective pool for confidence).
         </p>
         {ra.guidance && (
-          <p className="text-[11px] text-slate-400 italic">{ra.guidance}</p>
+          <p className="text-[11px] text-white italic">{ra.guidance}</p>
         )}
       </div>
     </div>

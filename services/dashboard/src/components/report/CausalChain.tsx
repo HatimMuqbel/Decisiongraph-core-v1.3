@@ -17,10 +17,10 @@ export default function CausalChain({ report }: CausalChainProps) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-white">
         Causal Chain
       </h3>
-      <p className="mb-4 text-[10px] text-slate-600">
+      <p className="mb-4 text-[10px] text-white">
         Signal → Rule → Decision chain — full inference provenance
       </p>
 
@@ -32,19 +32,19 @@ export default function CausalChain({ report }: CausalChainProps) {
             {tier1.map((s, i) => (
               <div key={i} className="rounded-lg bg-red-500/5 border border-red-500/10 px-2 py-1.5 text-[11px]">
                 <span className="font-mono font-medium text-red-400">{s.code}</span>
-                {s.field && <span className="ml-1 text-slate-500">({s.field})</span>}
-                <p className="mt-0.5 text-slate-500 line-clamp-2">{s.detail}</p>
+                {s.field && <span className="ml-1 text-white">({s.field})</span>}
+                <p className="mt-0.5 text-white line-clamp-2">{s.detail}</p>
               </div>
             ))}
             {tier2.map((s, i) => (
               <div key={`t2-${i}`} className="rounded-lg bg-amber-500/5 border border-amber-500/10 px-2 py-1.5 text-[11px]">
                 <span className="font-mono font-medium text-amber-400">{s.code}</span>
-                {s.field && <span className="ml-1 text-slate-500">({s.field})</span>}
-                <p className="mt-0.5 text-slate-500 line-clamp-2">{s.detail}</p>
+                {s.field && <span className="ml-1 text-white">({s.field})</span>}
+                <p className="mt-0.5 text-white line-clamp-2">{s.detail}</p>
               </div>
             ))}
             {tier1.length === 0 && tier2.length === 0 && (
-              <p className="text-[11px] text-slate-500">No signals detected</p>
+              <p className="text-[11px] text-white">No signals detected</p>
             )}
           </div>
         </div>
@@ -56,11 +56,11 @@ export default function CausalChain({ report }: CausalChainProps) {
             {triggered.map((r, i) => (
               <div key={i} className="rounded-lg bg-amber-500/5 border border-amber-500/10 px-2 py-1.5 text-[11px]">
                 <span className="font-mono font-medium text-amber-300">{r.code}</span>
-                <p className="mt-0.5 text-slate-500 line-clamp-2">{r.reason}</p>
+                <p className="mt-0.5 text-white line-clamp-2">{r.reason}</p>
               </div>
             ))}
             {triggered.length === 0 && (
-              <p className="text-[11px] text-slate-500">No rules triggered</p>
+              <p className="text-[11px] text-white">No rules triggered</p>
             )}
           </div>
         </div>
@@ -70,7 +70,7 @@ export default function CausalChain({ report }: CausalChainProps) {
           <h4 className="mb-2 text-xs font-medium text-purple-400">③ Gate Decisions</h4>
           <div className="space-y-2">
             <div className="rounded-lg bg-slate-900 px-2 py-2 text-[11px]">
-              <p className="text-slate-500">Gate 1 (Escalation)</p>
+              <p className="text-white">Gate 1 (Escalation)</p>
               <p className={clsx(
                 'mt-0.5 font-semibold',
                 report.gate1_passed ? 'text-emerald-400' : 'text-red-400',
@@ -79,7 +79,7 @@ export default function CausalChain({ report }: CausalChainProps) {
               </p>
             </div>
             <div className="rounded-lg bg-slate-900 px-2 py-2 text-[11px]">
-              <p className="text-slate-500">Gate 2 (STR)</p>
+              <p className="text-white">Gate 2 (STR)</p>
               <p className={clsx(
                 'mt-0.5 font-semibold',
                 report.gate2_status === 'CLEAR' ? 'text-emerald-400' : 'text-amber-400',
@@ -119,10 +119,10 @@ export default function CausalChain({ report }: CausalChainProps) {
               >
                 {report.verdict}
               </Badge>
-              <p className="mt-2 text-xs text-slate-400">{report.action || 'N/A'}</p>
+              <p className="mt-2 text-xs text-white">{report.action || 'N/A'}</p>
             </div>
             <div className="rounded-lg bg-slate-900 px-2 py-2 text-[11px]">
-              <p className="text-slate-500">Canonical</p>
+              <p className="text-white">Canonical</p>
               <p className="mt-0.5 text-slate-300">
                 {report.canonical_outcome?.disposition} / {report.canonical_outcome?.reporting}
               </p>

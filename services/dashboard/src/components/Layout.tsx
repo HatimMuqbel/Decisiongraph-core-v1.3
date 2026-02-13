@@ -28,7 +28,7 @@ export default function Layout() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-100">{branding.title}</p>
-            <p className="text-[10px] text-slate-500">{branding.subtitle}</p>
+            <p className="text-[10px] text-white">{branding.subtitle}</p>
           </div>
         </div>
 
@@ -44,7 +44,7 @@ export default function Layout() {
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                   isActive
                     ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    : 'text-white hover:bg-slate-800 hover:text-slate-200'
                 )
               }
             >
@@ -56,8 +56,8 @@ export default function Layout() {
 
         {/* Footer */}
         <div className="border-t border-slate-700/60 px-5 py-3">
-          <p className="text-[10px] text-slate-600">{branding.footerLine1}</p>
-          <p className="text-[10px] text-slate-600">{branding.footerLine2}</p>
+          <p className="text-[10px] text-white">{branding.footerLine1}</p>
+          <p className="text-[10px] text-white">{branding.footerLine2}</p>
         </div>
       </aside>
 

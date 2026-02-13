@@ -28,7 +28,7 @@ export default function PolicyShifts() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Policy Shifts</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-white">
             Track how regulatory and internal policy changes affect decision outcomes
           </p>
         </div>
@@ -82,7 +82,7 @@ export default function PolicyShifts() {
 
       {shiftList.length === 0 && (
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-8 text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-white">
             No policy shifts detected. Shifts are created when decision pack rules
             or thresholds change between policy versions.
           </p>
@@ -103,17 +103,17 @@ export default function PolicyShifts() {
             <Loading text="Loading cases…" />
           ) : cases && cases.cases.length > 0 ? (
             <div className="overflow-x-auto">
-              <p className="mb-3 text-xs text-slate-500">
+              <p className="mb-3 text-xs text-white">
                 {cases.total_cases} total cases analyzed
               </p>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="px-3 py-2 text-left text-xs text-slate-400">Precedent ID</th>
-                    <th className="px-3 py-2 text-left text-xs text-slate-400">Summary</th>
-                    <th className="px-3 py-2 text-left text-xs text-slate-400">Before</th>
-                    <th className="px-3 py-2 text-left text-xs text-slate-400">After</th>
-                    <th className="px-3 py-2 text-left text-xs text-slate-400">Change Type</th>
+                    <th className="px-3 py-2 text-left text-xs text-white">Precedent ID</th>
+                    <th className="px-3 py-2 text-left text-xs text-white">Summary</th>
+                    <th className="px-3 py-2 text-left text-xs text-white">Before</th>
+                    <th className="px-3 py-2 text-left text-xs text-white">After</th>
+                    <th className="px-3 py-2 text-left text-xs text-white">Change Type</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,7 +122,7 @@ export default function PolicyShifts() {
                       <td className="px-3 py-2 font-mono text-xs text-slate-300">
                         {c.precedent_id}
                       </td>
-                      <td className="max-w-xs truncate px-3 py-2 text-xs text-slate-400">
+                      <td className="max-w-xs truncate px-3 py-2 text-xs text-white">
                         {c.case_summary}
                       </td>
                       <td className="px-3 py-2">
@@ -146,7 +146,7 @@ export default function PolicyShifts() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No cases found for this shift.</p>
+            <p className="text-sm text-white">No cases found for this shift.</p>
           )}
         </div>
       )}

@@ -43,12 +43,12 @@ export default function RiskHeatmap({ report }: RiskHeatmapProps) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
         Risk Heatmap
       </h3>
       <div className="flex gap-4">
         {/* Y axis label */}
-        <div className="flex flex-col justify-between py-1 text-[10px] text-slate-500">
+        <div className="flex flex-col justify-between py-1 text-[10px] text-white">
           <span>High</span>
           <span>Med</span>
           <span>Low</span>
@@ -67,7 +67,7 @@ export default function RiskHeatmap({ report }: RiskHeatmapProps) {
                     cellColor(s, p),
                     isActive(s, p)
                       ? 'ring-2 ring-white/40 text-white scale-105'
-                      : 'text-slate-500',
+                      : 'text-white',
                   )}
                 >
                   {isActive(s, p) && '●'}
@@ -76,17 +76,17 @@ export default function RiskHeatmap({ report }: RiskHeatmapProps) {
             )}
           </div>
           {/* X axis labels */}
-          <div className="mt-1 flex justify-between text-[10px] text-slate-500 px-1">
+          <div className="mt-1 flex justify-between text-[10px] text-white px-1">
             <span>Low</span>
             <span>Med</span>
             <span>High</span>
           </div>
-          <p className="mt-0.5 text-center text-[10px] text-slate-600">Probability</p>
+          <p className="mt-0.5 text-center text-[10px] text-white">Probability</p>
         </div>
       </div>
-      <p className="mt-1 text-[10px] text-slate-600 text-right">
-        Severity: <span className="text-slate-400 capitalize">{severity}</span> | Probability:{' '}
-        <span className="text-slate-400 capitalize">{prob}</span>
+      <p className="mt-1 text-[10px] text-white text-right">
+        Severity: <span className="text-white capitalize">{severity}</span> | Probability:{' '}
+        <span className="text-white capitalize">{prob}</span>
       </p>
     </div>
   );

@@ -42,7 +42,7 @@ export default function DriverCausalityPanel({ sharedDrivers, divergentDrivers }
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
         Decision Driver Analysis
       </h4>
 

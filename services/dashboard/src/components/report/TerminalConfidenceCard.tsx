@@ -24,7 +24,7 @@ const LEVEL_TEXT_COLOR: Record<string, string> = {
   HIGH:      'text-emerald-400',
   MODERATE:  'text-amber-400',
   LOW:       'text-red-400',
-  NONE:      'text-slate-500',
+  NONE:      'text-white',
 };
 
 const DIM_LABELS: Record<string, string> = {
@@ -39,16 +39,16 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
 
   return (
     <div className="rounded-xl border border-blue-500/30 bg-slate-800 p-5">
-      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
         Terminal Confidence
       </h4>
 
-      <div className={clsx('text-3xl font-bold', LEVEL_TEXT_COLOR[level] ?? 'text-slate-400')}>
+      <div className={clsx('text-3xl font-bold', LEVEL_TEXT_COLOR[level] ?? 'text-white')}>
         {level.replace('_', ' ')}
       </div>
 
       {bottleneck && (
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-white">
           Bottleneck: {DIM_LABELS[bottleneck] ?? bottleneck}
         </p>
       )}
@@ -82,7 +82,7 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
             <div key={dim.name}>
               <div className="flex items-center justify-between text-[11px]">
                 <span className={clsx(
-                  'text-slate-400',
+                  'text-white',
                   isBottleneck && 'font-semibold text-slate-200',
                 )}>
                   {label}
@@ -90,7 +90,7 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
                 </span>
                 <span className={clsx(
                   'font-medium',
-                  isNaDimension ? 'text-slate-500' : (LEVEL_TEXT_COLOR[dim.level] ?? 'text-slate-500'),
+                  isNaDimension ? 'text-white' : (LEVEL_TEXT_COLOR[dim.level] ?? 'text-white'),
                 )}>
                   {displayLevel}
                 </span>
@@ -102,7 +102,7 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
                 />
               </div>
               {dim.note && (
-                <p className="mt-0.5 text-[10px] text-slate-500 leading-tight">
+                <p className="mt-0.5 text-[10px] text-white leading-tight">
                   {dim.note}
                   {dim.name === 'pool_adequacy' && transferableCount != null && comparableCount != null && transferableCount < comparableCount && (
                     <span className="text-amber-400"> (Transferable: {transferableCount}/{comparableCount})</span>

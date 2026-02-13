@@ -81,7 +81,7 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-white">
           {branding.dashboardHeading}
         </p>
       </div>
@@ -98,7 +98,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Outcome Distribution Pie */}
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
             Seed Outcome Distribution
           </h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -127,7 +127,7 @@ export default function Dashboard() {
 
         {/* Scenario Bar Chart */}
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
             Scenario Weight Distribution (%)
           </h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -155,18 +155,18 @@ export default function Dashboard() {
 
       {/* Demo Cases */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
           Demo Cases
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700 text-left">
-                <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Case</th>
-                <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Category</th>
-                <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Expected</th>
-                <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Key Levers</th>
-                <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Action</th>
+                <th className="px-3 py-2 text-xs font-medium uppercase text-white">Case</th>
+                <th className="px-3 py-2 text-xs font-medium uppercase text-white">Category</th>
+                <th className="px-3 py-2 text-xs font-medium uppercase text-white">Expected</th>
+                <th className="px-3 py-2 text-xs font-medium uppercase text-white">Key Levers</th>
+                <th className="px-3 py-2 text-xs font-medium uppercase text-white">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -174,7 +174,7 @@ export default function Dashboard() {
                 <tr key={c.id} className="border-b border-slate-800 hover:bg-slate-800/50">
                   <td className="px-3 py-3">
                     <p className="font-medium text-slate-200">{c.name}</p>
-                    <p className="text-xs text-slate-500">{c.description}</p>
+                    <p className="text-xs text-white">{c.description}</p>
                   </td>
                   <td className="px-3 py-3">
                     <Badge
@@ -197,7 +197,7 @@ export default function Dashboard() {
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-1">
                       {c.key_levers?.slice(0, 3).map((l, i) => (
-                        <span key={i} className="text-xs text-slate-400">
+                        <span key={i} className="text-xs text-white">
                           {l}
                         </span>
                       ))}
@@ -223,7 +223,7 @@ export default function Dashboard() {
         <h2 className="mb-2 text-sm font-semibold text-blue-400">
           Progressive Disclosure Compliance Reports
         </h2>
-        <p className="text-xs text-slate-400 mb-3">
+        <p className="text-xs text-white mb-3">
           Run any demo case through the engine, then view the full 3-tier compliance report.
           Reports include risk heatmaps, typology analysis, negative path search, verbatim
           citations, and full audit metadata for {filingAuthority} examination.

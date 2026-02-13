@@ -78,7 +78,7 @@ export default function AuditSearch() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Audit Search</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-white">
             Search and filter case decisions for compliance audit trails
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function AuditSearch() {
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Search</label>
+            <label className="mb-1 block text-xs text-white">Search</label>
             <input
               type="text"
               placeholder="Case ID, name…"
@@ -105,7 +105,7 @@ export default function AuditSearch() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Outcome</label>
+            <label className="mb-1 block text-xs text-white">Outcome</label>
             <select
               value={outcome}
               onChange={(e) => setOutcome(e.target.value)}
@@ -119,7 +119,7 @@ export default function AuditSearch() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Scenario Type</label>
+            <label className="mb-1 block text-xs text-white">Scenario Type</label>
             <select
               value={scenario}
               onChange={(e) => setScenario(e.target.value)}
@@ -133,7 +133,7 @@ export default function AuditSearch() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Date From</label>
+            <label className="mb-1 block text-xs text-white">Date From</label>
             <input
               type="date"
               value={dateFrom}
@@ -142,7 +142,7 @@ export default function AuditSearch() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Date To</label>
+            <label className="mb-1 block text-xs text-white">Date To</label>
             <input
               type="date"
               value={dateTo}
@@ -151,7 +151,7 @@ export default function AuditSearch() {
             />
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-3 text-xs text-slate-400">
+        <div className="mt-3 flex items-center gap-3 text-xs text-white">
           <span>
             Showing <span className="font-bold text-slate-200">{filtered.length}</span>{' '}
             of <span className="font-bold text-slate-200">{allCases?.length ?? 0}</span> cases
@@ -180,26 +180,26 @@ export default function AuditSearch() {
         <ErrorMessage error={error as Error} />
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-8 text-center">
-          <p className="text-sm text-slate-400">No cases match the current filters.</p>
+          <p className="text-sm text-white">No cases match the current filters.</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-800">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700 bg-slate-800/80">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                   Case ID
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                   Name
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                   Category
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                   Expected Verdict
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-white">
                   Description
                 </th>
               </tr>
@@ -225,7 +225,7 @@ export default function AuditSearch() {
                       {c.expected_verdict ?? '–'}
                     </Badge>
                   </td>
-                  <td className="max-w-xs truncate px-4 py-3 text-xs text-slate-400">
+                  <td className="max-w-xs truncate px-4 py-3 text-xs text-white">
                     {c.description ?? '–'}
                   </td>
                 </tr>

@@ -16,17 +16,17 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-white">
         Audit Metadata
       </h3>
-      <p className="mb-4 text-[10px] text-slate-600">
+      <p className="mb-4 text-[10px] text-white">
         Full technical provenance for regulatory examination
       </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Decision Provenance */}
         <div className="rounded-lg bg-slate-900 p-4">
-          <h4 className="mb-3 text-xs font-medium text-slate-400">Decision Provenance</h4>
+          <h4 className="mb-3 text-xs font-medium text-white">Decision Provenance</h4>
           <div className="space-y-2 text-xs">
             <Row label="Decision ID" value={report.decision_id} mono />
             <Row label="Decision ID (Short)" value={report.decision_id_short} mono />
@@ -40,7 +40,7 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
 
         {/* System Versions */}
         <div className="rounded-lg bg-slate-900 p-4">
-          <h4 className="mb-3 text-xs font-medium text-slate-400">System Versions</h4>
+          <h4 className="mb-3 text-xs font-medium text-white">System Versions</h4>
           <div className="space-y-2 text-xs">
             <Row label="Engine Version" value={report.engine_version} />
             <Row label="Policy Version" value={report.policy_version} />
@@ -56,7 +56,7 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
         {/* SLA Timeline */}
         {sla && (
           <div className="rounded-lg bg-slate-900 p-4">
-            <h4 className="mb-3 text-xs font-medium text-slate-400">SLA Timeline</h4>
+            <h4 className="mb-3 text-xs font-medium text-white">SLA Timeline</h4>
             <div className="space-y-2 text-xs">
               <Row label="Case Created" value={sla.case_created} />
               <Row label="EDD Deadline" value={sla.edd_deadline} />
@@ -68,7 +68,7 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
 
         {/* Disposition Reconciliation */}
         <div className="rounded-lg bg-slate-900 p-4">
-          <h4 className="mb-3 text-xs font-medium text-slate-400">Disposition Reconciliation</h4>
+          <h4 className="mb-3 text-xs font-medium text-white">Disposition Reconciliation</h4>
           <div className="space-y-2 text-xs">
             <Row label="Engine Disposition" value={report.engine_disposition} />
             <Row label="Governed Disposition" value={report.governed_disposition} />
@@ -81,7 +81,7 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
 
         {/* Precedent Metrics */}
         <div className="rounded-lg bg-slate-900 p-4">
-          <h4 className="mb-3 text-xs font-medium text-slate-400">Precedent Metrics</h4>
+          <h4 className="mb-3 text-xs font-medium text-white">Precedent Metrics</h4>
           <div className="space-y-2 text-xs">
             <Row
               label="Alignment"
@@ -104,10 +104,10 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
         {/* Report Sections */}
         {report.report_sections && report.report_sections.length > 0 && (
           <div className="rounded-lg bg-slate-900 p-4">
-            <h4 className="mb-3 text-xs font-medium text-slate-400">
+            <h4 className="mb-3 text-xs font-medium text-white">
               Report Sections ({report.report_sections.length})
             </h4>
-            <ol className="list-decimal list-inside space-y-0.5 text-xs text-slate-400">
+            <ol className="list-decimal list-inside space-y-0.5 text-xs text-white">
               {report.report_sections.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
@@ -146,8 +146,8 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
       {/* Corrections */}
       {corrections && Object.keys(corrections).length > 0 && (
         <div className="mt-4 rounded-lg bg-slate-900 p-4">
-          <h4 className="mb-2 text-xs font-medium text-slate-400">Corrections Applied</h4>
-          <pre className="text-[10px] text-slate-500 overflow-x-auto">
+          <h4 className="mb-2 text-xs font-medium text-white">Corrections Applied</h4>
+          <pre className="text-[10px] text-white overflow-x-auto">
             {JSON.stringify(corrections, null, 2)}
           </pre>
         </div>
@@ -159,7 +159,7 @@ export default function AuditMetadata({ report }: AuditMetadataProps) {
 function Row({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-2">
-      <span className="text-slate-500 flex-shrink-0">{label}</span>
+      <span className="text-white flex-shrink-0">{label}</span>
       <span className={`text-right text-slate-300 break-all ${mono ? 'font-mono text-[10px]' : ''}`}>
         {value || '—'}
       </span>

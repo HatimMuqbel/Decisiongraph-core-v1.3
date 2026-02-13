@@ -33,36 +33,62 @@ export default function GovernedAlignmentCard({
       color === 'amber' && 'border-amber-500/30',
       color === 'red' && 'border-red-500/30',
     )}>
-      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
         Governed Disposition Alignment
       </h4>
 
       {/* Two-axis split when available */}
       {hasTA ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-[10px] text-slate-500 uppercase">Operational</p>
+              <p className="text-[10px] text-white uppercase">Operational</p>
               <p className={clsx('text-xl font-bold', opPct >= 70 ? 'text-emerald-400' : opPct >= 40 ? 'text-amber-400' : 'text-red-400')}>
                 {opPct}%
               </p>
-              <p className="text-[10px] text-slate-500">{opAligned}/{opTotal}</p>
+              <p className="text-[10px] text-white">{opAligned}/{opTotal}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-500 uppercase">Regulatory</p>
-              <p className={clsx('text-xl font-bold', regAllUndetermined ? 'text-slate-400' : regPct >= 70 ? 'text-emerald-400' : regPct >= 40 ? 'text-amber-400' : 'text-red-400')}>
+              <p className="text-[10px] text-white uppercase">Regulatory</p>
+              <p className={clsx('text-xl font-bold', regAllUndetermined ? 'text-white' : regPct >= 70 ? 'text-emerald-400' : regPct >= 40 ? 'text-amber-400' : 'text-red-400')}>
                 {regPct}%
               </p>
-              <p className="text-[10px] text-slate-500">{regAligned}/{regTotal}</p>
+              <p className="text-[10px] text-white">{regAligned}/{regTotal}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-500 uppercase">Combined</p>
+              <p className="text-[10px] text-white uppercase">Combined</p>
               <p className={clsx('text-xl font-bold', combPct >= 70 ? 'text-emerald-400' : combPct >= 40 ? 'text-amber-400' : 'text-red-400')}>
                 {combPct}%
               </p>
-              <p className="text-[10px] text-slate-500">{combinedAligned}/{opTotal}</p>
+              <p className="text-[10px] text-white">{combinedAligned}/{opTotal}</p>
             </div>
           </div>
+
+          {/* Detailed explanations for each axis */}
+          <div className="grid grid-cols-3 gap-3 border-t border-slate-700 pt-3">
+            <div>
+              <p className="text-[11px] text-white leading-relaxed">
+                Percentage of comparable historical cases where the bank reached the same
+                operational decision (ALLOW, EDD, or BLOCK) as the current governed disposition.
+                Measures whether the institution has historically acted the same way on similar facts.
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-white leading-relaxed">
+                Percentage of comparable cases where the suspicion finding matched — either both
+                filed an STR or both determined no STR was required. Measures whether the institution
+                has historically reached the same regulatory conclusion on similar risk profiles.
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-white leading-relaxed">
+                Percentage of comparable cases that match on both axes simultaneously — same
+                operational decision AND same suspicion finding. This is the strictest measure:
+                only precedents that fully align on both dimensions count toward this number.
+              </p>
+            </div>
+          </div>
+
           {opPct >= 70 && regPct < 30 && (
             <p className="text-[11px] text-amber-300/80 leading-relaxed">
               High operational alignment indicates institutional consensus on adverse action.
@@ -76,7 +102,7 @@ export default function GovernedAlignmentCard({
             </p>
           )}
           {regAllUndetermined && (
-            <p className="text-[11px] text-slate-400 italic leading-relaxed">
+            <p className="text-[11px] text-white italic leading-relaxed">
               Regulatory alignment is 0% — all comparable cases are pending reporting
               determination. This reflects incomplete data, not regulatory divergence.
             </p>
@@ -91,7 +117,7 @@ export default function GovernedAlignmentCard({
             color === 'red' && 'text-red-400',
           )}>
             {count}/{total}
-            <span className="ml-2 text-base font-normal text-slate-400">({pct}%)</span>
+            <span className="ml-2 text-base font-normal text-white">({pct}%)</span>
           </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-700">
             <div
@@ -104,7 +130,7 @@ export default function GovernedAlignmentCard({
               style={{ width: `${pct}%` }}
             />
           </div>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-white">
             {pct === 100
               ? 'All comparable precedents match the governed disposition.'
               : pct >= 80

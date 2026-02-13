@@ -65,7 +65,7 @@ interface EvidenceTableProps {
 
 export default function EvidenceTable({ evidence, compact }: EvidenceTableProps) {
   if (!evidence.length) {
-    return <p className="text-sm text-slate-500">No evidence recorded.</p>;
+    return <p className="text-sm text-white">No evidence recorded.</p>;
   }
 
   return (
@@ -73,11 +73,11 @@ export default function EvidenceTable({ evidence, compact }: EvidenceTableProps)
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-700 text-left">
-            <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Field</th>
+            <th className="px-3 py-2 text-xs font-medium uppercase text-white">Field</th>
             {!compact && (
-              <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Label</th>
+              <th className="px-3 py-2 text-xs font-medium uppercase text-white">Label</th>
             )}
-            <th className="px-3 py-2 text-xs font-medium uppercase text-slate-400">Value</th>
+            <th className="px-3 py-2 text-xs font-medium uppercase text-white">Value</th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +89,7 @@ export default function EvidenceTable({ evidence, compact }: EvidenceTableProps)
               <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
                 <td className="px-3 py-2 font-mono text-xs text-slate-300">{ev.field}</td>
                 {!compact && (
-                  <td className="px-3 py-2 text-slate-400">{getLabel(ev.field)}</td>
+                  <td className="px-3 py-2 text-white">{getLabel(ev.field)}</td>
                 )}
                 <td className="px-3 py-2">
                   {isFlag && isTruthy ? (

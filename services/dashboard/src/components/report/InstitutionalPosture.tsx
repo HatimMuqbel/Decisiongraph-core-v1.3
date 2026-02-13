@@ -12,7 +12,7 @@ export default function InstitutionalPosture({ patternSummary, institutionalPost
   if (!patternSummary && !institutionalPosture) {
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <p className="text-sm text-slate-500 italic">
+        <p className="text-sm text-white italic">
           Insufficient resolved precedents to establish institutional posture for this case profile.
         </p>
       </div>

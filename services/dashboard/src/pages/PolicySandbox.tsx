@@ -32,7 +32,7 @@ function DraftCard({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h3 className="text-sm font-semibold text-slate-100">{draft.name}</h3>
-          <p className="mt-1 text-xs text-slate-400 leading-relaxed">{draft.description}</p>
+          <p className="mt-1 text-xs text-white leading-relaxed">{draft.description}</p>
         </div>
         <label className="ml-3 flex items-center">
           <input
@@ -57,21 +57,21 @@ function DraftCard({
       <div className="mt-3 space-y-1">
         <div className="flex flex-wrap gap-1">
           {draft.affected_typologies.map((t) => (
-            <span key={t} className="text-[10px] text-slate-500">
+            <span key={t} className="text-[10px] text-white">
               {t.replace(/_/g, ' ')}
             </span>
           ))}
         </div>
         {draft.citation && (
-          <p className="text-[10px] text-slate-600 italic">{draft.citation}</p>
+          <p className="text-[10px] text-white italic">{draft.citation}</p>
         )}
       </div>
 
       {/* Parameter Change */}
       <div className="mt-3 rounded-md bg-slate-900/50 px-3 py-2">
-        <p className="text-[10px] text-slate-500">
+        <p className="text-[10px] text-white">
           <span className="font-mono">{draft.parameter}</span>:{' '}
-          <span className="text-slate-400">{draft.old_value === null ? 'none' : String(draft.old_value)}</span>
+          <span className="text-white">{draft.old_value === null ? 'none' : String(draft.old_value)}</span>
           {' \u2192 '}
           <span className="text-emerald-400 font-semibold">{String(draft.new_value)}</span>
         </p>
@@ -84,7 +84,7 @@ function DraftCard({
         className={clsx(
           'mt-4 w-full rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
           isSimulating
-            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+            ? 'bg-slate-700 text-white cursor-not-allowed'
             : 'bg-emerald-600 text-white hover:bg-emerald-500',
         )}
       >
@@ -148,7 +148,7 @@ export default function PolicySandbox() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Policy Sandbox</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-white">
             Simulate policy changes before enacting them
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function PolicySandbox() {
             'rounded-lg px-5 py-2 text-sm font-semibold transition-colors',
             selectedIds.size >= 2
               ? 'bg-blue-600 text-white hover:bg-blue-500'
-              : 'bg-slate-700 text-slate-500 cursor-not-allowed',
+              : 'bg-slate-700 text-white cursor-not-allowed',
           )}
         >
           {simulatingId === '__compare__'
@@ -191,7 +191,7 @@ export default function PolicySandbox() {
             : `Compare Selected (${selectedIds.size})`}
         </button>
         {selectedIds.size > 0 && selectedIds.size < 2 && (
-          <p className="text-xs text-slate-500">Select at least 2 drafts to compare</p>
+          <p className="text-xs text-white">Select at least 2 drafts to compare</p>
         )}
       </div>
 
@@ -225,7 +225,7 @@ export default function PolicySandbox() {
       {/* Empty state */}
       {draftList.length === 0 && (
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-8 text-center">
-          <p className="text-sm text-slate-400">No draft policies available for simulation.</p>
+          <p className="text-sm text-white">No draft policies available for simulation.</p>
         </div>
       )}
     </div>

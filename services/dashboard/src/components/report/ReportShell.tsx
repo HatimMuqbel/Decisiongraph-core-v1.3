@@ -28,27 +28,27 @@ export default function ReportShell({ report, currentTier, onChangeTier, childre
               )}
             </div>
 
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white">
               <span>
-                <span className="text-slate-500">Decision:</span>{' '}
+                <span className="text-white">Decision:</span>{' '}
                 <span className="font-mono text-slate-300">{report.decision_id_short || report.decision_id?.slice(0, 16)}</span>
               </span>
               <span>
-                <span className="text-slate-500">Case:</span>{' '}
+                <span className="text-white">Case:</span>{' '}
                 <span className="font-mono text-slate-300">{report.case_id}</span>
               </span>
               <span>
-                <span className="text-slate-500">Timestamp:</span>{' '}
+                <span className="text-white">Timestamp:</span>{' '}
                 <span className="text-slate-300">{report.timestamp}</span>
               </span>
               <span>
-                <span className="text-slate-500">Pack:</span>{' '}
+                <span className="text-white">Pack:</span>{' '}
                 <span className="text-slate-300">v{report.policy_version}</span>
               </span>
             </div>
 
             {/* Integrity hashes */}
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-slate-500">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-white">
               <span>
                 Input Hash: <span className="font-mono">{report.input_hash_short || report.input_hash?.slice(0, 16)}</span>
               </span>

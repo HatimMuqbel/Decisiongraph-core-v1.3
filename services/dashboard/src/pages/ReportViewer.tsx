@@ -60,7 +60,7 @@ export default function ReportViewer() {
   if (!decisionId) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg text-slate-400">No decision ID provided.</p>
+        <p className="text-lg text-white">No decision ID provided.</p>
         <Link to="/" className="mt-4 text-sm text-emerald-400 hover:text-emerald-300">
           &larr; Back to Dashboard
         </Link>
@@ -75,14 +75,14 @@ export default function ReportViewer() {
   if (error) {
     return (
       <div className="space-y-4">
-        <Link to="/" className="text-xs text-slate-500 hover:text-slate-400">
+        <Link to="/" className="text-xs text-white hover:text-white">
           &larr; Back to Dashboard
         </Link>
         <ErrorMessage error={error as Error} title="Failed to load report" />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-white">
           Decision ID: <span className="font-mono">{decisionId}</span>
         </p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-white">
           The report may not be in the engine cache. Run a case first through the Demo Cases page, then visit this report.
         </p>
       </div>
@@ -138,7 +138,7 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
 
         {/* Quick Decision Outcome */}
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
             Decision Outcome
           </h3>
           <div className="flex flex-col items-center gap-3 py-4">
@@ -151,7 +151,7 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
             </Badge>
             {report.decision_confidence_score != null && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Confidence:</span>
+                <span className="text-xs text-white">Confidence:</span>
                 <Badge variant={confidenceVariant((report.decision_confidence_score ?? 0) / 100)}>
                   {report.decision_confidence ?? `${report.decision_confidence_score}%`}
                 </Badge>
@@ -175,15 +175,15 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
           </h3>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-[10px] text-slate-500">Classifier</p>
+              <p className="text-[10px] text-white">Classifier</p>
               <Badge variant="danger">{report.classification_outcome?.replace(/_/g, ' ')}</Badge>
             </div>
             <div>
-              <p className="text-[10px] text-slate-500">Engine</p>
+              <p className="text-[10px] text-white">Engine</p>
               <Badge variant="warning">{report.engine_disposition?.replace(/_/g, ' ')}</Badge>
             </div>
             <div>
-              <p className="text-[10px] text-slate-500">Governed</p>
+              <p className="text-[10px] text-white">Governed</p>
               <Badge variant={dispositionVariant(report.governed_disposition)}>
                 {report.governed_disposition?.replace(/_/g, ' ')}
               </Badge>
@@ -199,7 +199,7 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
 
       {/* 3. Key Signals Summary (top 5) */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
           Key Signals
         </h3>
         {report.decision_drivers && report.decision_drivers.length > 0 ? (
@@ -218,11 +218,11 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
             {report.tier1_signals?.slice(0, 5).map((s, i) => (
               <div key={i} className="flex items-start gap-2">
                 <Badge variant="danger" className="flex-shrink-0">{s.code}</Badge>
-                <span className="text-xs text-slate-400">{s.detail}</span>
+                <span className="text-xs text-white">{s.detail}</span>
               </div>
             ))}
             {(report.tier1_signals?.length ?? 0) === 0 && (
-              <p className="text-sm text-slate-500">No suspicious signals detected.</p>
+              <p className="text-sm text-white">No suspicious signals detected.</p>
             )}
           </div>
         )}
@@ -230,7 +230,7 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
 
       {/* 4. Evidence Snapshot (top 5 critical fields) */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
           Evidence Snapshot
         </h3>
         <SnapshotTable report={report} />
@@ -386,7 +386,7 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
       {/* Escalation Summary */}
       {report.escalation_summary && (
         <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
             Escalation Summary
           </h3>
           <p className="text-sm leading-relaxed text-slate-300">{report.escalation_summary}</p>
@@ -413,7 +413,7 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
                 <div>
                   <span className="text-slate-300">{rec.action}</span>
                   {rec.reference && (
-                    <span className="ml-2 text-xs text-slate-500">({rec.reference})</span>
+                    <span className="ml-2 text-xs text-white">({rec.reference})</span>
                   )}
                 </div>
               </li>
@@ -484,13 +484,13 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
 
       {/* Rationale */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
           Full Rationale
         </h3>
         <p className="text-sm leading-relaxed text-slate-300">{report.summary}</p>
         {report.classification_reason && (
           <div className="mt-3 rounded-lg bg-slate-900 p-3">
-            <p className="text-xs text-slate-500">Classification Reason</p>
+            <p className="text-xs text-white">Classification Reason</p>
             <p className="mt-1 text-xs text-slate-300">{report.classification_reason}</p>
           </div>
         )}
@@ -500,8 +500,8 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-400 font-medium">Export Options</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">
+            <p className="text-xs text-white font-medium">Export Options</p>
+            <p className="text-[10px] text-white mt-0.5">
               All three tiers are included in exported documents. Use
               <kbd className="mx-1 rounded bg-slate-700 px-1.5 py-0.5 text-[10px]">Ctrl+P</kbd>
               for browser print, or click Export PDF for a formatted compliance document.
@@ -533,21 +533,21 @@ function SnapshotTable({ report }: { report: ReportViewModel }) {
   ).slice(0, 6);
 
   if (unique.length === 0) {
-    return <p className="text-sm text-slate-500">No evidence snapshot available.</p>;
+    return <p className="text-sm text-white">No evidence snapshot available.</p>;
   }
 
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-slate-700 text-left">
-          <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-slate-500">Field</th>
-          <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-slate-500">Value</th>
+          <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-white">Field</th>
+          <th className="px-3 py-1.5 text-[10px] font-medium uppercase text-white">Value</th>
         </tr>
       </thead>
       <tbody>
         {unique.map((item, i) => (
           <tr key={i} className="border-b border-slate-800/50">
-            <td className="px-3 py-1.5 text-xs text-slate-400">{getLabel(item.field)}</td>
+            <td className="px-3 py-1.5 text-xs text-white">{getLabel(item.field)}</td>
             <td className="px-3 py-1.5 text-xs text-slate-200">{String(item.value)}</td>
           </tr>
         ))}
@@ -562,7 +562,7 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white">
         All Signals ({tier1.length} Tier 1, {tier2.length} Tier 2)
       </h3>
 
@@ -577,8 +577,8 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
                 <Badge variant="danger" className="flex-shrink-0">{s.code}</Badge>
                 <div className="min-w-0">
                   <p className="text-slate-300">{s.detail}</p>
-                  {s.source && <p className="text-[10px] text-slate-500">Source: {s.source}</p>}
-                  {s.field && <p className="text-[10px] text-slate-500">Field: {s.field}</p>}
+                  {s.source && <p className="text-[10px] text-white">Source: {s.source}</p>}
+                  {s.field && <p className="text-[10px] text-white">Field: {s.field}</p>}
                 </div>
               </div>
             ))}
@@ -597,8 +597,8 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
                 <Badge variant="warning" className="flex-shrink-0">{s.code}</Badge>
                 <div className="min-w-0">
                   <p className="text-slate-300">{s.detail}</p>
-                  {s.source && <p className="text-[10px] text-slate-500">Source: {s.source}</p>}
-                  {s.field && <p className="text-[10px] text-slate-500">Field: {s.field}</p>}
+                  {s.source && <p className="text-[10px] text-white">Source: {s.source}</p>}
+                  {s.field && <p className="text-[10px] text-white">Field: {s.field}</p>}
                 </div>
               </div>
             ))}
@@ -607,7 +607,7 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
       )}
 
       {tier1.length === 0 && tier2.length === 0 && (
-        <p className="text-sm text-slate-500">No signals detected for this case.</p>
+        <p className="text-sm text-white">No signals detected for this case.</p>
       )}
     </div>
   );
@@ -621,39 +621,39 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-white">
         Precedent Analysis
       </h3>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <div className="text-center">
-          <p className="text-xs text-slate-500">Confidence</p>
+          <p className="text-xs text-white">Confidence</p>
           <p className="text-lg font-bold text-slate-100">
             {Math.round((pa?.precedent_confidence ?? 0) * 100)}%
           </p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500">Supporting</p>
+          <p className="text-xs text-white">Supporting</p>
           <p className="text-lg font-bold text-emerald-400">{pa?.supporting_precedents ?? 0}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500">Contrary</p>
+          <p className="text-xs text-white">Contrary</p>
           <p className="text-lg font-bold text-red-400">{pa?.contrary_precedents ?? 0}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500">Neutral</p>
-          <p className="text-lg font-bold text-slate-400">{pa?.neutral_precedents ?? 0}</p>
+          <p className="text-xs text-white">Neutral</p>
+          <p className="text-lg font-bold text-white">{pa?.neutral_precedents ?? 0}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500">Pool</p>
-          <p className="text-lg font-bold text-slate-400">{pa?.sample_size ?? 0}</p>
+          <p className="text-xs text-white">Pool</p>
+          <p className="text-lg font-bold text-white">{pa?.sample_size ?? 0}</p>
         </div>
       </div>
 
       {/* Message when no precedent data */}
       {!hasData && (
         <div className="mt-4 rounded-lg bg-slate-900 p-3 text-center">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-white">
             {pa?.message || 'No comparable precedents found in the seed corpus for this scenario. Run more cases to build the precedent pool.'}
           </p>
         </div>
@@ -662,7 +662,7 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
       {/* Sample cases */}
       {pa?.sample_cases && pa.sample_cases.length > 0 && (
         <div className="mt-4">
-          <h4 className="mb-2 text-xs font-semibold text-slate-400">
+          <h4 className="mb-2 text-xs font-semibold text-white">
             Sample Precedents ({pa.sample_cases.length})
           </h4>
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
@@ -674,7 +674,7 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
                 <Badge variant={dispositionVariant(sc.outcome_normalized || sc.disposition)}>
                   {sc.outcome_label || sc.disposition}
                 </Badge>
-                <span className="font-mono text-slate-400">{sc.precedent_id}</span>
+                <span className="font-mono text-white">{sc.precedent_id}</span>
                 <Badge
                   variant={
                     sc.classification === 'supporting'
@@ -686,7 +686,7 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
                 >
                   {sc.classification}
                 </Badge>
-                <span className="text-slate-500">{sc.similarity_pct}% similar</span>
+                <span className="text-white">{sc.similarity_pct}% similar</span>
                 {sc.appealed && <Badge variant="warning">APPEALED</Badge>}
               </div>
             ))}
@@ -703,9 +703,9 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
           <div className="space-y-1">
             {pa.caution_precedents.map((cp, i) => (
               <div key={i} className="flex items-center gap-2 text-xs">
-                <span className="font-mono text-slate-400">{cp.precedent_id}</span>
+                <span className="font-mono text-white">{cp.precedent_id}</span>
                 <Badge variant="warning">{cp.classification}</Badge>
-                <span className="text-slate-500">{cp.outcome} / {cp.disposition}</span>
+                <span className="text-white">{cp.outcome} / {cp.disposition}</span>
               </div>
             ))}
           </div>
@@ -716,19 +716,19 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
       {pa?.appeal_statistics && pa.appeal_statistics.total_appealed > 0 && (
         <div className="mt-4 grid grid-cols-4 gap-3 text-center">
           <div>
-            <p className="text-[10px] text-slate-500">Appealed</p>
+            <p className="text-[10px] text-white">Appealed</p>
             <p className="text-sm font-bold text-slate-200">{pa.appeal_statistics.total_appealed}</p>
           </div>
           <div>
-            <p className="text-[10px] text-slate-500">Upheld</p>
+            <p className="text-[10px] text-white">Upheld</p>
             <p className="text-sm font-bold text-emerald-400">{pa.appeal_statistics.upheld}</p>
           </div>
           <div>
-            <p className="text-[10px] text-slate-500">Overturned</p>
+            <p className="text-[10px] text-white">Overturned</p>
             <p className="text-sm font-bold text-red-400">{pa.appeal_statistics.overturned}</p>
           </div>
           <div>
-            <p className="text-[10px] text-slate-500">Upheld Rate</p>
+            <p className="text-[10px] text-white">Upheld Rate</p>
             <p className="text-sm font-bold text-slate-200">
               {Math.round((pa.appeal_statistics.upheld_rate ?? 0) * 100)}%
             </p>
@@ -737,7 +737,7 @@ function PrecedentTechnicalDetail({ report }: { report: ReportViewModel }) {
       )}
 
       {pa?.similarity_summary && (
-        <p className="mt-3 text-xs text-slate-500">{pa.similarity_summary}</p>
+        <p className="mt-3 text-xs text-white">{pa.similarity_summary}</p>
       )}
     </div>
   );
@@ -760,7 +760,7 @@ function CollapsibleSection({
     <div>
       <button
         onClick={() => onToggle(id)}
-        className="mb-2 flex w-full items-center gap-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors"
+        className="mb-2 flex w-full items-center gap-2 text-left text-xs font-semibold uppercase tracking-wider text-white hover:text-slate-200 transition-colors"
       >
         <span className={clsx('transition-transform', expanded && 'rotate-90')}>▶</span>
         {title}

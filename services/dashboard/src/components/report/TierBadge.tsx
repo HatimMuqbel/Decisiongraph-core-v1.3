@@ -38,7 +38,7 @@ export default function TierBadge({ currentTier, report, onChangeTier }: TierBad
                 isActive && tier === 1 && 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40',
                 isActive && tier === 2 && 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40',
                 isActive && tier === 3 && 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40',
-                !isActive && !isLocked && 'text-slate-400 hover:bg-slate-700 hover:text-slate-300',
+                !isActive && !isLocked && 'text-white hover:bg-slate-700 hover:text-slate-300',
                 isLocked && 'cursor-not-allowed opacity-30',
               )}
             >

@@ -69,7 +69,7 @@ export default function SeedExplorer() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Seed Explorer</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-white">
           Browse scenarios and generated seed precedents
         </p>
       </div>
@@ -97,7 +97,7 @@ export default function SeedExplorer() {
 
       {/* Chart */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
           Seed Count by Scenario
         </h2>
         <ResponsiveContainer width="100%" height={300}>
@@ -134,7 +134,7 @@ export default function SeedExplorer() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-semibold text-slate-100">{s.name.replace(/_/g, ' ')}</h3>
-                <p className="mt-1 text-xs text-slate-400">{s.description}</p>
+                <p className="mt-1 text-xs text-white">{s.description}</p>
               </div>
               <Badge variant={dispositionVariant(s.outcome.disposition)}>
                 {s.outcome.disposition}
@@ -142,26 +142,26 @@ export default function SeedExplorer() {
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
               <div>
-                <p className="text-slate-500">Seeds</p>
-                <p className="font-bold text-slate-200">{s.seedCount}<span className="font-normal text-slate-500"> / 1,500</span></p>
+                <p className="text-white">Seeds</p>
+                <p className="font-bold text-slate-200">{s.seedCount}<span className="font-normal text-white"> / 1,500</span></p>
               </div>
               <div>
-                <p className="text-slate-500">Pool Share</p>
-                <p className="font-bold text-slate-200">{(s.weight * 100).toFixed(0)}%<span className="font-normal text-slate-500"> of corpus</span></p>
+                <p className="text-white">Pool Share</p>
+                <p className="font-bold text-slate-200">{(s.weight * 100).toFixed(0)}%<span className="font-normal text-white"> of corpus</span></p>
               </div>
               <div>
-                <p className="text-slate-500">Review Level</p>
+                <p className="text-white">Review Level</p>
                 <p className="font-bold text-slate-200">{s.decision_level.replace(/_/g, ' ')}</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-1">
               {Object.keys(s.base_facts).slice(0, 4).map((k) => (
-                <span key={k} className="rounded-md bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
+                <span key={k} className="rounded-md bg-slate-700 px-1.5 py-0.5 text-[10px] text-white">
                   {k}
                 </span>
               ))}
               {Object.keys(s.base_facts).length > 4 && (
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-white">
                   +{Object.keys(s.base_facts).length - 4} more
                 </span>
               )}
@@ -179,24 +179,24 @@ export default function SeedExplorer() {
       >
         {selected && (
           <div className="space-y-5">
-            <p className="text-sm text-slate-400">{selected.description}</p>
+            <p className="text-sm text-white">{selected.description}</p>
 
             {/* Outcome */}
             <div className="rounded-lg bg-slate-900 p-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase text-slate-500">Outcome</h3>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-white">Outcome</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="text-xs text-slate-500">Disposition</p>
+                  <p className="text-xs text-white">Disposition</p>
                   <Badge variant={dispositionVariant(selected.outcome.disposition)} size="md">
                     {selected.outcome.disposition}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Basis</p>
+                  <p className="text-xs text-white">Basis</p>
                   <p className="text-sm text-slate-200">{selected.outcome.disposition_basis}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Reporting</p>
+                  <p className="text-xs text-white">Reporting</p>
                   <p className="text-sm text-slate-200">{selected.outcome.reporting}</p>
                 </div>
               </div>
@@ -204,15 +204,15 @@ export default function SeedExplorer() {
 
             {/* Base Facts */}
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase text-slate-500">
+              <h3 className="mb-2 text-xs font-semibold uppercase text-white">
                 Base Facts (Pinned)
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-700">
-                      <th className="px-3 py-2 text-left text-xs text-slate-400">Field</th>
-                      <th className="px-3 py-2 text-left text-xs text-slate-400">Value</th>
+                      <th className="px-3 py-2 text-left text-xs text-white">Field</th>
+                      <th className="px-3 py-2 text-left text-xs text-white">Value</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -236,26 +236,26 @@ export default function SeedExplorer() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-slate-900 p-3 text-center">
-                <p className="text-xs text-slate-500">Seeds in Corpus</p>
+                <p className="text-xs text-white">Seeds in Corpus</p>
                 <p className="text-xl font-bold text-slate-100">{selected.seedCount}</p>
-                <p className="text-[10px] text-slate-600">out of 1,500 total</p>
+                <p className="text-[10px] text-white">out of 1,500 total</p>
               </div>
               <div className="rounded-lg bg-slate-900 p-3 text-center">
-                <p className="text-xs text-slate-500">Corpus Share</p>
+                <p className="text-xs text-white">Corpus Share</p>
                 <p className="text-xl font-bold text-slate-100">
                   {(selected.weight * 100).toFixed(0)}%
                 </p>
-                <p className="text-[10px] text-slate-600">of training precedents</p>
+                <p className="text-[10px] text-white">of training precedents</p>
               </div>
               <div className="rounded-lg bg-slate-900 p-3 text-center">
-                <p className="text-xs text-slate-500">Min. Review Level</p>
+                <p className="text-xs text-white">Min. Review Level</p>
                 <p className="text-xl font-bold text-slate-100">{selected.decision_level.replace(/_/g, ' ')}</p>
-                <p className="text-[10px] text-slate-600">required approval authority</p>
+                <p className="text-[10px] text-white">required approval authority</p>
               </div>
             </div>
 
             <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-white">
                 <span className="font-semibold text-slate-300">How seeds work:</span>{' '}
                 The seed generator creates {selected.seedCount} precedent cases ({(selected.weight * 100).toFixed(0)}% of the 1,500-case training corpus) for this scenario.
                 Base facts above are pinned; remaining fields are filled with realistic random values

@@ -7,7 +7,7 @@ const magnitudeStyle: Record<string, string> = {
   FUNDAMENTAL: 'bg-red-500/20 text-red-400 border-red-500/30',
   SIGNIFICANT: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   MODERATE: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  MINOR: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+  MINOR: 'bg-slate-500/20 text-white border-slate-500/30',
 };
 
 function MetricCard({
@@ -31,9 +31,9 @@ function MetricCard({
           : 'border-slate-700/60';
   return (
     <div className={clsx('rounded-lg border bg-slate-800/80 p-4', border)}>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wider text-white">{label}</p>
       <p className="mt-1 text-xl font-bold text-slate-100">{value}</p>
-      <p className="text-[11px] text-slate-500">{sub}</p>
+      <p className="text-[11px] text-white">{sub}</p>
     </div>
   );
 }
@@ -48,7 +48,7 @@ function RiskBar({ counts, label }: { counts: Record<string, number>; label: str
   ];
   return (
     <div className="flex items-center gap-3">
-      <span className="w-14 text-right text-xs text-slate-500">{label}</span>
+      <span className="w-14 text-right text-xs text-white">{label}</span>
       <div className="flex flex-1 h-5 overflow-hidden rounded-md">
         {segments.map(({ key, color }) => {
           const n = counts[key] ?? 0;
@@ -66,7 +66,7 @@ function RiskBar({ counts, label }: { counts: Record<string, number>; label: str
           );
         })}
       </div>
-      <span className="w-12 text-xs text-slate-500">{total}</span>
+      <span className="w-12 text-xs text-white">{total}</span>
     </div>
   );
 }
@@ -74,7 +74,7 @@ function RiskBar({ counts, label }: { counts: Record<string, number>; label: str
 function ChangeRows({ changes, type }: { changes: Record<string, number>; type: 'escalation' | 'reporting' }) {
   const entries = Object.entries(changes).sort((a, b) => b[1] - a[1]);
   if (entries.length === 0) {
-    return <p className="text-xs text-slate-500 italic">No {type === 'escalation' ? 'disposition' : 'reporting'} changes</p>;
+    return <p className="text-xs text-white italic">No {type === 'escalation' ? 'disposition' : 'reporting'} changes</p>;
   }
   const max = Math.max(...entries.map(([, v]) => v));
   return (
@@ -82,7 +82,7 @@ function ChangeRows({ changes, type }: { changes: Record<string, number>; type: 
       {entries.map(([label, count]) => (
         <div key={label} className="flex items-center gap-2">
           <span className="w-36 text-xs text-slate-300 font-mono">{label}</span>
-          <span className="w-14 text-right text-xs text-slate-400">{count} cases</span>
+          <span className="w-14 text-right text-xs text-white">{count} cases</span>
           <div className="flex-1 h-3 rounded-sm bg-slate-700/50 overflow-hidden">
             <div
               className={clsx(
@@ -125,7 +125,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
         >
           {r.magnitude}
         </span>
-        <span className="ml-auto text-[11px] text-slate-500">
+        <span className="ml-auto text-[11px] text-white">
           {new Date(r.timestamp).toLocaleString()}
         </span>
       </div>
@@ -160,7 +160,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
 
       {/* Risk Distribution */}
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
           Risk Distribution
         </h3>
         <RiskBar counts={r.risk_before} label="Before" />
@@ -170,13 +170,13 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
       {/* Disposition + Reporting Changes */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
             Disposition Changes
           </h3>
           <ChangeRows changes={r.disposition_changes} type="escalation" />
         </div>
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
             Reporting Changes
           </h3>
           <ChangeRows changes={r.reporting_changes} type="reporting" />
@@ -185,7 +185,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
 
       {/* Workload Impact */}
       <div className="rounded-lg border border-slate-700/40 bg-slate-800/50 p-4 space-y-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white mb-2">
           Workload Impact
         </h3>
         <p className="text-xs text-slate-300">
@@ -210,7 +210,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
 
       {/* Warnings */}
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
           Warnings ({r.warnings.length})
         </h3>
         {r.warnings.length === 0 ? (
@@ -235,7 +235,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
       {/* Cascade Impact */}
       {r.cascade_impacts.length > 0 && (
         <div>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
             Cascade Impact on Precedent Pool ({r.cascade_impacts.length} typologies)
           </h3>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -250,7 +250,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
       <div>
         <button
           onClick={() => setShowCases(!showCases)}
-          className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors"
+          className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white hover:text-slate-200 transition-colors"
         >
           <span>{showCases ? '\u25BC' : '\u25B6'}</span>
           Affected Cases ({r.case_results.filter((c) => c.disposition_changed || c.reporting_changed).length})
@@ -259,7 +259,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
           <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-slate-700/40 bg-slate-900/50">
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-slate-900">
-                <tr className="text-left text-slate-500">
+                <tr className="text-left text-white">
                   <th className="px-3 py-2">Case</th>
                   <th className="px-3 py-2">Disposition</th>
                   <th className="px-3 py-2">Reporting</th>
@@ -285,7 +285,7 @@ export default function SimulationResultPanel({ report, onDiscard }: Props) {
                             'font-bold',
                             c.escalation_direction === 'UP' && 'text-red-400',
                             c.escalation_direction === 'DOWN' && 'text-emerald-400',
-                            c.escalation_direction === 'UNCHANGED' && 'text-slate-500',
+                            c.escalation_direction === 'UNCHANGED' && 'text-white',
                           )}
                         >
                           {c.escalation_direction === 'UP' ? '\u25B2 UP' : c.escalation_direction === 'DOWN' ? '\u25BC DOWN' : '\u2014'}

@@ -48,10 +48,10 @@ export default function VerbatimCitations({ report }: VerbatimCitationsProps) {
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-white">
         Verbatim Policy Citations
       </h3>
-      <p className="mb-4 text-[10px] text-slate-600">
+      <p className="mb-4 text-[10px] text-white">
         PCMLTFA / FINTRAC regulatory provisions mapped to triggering case data — full evidence chain
       </p>
 
@@ -90,11 +90,11 @@ export default function VerbatimCitations({ report }: VerbatimCitationsProps) {
       )}
 
       {allRules.length === 0 && (
-        <p className="text-sm text-slate-500">No policy citations available for this case.</p>
+        <p className="text-sm text-white">No policy citations available for this case.</p>
       )}
 
       {/* Hash provenance */}
-      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-600 border-t border-slate-700/30 pt-3">
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-white border-t border-slate-700/30 pt-3">
         <span>Policy Hash: <span className="font-mono">{report.policy_hash?.slice(0, 16) ?? 'N/A'}</span></span>
         <span>Input Hash: <span className="font-mono">{report.input_hash?.slice(0, 16) ?? 'N/A'}</span></span>
         <span>Engine: v{report.engine_version}</span>
@@ -139,11 +139,11 @@ function CitationRow({
             {rule.citation_ref}
           </p>
         )}
-        <p className="text-xs leading-relaxed text-slate-400 italic">
+        <p className="text-xs leading-relaxed text-white italic">
           {rule.citation_text || rule.reason}
         </p>
         {rule.citation_text && rule.reason && rule.reason !== rule.citation_text && (
-          <p className="mt-2 text-[10px] text-slate-500">
+          <p className="mt-2 text-[10px] text-white">
             Engine finding: {rule.reason}
           </p>
         )}
@@ -163,13 +163,13 @@ function CitationRow({
           {evidence.length > 0 ? (
             evidence.slice(0, 6).map((e, j) => (
               <div key={j} className="flex items-center gap-2 text-xs">
-                <span className="font-mono text-slate-500">{e.field}</span>
-                <span className="text-slate-600">=</span>
+                <span className="font-mono text-white">{e.field}</span>
+                <span className="text-white">=</span>
                 <span className="text-slate-300 font-medium">{String(e.value)}</span>
               </div>
             ))
           ) : (
-            <p className="text-[10px] text-slate-500 italic">No matching evidence fields present</p>
+            <p className="text-[10px] text-white italic">No matching evidence fields present</p>
           )}
         </div>
       </div>

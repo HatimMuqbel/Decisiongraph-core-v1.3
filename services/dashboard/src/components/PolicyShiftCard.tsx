@@ -17,7 +17,7 @@ export default function PolicyShiftCard({ shift, onClick }: PolicyShiftCardProps
           <h3 className="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors">
             {shift.name}
           </h3>
-          <p className="mt-1 text-sm text-slate-400">{shift.description}</p>
+          <p className="mt-1 text-sm text-white">{shift.description}</p>
         </div>
         <Badge variant={changeTypeVariant(shift.primary_change)} size="md">
           {shift.primary_change.replace('_', ' ')}
@@ -26,31 +26,31 @@ export default function PolicyShiftCard({ shift, onClick }: PolicyShiftCardProps
 
       <div className="mt-4 grid grid-cols-3 gap-4">
         <div>
-          <p className="text-xs font-medium uppercase text-slate-500">Cases Affected</p>
+          <p className="text-xs font-medium uppercase text-white">Cases Affected</p>
           <p className="mt-0.5 text-lg font-bold text-slate-100">{shift.cases_affected}</p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase text-slate-500">Impact</p>
+          <p className="text-xs font-medium uppercase text-white">Impact</p>
           <p className="mt-0.5 text-lg font-bold text-amber-400">{shift.pct_affected}%</p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase text-slate-500">Total Analyzed</p>
+          <p className="text-xs font-medium uppercase text-white">Total Analyzed</p>
           <p className="mt-0.5 text-lg font-bold text-slate-100">{shift.total_cases_analyzed}</p>
         </div>
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <span className="text-xs text-slate-500">Citation:</span>
-        <span className="text-xs text-slate-400">{shift.citation}</span>
+        <span className="text-xs text-white">Citation:</span>
+        <span className="text-xs text-white">{shift.citation}</span>
       </div>
 
-      <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+      <div className="mt-2 flex items-center gap-2 text-xs text-white">
         <span>Policy {shift.policy_version_before}</span>
         <span>→</span>
         <span className="text-emerald-400">{shift.policy_version_after}</span>
       </div>
 
-      <p className="mt-3 text-xs text-slate-400 leading-relaxed">{shift.summary}</p>
+      <p className="mt-3 text-xs text-white leading-relaxed">{shift.summary}</p>
     </div>
   );
 }

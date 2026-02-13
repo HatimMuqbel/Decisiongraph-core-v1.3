@@ -20,11 +20,11 @@ export default function StatsCard({ label, value, sub, icon, trend, className }:
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-white">{label}</p>
           <p className="mt-1 text-2xl font-bold text-slate-100">{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+          {sub && <p className="mt-0.5 text-xs text-white">{sub}</p>}
         </div>
-        {icon && <div className="text-slate-500">{icon}</div>}
+        {icon && <div className="text-white">{icon}</div>}
       </div>
       {trend && (
         <div className="mt-2">
@@ -33,7 +33,7 @@ export default function StatsCard({ label, value, sub, icon, trend, className }:
               'text-xs font-medium',
               trend === 'up' && 'text-emerald-400',
               trend === 'down' && 'text-red-400',
-              trend === 'flat' && 'text-slate-400'
+              trend === 'flat' && 'text-white'
             )}
           >
             {trend === 'up' ? '▲' : trend === 'down' ? '▼' : '—'}

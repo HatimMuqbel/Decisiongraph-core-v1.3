@@ -25,7 +25,7 @@ export default function Modal({ open, onClose, title, children, wide }: ModalPro
           <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            className="rounded-lg p-1.5 text-white hover:bg-slate-700 hover:text-slate-200"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path
