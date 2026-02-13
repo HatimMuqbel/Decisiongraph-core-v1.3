@@ -2429,9 +2429,10 @@ def _build_enhanced_precedent_analysis(
         # Contextual explanation
         if _all_reg_pending:
             two_axis_alignment_narrative += (
-                "\n\nRegulatory alignment is 0% \u2014 all comparable cases are pending "
-                "reporting determination. This reflects incomplete data, not "
-                "regulatory divergence."
+                "\n\nRegulatory alignment is 0% \u2014 current case requires Enhanced "
+                "Due Diligence before reporting determination. Comparable cases "
+                "have resolved reporting, but alignment cannot be computed until "
+                "this case\u2019s regulatory posture is determined."
             )
         elif op_pct >= 70 and reg_pct < 30:
             two_axis_alignment_narrative += (

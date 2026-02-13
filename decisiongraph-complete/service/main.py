@@ -2015,6 +2015,17 @@ def normalize_outcome_v2(
         elif any("RC-RPT-TPR" in c for c in codes_upper):
             reporting = "FILE_TPR"
 
+    # Check case_facts for explicit gate2 STR determination
+    # INV-001 compliant: reads classifier/gate output, not inferred from disposition
+    if case_facts and reporting == "UNKNOWN":
+        g2 = case_facts.get("gate2_str_required")
+        if g2 is True:
+            reporting = "FILE_STR"
+        elif disposition == "EDD":
+            reporting = "PENDING_EDD"
+        elif disposition in ("ALLOW", "BLOCK") and g2 is not None:
+            reporting = "NO_REPORT"
+
     # ── Disposition Basis ─────────────────────────────────────────────
     basis = "UNKNOWN"
     codes_for_basis = set()
