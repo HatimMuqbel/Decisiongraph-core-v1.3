@@ -124,6 +124,7 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "regulatory_status": derived["regulatory_status"],
         "investigation_state": derived["investigation_state"],
         "primary_typology": derived["primary_typology"],
+        "typology_stage": derived.get("typology_stage", "NONE"),
         "regulatory_obligation": derived["regulatory_obligation"],
         "regulatory_position": derived["regulatory_position"],
 

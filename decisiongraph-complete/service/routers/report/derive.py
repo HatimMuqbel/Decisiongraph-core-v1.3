@@ -239,6 +239,57 @@ def derive_regulatory_model(normalized: dict) -> dict:
         decision_status=decision_status,
     )
 
+    # ── 9a. Reconcile signal count in explainer with actual KEY SIGNALS ──
+    # The decision_explainer may contain a stale count from validate_output
+    # (using the first classifier's investigative_count). Replace it with
+    # the actual number of decision drivers so the two always agree.
+    _signal_match = re.search(
+        r"(\d+)\s+Tier\s+2\s+investigative\s+signal\(s\)",
+        decision_explainer,
+    )
+    if _signal_match:
+        _stated = int(_signal_match.group(1))
+        _actual = len(decision_drivers)
+        if _stated != _actual:
+            decision_explainer = decision_explainer.replace(
+                _signal_match.group(0),
+                f"{_actual} Tier 2 investigative signal(s)",
+            )
+    # Post-reconciliation assertion: summary count must match rendered count
+    _post_match = re.search(
+        r"(\d+)\s+Tier\s+2\s+investigative\s+signal\(s\)",
+        decision_explainer,
+    )
+    if _post_match:
+        assert int(_post_match.group(1)) == len(decision_drivers), (
+            f"Signal count mismatch: summary claims {_post_match.group(1)} "
+            f"but {len(decision_drivers)} decision drivers will render"
+        )
+
+    # ── 9a2. Append LOW confidence warning to decision_explainer ────────
+    # The decision summary (Investigation Outcome Summary) must surface
+    # the confidence bottleneck so a compliance officer doesn't miss it.
+    _expl_conf_level = (precedent_analysis.get("confidence_level") or "").upper()
+    if _expl_conf_level == "LOW" and "Terminal confidence" not in decision_explainer:
+        _expl_bottleneck = (
+            precedent_analysis.get("confidence_bottleneck", "")
+            .replace("_", " ")
+        )
+        _expl_note = ""
+        for _dim in precedent_analysis.get("confidence_dimensions", []):
+            if _dim.get("bottleneck") and _dim.get("note"):
+                _expl_note = _dim["note"].rstrip(".")
+                break
+        _expl_detail = (
+            f" ({_expl_bottleneck}: {_expl_note})"
+            if _expl_note
+            else f" ({_expl_bottleneck})" if _expl_bottleneck else ""
+        )
+        decision_explainer += (
+            f" Terminal confidence is LOW{_expl_detail}."
+            " Senior review recommended."
+        )
+
     # ── 9b. FIX-013: Override Justification Block ────────────────────────
     override_justification = _build_override_justification(
         integrity_alert=integrity_alert,
@@ -661,6 +712,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # Typology
         "primary_typology": primary_typology,
+        "typology_stage": _derive_typology_stage(layer4_typologies, primary_typology),
 
         # Regulatory outcome (governed)
         "regulatory_status": regulatory_status,
@@ -961,6 +1013,30 @@ def _resolve_typology(
                 return mapped.split(" (")[0]
 
     return "No suspicious typology identified"
+
+
+def _derive_typology_stage(
+    layer4_typologies: dict,
+    primary_typology: str,
+) -> str:
+    """Derive typology stage: NONE, FORMING, or ESTABLISHED.
+
+    Used for consistent rendering across Typology Map, Evidence Snapshot,
+    and Primary Typology display.
+    """
+    if "indicators present" in primary_typology.lower():
+        return "FORMING"
+    if primary_typology == "No suspicious typology identified":
+        return "NONE"
+    # Has a named typology → ESTABLISHED
+    highest = (layer4_typologies.get("highest_maturity") or "").upper()
+    if highest in ("CONFIRMED", "ESTABLISHED", "VALIDATED"):
+        return "ESTABLISHED"
+    if highest in ("FORMING", "VALIDATING"):
+        return "FORMING"
+    if primary_typology and primary_typology != "No suspicious typology identified":
+        return "ESTABLISHED"
+    return "NONE"
 
 
 # ── Confidence ────────────────────────────────────────────────────────────────
@@ -3026,8 +3102,8 @@ def _derive_decision_drivers(
 
         if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
             drivers.append("Cross-border transaction with elevated corridor risk")
-        method = txn.get("method") or ev_map.get("txn.method") or ""
-        if method and str(method).lower() in {"wire", "wire_transfer", "swift", "eft"}:
+        method = txn.get("method") or ev_map.get("txn.method") or ev_map.get("txn.type") or ""
+        if method and str(method).lower() in {"wire", "wire_transfer", "wire_international", "wire_domestic", "swift", "eft"}:
             drivers.append(f"Wire transfer channel ({str(method).upper()})")
 
         cust_type = customer.get("type") or ev_map.get("customer.type") or ""
@@ -3078,14 +3154,17 @@ def _derive_decision_drivers(
 
     if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
         drivers.append(f"{trigger_prefix}Cross-border transfer with elevated corridor risk")
-    method = txn.get("method") or ev_map.get("txn.method") or ""
-    if method and str(method).lower() in {"wire", "wire_transfer", "swift", "eft"}:
+    method = txn.get("method") or ev_map.get("txn.method") or ev_map.get("txn.type") or ""
+    if method and str(method).lower() in {"wire", "wire_transfer", "wire_international", "wire_domestic", "swift", "eft"}:
         drivers.append(f"{trigger_prefix}Wire transfer channel ({str(method).upper()})")
 
     cust_type = customer.get("type") or ev_map.get("customer.type") or ""
     if cust_type and str(cust_type).lower() in {"corporation", "corporate", "business", "entity"}:
         drivers.append(f"{trigger_prefix}Corporate customer profile")
-    if customer.get("pep_flag") or ev_map.get("flag.pep"):
+    if (customer.get("pep_flag")
+            or ev_map.get("flag.pep")
+            or ev_map.get("customer.pep")
+            or ev_map.get("screening.pep_match")):
         drivers.append(f"{trigger_prefix}PEP exposure")
 
     # NOTE: Gate 1 blocking is a system action, not a case signal.

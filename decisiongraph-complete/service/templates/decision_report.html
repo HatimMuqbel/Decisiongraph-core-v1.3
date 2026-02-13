@@ -318,6 +318,16 @@
         <div class="value">{{ investigation_state }}</div>
         <div class="label">Primary Typology</div>
         <div class="value">{{ primary_typology }}</div>
+        <div class="label">Typology Assessment</div>
+        <div class="value">
+          {% if typology_stage == 'FORMING' %}
+          Typology indicators detected at FORMING stage. Pattern not yet established &mdash; below escalation threshold.
+          {% elif typology_stage == 'ESTABLISHED' %}
+          Confirmed typology: {{ primary_typology }}. Pattern established &mdash; meets escalation criteria.
+          {% else %}
+          No suspicious typology patterns detected.
+          {% endif %}
+        </div>
         {% if regulatory_obligation %}
         <div class="label">Regulatory Obligation</div>
         <div class="value">{{ regulatory_obligation }}</div>

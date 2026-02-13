@@ -53,12 +53,24 @@ export default function TypologyMap({ report }: TypologyMapProps) {
     .sort((a, b) => b.pct - a.pct);
 
   if (data.length === 0) {
+    // Check if the backend detected FORMING typology indicators even though
+    // no signal codes matched the hardcoded typology keys.
+    const pt = (report.primary_typology ?? '').toLowerCase();
+    const isForming = pt.includes('indicators present') || pt.includes('forming');
+
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
           Typology Map
         </h3>
-        <p className="text-sm text-slate-400">No suspicious typology patterns detected.</p>
+        {isForming ? (
+          <p className="text-sm text-amber-400">
+            Typology indicators detected at FORMING stage. Pattern not yet established — below
+            escalation threshold.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-400">No suspicious typology patterns detected.</p>
+        )}
       </div>
     );
   }
