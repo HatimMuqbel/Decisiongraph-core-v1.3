@@ -1579,6 +1579,9 @@ async def decide(request: Request):
         fingerprint_facts.setdefault("customer.pep_type", "foreign" if any("FOREIGN" in str(o) for o in obligations) else "domestic")
         fingerprint_facts["gate1_allowed"] = esc_result.decision == EscalationDecision.PERMITTED
         fingerprint_facts["gate2_str_required"] = final_decision.get("str_required", False)
+        fingerprint_facts["classifier_str_required"] = (
+            classifier_result.outcome == "STR_REQUIRED"
+        )
 
         # Enrich fingerprint facts from input payload when available
         primary_txn = None
@@ -2015,11 +2018,14 @@ def normalize_outcome_v2(
         elif any("RC-RPT-TPR" in c for c in codes_upper):
             reporting = "FILE_TPR"
 
-    # Check case_facts for explicit gate2 STR determination
+    # Check case_facts for explicit STR determination
     # INV-001 compliant: reads classifier/gate output, not inferred from disposition
+    # Classifier STR takes precedence — represents institutional suspicion assessment
+    # even when gate blocks filing for procedural reasons (typology maturity).
     if case_facts and reporting == "UNKNOWN":
+        classifier_str = case_facts.get("classifier_str_required")
         g2 = case_facts.get("gate2_str_required")
-        if g2 is True:
+        if classifier_str is True or g2 is True:
             reporting = "FILE_STR"
         elif disposition == "EDD":
             reporting = "PENDING_EDD"
