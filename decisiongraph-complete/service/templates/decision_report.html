@@ -694,18 +694,27 @@
             <span>Operational alignment:</span>
             <span style="font-weight:600; color:{% if op_pct >= 80 %}var(--ok){% elif op_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ op_align }}/{{ op_total }} ({{ op_pct }}%)</span>
           </div>
+          <div style="font-size:11px; color:#fff; margin:0 0 6px 0; line-height:1.5;">
+            What did the bank decide to do? ALLOW the transaction, require Enhanced Due Diligence, or BLOCK/exit. This shows what percentage of comparable past cases the bank made the same operational decision on.
+          </div>
           <div style="display:flex; justify-content:space-between;">
             <span>Regulatory alignment:</span>
             <span style="font-weight:600; color:{% if reg_pct >= 80 %}var(--ok){% elif reg_pct >= 50 %}var(--warn){% elif enhanced_precedent.reg_alignment_all_undetermined | default(false) %}var(--muted){% else %}var(--bad){% endif %};">{{ reg_align }}/{{ reg_total }} ({{ reg_pct }}%)</span>
           </div>
+          <div style="font-size:11px; color:#fff; margin:0 0 6px 0; line-height:1.5;">
+            What did the bank decide to report? File an STR with FINTRAC, or no filing required. This shows what percentage of comparable past cases the bank made the same reporting decision on.
+          </div>
           {% if reg_pct == 0 and enhanced_precedent.reg_alignment_all_undetermined | default(false) %}
-          <div style="font-size:11px; color:var(--muted); margin:2px 0 2px 0; font-style:italic;">
+          <div style="font-size:11px; color:#fff; margin:2px 0 2px 0; font-style:italic;">
             Current case requires Enhanced Due Diligence before reporting determination. Comparable cases have resolved reporting, but alignment cannot be computed until this case's regulatory posture is determined.
           </div>
           {% endif %}
           <div style="display:flex; justify-content:space-between;">
             <span>Combined alignment:</span>
             <span style="font-weight:600; color:{% if comb_pct >= 80 %}var(--ok){% elif comb_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ comb_align }}/{{ gov_total }} ({{ comb_pct }}%)</span>
+          </div>
+          <div style="font-size:11px; color:#fff; margin:0 0 2px 0; line-height:1.5;">
+            How many comparable past cases match the current case on both decisions — same operational action AND same reporting decision? Only cases where the bank decided the same thing on both fronts count here.
           </div>
         </div>
         {% if enhanced_precedent.two_axis_alignment_narrative %}
