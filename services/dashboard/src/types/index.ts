@@ -233,6 +233,10 @@ export interface EnhancedPrecedent {
   confidence_hard_rule?: string;
   governed_alignment_count?: number;
   governed_alignment_total?: number;
+  alignment_context?: string[];
+  first_impression_alert?: string;
+  transferable_count?: number;
+  non_transferable_count?: number;
   institutional_posture?: string;
   pattern_summary?: string;
   case_thumbnails?: SampleCase[];
@@ -522,6 +526,15 @@ export interface ReportViewModel {
   precedent_match_rate?: number;
   scored_precedent_count?: number;
   total_comparable_pool?: number;
+
+  // Decision Conflict Alert
+  decision_conflict_alert?: {
+    classifier: string;
+    engine: string;
+    governed: string;
+    resolution: string;
+    blocking_gates: Array<{ gate: string; reason: string; name: string }>;
+  };
 
   // Defensibility
   defensibility_check?: DefensibilityCheck;

@@ -506,6 +506,19 @@ def render_markdown(ctx: dict) -> str:
                     f"> Authority: {_md_escape(diff.get('authority', ''))}\n\n"
                 )
 
+    # ── Decision Conflict Alert ────────────────────────────────────────────
+    conflict = ctx.get("decision_conflict_alert")
+    conflict_alert_md = ""
+    if conflict:
+        conflict_alert_md = (
+            "### ⚠ DECISION CONFLICT\n\n"
+            f"| | |\n|---|---|\n"
+            f"| Classifier | **{conflict['classifier']}** |\n"
+            f"| Engine | **{conflict['engine']}** |\n"
+            f"| Governed | **{conflict['governed']}** |\n\n"
+            f"> **Resolution:** {conflict['resolution']}\n\n"
+        )
+
     # ── FIX-030: Precedent Divergence Narrative ────────────────────────────
     divergence = ctx.get("precedent_divergence")
     divergence_md = ""
@@ -686,6 +699,14 @@ def render_markdown(ctx: dict) -> str:
         }
         if ct:
             enhanced_precedent_md += "### Precedent Case Summaries\n\n"
+            _nt_count = sum(1 for t in ct if t.get("non_transferable"))
+            _t_count = len(ct) - _nt_count
+            if _nt_count > 0:
+                _warning = " ⚠ Effective precedent support is minimal." if _t_count < 3 else ""
+                enhanced_precedent_md += (
+                    f"Comparable: {len(ct)} | Transferable: {_t_count} | "
+                    f"Non-Transferable: {_nt_count}{_warning}\n\n"
+                )
             for thumb in ct:
                 pid = _md_escape(thumb.get("precedent_id", "N/A"))
                 sim = thumb.get("similarity_pct", 0)
@@ -1041,6 +1062,8 @@ def render_markdown(ctx: dict) -> str:
 
 {reconciliation_md}
 
+{conflict_alert_md}
+
 ---
 
 ## Suspicion Classification
@@ -1239,6 +1262,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         disposition_note=disposition_note,
         gate_override_md=gate_override_md,
         reconciliation_md=reconciliation_md,
+        conflict_alert_md=conflict_alert_md,
         divergence_md=divergence_md,
         unmapped_md=unmapped_md,
         regime_exception_md=regime_exception_md,

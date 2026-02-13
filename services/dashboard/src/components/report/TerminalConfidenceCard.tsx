@@ -6,6 +6,9 @@ interface Props {
   dimensions: ConfidenceDimension[];
   bottleneck?: string;
   hardRule?: string;
+  firstImpressionAlert?: string;
+  transferableCount?: number;
+  comparableCount?: number;
 }
 
 const LEVEL_CONFIG: Record<string, { color: string; width: string }> = {
@@ -31,7 +34,7 @@ const DIM_LABELS: Record<string, string> = {
   evidence_completeness: 'Evidence Completeness',
 };
 
-export default function TerminalConfidenceCard({ level, dimensions, bottleneck, hardRule }: Props) {
+export default function TerminalConfidenceCard({ level, dimensions, bottleneck, hardRule, firstImpressionAlert, transferableCount, comparableCount }: Props) {
   const levelCfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG.NONE;
 
   return (
@@ -52,6 +55,13 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
 
       {hardRule && (
         <p className="mt-1 text-xs text-red-400/80 italic">{hardRule}</p>
+      )}
+
+      {firstImpressionAlert && (
+        <div className="mt-2 rounded-lg bg-red-500/10 border border-red-500/20 p-2">
+          <p className="text-xs text-red-400 font-semibold">⚠ FIRST-IMPRESSION CASE</p>
+          <p className="mt-0.5 text-[11px] text-red-300/80">{firstImpressionAlert}</p>
+        </div>
       )}
 
       <div className="mt-4 space-y-3">
@@ -92,7 +102,12 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
                 />
               </div>
               {dim.note && (
-                <p className="mt-0.5 text-[10px] text-slate-500 leading-tight">{dim.note}</p>
+                <p className="mt-0.5 text-[10px] text-slate-500 leading-tight">
+                  {dim.note}
+                  {dim.name === 'pool_adequacy' && transferableCount != null && comparableCount != null && transferableCount < comparableCount && (
+                    <span className="text-amber-400"> (Transferable: {transferableCount}/{comparableCount})</span>
+                  )}
+                </p>
               )}
             </div>
           );

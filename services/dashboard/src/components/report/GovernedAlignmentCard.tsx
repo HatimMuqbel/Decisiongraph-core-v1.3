@@ -3,9 +3,10 @@ import { clsx } from 'clsx';
 interface Props {
   count: number;
   total: number;
+  alignmentContext?: string[];
 }
 
-export default function GovernedAlignmentCard({ count, total }: Props) {
+export default function GovernedAlignmentCard({ count, total, alignmentContext }: Props) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   const color = pct >= 80 ? 'emerald' : pct >= 50 ? 'amber' : 'red';
 
@@ -48,6 +49,13 @@ export default function GovernedAlignmentCard({ count, total }: Props) {
           ? 'Mixed alignment — review divergent precedents.'
           : 'Majority of precedents diverge from governed disposition.'}
       </p>
+      {alignmentContext && alignmentContext.length > 0 && pct < 60 && (
+        <div className="mt-2 space-y-1">
+          {alignmentContext.map((ctx, i) => (
+            <p key={i} className="text-[11px] text-amber-300/80 leading-relaxed">{ctx}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

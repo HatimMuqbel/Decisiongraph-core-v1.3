@@ -167,6 +167,36 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         </div>
       </div>
 
+      {/* Decision Conflict Alert */}
+      {report.classification_outcome && report.classification_outcome !== report.engine_disposition && (
+        <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-amber-400">
+            ⚠ Decision Conflict
+          </h3>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-[10px] text-slate-500">Classifier</p>
+              <Badge variant="danger">{report.classification_outcome?.replace(/_/g, ' ')}</Badge>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500">Engine</p>
+              <Badge variant="warning">{report.engine_disposition?.replace(/_/g, ' ')}</Badge>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500">Governed</p>
+              <Badge variant={dispositionVariant(report.governed_disposition)}>
+                {report.governed_disposition?.replace(/_/g, ' ')}
+              </Badge>
+            </div>
+          </div>
+          {report.decision_conflict_alert?.resolution && (
+            <p className="mt-3 text-xs text-amber-300/80">
+              <span className="font-semibold">Resolution:</span> {report.decision_conflict_alert.resolution}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* 3. Key Signals Summary (top 5) */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">

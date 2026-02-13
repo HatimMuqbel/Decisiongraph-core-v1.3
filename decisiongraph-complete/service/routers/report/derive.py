@@ -161,6 +161,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         decision_explainer = _rebuild_corrected_explainer(
             decision_status, str_required, classification,
             integrity_alert, rationale_summary,
+            gate1_sections=normalized.get("gate1_sections", []),
         )
 
     # Governed disposition is computed AFTER corrections are applied.
@@ -613,6 +614,16 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # ── FIX-035: Related Activity ──────────────────────────────────────
     related_activity = _build_related_activity(evidence_used=evidence_used)
 
+    # ── Decision Conflict Alert ─────────────────────────────────────
+    decision_conflict_alert = _build_decision_conflict_alert(
+        classification_outcome=classification.outcome,
+        engine_disposition=engine_disposition,
+        governed_disposition=governed_disposition,
+        gate1_passed=gate1_passed,
+        gate1_sections=normalized.get("gate1_sections", []),
+        gate2_sections=normalized.get("gate2_sections", []),
+    )
+
     return {
         # Classification
         "classification": classification.to_dict(),
@@ -709,6 +720,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
         "risk_heatmap_context": risk_heatmap_context,
         "required_actions": required_actions,
         "related_activity": related_activity,
+
+        # Decision Conflict Alert
+        "decision_conflict_alert": decision_conflict_alert,
     }
 
 
@@ -769,6 +783,7 @@ def _rebuild_corrected_explainer(
     classification,
     integrity_alert: dict | None,
     rationale_summary: str,
+    gate1_sections: list | None = None,
 ) -> str:
     """Rebuild decision explainer after governance corrections.
 
@@ -783,12 +798,21 @@ def _rebuild_corrected_explainer(
 
     if alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT":
         tier1_count = integrity_alert.get("tier1_count", 0)
+        gate_basis = ""
+        if gate1_sections:
+            failed = [s for s in gate1_sections if not s.get("passed")]
+            if failed:
+                gate_name = failed[0].get("name", "Gate 1")
+                gate_reason = failed[0].get("reason", "")
+                gate_basis = (
+                    f" Escalation blocked by Gate 1 ({gate_name})"
+                    + (f" — {gate_reason}." if gate_reason else ".")
+                )
         return (
-            f"Classifier identified {tier1_count} Tier 1 suspicion indicator(s) "
-            f"warranting STR review, but the engine verdict does not support "
-            f"escalation. Enhanced Due Diligence with compliance officer review "
-            f"is required before final regulatory determination. This case "
-            f"cannot be cleared without review."
+            f"Classifier identified {tier1_count} Tier 1 suspicion indicators "
+            f"warranting STR review.{gate_basis} Enhanced Due Diligence with "
+            f"compliance officer review is required before final regulatory "
+            f"determination. This case cannot be cleared without review."
         )
 
     if alert_type == "CONTROL_CONTRADICTION":
@@ -2065,6 +2089,51 @@ def _build_enhanced_precedent_analysis(
     result["governed_alignment_count"] = _gov_match
     result["governed_alignment_total"] = _gov_total
 
+    # ── b3) Alignment Context (explain low alignment) ─────────────────
+    alignment_context_lines: list[str] = []
+
+    # Policy shift context
+    ra = precedent_analysis.get("policy_regime_analysis") or precedent_analysis.get("regime_analysis")
+    if ra and ra.get("shifts_detected"):
+        pre_count = ra.get("pre_shift_count", 0)
+        post_count = ra.get("post_shift_count", 0)
+        total_pool = pre_count + post_count
+        pre_pct = int(pre_count / total_pool * 100) if total_pool > 0 else 0
+        shift_name = ra["shifts_detected"][0].get("name", "policy shift") if ra["shifts_detected"] else "policy shift"
+        # Compute post-shift alignment
+        post_dist = ra.get("post_shift_distribution", {})
+        post_aligned = sum(
+            v for k, v in post_dist.items()
+            if str(k).upper() == _gov_canonical
+            or (_gov_canonical == "EDD" and ("EDD" in str(k).upper() or "REVIEW" in str(k).upper()))
+            or (_gov_canonical == "ALLOW" and str(k).upper() in ("ALLOW", "NO_REPORT", "PASS", "CLEARED"))
+            or (_gov_canonical == "BLOCK" and str(k).upper() in ("BLOCK", "STR_REQUIRED", "FILE_STR"))
+        )
+        post_total = sum(post_dist.values())
+        post_align_pct = int(post_aligned / post_total * 100) if post_total > 0 else 0
+        if pre_pct > 50:
+            alignment_context_lines.append(
+                f"{pre_count} of {total_pool} precedents ({pre_pct}%) were decided under "
+                f"superseded policy ({shift_name}). Alignment reflects policy divergence, "
+                f"not decisional error. Under current policy, {post_align_pct}% align."
+            )
+
+    # Non-transferable context
+    nt_count = sum(1 for sc in sample_cases if sc.get("non_transferable"))
+    comparable_count = len(sample_cases)
+    if comparable_count > 0 and nt_count / comparable_count > 0.5:
+        transferable = [sc for sc in sample_cases if not sc.get("non_transferable")]
+        t_aligned = sum(1 for sc in transferable if sc.get("classification") == "supporting")
+        t_count = len(transferable)
+        t_pct = int(t_aligned / t_count * 100) if t_count > 0 else 0
+        alignment_context_lines.append(
+            f"{nt_count} of {comparable_count} precedents are non-transferable due to "
+            f"driver contradictions. Effective transferable alignment: "
+            f"{t_aligned}/{t_count} ({t_pct}%)."
+        )
+
+    result["alignment_context"] = alignment_context_lines
+
     # ── c) Case Thumbnails (readable precedent summaries) ─────────────
     # FIX-027: Replace cryptic hashes with readable summaries
     is_v3 = precedent_analysis.get("scoring_version") == "v3"
@@ -2161,8 +2230,16 @@ def _build_enhanced_precedent_analysis(
         if is_v3:
             thumb["matched_drivers"] = matched_drivers
             thumb["mismatched_drivers"] = mismatched_drivers
+        if match.get("non_transferable"):
+            thumb["non_transferable"] = True
+            thumb["non_transferable_reasons"] = match.get("non_transferable_reasons", [])
         case_thumbnails.append(thumb)
     result["case_thumbnails"] = case_thumbnails
+
+    # Transferable pool stats
+    _nt_thumb_count = sum(1 for t in case_thumbnails if t.get("non_transferable"))
+    result["transferable_count"] = len(case_thumbnails) - _nt_thumb_count
+    result["non_transferable_count"] = _nt_thumb_count
 
     # ── d) Feature Comparison Matrix ─────────────────────────────────
     comparison_matrix: list[dict] = []
@@ -2370,6 +2447,17 @@ def _build_enhanced_precedent_analysis(
         result["confidence_bottleneck"] = precedent_analysis.get("confidence_bottleneck")
         result["confidence_hard_rule"] = precedent_analysis.get("confidence_hard_rule")
 
+        # j2) First-impression alert
+        _ra = precedent_analysis.get("policy_regime_analysis") or precedent_analysis.get("regime_analysis") or {}
+        _post_shift_count = _ra.get("post_shift_count", 0) if _ra else len(sample_cases)
+        _fi_nt_count = sum(1 for sc in sample_cases if sc.get("non_transferable"))
+        _fi_transferable_count = len(sample_cases) - _fi_nt_count
+        if _post_shift_count <= 2 and _fi_transferable_count <= 2:
+            result["first_impression_alert"] = (
+                "Insufficient post-shift and transferable precedent to establish pattern. "
+                "Treat as first-impression determination requiring senior review."
+            )
+
         # k) Driver causality — shared vs divergent drivers
         shared_drivers = set()
         divergent_drivers = set()
@@ -2463,12 +2551,15 @@ def _build_pattern_summary(
             if "EDD" in str(k).upper() or "REVIEW" in str(k).upper()
         )
 
-        if terminal_total > 0:
-            majority = "ALLOW" if terminal_allow >= terminal_block else "BLOCK"
-            majority_count = max(terminal_allow, terminal_block)
-            majority_pct = int(majority_count / terminal_total * 100)
+        if total_decisive > 0:
+            # Determine majority direction from decisive (supporting/contrary) cases
+            majority = "ALLOW" if supporting >= contrary else "BLOCK"
+            majority_pct = int(max(supporting, contrary) / total_decisive * 100)
+            assert total_decisive <= total_all, (
+                f"Terminal ({total_decisive}) exceeds pool ({total_all})"
+            )
             parts.append(
-                f"Of {total_all} comparable cases, {terminal_total} have reached "
+                f"Of {total_all} comparable cases, {total_decisive} have reached "
                 f"terminal resolution — {majority_pct}% resulted in "
                 f"{majority.replace('_', ' ')}. Current case is pending EDD; "
                 f"terminal guidance is directional."
@@ -2895,17 +2986,34 @@ def _build_risk_factors(normalized: dict) -> list[dict]:
         else:
             risk_factors.append({"field": "Indicator", "value": str(indicator)})
 
+    _MATURITY_LABELS = {
+        "FORMING": "Early-stage — pattern forming, not yet established",
+        "VALIDATING": "Intermediate — evidence accumulating, pattern emerging",
+        "CONFIRMED": "Established — sufficient corroboration, pattern validated",
+    }
     for typology in layer4_typologies.get("typologies", []) or []:
         if isinstance(typology, dict):
             name = typology.get("name") or "Typology"
             maturity = typology.get("maturity")
-            value = f"{name}" + (f" ({maturity})" if maturity else "")
+            mapped_name = _TYPOLOGY_CODE_MAP.get(name.lower().replace(" ", "_").replace("-", "_"), name)
+            if maturity:
+                readable_maturity = _MATURITY_LABELS.get(maturity.upper(), maturity)
+                value = f"{mapped_name} ({readable_maturity}) [{name}/{maturity}]"
+            else:
+                value = mapped_name if mapped_name != name else name
             risk_factors.append({"field": "Typology", "value": value})
 
+    _SUSPICION_ELEMENT_LABELS = {
+        "has_sustained_pattern": "Sustained pattern of suspicious activity detected",
+        "has_intent": "Intent indicators present in transaction behavior",
+        "has_deception": "Deception indicators present in customer conduct",
+    }
     elements = layer6_suspicion.get("elements", {}) or {}
     for element, active in elements.items():
         if active:
-            risk_factors.append({"field": "Suspicion element", "value": element})
+            readable = _SUSPICION_ELEMENT_LABELS.get(element, element.replace("_", " ").capitalize())
+            value_display = f"{readable} [{element}]"
+            risk_factors.append({"field": "Suspicion element", "value": value_display})
 
     if not risk_factors:
         triggered = [
@@ -2959,6 +3067,57 @@ def _build_risk_factors(normalized: dict) -> list[dict]:
         })
 
     return risk_factors
+
+
+# ── Decision Conflict Alert ──────────────────────────────────────────────────
+
+def _build_decision_conflict_alert(
+    classification_outcome: str,
+    engine_disposition: str,
+    governed_disposition: str,
+    gate1_passed: bool,
+    gate1_sections: list,
+    gate2_sections: list,
+) -> dict | None:
+    """Build at-a-glance conflict alert when classifier != engine."""
+    if not classification_outcome or classification_outcome == engine_disposition:
+        return None
+
+    blocking_gates = []
+    for section in gate1_sections:
+        if not section.get("passed"):
+            blocking_gates.append({
+                "gate": "Gate 1 (Typology Maturity)",
+                "reason": section.get("reason", ""),
+                "name": section.get("name", ""),
+            })
+    for section in gate2_sections:
+        if not section.get("passed"):
+            blocking_gates.append({
+                "gate": "Gate 2 (STR Threshold)",
+                "reason": section.get("reason", ""),
+                "name": section.get("name", ""),
+            })
+
+    if blocking_gates:
+        gate_names = [g["gate"] for g in blocking_gates]
+        resolution = (
+            f"{', '.join(gate_names)} blocked escalation"
+            + (f" — {blocking_gates[0]['reason']}" if blocking_gates[0]['reason'] else "")
+            + ". Engine followed gate logic."
+        )
+    elif engine_disposition != governed_disposition:
+        resolution = "Governance correction applied — governed outcome is authoritative."
+    else:
+        resolution = "Engine disposition stands; classifier recommendation not applied."
+
+    return {
+        "classifier": classification_outcome.replace("_", " "),
+        "engine": engine_disposition.replace("_", " "),
+        "governed": governed_disposition.replace("_", " "),
+        "resolution": resolution,
+        "blocking_gates": blocking_gates,
+    }
 
 
 # ── FIX-028: Gate Override Explanations ──────────────────────────────────────

@@ -57,13 +57,16 @@ export default function PrecedentIntelligence({ report }: Props) {
 
       {/* Row 1: Alignment + Confidence side by side */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <GovernedAlignmentCard count={alignCount} total={alignTotal} />
+        <GovernedAlignmentCard count={alignCount} total={alignTotal} alignmentContext={ep?.alignment_context} />
         {isV3 ? (
           <TerminalConfidenceCard
             level={confidenceLevel!}
             dimensions={dimensions}
             bottleneck={bottleneck}
             hardRule={hardRule}
+            firstImpressionAlert={ep?.first_impression_alert}
+            transferableCount={ep?.transferable_count}
+            comparableCount={cases.length}
           />
         ) : (
           /* v2 fallback: flat confidence */
@@ -108,9 +111,25 @@ export default function PrecedentIntelligence({ report }: Props) {
       {/* Row 3: Top Comparable Cases */}
       {cases.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-semibold text-slate-400">
-            Top Comparable Cases ({cases.length})
-          </h4>
+          {(() => {
+            const ntCount = cases.filter(c => c.non_transferable).length;
+            const tCount = cases.length - ntCount;
+            return (
+              <div className="mb-2">
+                <h4 className="text-xs font-semibold text-slate-400">
+                  Top Comparable Cases ({cases.length})
+                </h4>
+                {ntCount > 0 && (
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Comparable: {cases.length} | Transferable: {tCount} | Non-Transferable: {ntCount}
+                    {tCount < 3 && (
+                      <span className="text-amber-400 ml-1">⚠ Effective precedent support is minimal.</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
           <div className="space-y-2">
             {visibleCases.map((sc, i) => (
               <PrecedentCaseCard key={i} sc={sc} defaultOpen={i === 0} caseDisposition={report.governed_disposition} caseReporting={report.canonical_outcome?.reporting} />
