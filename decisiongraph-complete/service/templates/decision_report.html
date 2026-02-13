@@ -678,6 +678,7 @@
     <div class="pi-grid">
       <div class="pi-card" style="border-left:4px solid var(--ok);">
         <h4>Governed Disposition Alignment</h4>
+        <p class="small" style="margin:0 0 4px 0; color:var(--muted);">Full comparable pool</p>
         {% if gov_total > 0 %}
         {% set gov_pct = (gov_align / gov_total * 100) | round | int %}
         <div class="pi-big" style="color:{% if gov_pct >= 80 %}var(--ok){% elif gov_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">

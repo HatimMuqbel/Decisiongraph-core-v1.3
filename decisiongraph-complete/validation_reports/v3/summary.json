@@ -191,15 +191,15 @@
     "case_id": "structuring-pattern",
     "name": "Structuring - Just Under $10K (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "HIGH",
-    "confidence_bottleneck": "pool_adequacy",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
         "value": 35.0,
         "level": "HIGH",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
@@ -211,9 +211,9 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 0.8889,
-        "level": "HIGH",
-        "bottleneck": false,
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
         "note": ""
       },
       {
@@ -230,20 +230,20 @@
         "flag.structuring",
         "flag.unusual_for_profile",
         "txn.just_below_threshold",
-        "txn.multiple_same_day"
+        "txn.multiple_same_day",
+        "txn.source_of_funds_clear",
+        "txn.stated_purpose"
       ],
-      "divergent_drivers": [
-        "txn.source_of_funds_clear"
-      ]
+      "divergent_drivers": []
     },
-    "non_transferable_count": 3,
+    "non_transferable_count": 0,
     "governed_alignment": "38/47"
   },
   {
     "case_id": "shell-company-layering",
     "name": "Shell Company - BVI (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "MODERATE",
+    "confidence_level": "LOW",
     "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
@@ -263,8 +263,8 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 0.6071,
-        "level": "MODERATE",
+        "value": 0.0,
+        "level": "LOW",
         "bottleneck": true,
         "note": ""
       },
@@ -280,7 +280,8 @@
       "shared_drivers": [
         "flag.layering",
         "flag.shell_company",
-        "txn.amount_band"
+        "txn.amount_band",
+        "txn.cross_border"
       ],
       "divergent_drivers": []
     },
@@ -359,8 +360,8 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
-        "level": "VERY_HIGH",
+        "value": 0.0,
+        "level": "LOW",
         "bottleneck": false,
         "note": ""
       },
@@ -383,14 +384,14 @@
         "txn.source_of_funds_clear"
       ]
     },
-    "non_transferable_count": 9,
+    "non_transferable_count": 3,
     "governed_alignment": "26/45"
   },
   {
     "case_id": "velocity-spike",
     "name": "10x Velocity Spike (EDGE)",
     "category": "EDGE",
-    "confidence_level": "MODERATE",
+    "confidence_level": "LOW",
     "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
@@ -410,8 +411,8 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 0.6216,
-        "level": "MODERATE",
+        "value": 0.0,
+        "level": "LOW",
         "bottleneck": true,
         "note": ""
       },
@@ -428,14 +429,12 @@
         "flag.rapid_movement",
         "flag.unusual_for_profile",
         "txn.amount_band",
-        "txn.pattern_matches_profile"
+        "txn.pattern_matches_profile",
+        "txn.round_amount"
       ],
-      "divergent_drivers": [
-        "flag.layering",
-        "flag.shell_company"
-      ]
+      "divergent_drivers": []
     },
-    "non_transferable_count": 7,
+    "non_transferable_count": 0,
     "governed_alignment": "48/85"
   },
   {
@@ -678,15 +677,15 @@
     "case_id": "structuring-three-deposits",
     "name": "Structuring - Three Same-Day Deposits (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "HIGH",
-    "confidence_bottleneck": "pool_adequacy",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
         "value": 35.0,
         "level": "HIGH",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
@@ -698,9 +697,9 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 0.8889,
-        "level": "HIGH",
-        "bottleneck": false,
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
         "note": ""
       },
       {
@@ -717,28 +716,28 @@
         "flag.structuring",
         "flag.unusual_for_profile",
         "txn.just_below_threshold",
-        "txn.multiple_same_day"
+        "txn.multiple_same_day",
+        "txn.source_of_funds_clear",
+        "txn.stated_purpose"
       ],
-      "divergent_drivers": [
-        "txn.source_of_funds_clear"
-      ]
+      "divergent_drivers": []
     },
-    "non_transferable_count": 3,
+    "non_transferable_count": 0,
     "governed_alignment": "38/47"
   },
   {
     "case_id": "trade-finance-unusual-docs",
     "name": "Trade Finance - Unusual Docs (EDGE)",
     "category": "EDGE",
-    "confidence_level": "MODERATE",
-    "confidence_bottleneck": "pool_adequacy",
+    "confidence_level": "LOW",
+    "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
         "value": 9.0,
         "level": "MODERATE",
-        "bottleneck": true,
+        "bottleneck": false,
         "note": ""
       },
       {
@@ -750,9 +749,9 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
+        "value": 0.0,
+        "level": "LOW",
+        "bottleneck": true,
         "note": ""
       },
       {
@@ -876,7 +875,7 @@
     "case_id": "multiple-flags-commercial-exit",
     "name": "MSB - Multiple Red Flags (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "MODERATE",
+    "confidence_level": "LOW",
     "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
     "confidence_dimensions": [
@@ -896,8 +895,8 @@
       },
       {
         "name": "outcome_consistency",
-        "value": 0.6111,
-        "level": "MODERATE",
+        "value": 0.0,
+        "level": "LOW",
         "bottleneck": true,
         "note": ""
       },
@@ -913,9 +912,8 @@
       "shared_drivers": [
         "flag.layering",
         "flag.shell_company",
-        "flag.unusual_for_profile",
         "txn.amount_band",
-        "txn.pattern_matches_profile"
+        "txn.cross_border"
       ],
       "divergent_drivers": []
     },

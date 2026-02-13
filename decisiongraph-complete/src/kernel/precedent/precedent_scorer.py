@@ -337,10 +337,6 @@ def classify_match_two_axis(
     op = _op_alignment(c_disp, p_disp)
     susp = _suspicion_alignment(case_reporting, precedent_reporting)
 
-    # Non-transferable precedents: cap at PARTIAL op alignment
-    if non_transferable and op == "ALIGNED":
-        op = "PARTIAL"
-
     composite = _COMPOSITE_LABELS.get((op, susp), "PARTIAL_REG_PENDING")
     description = _COMPOSITE_DESCRIPTIONS.get(composite, "")
 

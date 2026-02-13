@@ -451,12 +451,17 @@ def test_two_axis_edd_reporting_pending():
     assert r.composite_label == "OP_ALIGNED_REG_PENDING"
 
 
-def test_two_axis_non_transferable_caps_alignment():
-    """Non-transferable: ALIGNED op → capped to PARTIAL"""
+def test_two_axis_non_transferable_does_not_cap_alignment():
+    """Non-transferable does NOT cap two-axis op alignment — factual alignment preserved.
+
+    The non-transferable concept applies to the v3 classification
+    (supporting/neutral/contrary), not to the two-axis model which
+    measures factual disposition alignment.
+    """
     r = classify_match_two_axis("BLOCK", "BLOCK", "FILE_STR", "FILE_STR",
                                  non_transferable=True)
-    assert r.op_alignment == "PARTIAL"
-    assert r.composite_label == "PARTIALLY_SUPPORTING"
+    assert r.op_alignment == "ALIGNED"
+    assert r.composite_label == "FULLY_SUPPORTING"
 
 
 def test_two_axis_unknown_disposition():

@@ -1673,6 +1673,16 @@ async def decide(request: Request):
         }
         proposed_outcome = outcome_map.get(proposed_outcome, "escalate")
 
+        # ── Classifier sovereignty override ──────────────────────────────
+        # When the classifier independently determined STR_REQUIRED but the
+        # engine returned PASS/PAY (gates blocked escalation), the governed
+        # disposition is EDD_REQUIRED, not ALLOW.  The precedent comparison
+        # must use the governed outcome so operational and regulatory alignment
+        # metrics reflect what the compliance officer actually sees.
+        if (classifier_result.outcome == "STR_REQUIRED"
+                and proposed_outcome == "pay"):
+            proposed_outcome = "escalate"
+
         precedent_analysis = query_similar_precedents(
             reason_codes=reason_codes,
             proposed_outcome=proposed_outcome,

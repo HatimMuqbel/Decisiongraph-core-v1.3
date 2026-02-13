@@ -243,7 +243,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">trade-finance-unusual-docs</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-13T16:49:30.567380</div>
+        <div class="value mono">2026-02-13T17:30:14.171434</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -294,7 +294,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--warn);">[REQUIRED]</strong>
           
-          Complete EDD by 2026-02-20T23:59:59.567013Z
+          Complete EDD by 2026-02-20T23:59:59.171187Z
         </li>
         
         <li style="margin:4px 0;">
@@ -366,7 +366,7 @@
         </tbody>
       </table>
       
-      <p class="small" style="margin-top:10px;">Classifier identified 1 Tier 1 suspicion indicators warranting STR review. Escalation blocked by Gate 1 (Typology Maturity Assessment) — Escalation from FORMING typology is illegal.. Enhanced Due Diligence with compliance officer review is required before final regulatory determination. This case cannot be cleared without review.</p>
+      <p class="small" style="margin-top:10px;">Classifier identified 1 Tier 1 suspicion indicators warranting STR review. Escalation blocked by Gate 1 (Typology Maturity Assessment) — Escalation from FORMING typology is illegal.. Enhanced Due Diligence with compliance officer review is required before final regulatory determination. This case cannot be cleared without review. Terminal confidence is LOW (outcome consistency). Senior review recommended.</p>
     </div>
 
     
@@ -451,7 +451,7 @@
 
     <div class="card break">
       <h3>Regulatory Escalation Summary</h3>
-      <p class="small">Enhanced Due Diligence is required to complete the investigation and finalize the regulatory outcome.</p>
+      <p class="small">Enhanced Due Diligence is required to complete the investigation and finalize the regulatory outcome. Terminal confidence is LOW (outcome consistency). Senior review recommended before final disposition.</p>
       
       <p class="small" style="margin-top:10px;"><strong>Decision Confidence:</strong> Integrity Review Required</p>
       <p class="small">Confidence cannot be computed when a control contradiction exists. Rule outcome conflicts with suspicion classifier.</p>
@@ -640,6 +640,7 @@
     <div class="pi-grid">
       <div class="pi-card" style="border-left:4px solid var(--ok);">
         <h4>Governed Disposition Alignment</h4>
+        <p class="small" style="margin:0 0 4px 0; color:var(--muted);">Full comparable pool</p>
         
         
         <div class="pi-big" style="color:var(--bad);">
@@ -657,7 +658,7 @@
           </div>
           <div style="display:flex; justify-content:space-between;">
             <span>Regulatory alignment:</span>
-            <span style="font-weight:600; color:var(--ok);">9/9 (100%)</span>
+            <span style="font-weight:600; color:var(--bad);">0/9 (0%)</span>
           </div>
           
           <div style="display:flex; justify-content:space-between;">
@@ -667,10 +668,8 @@
         </div>
         
         <p class="small" style="margin:6px 0 0 0; font-style:italic;">Operational alignment: 0/9 (0%)
-Regulatory alignment: 9/9 (100%)
-Combined alignment: 0/9 (0%)
-
-High regulatory alignment indicates consistent suspicion findings. Low operational alignment reflects divergence in operational response.</p>
+Regulatory alignment: 0/9 (0%)
+Combined alignment: 0/9 (0%)</p>
         
         
         
@@ -681,16 +680,16 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         
         
-        <div class="pi-big" style="color:#d97706;">MODERATE</div>
+        <div class="pi-big" style="color:#fd7e14;">LOW</div>
         
-        <p class="small" style="margin:2px 0 8px 0;">Bottleneck: Pool Adequacy</p>
+        <p class="small" style="margin:2px 0 8px 0;">Bottleneck: Outcome Consistency</p>
         
         
         
         <div style="margin-bottom:4px;">
           <div style="display:flex; justify-content:space-between; font-size:11px;">
             <span>Pool Adequacy</span>
-            <span style="font-weight:600;">MODERATE ★</span>
+            <span style="font-weight:600;">MODERATE</span>
           </div>
           
           
@@ -712,11 +711,11 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         <div style="margin-bottom:4px;">
           <div style="display:flex; justify-content:space-between; font-size:11px;">
             <span>Outcome Consistency</span>
-            <span style="font-weight:600;">VERY HIGH</span>
+            <span style="font-weight:600;">LOW ★</span>
           </div>
           
           
-          <div class="pi-dim-bar"><span style="width:95%; background:#20c997;"></span></div>
+          <div class="pi-dim-bar"><span style="width:25%; background:#fd7e14;"></span></div>
           
         </div>
         
@@ -740,7 +739,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     <div class="statement break" style="margin-top:12px;">
       
       <strong style="color:#1e40af;">Institutional Pattern</strong>
-      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Of 9 comparable cases, 9 have reached terminal resolution — 100% resulted in ALLOW. Current case is pending EDD; terminal guidance is directional. The bank has never escalated a comparable case to STR at the pre-EDD stage. Classifier determination of STR REQUIRED diverges from the governed disposition of EDD REQUIRED.</p>
+      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">Of 9 top comparable cases (by similarity), 9 have reached terminal resolution — 100% resulted in ALLOW. Current case is pending EDD; terminal guidance is directional. The bank has never escalated a comparable case to STR at the pre-EDD stage. Classifier determination of STR REQUIRED diverges from the governed disposition of EDD REQUIRED.</p>
       
       
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
@@ -749,11 +748,13 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">The institution has not previously identified reasonable grounds to suspect ML/TF in comparable cases.</p>
         
+        <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0; color:var(--bad); font-weight:600;">⚠ FIRST-OF-KIND SUSPICION FINDING: No comparable case has previously triggered STR. This determination establishes new institutional precedent for this case profile.</p>
+        
       </div>
       
       
       <strong style="color:#1e40af; margin-top:10px; display:block;">Institutional Posture</strong>
-      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">All 9 comparable precedent(s) resolved through review processes. No terminal outcomes available to establish directional institutional posture.</p>
+      <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">All 9 comparable precedent(s) (stratified sample) resolved through review processes. No terminal outcomes available to establish directional institutional posture.</p>
       
       
       
@@ -772,7 +773,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">ba2a6642...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">3cd7518d...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -786,10 +787,10 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
           <div style="display:flex; gap:16px;">
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
-          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier, same suspicion posture.</div>
+          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier and suspicion posture.</div>
         </div>
         
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: PEP status, High-risk jurisdiction, High-risk industry.</p>
@@ -809,7 +810,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">a43b5903...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">727fadd0...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">71%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -823,10 +824,10 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
           <div style="display:flex; gap:16px;">
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
-          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier, same suspicion posture.</div>
+          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier and suspicion posture.</div>
         </div>
         
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: PEP status, High-risk jurisdiction, High-risk industry. Key difference from current case: Amount band.</p>
@@ -848,7 +849,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">8c95f9a0...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">723a12cc...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">76%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -862,10 +863,10 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
           <div style="display:flex; gap:16px;">
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
-          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier, same suspicion posture.</div>
+          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier and suspicion posture.</div>
         </div>
         
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
@@ -885,7 +886,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">51cf47f1...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">70c54ce4...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">64%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -899,10 +900,10 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
           <div style="display:flex; gap:16px;">
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
-          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier, same suspicion posture.</div>
+          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier and suspicion posture.</div>
         </div>
         
         <p style="margin:0 0 6px 0;">NO REPORT. Key factors: layering indicators.</p>
@@ -922,7 +923,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">71e8d1f1...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">72db0791...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">60%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -936,10 +937,10 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
           <div style="display:flex; gap:16px;">
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
-          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier, same suspicion posture.</div>
+          <div style="margin-top:2px; color:#475569;">&#9656; Different operational tier and suspicion posture.</div>
         </div>
         
         <p style="margin:0 0 6px 0;">NO REPORT. Similar on: Relationship length, PEP status, High-risk jurisdiction.</p>
@@ -957,7 +958,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     
     <div class="statement break" style="margin-top:8px; padding:8px 12px; background:rgba(30,64,175,0.05); border-left:3px solid #3b82f6; border-radius:4px;">
-      <p class="small" style="margin:0; font-style:italic; color:#1e40af;">All 9 comparable precedents share the same classification: partially supporting.</p>
+      <p class="small" style="margin:0; font-style:italic; color:#1e40af;">All 9 comparable precedents share the same classification: partial with divergence.</p>
     </div>
     
     
@@ -993,11 +994,11 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
       <strong>Non-Transferable Precedents (9)</strong>
       <ul class="small" style="margin-top:6px;">
         
-        <li>ba2a6642...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>3cd7518d...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
-        <li>a43b5903...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>727fadd0...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
-        <li>8c95f9a0...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>723a12cc...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
       </ul>
       <span class="small">These precedents were scored but cannot be classified as "supporting" due to driver mismatches.</span>
@@ -1432,7 +1433,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">ba2a6642...</span>
+            <span class="match-id">3cd7518d...</span>
             <span class="match-sim">77%
               
               
@@ -1449,7 +1450,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1501,7 +1502,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">a43b5903...</span>
+            <span class="match-id">727fadd0...</span>
             <span class="match-sim">71%
               
               
@@ -1518,7 +1519,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1570,7 +1571,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">8c95f9a0...</span>
+            <span class="match-id">723a12cc...</span>
             <span class="match-sim">76%
               
               
@@ -1587,7 +1588,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1639,7 +1640,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">51cf47f1...</span>
+            <span class="match-id">70c54ce4...</span>
             <span class="match-sim">64%
               
               
@@ -1656,7 +1657,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1708,7 +1709,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">71e8d1f1...</span>
+            <span class="match-id">72db0791...</span>
             <span class="match-sim">60%
               
               
@@ -1725,7 +1726,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1777,7 +1778,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">1fc7cfed...</span>
+            <span class="match-id">16386c0e...</span>
             <span class="match-sim">70%
               
               
@@ -1794,7 +1795,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1846,7 +1847,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">f7411530...</span>
+            <span class="match-id">30a154fb...</span>
             <span class="match-sim">75%
               
               
@@ -1863,7 +1864,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1915,7 +1916,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">339a0b12...</span>
+            <span class="match-id">f140011f...</span>
             <span class="match-sim">71%
               
               
@@ -1932,7 +1933,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -1984,7 +1985,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">84fba9db...</span>
+            <span class="match-id">546c87bf...</span>
             <span class="match-sim">73%
               
               
@@ -2001,7 +2002,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
             <span>Operational: <strong style="color:var(--warn);">PARTIAL</strong></span>
             &nbsp;
             
-            <span>Regulatory: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
             
           </div>
           
@@ -2441,9 +2442,9 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-13T16:49:30.567013Z</div>
+        <div class="value mono">2026-02-13T17:30:14.171187Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-20T23:59:59.567013Z</div>
+        <div class="value mono">2026-02-20T23:59:59.171187Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
@@ -2492,7 +2493,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-13T16:49:30.567380
+      Generated 2026-02-13T17:30:14.171434
     </div>
   </div>
 </body>
