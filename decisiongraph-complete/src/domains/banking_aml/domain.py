@@ -253,7 +253,7 @@ _FIELD_ENRICHMENTS: dict[str, dict] = {
     "trade.goods_description": {
         "type": FieldType.ORDINAL,
         "comparison": ComparisonFn.STEP,
-        "weight": 0.05,
+        "weight": 0.04,
         "tier": FieldTier.BEHAVIORAL,
         "ordered_values": ["detailed", "adequate", "vague", "missing"],
     },
