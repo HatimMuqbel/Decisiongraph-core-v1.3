@@ -68,23 +68,24 @@ export default function GovernedAlignmentCard({
           <div className="grid grid-cols-3 gap-3 border-t border-slate-700 pt-3">
             <div>
               <p className="text-[11px] text-white leading-relaxed">
-                Percentage of comparable historical cases where the bank reached the same
-                operational decision (ALLOW, EDD, or BLOCK) as the current governed disposition.
-                Measures whether the institution has historically acted the same way on similar facts.
+                What did the bank decide to do? ALLOW the transaction, require Enhanced Due
+                Diligence, or BLOCK/exit. This shows what percentage of comparable past cases
+                the bank made the same operational decision on.
               </p>
             </div>
             <div>
               <p className="text-[11px] text-white leading-relaxed">
-                Percentage of comparable cases where the suspicion finding matched — either both
-                filed an STR or both determined no STR was required. Measures whether the institution
-                has historically reached the same regulatory conclusion on similar risk profiles.
+                What did the bank decide to report? File an STR with FINTRAC, or no filing
+                required. This shows what percentage of comparable past cases the bank made
+                the same reporting decision on.
               </p>
             </div>
             <div>
               <p className="text-[11px] text-white leading-relaxed">
-                Percentage of comparable cases that match on both axes simultaneously — same
-                operational decision AND same suspicion finding. This is the strictest measure:
-                only precedents that fully align on both dimensions count toward this number.
+                How many comparable past cases match the current case on both decisions —
+                same operational action AND same reporting decision? This is the strictest
+                measure of institutional consistency. Only cases where the bank decided the
+                same thing on both fronts count here.
               </p>
             </div>
           </div>
