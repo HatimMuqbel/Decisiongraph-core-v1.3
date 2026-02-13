@@ -156,6 +156,26 @@ export interface SimilarityComponents {
   geo_risk: number;
 }
 
+// ── Two-Axis Classification (Operational × Regulatory) ──────────────────────
+export interface TwoAxisClassification {
+  op_alignment: 'ALIGNED' | 'PARTIAL' | 'CONTRARY';
+  suspicion_alignment: 'ALIGNED' | 'CONTRARY' | 'UNDETERMINED';
+  composite_label: string;
+  composite_description: string;
+  case_suspicion: string;
+  precedent_suspicion: string;
+}
+
+export interface TwoAxisPool {
+  op_aligned: number;
+  reg_aligned: number;
+  combined_aligned: number;
+  total: number;
+  str_filing_count: number;
+  str_filing_rate_pct: number;
+  composite_label_distribution: Record<string, number>;
+}
+
 export interface SampleCase {
   precedent_id: string;
   decision_level: string;
@@ -182,6 +202,10 @@ export interface SampleCase {
   mismatched_drivers?: string[];
   non_transferable?: boolean;
   non_transferable_reasons?: string[];
+  // Two-axis classification
+  two_axis?: TwoAxisClassification;
+  composite_label?: string;
+  composite_description?: string;
   // B1 regime fields
   regime_limited?: boolean;
 }
@@ -267,6 +291,18 @@ export interface EnhancedPrecedent {
   temporal_context?: unknown[];
   regime_analysis?: RegimeAnalysis;
   post_shift_gap_statement?: string;
+  // Two-axis pool statistics
+  two_axis_pool?: TwoAxisPool;
+  op_alignment_count?: number;
+  op_alignment_total?: number;
+  reg_alignment_count?: number;
+  reg_alignment_total?: number;
+  combined_alignment_count?: number;
+  str_filing_count?: number;
+  str_filing_rate_pct?: number;
+  suspicion_posture?: string[];
+  two_axis_alignment_narrative?: string;
+  pool_composite_finding?: string;
 }
 
 export interface PrecedentAnalysis {

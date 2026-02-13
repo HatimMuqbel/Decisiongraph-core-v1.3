@@ -33,6 +33,7 @@ from kernel.precedent.comparability_gate import evaluate_gates
 from kernel.precedent.precedent_scorer import (
     score_similarity,
     classify_match_v3,
+    classify_match_two_axis,
     detect_primary_typology,
     anchor_facts_to_dict,
 )
@@ -388,6 +389,138 @@ def test_classify_edd_neutral():
 
 def test_classify_non_transferable_neutral():
     assert classify_match_v3("ALLOW", "ALLOW", "DISCRETIONARY", "DISCRETIONARY", non_transferable=True) == "neutral"
+
+
+# ---------------------------------------------------------------------------
+# Test 6b: Two-axis classification — composite labels
+# ---------------------------------------------------------------------------
+
+def test_two_axis_fully_supporting():
+    """BLOCK/STR vs BLOCK/STR → FULLY_SUPPORTING"""
+    r = classify_match_two_axis("BLOCK", "BLOCK", "FILE_STR", "FILE_STR")
+    assert r.op_alignment == "ALIGNED"
+    assert r.suspicion_alignment == "ALIGNED"
+    assert r.composite_label == "FULLY_SUPPORTING"
+
+
+def test_two_axis_op_aligned_reg_divergent():
+    """BLOCK/STR vs BLOCK/NO_REPORT → same action, different suspicion"""
+    r = classify_match_two_axis("BLOCK", "BLOCK", "FILE_STR", "NO_REPORT")
+    assert r.op_alignment == "ALIGNED"
+    assert r.suspicion_alignment == "CONTRARY"
+    assert r.composite_label == "OP_ALIGNED_REG_DIVERGENT"
+
+
+def test_two_axis_partially_supporting():
+    """EDD/STR vs BLOCK/STR → adjacent tier, same suspicion"""
+    r = classify_match_two_axis("BLOCK", "EDD", "FILE_STR", "FILE_STR")
+    assert r.op_alignment == "PARTIAL"
+    assert r.suspicion_alignment == "ALIGNED"
+    assert r.composite_label == "PARTIALLY_SUPPORTING"
+
+
+def test_two_axis_partial_with_divergence():
+    """EDD/NO_REPORT vs BLOCK/STR → adjacent tier, different suspicion"""
+    r = classify_match_two_axis("BLOCK", "EDD", "FILE_STR", "NO_REPORT")
+    assert r.op_alignment == "PARTIAL"
+    assert r.suspicion_alignment == "CONTRARY"
+    assert r.composite_label == "PARTIAL_WITH_DIVERGENCE"
+
+
+def test_two_axis_op_contrary_reg_aligned():
+    """ALLOW/NO_REPORT vs BLOCK/NO_REPORT → opposite action, same suspicion"""
+    r = classify_match_two_axis("ALLOW", "BLOCK", "NO_REPORT", "NO_REPORT")
+    assert r.op_alignment == "CONTRARY"
+    assert r.suspicion_alignment == "ALIGNED"
+    assert r.composite_label == "OP_CONTRARY_REG_ALIGNED"
+
+
+def test_two_axis_fully_contrary():
+    """ALLOW/NO_REPORT vs BLOCK/STR → opposite action, different suspicion"""
+    r = classify_match_two_axis("ALLOW", "BLOCK", "NO_REPORT", "FILE_STR")
+    assert r.op_alignment == "CONTRARY"
+    assert r.suspicion_alignment == "CONTRARY"
+    assert r.composite_label == "FULLY_CONTRARY"
+
+
+def test_two_axis_edd_reporting_pending():
+    """EDD with PENDING_EDD reporting → suspicion UNDETERMINED"""
+    r = classify_match_two_axis("EDD", "EDD", "PENDING_EDD", "PENDING_EDD")
+    assert r.op_alignment == "ALIGNED"
+    assert r.suspicion_alignment == "UNDETERMINED"
+    assert r.composite_label == "OP_ALIGNED_REG_PENDING"
+
+
+def test_two_axis_non_transferable_caps_alignment():
+    """Non-transferable: ALIGNED op → capped to PARTIAL"""
+    r = classify_match_two_axis("BLOCK", "BLOCK", "FILE_STR", "FILE_STR",
+                                 non_transferable=True)
+    assert r.op_alignment == "PARTIAL"
+    assert r.composite_label == "PARTIALLY_SUPPORTING"
+
+
+def test_two_axis_unknown_disposition():
+    """UNKNOWN dispositions → neutral composite"""
+    r = classify_match_two_axis("UNKNOWN", "BLOCK", "FILE_STR", "FILE_STR")
+    assert r.op_alignment == "PARTIAL"
+    assert r.suspicion_alignment == "UNDETERMINED"
+
+
+def test_two_axis_allow_str_controlled_delivery():
+    """ALLOW/STR (controlled delivery) vs BLOCK/STR → contrary op, aligned susp"""
+    r = classify_match_two_axis("BLOCK", "ALLOW", "FILE_STR", "FILE_STR")
+    assert r.op_alignment == "CONTRARY"
+    assert r.suspicion_alignment == "ALIGNED"
+    assert r.composite_label == "OP_CONTRARY_REG_ALIGNED"
+
+
+# ---------------------------------------------------------------------------
+# Test 6c: Seed reporting dimension
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def banking_seeds():
+    from domains.banking_aml.seed_generator import generate_all_banking_seeds
+    return generate_all_banking_seeds(salt="test-reporting-dim")
+
+
+def test_seeds_have_reporting_dimension(banking_seeds):
+    """Every banking seed must carry a valid reporting_obligation."""
+    for seed in banking_seeds:
+        assert seed.reporting_obligation in (
+            "NO_REPORT", "FILE_STR", "FILE_LCTR", "FILE_TPR", "PENDING_EDD",
+        ), f"Unexpected reporting: {seed.reporting_obligation} for {seed.scenario_code}"
+
+
+def test_block_discretionary_seeds_have_mixed_reporting(banking_seeds):
+    """BLOCK/DISCRETIONARY seeds should have both FILE_STR and NO_REPORT."""
+    block_disc = [
+        s for s in banking_seeds
+        if s.disposition_basis == "DISCRETIONARY"
+        and s.outcome_code == "deny"  # v1 mapping for BLOCK
+    ]
+    assert len(block_disc) > 0, "No BLOCK/DISCRETIONARY seeds found"
+    reporting_set = {s.reporting_obligation for s in block_disc}
+    assert "FILE_STR" in reporting_set, "No FILE_STR in BLOCK/DISCRETIONARY seeds"
+    assert "NO_REPORT" in reporting_set, "No NO_REPORT in BLOCK/DISCRETIONARY seeds"
+
+
+def test_controlled_delivery_seeds_exist(banking_seeds):
+    """At least one ALLOW/FILE_STR seed (controlled delivery) must exist."""
+    allow_str = [
+        s for s in banking_seeds
+        if s.outcome_code == "pay" and s.reporting_obligation == "FILE_STR"
+    ]
+    assert len(allow_str) >= 1, "No ALLOW/STR (controlled delivery) seeds found"
+
+
+def test_mandatory_block_always_files_str(banking_seeds):
+    """MANDATORY blocks must always have FILE_STR reporting."""
+    mandatory = [s for s in banking_seeds if s.disposition_basis == "MANDATORY"]
+    for seed in mandatory:
+        assert seed.reporting_obligation == "FILE_STR", (
+            f"MANDATORY seed {seed.scenario_code} has {seed.reporting_obligation}"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -57,7 +57,16 @@ export default function PrecedentIntelligence({ report }: Props) {
 
       {/* Row 1: Alignment + Confidence side by side */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <GovernedAlignmentCard count={alignCount} total={alignTotal} alignmentContext={ep?.alignment_context} />
+        <GovernedAlignmentCard
+          count={alignCount}
+          total={alignTotal}
+          alignmentContext={ep?.alignment_context}
+          opAligned={ep?.op_alignment_count}
+          opTotal={ep?.op_alignment_total}
+          regAligned={ep?.reg_alignment_count}
+          regTotal={ep?.reg_alignment_total}
+          combinedAligned={ep?.combined_alignment_count}
+        />
         {isV3 ? (
           <TerminalConfidenceCard
             level={confidenceLevel!}
@@ -106,6 +115,7 @@ export default function PrecedentIntelligence({ report }: Props) {
         institutionalPosture={ep?.institutional_posture}
         regimeAnalysis={regimeAnalysis}
         postShiftGapStatement={ep?.post_shift_gap_statement}
+        suspicionPosture={ep?.suspicion_posture}
       />
 
       {/* Row 3: Top Comparable Cases */}

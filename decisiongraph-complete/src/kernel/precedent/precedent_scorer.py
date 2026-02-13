@@ -201,6 +201,156 @@ def classify_match_v3(
 
 
 # ---------------------------------------------------------------------------
+# Two-axis classification (Operational Disposition × Regulatory Suspicion)
+# ---------------------------------------------------------------------------
+
+# Suspicion-positive reporting values (STR filed or required)
+_SUSPICION_POSITIVE: frozenset[str] = frozenset({
+    "FILE_STR", "STR", "STR_REQUIRED",
+})
+
+# Suspicion-negative reporting values (no ML/TF suspicion)
+_SUSPICION_NEGATIVE: frozenset[str] = frozenset({
+    "NO_REPORT", "FILE_LCTR", "FILE_TPR",
+})
+
+# Undetermined reporting values (EDD not yet resolved)
+_SUSPICION_UNDETERMINED: frozenset[str] = frozenset({
+    "PENDING_EDD", "UNDETERMINED", "UNKNOWN", "",
+})
+
+
+def _normalize_reporting(reporting: str) -> str:
+    """Map raw reporting value to suspicion posture: STR, NO_STR, or UNDETERMINED."""
+    val = (reporting or "").upper().strip()
+    if val in _SUSPICION_POSITIVE:
+        return "STR"
+    if val in _SUSPICION_NEGATIVE:
+        return "NO_STR"
+    return "UNDETERMINED"
+
+
+def _op_alignment(case_disp: str, prec_disp: str) -> str:
+    """Compare operational dispositions → ALIGNED, PARTIAL, or CONTRARY."""
+    if case_disp == prec_disp:
+        return "ALIGNED"
+    # Adjacent tiers: EDD is adjacent to both ALLOW and BLOCK
+    if "EDD" in (case_disp, prec_disp):
+        return "PARTIAL"
+    # ALLOW vs BLOCK is contrary
+    if {case_disp, prec_disp} == {"ALLOW", "BLOCK"}:
+        return "CONTRARY"
+    # Fallback (shouldn't happen with standard dispositions)
+    return "PARTIAL"
+
+
+def _suspicion_alignment(case_reporting: str, prec_reporting: str) -> str:
+    """Compare regulatory suspicion postures → ALIGNED, CONTRARY, or UNDETERMINED."""
+    case_susp = _normalize_reporting(case_reporting)
+    prec_susp = _normalize_reporting(prec_reporting)
+    if case_susp == "UNDETERMINED" or prec_susp == "UNDETERMINED":
+        return "UNDETERMINED"
+    if case_susp == prec_susp:
+        return "ALIGNED"
+    return "CONTRARY"
+
+
+# Composite label lookup: (op_alignment, suspicion_alignment) → label
+_COMPOSITE_LABELS: dict[tuple[str, str], str] = {
+    ("ALIGNED", "ALIGNED"): "FULLY_SUPPORTING",
+    ("ALIGNED", "CONTRARY"): "OP_ALIGNED_REG_DIVERGENT",
+    ("ALIGNED", "UNDETERMINED"): "OP_ALIGNED_REG_PENDING",
+    ("PARTIAL", "ALIGNED"): "PARTIALLY_SUPPORTING",
+    ("PARTIAL", "CONTRARY"): "PARTIAL_WITH_DIVERGENCE",
+    ("PARTIAL", "UNDETERMINED"): "PARTIAL_REG_PENDING",
+    ("CONTRARY", "ALIGNED"): "OP_CONTRARY_REG_ALIGNED",
+    ("CONTRARY", "CONTRARY"): "FULLY_CONTRARY",
+    ("CONTRARY", "UNDETERMINED"): "OP_CONTRARY_REG_PENDING",
+}
+
+# Human-readable descriptions for each composite label
+_COMPOSITE_DESCRIPTIONS: dict[str, str] = {
+    "FULLY_SUPPORTING": "Operationally and regulatorily aligned.",
+    "OP_ALIGNED_REG_DIVERGENT": "Same operational action, different suspicion finding.",
+    "OP_ALIGNED_REG_PENDING": "Same operational action, reporting pending.",
+    "PARTIALLY_SUPPORTING": "Different operational tier, same suspicion posture.",
+    "PARTIAL_WITH_DIVERGENCE": "Different operational tier and suspicion posture.",
+    "PARTIAL_REG_PENDING": "Different operational tier, reporting pending.",
+    "OP_CONTRARY_REG_ALIGNED": "Opposite operational action, same suspicion finding.",
+    "FULLY_CONTRARY": "Operationally and regulatorily divergent.",
+    "OP_CONTRARY_REG_PENDING": "Opposite operational action, reporting pending.",
+}
+
+
+@dataclass(frozen=True)
+class TwoAxisClassification:
+    """Two-axis classification result for a precedent match."""
+    op_alignment: str           # ALIGNED | PARTIAL | CONTRARY
+    suspicion_alignment: str    # ALIGNED | CONTRARY | UNDETERMINED
+    composite_label: str        # e.g. FULLY_SUPPORTING
+    composite_description: str  # Human-readable description
+    case_suspicion: str         # Normalized: STR | NO_STR | UNDETERMINED
+    precedent_suspicion: str    # Normalized: STR | NO_STR | UNDETERMINED
+
+    def to_dict(self) -> dict:
+        return {
+            "op_alignment": self.op_alignment,
+            "suspicion_alignment": self.suspicion_alignment,
+            "composite_label": self.composite_label,
+            "composite_description": self.composite_description,
+            "case_suspicion": self.case_suspicion,
+            "precedent_suspicion": self.precedent_suspicion,
+        }
+
+
+def classify_match_two_axis(
+    case_disposition: str,
+    precedent_disposition: str,
+    case_reporting: str,
+    precedent_reporting: str,
+    non_transferable: bool = False,
+) -> TwoAxisClassification:
+    """Classify a precedent match on two axes: operational disposition and regulatory suspicion.
+
+    Returns a TwoAxisClassification with independent op and suspicion alignment,
+    plus a composite label combining both.
+    """
+    # Normalize dispositions
+    c_disp = (case_disposition or "UNKNOWN").upper()
+    p_disp = (precedent_disposition or "UNKNOWN").upper()
+
+    # UNKNOWN dispositions → fully neutral
+    if c_disp == "UNKNOWN" or p_disp == "UNKNOWN":
+        return TwoAxisClassification(
+            op_alignment="PARTIAL",
+            suspicion_alignment="UNDETERMINED",
+            composite_label="PARTIAL_REG_PENDING",
+            composite_description=_COMPOSITE_DESCRIPTIONS["PARTIAL_REG_PENDING"],
+            case_suspicion=_normalize_reporting(case_reporting),
+            precedent_suspicion=_normalize_reporting(precedent_reporting),
+        )
+
+    op = _op_alignment(c_disp, p_disp)
+    susp = _suspicion_alignment(case_reporting, precedent_reporting)
+
+    # Non-transferable precedents: cap at PARTIAL op alignment
+    if non_transferable and op == "ALIGNED":
+        op = "PARTIAL"
+
+    composite = _COMPOSITE_LABELS.get((op, susp), "PARTIAL_REG_PENDING")
+    description = _COMPOSITE_DESCRIPTIONS.get(composite, "")
+
+    return TwoAxisClassification(
+        op_alignment=op,
+        suspicion_alignment=susp,
+        composite_label=composite,
+        composite_description=description,
+        case_suspicion=_normalize_reporting(case_reporting),
+        precedent_suspicion=_normalize_reporting(precedent_reporting),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Typology detection for similarity floor overrides
 # ---------------------------------------------------------------------------
 
@@ -264,6 +414,8 @@ __all__ = [
     "SimilarityResult",
     "score_similarity",
     "classify_match_v3",
+    "TwoAxisClassification",
+    "classify_match_two_axis",
     "detect_primary_typology",
     "anchor_facts_to_dict",
 ]

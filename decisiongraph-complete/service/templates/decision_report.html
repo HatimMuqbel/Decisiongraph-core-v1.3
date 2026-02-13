@@ -657,9 +657,14 @@
     </div>
     {% endif %}
 
-    {# ── Row 1: Governed Alignment + Terminal Confidence ────────── #}
+    {# ── Row 1: Governed Alignment (Two-Axis) + Terminal Confidence ── #}
     {% set gov_align = enhanced_precedent.governed_alignment_count | default(precedent_analysis.governed_alignment_count | default(0)) %}
     {% set gov_total = enhanced_precedent.governed_alignment_total | default(precedent_analysis.governed_alignment_total | default(0)) %}
+    {% set op_align = enhanced_precedent.op_alignment_count | default(0) %}
+    {% set op_total = enhanced_precedent.op_alignment_total | default(0) %}
+    {% set reg_align = enhanced_precedent.reg_alignment_count | default(0) %}
+    {% set reg_total = enhanced_precedent.reg_alignment_total | default(0) %}
+    {% set comb_align = enhanced_precedent.combined_alignment_count | default(0) %}
     <div class="pi-grid">
       <div class="pi-card" style="border-left:4px solid var(--ok);">
         <h4>Governed Disposition Alignment</h4>
@@ -669,11 +674,34 @@
           {{ gov_align }}/{{ gov_total }} <span style="font-size:16px; font-weight:400;">({{ gov_pct }}%)</span>
         </div>
         <div class="bar" style="margin:8px 0;"><span style="width:{{ gov_pct }}%; background:{% if gov_pct >= 80 %}#059669{% elif gov_pct >= 50 %}#d97706{% else %}#dc2626{% endif %};"></span></div>
+        {% if op_total > 0 %}
+        {% set op_pct = (op_align / op_total * 100) | round | int %}
+        {% set reg_pct = (reg_align / reg_total * 100) | round | int if reg_total > 0 else 0 %}
+        {% set comb_pct = (comb_align / gov_total * 100) | round | int %}
+        <div style="margin-top:8px; font-size:12px; line-height:1.8;">
+          <div style="display:flex; justify-content:space-between;">
+            <span>Operational alignment:</span>
+            <span style="font-weight:600; color:{% if op_pct >= 80 %}var(--ok){% elif op_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ op_align }}/{{ op_total }} ({{ op_pct }}%)</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span>Regulatory alignment:</span>
+            <span style="font-weight:600; color:{% if reg_pct >= 80 %}var(--ok){% elif reg_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ reg_align }}/{{ reg_total }} ({{ reg_pct }}%)</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span>Combined alignment:</span>
+            <span style="font-weight:600; color:{% if comb_pct >= 80 %}var(--ok){% elif comb_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ comb_align }}/{{ gov_total }} ({{ comb_pct }}%)</span>
+          </div>
+        </div>
+        {% if enhanced_precedent.two_axis_alignment_narrative %}
+        <p class="small" style="margin:6px 0 0 0; font-style:italic;">{{ enhanced_precedent.two_axis_alignment_narrative }}</p>
+        {% endif %}
+        {% else %}
         <p class="small" style="margin:4px 0 0 0;">
           {% if gov_align == gov_total %}All comparable precedents match the governed disposition.
           {% elif gov_align > gov_total / 2 %}Majority match ({{ gov_align }}/{{ gov_total }}).
           {% else %}Minority match — review advised.{% endif %}
         </p>
+        {% endif %}
         {% else %}
         <div class="pi-big" style="color:var(--muted);">N/A</div>
         <p class="small">No comparable precedents in pool.</p>
@@ -723,9 +751,22 @@
       <strong style="color:#1e40af;">Institutional Pattern</strong>
       <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">{{ enhanced_precedent.pattern_summary }}</p>
       {% endif %}
+      {% if enhanced_precedent.suspicion_posture is defined and enhanced_precedent.suspicion_posture %}
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+        {% for line in enhanced_precedent.suspicion_posture %}
+        <p style="font-size:14px; line-height:1.6; margin:{% if loop.first %}0{% else %}4px{% endif %} 0 0 0;{% if line.startswith('\u26a0') %} color:var(--bad); font-weight:600;{% endif %}">{{ line }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% if enhanced_precedent.institutional_posture %}
       <strong style="color:#1e40af; {% if enhanced_precedent.pattern_summary %}margin-top:10px; display:block;{% endif %}">Institutional Posture</strong>
       <p style="font-size:14px; line-height:1.6; margin:4px 0 0 0;">{{ enhanced_precedent.institutional_posture }}</p>
+      {% endif %}
+      {% if enhanced_precedent.first_impression_alert is defined and enhanced_precedent.first_impression_alert %}
+      <div style="margin-top:10px; padding:10px 12px; background:rgba(220,38,38,0.08); border-left:3px solid var(--bad); border-radius:4px;">
+        <p style="font-size:13px; font-weight:600; color:var(--bad); margin:0;">&#9888; FIRST-OF-KIND DETERMINATION</p>
+        <p class="small" style="margin:4px 0 0 0;">{{ enhanced_precedent.first_impression_alert }}</p>
+      </div>
       {% endif %}
       {% if enhanced_precedent.regime_analysis and enhanced_precedent.regime_analysis.shifts_detected %}
       {% set _ra = enhanced_precedent.regime_analysis %}
@@ -809,6 +850,16 @@
         {% if thumb.regime_limited is defined and thumb.regime_limited %}
         <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
         {% endif %}
+        {% if thumb.two_axis is defined and thumb.two_axis %}
+        {% set ta = thumb.two_axis %}
+        <div style="margin:0 0 8px 0; padding:6px 10px; background:rgba(30,64,175,0.06); border-radius:4px; font-size:12px; line-height:1.7;">
+          <div style="display:flex; gap:16px;">
+            <span>Operational: <strong style="color:{% if ta.op_alignment == 'ALIGNED' %}var(--ok){% elif ta.op_alignment == 'CONTRARY' %}var(--bad){% else %}var(--warn){% endif %};">{{ ta.op_alignment }}</strong></span>
+            <span>Regulatory: <strong style="color:{% if ta.suspicion_alignment == 'ALIGNED' %}var(--ok){% elif ta.suspicion_alignment == 'CONTRARY' %}var(--bad){% else %}var(--muted){% endif %};">{{ ta.suspicion_alignment }}</strong></span>
+          </div>
+          {% if thumb.composite_description %}<div style="margin-top:2px; color:#475569;">&#9656; {{ thumb.composite_description }}</div>{% endif %}
+        </div>
+        {% endif %}
         <p style="margin:0 0 6px 0;">{{ thumb.description }}</p>
         {% if thumb.key_matches %}
         <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">{{ thumb.key_matches | join(', ') }}</span></div>
@@ -825,6 +876,11 @@
       </div>
     </details>
     {% endfor %}
+    {% if enhanced_precedent.pool_composite_finding is defined and enhanced_precedent.pool_composite_finding %}
+    <div class="statement break" style="margin-top:8px; padding:8px 12px; background:rgba(30,64,175,0.05); border-left:3px solid #3b82f6; border-radius:4px;">
+      <p class="small" style="margin:0; font-style:italic; color:#1e40af;">{{ enhanced_precedent.pool_composite_finding }}</p>
+    </div>
+    {% endif %}
     {% endif %}
 
     {# ── Row 4: Divergence Justification + Sign-Off ────────────── #}

@@ -5,9 +5,10 @@ interface Props {
   institutionalPosture?: string;
   regimeAnalysis?: RegimeAnalysis;
   postShiftGapStatement?: string;
+  suspicionPosture?: string[];
 }
 
-export default function InstitutionalPosture({ patternSummary, institutionalPosture, regimeAnalysis, postShiftGapStatement }: Props) {
+export default function InstitutionalPosture({ patternSummary, institutionalPosture, regimeAnalysis, postShiftGapStatement, suspicionPosture }: Props) {
   if (!patternSummary && !institutionalPosture) {
     return (
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
@@ -59,6 +60,18 @@ export default function InstitutionalPosture({ patternSummary, institutionalPost
       {postShiftGapStatement && (
         <div className="mt-3 border-t border-slate-700/60 pt-3">
           <p className="text-xs leading-relaxed text-red-300/80 italic">{postShiftGapStatement}</p>
+        </div>
+      )}
+      {suspicionPosture && suspicionPosture.length > 0 && (
+        <div className="mt-3 border-t border-slate-700/60 pt-3">
+          <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+            Suspicion Posture
+          </h4>
+          {suspicionPosture.map((line, i) => (
+            <p key={i} className={`text-sm leading-relaxed ${line.startsWith('\u26a0') ? 'text-red-300 font-semibold' : 'text-slate-300'}`}>
+              {line}
+            </p>
+          ))}
         </div>
       )}
     </div>

@@ -686,8 +686,26 @@ def render_markdown(ctx: dict) -> str:
         gap_stmt = enhanced_prec.get("post_shift_gap_statement", "")
         if gap_stmt:
             enhanced_precedent_md += (
-                f"> ⚠ *{_md_escape(gap_stmt)}*\n\n"
+                f"> \u26a0 *{_md_escape(gap_stmt)}*\n\n"
             )
+
+        # Suspicion posture (Part 5)
+        susp_posture = enhanced_prec.get("suspicion_posture", [])
+        if susp_posture:
+            for line in susp_posture:
+                enhanced_precedent_md += f"> {_md_escape(line)}\n"
+            enhanced_precedent_md += "\n"
+
+        # Two-axis alignment split (Part 6)
+        ta_narrative = enhanced_prec.get("two_axis_alignment_narrative", "")
+        if ta_narrative:
+            enhanced_precedent_md += "### Governed Disposition Alignment (Two-Axis)\n\n"
+            for line in ta_narrative.split("\n"):
+                if line.strip():
+                    enhanced_precedent_md += f"> {_md_escape(line)}\n"
+                else:
+                    enhanced_precedent_md += ">\n"
+            enhanced_precedent_md += "\n"
 
         # FIX-027: Case Thumbnails (readable precedent summaries)
         ct = enhanced_prec.get("case_thumbnails", [])
@@ -710,33 +728,77 @@ def render_markdown(ctx: dict) -> str:
             for thumb in ct:
                 pid = _md_escape(thumb.get("precedent_id", "N/A"))
                 sim = thumb.get("similarity_pct", 0)
-                cls = thumb.get("classification", "neutral")
                 desc = _md_escape(thumb.get("description", ""))
                 km = ", ".join(thumb.get("key_matches", [])) or "None"
                 kd = ", ".join(thumb.get("key_differences", [])) or "None"
-                # Reporting dimension divergence
-                prec_reporting = thumb.get("reporting", "UNKNOWN")
-                reporting_diverges = (
-                    case_reporting != "UNKNOWN"
-                    and prec_reporting != "UNKNOWN"
-                    and prec_reporting != case_reporting
-                )
-                if reporting_diverges:
+
+                # Two-axis classification (preferred) or fallback to single-axis
+                ta = thumb.get("two_axis", {}) or {}
+                composite_desc = thumb.get("composite_description", "")
+                op_align = ta.get("op_alignment", "")
+                susp_align = ta.get("suspicion_alignment", "")
+
+                if op_align and susp_align:
+                    # Two-axis display
+                    prec_reporting = thumb.get("reporting", "UNKNOWN")
                     prec_label = _REPORTING_LABELS_MD.get(prec_reporting, prec_reporting.replace("_", " "))
+                    disp_label = thumb.get("disposition", "UNKNOWN")
                     enhanced_precedent_md += (
-                        f"**{pid}** — {sim}% similarity · _Disposition: {cls}_ · ⚠ _Reporting: DIVERGENT ({prec_label})_\n"
-                        f"> {desc}\n"
+                        f"**{pid}**  {disp_label} — {prec_label}  {sim}%\n"
                     )
+                    enhanced_precedent_md += (
+                        f">   Operational: **{op_align}**"
+                    )
+                    if op_align == "ALIGNED":
+                        enhanced_precedent_md += " (same action)"
+                    elif op_align == "PARTIAL":
+                        enhanced_precedent_md += " (adjacent tier)"
+                    elif op_align == "CONTRARY":
+                        enhanced_precedent_md += " (opposite action)"
+                    enhanced_precedent_md += "\n"
+                    enhanced_precedent_md += (
+                        f">   Regulatory:  **{susp_align}**"
+                    )
+                    if susp_align == "ALIGNED":
+                        enhanced_precedent_md += " (same suspicion posture)"
+                    elif susp_align == "CONTRARY":
+                        enhanced_precedent_md += " (different suspicion)"
+                    elif susp_align == "UNDETERMINED":
+                        enhanced_precedent_md += " (reporting pending)"
+                    enhanced_precedent_md += "\n"
+                    if composite_desc:
+                        enhanced_precedent_md += f">   \u25b8 {composite_desc}\n"
+                    enhanced_precedent_md += f"> {desc}\n"
                 else:
-                    enhanced_precedent_md += (
-                        f"**{pid}** — {sim}% similarity · _{cls}_\n"
-                        f"> {desc}\n"
+                    # Fallback: single-axis display
+                    cls = thumb.get("classification", "neutral")
+                    prec_reporting = thumb.get("reporting", "UNKNOWN")
+                    reporting_diverges = (
+                        case_reporting != "UNKNOWN"
+                        and prec_reporting != "UNKNOWN"
+                        and prec_reporting != case_reporting
                     )
+                    if reporting_diverges:
+                        prec_label = _REPORTING_LABELS_MD.get(prec_reporting, prec_reporting.replace("_", " "))
+                        enhanced_precedent_md += (
+                            f"**{pid}** — {sim}% similarity · _Disposition: {cls}_ · \u26a0 _Reporting: DIVERGENT ({prec_label})_\n"
+                            f"> {desc}\n"
+                        )
+                    else:
+                        enhanced_precedent_md += (
+                            f"**{pid}** — {sim}% similarity · _{cls}_\n"
+                            f"> {desc}\n"
+                        )
                 if thumb.get("key_matches"):
                     enhanced_precedent_md += f"> Matching: {km}\n"
                 if thumb.get("key_differences"):
                     enhanced_precedent_md += f"> Differs: {kd}\n"
                 enhanced_precedent_md += "\n"
+
+            # Pool-level composite finding
+            _pool_finding = enhanced_prec.get("pool_composite_finding", "")
+            if _pool_finding:
+                enhanced_precedent_md += f"> **Pool-level finding:** {_pool_finding}\n\n"
 
         # a) Outcome Distribution Summary
         od = enhanced_prec.get("outcome_distribution", {})

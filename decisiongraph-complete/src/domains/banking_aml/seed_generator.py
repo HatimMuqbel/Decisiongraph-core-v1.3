@@ -49,6 +49,23 @@ FINGERPRINT_SCHEMA = "decisiongraph:aml:txn_monitoring:v2"
 AMOUNT_BANDS = ["under_3k", "3k_10k", "10k_25k", "25k_100k", "100k_500k", "500k_1m", "over_1m"]
 CHANNELS = ["wire_domestic", "wire_international", "cash", "cheque", "eft", "crypto"]
 
+# ---------------------------------------------------------------------------
+# Typology-weighted STR rates for BLOCK/DISCRETIONARY seeds
+# ---------------------------------------------------------------------------
+# When a BLOCK is discretionary, the reporting obligation varies by typology.
+# STR weight = probability of FILE_STR; (1 - weight) = probability of NO_REPORT.
+# MANDATORY blocks always file STR. EDD always PENDING_EDD. ALLOW always NO_REPORT.
+_TYPOLOGY_STR_WEIGHTS: dict[str, float] = {
+    "pep_adverse_media": 0.80,   # Almost always suspicion
+    "shell_company":     0.60,   # High suspicion
+    "layering":          0.60,   # High suspicion
+    "structuring":       0.40,   # Moderate suspicion
+    "trade_based_ml":    0.50,   # Mixed
+    "crypto_corridor":   0.25,   # Often risk appetite
+    "heavy_sar_history": 0.70,   # History implies suspicion
+    "_default":          0.30,   # Default: most blocks are risk appetite
+}
+
 # Reason code prefixes by scenario type
 _SCENARIO_REASON_CODES: dict[str, list[str]] = {
     "clean_known_customer":     ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH"],
@@ -77,6 +94,18 @@ _SCENARIO_REASON_CODES: dict[str, list[str]] = {
     "crypto_corridor_cleared":  ["RC-TXN-FATF-GREY", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
     "velocity_spike_cleared":   ["RC-TXN-RAPID", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
     "structuring_cleared":      ["RC-TXN-STRUCT", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
+    "controlled_delivery_pep":  ["RC-TXN-PEP", "RC-KYC-ADVERSE-MAJOR", "RC-TXN-MONITOR"],
+}
+
+# Map scenario names → typology key for STR weight lookup
+_SCENARIO_TYPOLOGY_MAP: dict[str, str] = {
+    "pep_adverse_media_block": "pep_adverse_media",
+    "layering_high_value_block": "layering",
+    "shell_entity_cleared": "shell_company",
+    "trade_based_ml": "trade_based_ml",
+    "heavy_sar_history": "heavy_sar_history",
+    "structuring_cleared": "structuring",
+    "crypto_corridor_cleared": "crypto_corridor",
 }
 
 
@@ -171,6 +200,28 @@ SCENARIOS = [
         "weight": 0.06,
         "decision_drivers": ["txn.amount_band", "txn.source_of_funds_clear"],
         "driver_typology": "",
+    },
+    # ── APPROVE WITH STR (controlled delivery / monitoring) ──
+    {
+        "name": "controlled_delivery_pep",
+        "description": "PEP with confirmed adverse media — allowed to avoid tipping off, STR filed",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.pep": True,
+            "screening.pep_match": True,
+            "screening.adverse_media_level": "confirmed_mltf",
+            "screening.adverse_media": True,
+            "txn.cross_border": True,
+            "customer.high_risk_jurisdiction": True,
+            "txn.amount_band": "100k_500k",
+            "txn.pattern_matches_profile": True,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.01,
+        "decision_drivers": ["customer.pep", "screening.adverse_media_level"],
+        "driver_typology": "pep_adverse_media",
     },
 
     # ── INVESTIGATE (EDD) ──
@@ -816,6 +867,15 @@ def _generate_seed(
     # v1 backward compat: map banking disposition to pay/deny/escalate
     outcome_code_v1 = _DISPOSITION_TO_V1.get(scenario["outcome"]["disposition"], "escalate")
 
+    # ── Typology-weighted reporting for BLOCK/DISCRETIONARY seeds ─────
+    reporting = scenario["outcome"]["reporting"]
+    disposition = scenario["outcome"]["disposition"]
+    basis = scenario["outcome"]["disposition_basis"]
+    if disposition == "BLOCK" and basis == "DISCRETIONARY":
+        typology_key = _SCENARIO_TYPOLOGY_MAP.get(scenario["name"], "_default")
+        str_weight = _TYPOLOGY_STR_WEIGHTS.get(typology_key, _TYPOLOGY_STR_WEIGHTS["_default"])
+        reporting = "FILE_STR" if rng.random() < str_weight else "NO_REPORT"
+
     return JudgmentPayload(
         precedent_id=precedent_id,
         case_id_hash=case_id_hash,
@@ -838,7 +898,7 @@ def _generate_seed(
         scenario_code=scenario["name"],
         seed_category="aml",
         disposition_basis=scenario["outcome"]["disposition_basis"],
-        reporting_obligation=scenario["outcome"]["reporting"],
+        reporting_obligation=reporting,
         domain="banking",
         signal_codes=list(signal_codes),
         decision_drivers=scenario.get("decision_drivers", []),

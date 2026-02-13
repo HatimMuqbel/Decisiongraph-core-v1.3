@@ -2215,6 +2215,11 @@ def _build_enhanced_precedent_analysis(
         if key_diffs:
             description += f" Key difference from current case: {', '.join(key_diffs[:2])}."
 
+        # Two-axis classification data
+        two_axis = match.get("two_axis", {}) or {}
+        composite_label = two_axis.get("composite_label", "")
+        composite_desc = two_axis.get("composite_description", "")
+
         thumb = {
             "precedent_id": match.get("precedent_id", "N/A"),
             "similarity_pct": sim_pct,
@@ -2226,6 +2231,10 @@ def _build_enhanced_precedent_analysis(
             "key_matches": key_matches[:3],
             "key_differences": key_diffs[:3],
             "reason_codes": reason_codes,
+            # Two-axis classification
+            "two_axis": two_axis,
+            "composite_label": composite_label,
+            "composite_description": composite_desc,
         }
         if is_v3:
             thumb["matched_drivers"] = matched_drivers
@@ -2240,6 +2249,93 @@ def _build_enhanced_precedent_analysis(
     _nt_thumb_count = sum(1 for t in case_thumbnails if t.get("non_transferable"))
     result["transferable_count"] = len(case_thumbnails) - _nt_thumb_count
     result["non_transferable_count"] = _nt_thumb_count
+
+    # ── c2) Two-axis pool statistics & alignment split ─────────────────
+    two_axis_pool = precedent_analysis.get("two_axis_pool") or {}
+    ta_total = two_axis_pool.get("total", 0)
+    ta_op_aligned = two_axis_pool.get("op_aligned", 0)
+    ta_reg_aligned = two_axis_pool.get("reg_aligned", 0)
+    ta_combined = two_axis_pool.get("combined_aligned", 0)
+    ta_str_count = two_axis_pool.get("str_filing_count", 0)
+    ta_str_pct = two_axis_pool.get("str_filing_rate_pct", 0)
+    ta_composite_dist = two_axis_pool.get("composite_label_distribution", {})
+
+    result["two_axis_pool"] = two_axis_pool
+    result["op_alignment_count"] = ta_op_aligned
+    result["op_alignment_total"] = ta_total
+    result["reg_alignment_count"] = ta_reg_aligned
+    result["reg_alignment_total"] = ta_total
+    result["combined_alignment_count"] = ta_combined
+    result["str_filing_count"] = ta_str_count
+    result["str_filing_rate_pct"] = ta_str_pct
+
+    # Suspicion posture narrative (Part 5)
+    suspicion_posture_lines: list[str] = []
+    if ta_total > 0:
+        suspicion_posture_lines.append(
+            f"Suspicion posture: Of {ta_total} comparable cases, "
+            f"{ta_str_count} resulted in STR filing ({ta_str_pct}%)."
+        )
+        if ta_str_count == 0:
+            suspicion_posture_lines.append(
+                "The institution has not previously identified reasonable grounds "
+                "to suspect ML/TF in comparable cases."
+            )
+        # First-of-kind suspicion finding
+        case_reporting = (
+            precedent_analysis.get("proposed_canonical", {}).get("reporting", "")
+        )
+        if case_reporting in ("FILE_STR", "STR", "STR_REQUIRED") and ta_str_count == 0:
+            suspicion_posture_lines.append(
+                "\u26a0 FIRST-OF-KIND SUSPICION FINDING: No comparable case has "
+                "previously triggered STR. This determination establishes new "
+                "institutional precedent for this case profile."
+            )
+    result["suspicion_posture"] = suspicion_posture_lines
+
+    # Two-axis alignment narrative (Part 6)
+    two_axis_alignment_narrative = ""
+    if ta_total > 0:
+        op_pct = int(ta_op_aligned / ta_total * 100) if ta_total > 0 else 0
+        reg_pct = int(ta_reg_aligned / ta_total * 100) if ta_total > 0 else 0
+        combined_pct = int(ta_combined / ta_total * 100) if ta_total > 0 else 0
+        two_axis_alignment_narrative = (
+            f"Operational alignment: {ta_op_aligned}/{ta_total} ({op_pct}%)\n"
+            f"Regulatory alignment: {ta_reg_aligned}/{ta_total} ({reg_pct}%)\n"
+            f"Combined alignment: {ta_combined}/{ta_total} ({combined_pct}%)"
+        )
+        # Contextual explanation
+        if op_pct >= 70 and reg_pct < 30:
+            two_axis_alignment_narrative += (
+                "\n\nHigh operational alignment indicates institutional consensus on "
+                "adverse action. Low regulatory alignment reflects absence of STR "
+                "precedent for this profile."
+            )
+        elif reg_pct >= 70 and op_pct < 30:
+            two_axis_alignment_narrative += (
+                "\n\nHigh regulatory alignment indicates consistent suspicion findings. "
+                "Low operational alignment reflects divergence in operational response."
+            )
+    result["two_axis_alignment_narrative"] = two_axis_alignment_narrative
+
+    # Pool-level composite label finding (Part 4)
+    pool_composite_finding = ""
+    if ta_total > 0 and ta_composite_dist:
+        dominant_label = max(ta_composite_dist, key=ta_composite_dist.get)
+        dominant_count = ta_composite_dist[dominant_label]
+        if dominant_count == ta_total and ta_total > 1:
+            _label_readable = dominant_label.replace("_", " ").lower()
+            pool_composite_finding = (
+                f"All {ta_total} comparable precedents share the same "
+                f"classification: {_label_readable}."
+            )
+            if dominant_label == "OP_ALIGNED_REG_DIVERGENT":
+                pool_composite_finding += (
+                    " Adverse action was taken in every case, but no STR was filed. "
+                    "The current STR determination has no direct regulatory "
+                    "precedent support."
+                )
+    result["pool_composite_finding"] = pool_composite_finding
 
     # ── d) Feature Comparison Matrix ─────────────────────────────────
     comparison_matrix: list[dict] = []
@@ -2447,7 +2543,7 @@ def _build_enhanced_precedent_analysis(
         result["confidence_bottleneck"] = precedent_analysis.get("confidence_bottleneck")
         result["confidence_hard_rule"] = precedent_analysis.get("confidence_hard_rule")
 
-        # j2) First-impression alert
+        # j2) First-impression / first-of-kind alert
         _ra = precedent_analysis.get("policy_regime_analysis") or precedent_analysis.get("regime_analysis") or {}
         _post_shift_count = _ra.get("post_shift_count", 0) if _ra else len(sample_cases)
         _fi_nt_count = sum(1 for sc in sample_cases if sc.get("non_transferable"))
@@ -2457,6 +2553,24 @@ def _build_enhanced_precedent_analysis(
                 "Insufficient post-shift and transferable precedent to establish pattern. "
                 "Treat as first-impression determination requiring senior review."
             )
+        elif _ra and _post_shift_count > 0:
+            # Check if post-shift pool has zero alignment for current disposition
+            _ps_dist = _ra.get("post_shift_distribution", {})
+            _ps_aligned = sum(
+                v for k, v in _ps_dist.items()
+                if str(k).upper() == _gov_canonical
+                or (_gov_canonical == "EDD" and ("EDD" in str(k).upper() or "REVIEW" in str(k).upper()))
+                or (_gov_canonical == "ALLOW" and str(k).upper() in ("ALLOW", "NO_REPORT", "PASS", "CLEARED"))
+                or (_gov_canonical == "BLOCK" and str(k).upper() in ("BLOCK", "STR_REQUIRED", "FILE_STR"))
+            )
+            if _ps_aligned == 0:
+                _ps_outcomes = ", ".join(f"{k}: {v}" for k, v in sorted(_ps_dist.items()))
+                result["first_impression_alert"] = (
+                    f"No post-shift precedent supports {governed_disposition} for this case profile. "
+                    f"All {_post_shift_count} post-shift cases resolved as {_ps_outcomes}. "
+                    f"This is a first-of-kind {governed_disposition} under current policy "
+                    f"— senior compliance review required."
+                )
 
         # k) Driver causality — shared vs divergent drivers
         shared_drivers = set()
@@ -3107,7 +3221,7 @@ def _build_decision_conflict_alert(
         gate_names = [g["gate"] for g in blocking_gates]
         resolution = (
             f"{', '.join(gate_names)} blocked escalation"
-            + (f" — {blocking_gates[0]['reason']}" if blocking_gates[0]['reason'] else "")
+            + (f" — {blocking_gates[0]['reason'].rstrip('.')}" if blocking_gates[0]['reason'] else "")
             + ". Engine followed gate logic."
         )
     elif engine_disposition != governed_disposition:

@@ -85,6 +85,10 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
 
   const borderColor = displayCls.border;
 
+  // Two-axis classification
+  const ta = sc.two_axis;
+  const hasTA = !!ta?.op_alignment && !!ta?.suspicion_alignment;
+
   // Reporting dimension divergence: show when comparable case's reporting
   // status differs from the current case's reporting status.
   const reportingDiverges =
@@ -94,6 +98,9 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
     caseReporting !== 'UNKNOWN' &&
     sc.reporting !== caseReporting;
   const precReportingLabel = REPORTING_LABELS[sc.reporting] ?? sc.reporting?.replace(/_/g, ' ');
+
+  // Two-axis composite label for summary
+  const compositeDesc = sc.composite_description || ta?.composite_description;
 
   return (
     <details
@@ -111,7 +118,21 @@ export default function PrecedentCaseCard({ sc, defaultOpen, caseDisposition, ca
           {sc.outcome_label || sc.disposition}
         </Badge>
         <span className="text-base font-bold text-slate-200">{sc.similarity_pct}%</span>
-        {reportingDiverges ? (
+        {hasTA ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className={clsx('text-[10px]', ta.op_alignment === 'ALIGNED' ? 'text-emerald-400' : ta.op_alignment === 'CONTRARY' ? 'text-red-400' : 'text-amber-400')}>
+                Op: {ta.op_alignment}
+              </span>
+              <span className={clsx('text-[10px]', ta.suspicion_alignment === 'ALIGNED' ? 'text-emerald-400' : ta.suspicion_alignment === 'CONTRARY' ? 'text-red-400' : 'text-slate-400')}>
+                Reg: {ta.suspicion_alignment}
+              </span>
+            </div>
+            {compositeDesc && (
+              <p className="text-[10px] text-slate-400 italic">{compositeDesc}</p>
+            )}
+          </div>
+        ) : reportingDiverges ? (
           <div className="flex flex-col items-end gap-0.5">
             <Badge variant={displayCls.variant}>
               DISPOSITION: {displayCls.label}

@@ -82,8 +82,10 @@ from kernel.precedent.comparability_gate import (
 )
 from kernel.precedent.precedent_scorer import (
     SimilarityResult,
+    TwoAxisClassification,
     score_similarity,
     classify_match_v3,
+    classify_match_two_axis,
     detect_primary_typology,
     anchor_facts_to_dict,
 )
@@ -3128,6 +3130,15 @@ def query_similar_precedents_v3(
                 non_transferable=sim_result.non_transferable,
             )
 
+            # Two-axis classification (operational disposition × regulatory suspicion)
+            two_axis = classify_match_two_axis(
+                case_disposition=proposed_canonical.disposition,
+                precedent_disposition=prec_canonical.disposition,
+                case_reporting=proposed_canonical.reporting,
+                precedent_reporting=prec_canonical.reporting,
+                non_transferable=sim_result.non_transferable,
+            )
+
             if sim_result.non_transferable:
                 non_transferable_count += 1
 
@@ -3148,6 +3159,7 @@ def query_similar_precedents_v3(
                     prec_canonical,
                     classification,
                     gate_results,
+                    two_axis,
                 ))
 
         # ── Regime Detection & Temporal Partitioning (B1) ────────────
@@ -3188,7 +3200,7 @@ def query_similar_precedents_v3(
         # Build v2-compatible tuples for stratified_precedent_sample
         v2_tuples = [
             (payload, overlap, classification, combined, {})
-            for payload, overlap, combined, sim_result, dw, rw, co, classification, gr
+            for payload, overlap, combined, sim_result, dw, rw, co, classification, gr, _ta
             in scored_matches
         ]
 
@@ -3219,7 +3231,7 @@ def query_similar_precedents_v3(
         decisive_supporting = 0
         decisive_total = 0
         sim_scores_for_avg = []
-        for payload, _ov, _sc, sim_r, _dw, _rw, prec_co, _cls, _gr in scored_matches:
+        for payload, _ov, _sc, sim_r, _dw, _rw, prec_co, _cls, _gr, _ta in scored_matches:
             sim_scores_for_avg.append(sim_r.score)
             prec_disp = prec_co.disposition
             prec_basis = prec_co.disposition_basis
@@ -3259,13 +3271,13 @@ def query_similar_precedents_v3(
 
         # Governed alignment
         governed_alignment_count = sum(
-            1 for _, _, _, _, _, _, co, _, _ in scored_matches
+            1 for _, _, _, _, _, _, co, _, _, _ in scored_matches
             if co.disposition == proposed_canonical.disposition
         )
 
         # ── Top-k similarity ─────────────────────────────────────────
         sorted_scores = sorted(
-            (sim.score for _, _, _, sim, _, _, _, _, _ in scored_matches),
+            (sim.score for _, _, _, sim, _, _, _, _, _, _ in scored_matches),
             reverse=True,
         )
         top_scores = sorted_scores[:5]
@@ -3295,10 +3307,14 @@ def query_similar_precedents_v3(
         # ── Sample cases with v3 field scores ────────────────────────
         sample_cases = []
         exact_match_count = 0
-        # Build a lookup from scored_matches for sim_result data
+        # Build lookups from scored_matches for sim_result and two-axis data
         sim_lookup = {
             id(payload): (sim_result, gate_results)
-            for payload, _, _, sim_result, _, _, _, _, gate_results in scored_matches
+            for payload, _, _, sim_result, _, _, _, _, gate_results, _ in scored_matches
+        }
+        two_axis_lookup = {
+            id(payload): two_axis
+            for payload, _, _, _, _, _, _, _, _, two_axis in scored_matches
         }
 
         for payload, overlap, classification, score, _cs in sampled:
@@ -3333,6 +3349,10 @@ def query_similar_precedents_v3(
                 matched_drivers = sr.matched_drivers
                 mismatched_drivers = sr.mismatched_drivers
 
+            # Two-axis classification data
+            ta_data = two_axis_lookup.get(id(payload))
+            ta_dict = ta_data.to_dict() if ta_data else {}
+
             sample_cases.append({
                 "precedent_id": payload.precedent_id[:8] + "...",
                 "decision_level": payload.decision_level,
@@ -3358,6 +3378,8 @@ def query_similar_precedents_v3(
                 "non_transferable_reasons": non_transferable_reasons,
                 "matched_drivers": matched_drivers,
                 "mismatched_drivers": mismatched_drivers,
+                # Two-axis classification (operational × regulatory)
+                "two_axis": ta_dict,
                 # B1.6: regime-limited marking for pre-shift precedents
                 "regime_limited": payload.precedent_id in regime_limited_ids,
                 # v2 template compatibility — the HTML template reads
@@ -3375,13 +3397,46 @@ def query_similar_precedents_v3(
                 },
             })
 
+        # ── Two-axis pool-level statistics ──────────────────────────
+        op_aligned_count = 0
+        reg_aligned_count = 0
+        combined_aligned_count = 0
+        str_filing_count = 0
+        two_axis_total = len(scored_matches)
+        composite_label_counts: dict[str, int] = {}
+        for _, _, _, _, _, _, _, _, _, ta in scored_matches:
+            if ta.op_alignment == "ALIGNED":
+                op_aligned_count += 1
+            if ta.suspicion_alignment == "ALIGNED":
+                reg_aligned_count += 1
+            if ta.op_alignment == "ALIGNED" and ta.suspicion_alignment == "ALIGNED":
+                combined_aligned_count += 1
+            if ta.precedent_suspicion == "STR":
+                str_filing_count += 1
+            composite_label_counts[ta.composite_label] = (
+                composite_label_counts.get(ta.composite_label, 0) + 1
+            )
+
+        two_axis_pool = {
+            "op_aligned": op_aligned_count,
+            "reg_aligned": reg_aligned_count,
+            "combined_aligned": combined_aligned_count,
+            "total": two_axis_total,
+            "str_filing_count": str_filing_count,
+            "str_filing_rate_pct": (
+                int(round(str_filing_count / two_axis_total * 100))
+                if two_axis_total > 0 else 0
+            ),
+            "composite_label_distribution": composite_label_counts,
+        }
+
         # ── Build response (v2 superset) ─────────────────────────────
         raw_overlap_count = len(precedent_matches)
         overlap_outcome_distribution = _build_outcome_distribution(
             [p for p, _o in precedent_matches]
         )
         match_outcome_distribution = _build_outcome_distribution(
-            [p for p, _, _, _, _, _, _, _, _ in scored_matches]
+            [p for p, _, _, _, _, _, _, _, _, _ in scored_matches]
         )
 
         response = {
@@ -3444,6 +3499,8 @@ def query_similar_precedents_v3(
             ],
             "confidence_bottleneck": governed_result.bottleneck,
             "confidence_hard_rule": governed_result.hard_rule_applied,
+            # Two-axis classification pool statistics
+            "two_axis_pool": two_axis_pool,
         }
 
         # ── B1: Regime Analysis ─────────────────────────────────────
