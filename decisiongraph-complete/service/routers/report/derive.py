@@ -2417,8 +2417,22 @@ def _build_enhanced_precedent_analysis(
             f"Regulatory alignment: {ta_reg_aligned}/{ta_total} ({reg_pct}%)\n"
             f"Combined alignment: {ta_combined}/{ta_total} ({combined_pct}%)"
         )
+        # Detect all-UNDETERMINED regulatory pool
+        _all_reg_pending = (
+            ta_reg_aligned == 0
+            and ta_composite_dist
+            and all("REG_PENDING" in k for k in ta_composite_dist)
+        )
+        result["reg_alignment_all_undetermined"] = _all_reg_pending
+
         # Contextual explanation
-        if op_pct >= 70 and reg_pct < 30:
+        if _all_reg_pending:
+            two_axis_alignment_narrative += (
+                "\n\nRegulatory alignment is 0% \u2014 all comparable cases are pending "
+                "reporting determination. This reflects incomplete data, not "
+                "regulatory divergence."
+            )
+        elif op_pct >= 70 and reg_pct < 30:
             two_axis_alignment_narrative += (
                 "\n\nHigh operational alignment indicates institutional consensus on "
                 "adverse action. Low regulatory alignment reflects absence of STR "

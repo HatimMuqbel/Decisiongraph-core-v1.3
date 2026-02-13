@@ -297,6 +297,7 @@ export interface EnhancedPrecedent {
   op_alignment_total?: number;
   reg_alignment_count?: number;
   reg_alignment_total?: number;
+  reg_alignment_all_undetermined?: boolean;
   combined_alignment_count?: number;
   str_filing_count?: number;
   str_filing_rate_pct?: number;

@@ -9,11 +9,13 @@ interface Props {
   regAligned?: number;
   regTotal?: number;
   combinedAligned?: number;
+  regAllUndetermined?: boolean;
 }
 
 export default function GovernedAlignmentCard({
   count, total, alignmentContext,
   opAligned, opTotal, regAligned, regTotal, combinedAligned,
+  regAllUndetermined,
 }: Props) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   const color = pct >= 80 ? 'emerald' : pct >= 50 ? 'amber' : 'red';
@@ -48,7 +50,7 @@ export default function GovernedAlignmentCard({
             </div>
             <div>
               <p className="text-[10px] text-slate-500 uppercase">Regulatory</p>
-              <p className={clsx('text-xl font-bold', regPct >= 70 ? 'text-emerald-400' : regPct >= 40 ? 'text-amber-400' : 'text-red-400')}>
+              <p className={clsx('text-xl font-bold', regAllUndetermined ? 'text-slate-400' : regPct >= 70 ? 'text-emerald-400' : regPct >= 40 ? 'text-amber-400' : 'text-red-400')}>
                 {regPct}%
               </p>
               <p className="text-[10px] text-slate-500">{regAligned}/{regTotal}</p>
@@ -71,6 +73,12 @@ export default function GovernedAlignmentCard({
             <p className="text-[11px] text-amber-300/80 leading-relaxed">
               High regulatory alignment indicates consistent suspicion findings.
               Low operational alignment reflects divergence in operational response.
+            </p>
+          )}
+          {regAllUndetermined && (
+            <p className="text-[11px] text-slate-400 italic leading-relaxed">
+              Regulatory alignment is 0% — all comparable cases are pending reporting
+              determination. This reflects incomplete data, not regulatory divergence.
             </p>
           )}
         </div>

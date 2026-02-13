@@ -695,8 +695,13 @@
           </div>
           <div style="display:flex; justify-content:space-between;">
             <span>Regulatory alignment:</span>
-            <span style="font-weight:600; color:{% if reg_pct >= 80 %}var(--ok){% elif reg_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ reg_align }}/{{ reg_total }} ({{ reg_pct }}%)</span>
+            <span style="font-weight:600; color:{% if reg_pct >= 80 %}var(--ok){% elif reg_pct >= 50 %}var(--warn){% elif enhanced_precedent.reg_alignment_all_undetermined | default(false) %}var(--muted){% else %}var(--bad){% endif %};">{{ reg_align }}/{{ reg_total }} ({{ reg_pct }}%)</span>
           </div>
+          {% if reg_pct == 0 and enhanced_precedent.reg_alignment_all_undetermined | default(false) %}
+          <div style="font-size:11px; color:var(--muted); margin:2px 0 2px 0; font-style:italic;">
+            All comparable cases are pending reporting determination. This reflects incomplete data, not regulatory divergence.
+          </div>
+          {% endif %}
           <div style="display:flex; justify-content:space-between;">
             <span>Combined alignment:</span>
             <span style="font-weight:600; color:{% if comb_pct >= 80 %}var(--ok){% elif comb_pct >= 50 %}var(--warn){% else %}var(--bad){% endif %};">{{ comb_align }}/{{ gov_total }} ({{ comb_pct }}%)</span>

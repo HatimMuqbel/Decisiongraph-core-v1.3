@@ -66,6 +66,7 @@ export default function PrecedentIntelligence({ report }: Props) {
           regAligned={ep?.reg_alignment_count}
           regTotal={ep?.reg_alignment_total}
           combinedAligned={ep?.combined_alignment_count}
+          regAllUndetermined={ep?.reg_alignment_all_undetermined}
         />
         {isV3 ? (
           <TerminalConfidenceCard
