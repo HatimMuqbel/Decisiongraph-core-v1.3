@@ -32,8 +32,13 @@
    - 9.1 Disposition Deviation (Consistency Check)
    - 9.2 Reporting Deviation (Defensibility Check)
    - 9.3 Deviation Summary Matrix
-10. [Invariants and Governance Principles](#10-invariants-and-governance-principles)
-11. [Auditor Expectations and Examination Readiness](#11-auditor-expectations-and-examination-readiness)
+10. [Two-Axis Classification Model (Operational × Regulatory)](#10-two-axis-classification-model-operational--regulatory)
+    - 10.1 Structure
+    - 10.2 Regulatory Axis Data Asymmetry
+    - 10.3 EDD Pending Cases
+    - 10.4 Composite Labels and Combined Alignment
+11. [Invariants and Governance Principles](#11-invariants-and-governance-principles)
+12. [Auditor Expectations and Examination Readiness](#12-auditor-expectations-and-examination-readiness)
 - [Appendix A — FINTRAC Reporting Obligation Reference](#appendix-a--fintrac-reporting-obligation-reference)
 - [Appendix B — PCMLTFA Statutory Cross-References](#appendix-b--pcmltfa-statutory-cross-references)
 
@@ -325,7 +330,88 @@ defensibility failures, and are handled separately.
 
 ---
 
-## 10. Invariants and Governance Principles
+## 10. Two-Axis Classification Model (Operational × Regulatory)
+
+The two-axis classification extends the single-axis disposition match (Section 5) by adding a second dimension: regulatory suspicion alignment. Each precedent match is evaluated on both axes independently, producing a composite label that separates operational consistency from regulatory consistency.
+
+### 10.1 Structure
+
+Each precedent match receives two alignment assessments:
+
+```
+Operational axis:   case.disposition  vs  precedent.disposition
+                    → ALIGNED | PARTIAL | CONTRARY
+
+Regulatory axis:    case.suspicion    vs  precedent.suspicion
+                    → ALIGNED | CONTRARY | UNDETERMINED
+```
+
+Suspicion postures are normalized from reporting values:
+
+| Reporting Value | Suspicion Posture |
+|----------------|------------------|
+| FILE_STR, STR, STR_REQUIRED | **STR** (suspicion confirmed) |
+| NO_REPORT, FILE_LCTR, FILE_TPR | **NO_STR** (no suspicion finding) |
+| PENDING_EDD, UNDETERMINED, UNKNOWN | **UNDETERMINED** (not yet resolved) |
+
+If either the case or the precedent has an UNDETERMINED suspicion posture, the regulatory axis returns UNDETERMINED. Alignment requires both sides to have resolved postures.
+
+### 10.2 Regulatory Axis Data Asymmetry
+
+The regulatory axis compares data from two different stages of the investigation lifecycle:
+
+| Side | Data Source | Stage | Nature |
+|------|-----------|-------|--------|
+| **Current case** | Suspicion classifier output | Pre-EDD assessment | Preliminary — classifier's determination of whether Tier 1 suspicion indicators are present |
+| **Historical precedents** | `reporting_obligation` stored on seed/precedent record | Post-EDD terminal outcome | Terminal — final reporting determination after Enhanced Due Diligence has been completed |
+
+**This asymmetry is by design.** It makes the regulatory alignment metric predictive rather than retrospective:
+
+- The **classifier** on the current case answers: "Does this case exhibit suspicion indicators that warrant STR filing?"
+- The **historical reporting_obligation** answers: "When comparable cases exhibited similar indicators, what was the terminal outcome after full investigation?"
+
+A 32% regulatory alignment means: "The classifier identified suspicion indicators, and 32% of comparable historical cases ultimately resulted in STR filing after their own EDD process completed." This directly informs the compliance officer's expectation of where the current case is likely to resolve.
+
+If the regulatory axis used the gate's procedural output (e.g., NO_REPORT because the gate blocked STR for typology maturity reasons) instead of the classifier's suspicion assessment, the comparison would be meaningless — it would measure procedural gate alignment, not substantive suspicion alignment.
+
+> **VALIDATOR NOTE:** When reviewing regulatory alignment percentages, the numerator counts historical precedents whose terminal reporting matched the current case's classifier suspicion posture. A low percentage does not indicate the classifier is wrong — it indicates that most comparable cases resolved differently after EDD. This is the metric's value: it tells the compliance officer how often institutional precedent supports the classifier's suspicion finding.
+
+### 10.3 EDD Pending Cases
+
+When the current case's disposition is EDD (e.g., verdict PASS_WITH_EDD), the case has no determined suspicion posture. The classifier may not have been invoked, or the classifier's output has been superseded by the EDD requirement. In this state:
+
+- The case's reporting normalizes to PENDING_EDD → UNDETERMINED
+- The regulatory axis returns UNDETERMINED for all precedent comparisons
+- Regulatory alignment is 0% — this is correct and expected
+- The "Combined alignment" metric cannot be computed
+
+The report renders this as: *"Current case requires Enhanced Due Diligence before reporting determination. Comparable cases have resolved reporting, but alignment cannot be computed until this case's regulatory posture is determined."*
+
+This is not a data gap. It is a truthful representation of the case's investigative stage.
+
+### 10.4 Composite Labels and Combined Alignment
+
+The two axes produce a 3×3 composite label matrix:
+
+| Composite Label | Op Alignment | Reg Alignment | Interpretation |
+|----------------|-------------|---------------|---------------|
+| FULLY_SUPPORTING | ALIGNED | ALIGNED | Same action, same suspicion finding |
+| OP_ALIGNED_REG_DIVERGENT | ALIGNED | CONTRARY | Same action, different suspicion finding |
+| OP_ALIGNED_REG_PENDING | ALIGNED | UNDETERMINED | Same action, suspicion not yet resolved |
+| PARTIALLY_SUPPORTING | PARTIAL | ALIGNED | Adjacent operational tier, same suspicion |
+| PARTIAL_WITH_DIVERGENCE | PARTIAL | CONTRARY | Adjacent tier, different suspicion |
+| PARTIAL_REG_PENDING | PARTIAL | UNDETERMINED | Adjacent tier, suspicion pending |
+| OP_CONTRARY_REG_ALIGNED | CONTRARY | ALIGNED | Opposite action, same suspicion finding |
+| FULLY_CONTRARY | CONTRARY | CONTRARY | Opposite action and suspicion finding |
+| OP_CONTRARY_REG_PENDING | CONTRARY | UNDETERMINED | Opposite action, suspicion pending |
+
+**Combined alignment** is the strict intersection: precedents that are ALIGNED on both axes simultaneously. This metric answers: "How many comparable cases took the same operational action AND reached the same suspicion conclusion?"
+
+Combined alignment is typically lower than either axis independently. A low combined percentage does not indicate system failure — it reflects the reality that operational and regulatory decisions are orthogonal (Section 1). The two individual axis percentages remain the primary analytical signals.
+
+---
+
+## 11. Invariants and Governance Principles
 
 The following invariants must be enforced at the system level. Any code path that violates these invariants constitutes a compliance defect requiring immediate remediation.
 
@@ -340,14 +426,15 @@ The following invariants must be enforced at the system level. Any code path tha
 | **INV-007** | Disposition deviation triggers Consistency Alerts; Reporting deviation triggers Defensibility Alerts | *Examination readiness* |
 | **INV-008** | MANDATORY and DISCRETIONARY dispositions must not be compared in deviation analysis or confidence scoring | *SEMA / UNA / Criminal Code s. 83.08* |
 | **INV-009** | Defensibility Alerts overridden without documented rationale constitute an examination finding | *PCMLTFA s. 73 / s. 73.1* |
+| **INV-010** | The regulatory axis must use the classifier's suspicion determination for the current case, not the gate's procedural override. Gates block filing for procedural reasons; the classifier measures substantive suspicion. The regulatory axis measures suspicion alignment. | *Section 10.2 / Examination readiness* |
 
 ---
 
-## 11. Auditor Expectations and Examination Readiness
+## 12. Auditor Expectations and Examination Readiness
 
 This section addresses the specific concerns a FINTRAC examiner or external auditor would raise when reviewing a precedent-based decision engine deployed within a Canadian reporting entity.
 
-### 11.1 FINTRAC Examination Considerations
+### 12.1 FINTRAC Examination Considerations
 
 Under PCMLTFA s. 62, FINTRAC has authority to examine a reporting entity's compliance program, including its transaction monitoring systems and the models underlying automated or semi-automated decision-making. An examiner reviewing DecisionGraph would specifically assess:
 
@@ -363,11 +450,11 @@ Under PCMLTFA s. 62, FINTRAC has authority to examine a reporting entity's compl
 
 **Audit trail completeness:** Whether each precedent match includes disposition, disposition basis, and reporting dimensions with full provenance, enabling post-hoc reconstruction of any decision path.
 
-### 11.2 OSFI Guideline B-10 Alignment
+### 12.2 OSFI Guideline B-10 Alignment
 
 OSFI Guideline B-10 (Third-Party Risk Management, applicable to federally regulated financial institutions) and the related AML/ATF expectations require that risk-based decision-making systems demonstrate consistent, defensible outputs. The three-field model supports this by ensuring that EDD escalations are not conflated with terminal risk actions, that mandatory legal obligations are distinguished from discretionary risk decisions, and that precedent-based confidence reflects the institution's actual decisioning history.
 
-### 11.3 What This Model Prevents
+### 12.3 What This Model Prevents
 
 The v2 three-field canonicalization model with dual deviation automatically eliminates the following categories of audit findings:
 
