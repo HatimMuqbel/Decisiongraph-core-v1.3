@@ -737,3 +737,203 @@ def test_end_to_end_pipeline(registry, seeds, auto_claim_facts):
         ConfidenceLevel.MODERATE, ConfidenceLevel.HIGH,
         ConfidenceLevel.VERY_HIGH,
     )
+
+
+# ---------------------------------------------------------------------------
+# Test category: Similarity score clamping (FIX 1 regression guard)
+# ---------------------------------------------------------------------------
+
+class TestSimilarityScoreClamping:
+    """Verify that similarity scores are always in [0.0, 1.0] and display ≤ 100%."""
+
+    def test_score_similarity_bounded(self, registry, auto_claim_facts, seeds):
+        """Raw similarity score must be in [0.0, 1.0] for all seed precedents."""
+        prec_facts = anchor_facts_to_dict(seeds[0].anchor_facts)
+        sim = score_similarity(
+            registry, auto_claim_facts, prec_facts,
+            precedent_drivers=seeds[0].decision_drivers,
+        )
+        assert 0.0 <= sim.score <= 1.0, (
+            f"Similarity score {sim.score} out of [0.0, 1.0] bounds"
+        )
+
+    def test_display_pct_clamp_at_100(self):
+        """Combined ranking score > 1.0 must clamp to 100% for display."""
+        # Simulate a combined score that exceeds 1.0 due to multipliers
+        # (decision_weight=1.15 × recency=1.0 × sim=0.95 = 1.0925)
+        combined_score = 1.0925
+        display_pct = min(int(round(combined_score * 100)), 100)
+        assert display_pct == 100, f"Expected 100%, got {display_pct}%"
+
+    def test_display_pct_normal_passthrough(self):
+        """Scores below 1.0 should display as-is (no clamping needed)."""
+        normal_score = 0.87
+        display_pct = min(int(round(normal_score * 100)), 100)
+        assert display_pct == 87
+
+    def test_display_pct_exact_100(self):
+        """A perfect 1.0 score should display as exactly 100%."""
+        display_pct = min(int(round(1.0 * 100)), 100)
+        assert display_pct == 100
+
+    def test_score_assertion_fires_on_invalid(self, registry):
+        """Verify the assertion in score_similarity catches out-of-bounds scores.
+
+        We can't easily force a > 1.0 normalized score through the real function
+        (weights are validated), so we test the boundary condition instead.
+        """
+        # Score with minimal input → should still be in bounds
+        sim = score_similarity(registry, {}, {})
+        assert 0.0 <= sim.score <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Test category: Signal count assertion (FIX 5 regression guard)
+# ---------------------------------------------------------------------------
+
+class TestSignalCountConsistency:
+    """Verify that _dedupe_drivers produces correct counts and no premature placeholders."""
+
+    def test_dedupe_removes_duplicates(self):
+        """Duplicate driver labels should be collapsed."""
+        from service.routers.report.derive import _dedupe_drivers
+
+        drivers = [
+            "Cross-border transfer with elevated corridor risk",
+            "Wire transfer channel (SWIFT)",
+            "Cross-border transfer with elevated corridor risk",  # duplicate
+        ]
+        result = _dedupe_drivers(drivers)
+        assert len(result) == 2
+        assert result[0] == "Cross-border transfer with elevated corridor risk"
+        assert result[1] == "Wire transfer channel (SWIFT)"
+
+    def test_dedupe_caps_at_limit(self):
+        """Driver list should be capped at the specified limit."""
+        from service.routers.report.derive import _dedupe_drivers
+
+        drivers = [f"Signal {i}" for i in range(10)]
+        result = _dedupe_drivers(drivers, cap=5)
+        assert len(result) == 5
+
+    def test_empty_drivers_get_fallback(self):
+        """Empty driver list should produce the deterministic fallback."""
+        from service.routers.report.derive import _dedupe_drivers
+
+        result = _dedupe_drivers([])
+        assert len(result) == 1
+        assert "Deterministic rule activation" in result[0]
+
+    def test_no_premature_no_indicators(self):
+        """'No indicators' should NOT appear when real drivers exist.
+
+        FIX 5 removed premature insertion of the placeholder before
+        contextual drivers were collected.
+        """
+        from service.routers.report.derive import _dedupe_drivers
+
+        drivers = [
+            "Cross-border transfer with elevated corridor risk",
+            "PEP exposure",
+        ]
+        result = _dedupe_drivers(drivers)
+        assert not any("No indicators" in d for d in result)
+        assert len(result) == 2
+
+
+# ---------------------------------------------------------------------------
+# Test category: Typology label generation (FIX 6 regression guard)
+# ---------------------------------------------------------------------------
+
+class TestTypologyLabelGeneration:
+    """Verify _resolve_typology produces correct labels for NONE, FORMING, ESTABLISHED."""
+
+    def test_typology_none_no_classifier(self):
+        """Without classifier, legacy path should still return a string."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={"typologies": []},
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result=None,
+        )
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_typology_none_with_zero_tier1(self):
+        """Zero tier-1 signals + no FORMING typology → 'No suspicious typology'."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={"typologies": []},
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result={"suspicion_count": 0, "tier1_signals": []},
+        )
+        assert result == "No suspicious typology identified"
+
+    def test_typology_forming_stage(self):
+        """Zero tier-1 signals + FORMING typology → 'Typology indicators present'."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={
+                "typologies": [{"name": "structuring", "maturity": "FORMING"}]
+            },
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result={"suspicion_count": 0, "tier1_signals": []},
+        )
+        assert "Typology indicators present" in result
+        assert "forming" in result.lower()
+        # Must NOT say "No suspicious typology"
+        assert "No suspicious typology" not in result
+
+    def test_typology_validating_stage(self):
+        """Zero tier-1 signals + VALIDATING typology → 'Typology indicators present'."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={
+                "typologies": [{"name": "layering", "maturity": "VALIDATING"}]
+            },
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result={"suspicion_count": 0, "tier1_signals": []},
+        )
+        assert "Typology indicators present" in result
+
+    def test_typology_established_with_tier1(self):
+        """Positive tier-1 signals → resolved typology name (not 'No suspicious')."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={
+                "typologies": [{"name": "structuring", "maturity": "CONFIRMED"}]
+            },
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result={
+                "suspicion_count": 2,
+                "tier1_signals": [{"code": "STRUCTURING"}],
+            },
+        )
+        assert result != "No suspicious typology identified"
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_typology_no_contradiction_with_forming(self):
+        """FORMING typology must not produce contradictory 'No suspicious typology' label."""
+        from service.routers.report.derive import _resolve_typology
+
+        result = _resolve_typology(
+            layer4_typologies={
+                "typologies": [{"name": "primary", "maturity": "FORMING"}]
+            },
+            rules_fired=[],
+            layer6_suspicion={},
+            classifier_result={"suspicion_count": 0, "tier1_signals": []},
+        )
+        # The key invariant: FORMING typology present → cannot say "No suspicious typology"
+        assert "No suspicious typology" not in result

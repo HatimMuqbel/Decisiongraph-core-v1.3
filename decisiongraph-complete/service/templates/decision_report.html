@@ -855,7 +855,11 @@
         <div style="margin:0 0 8px 0; padding:6px 10px; background:rgba(30,64,175,0.06); border-radius:4px; font-size:12px; line-height:1.7;">
           <div style="display:flex; gap:16px;">
             <span>Operational: <strong style="color:{% if ta.op_alignment == 'ALIGNED' %}var(--ok){% elif ta.op_alignment == 'CONTRARY' %}var(--bad){% else %}var(--warn){% endif %};">{{ ta.op_alignment }}</strong></span>
+            {% if ta.suspicion_alignment == 'UNDETERMINED' %}
+            <span>Regulatory: <strong style="color:var(--muted);">PENDING</strong> <span style="color:var(--muted);">(reporting not yet determined)</span></span>
+            {% else %}
             <span>Regulatory: <strong style="color:{% if ta.suspicion_alignment == 'ALIGNED' %}var(--ok){% elif ta.suspicion_alignment == 'CONTRARY' %}var(--bad){% else %}var(--muted){% endif %};">{{ ta.suspicion_alignment }}</strong></span>
+            {% endif %}
           </div>
           {% if thumb.composite_description %}<div style="margin-top:2px; color:#475569;">&#9656; {{ thumb.composite_description }}</div>{% endif %}
         </div>

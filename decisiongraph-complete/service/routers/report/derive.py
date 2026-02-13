@@ -267,6 +267,28 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # ── 11. Escalation summary ────────────────────────────────────────────
     escalation_summary = _build_escalation_summary(decision_status, str_required)
 
+    # ── 11b. Append LOW confidence warning to summary ─────────────────────
+    _v3_conf_level = (precedent_analysis.get("confidence_level") or "").upper()
+    if _v3_conf_level == "LOW":
+        _v3_bottleneck = (
+            precedent_analysis.get("confidence_bottleneck", "")
+            .replace("_", " ")
+        )
+        _v3_bottleneck_note = ""
+        for _dim in precedent_analysis.get("confidence_dimensions", []):
+            if _dim.get("bottleneck") and _dim.get("note"):
+                _v3_bottleneck_note = _dim["note"].rstrip(".")
+                break
+        _conf_detail = (
+            f" ({_v3_bottleneck}: {_v3_bottleneck_note})"
+            if _v3_bottleneck_note
+            else f" ({_v3_bottleneck})" if _v3_bottleneck else ""
+        )
+        escalation_summary += (
+            f" Terminal confidence is LOW{_conf_detail}."
+            " Senior review recommended before final disposition."
+        )
+
     # ── 12. Regulatory position ───────────────────────────────────────────
     if str_required:
         regulatory_position = "Reporting threshold met under applicable regulatory guidance."
@@ -885,6 +907,12 @@ def _resolve_typology(
     if classifier_result is not None:
         tier1_count = classifier_result.get("suspicion_count", 0)
         if tier1_count == 0:
+            # Check if layer4 has FORMING typology — indicators exist but
+            # haven't reached suspicion threshold. Distinguish from "nothing found".
+            for _typ in (layer4_typologies.get("typologies", []) or []):
+                _mat = (_typ.get("maturity") or "").upper() if isinstance(_typ, dict) else ""
+                if _mat in ("FORMING", "VALIDATING"):
+                    return "Typology indicators present (maturity: forming)"
             return "No suspicious typology identified"
 
         tier1_codes = {
@@ -2335,6 +2363,13 @@ def _build_enhanced_precedent_analysis(
                     "The current STR determination has no direct regulatory "
                     "precedent support."
                 )
+            elif dominant_label in (
+                "OP_ALIGNED_REG_PENDING", "PARTIAL_REG_PENDING", "OP_CONTRARY_REG_PENDING",
+            ):
+                pool_composite_finding += (
+                    " Regulatory alignment cannot be assessed — no comparable "
+                    "case has reached reporting determination."
+                )
     result["pool_composite_finding"] = pool_composite_finding
 
     # ── d) Feature Comparison Matrix ─────────────────────────────────
@@ -2665,18 +2700,30 @@ def _build_pattern_summary(
             if "EDD" in str(k).upper() or "REVIEW" in str(k).upper()
         )
 
-        if total_decisive > 0:
-            # Determine majority direction from decisive (supporting/contrary) cases
-            majority = "ALLOW" if supporting >= contrary else "BLOCK"
-            majority_pct = int(max(supporting, contrary) / total_decisive * 100)
-            assert total_decisive <= total_all, (
-                f"Terminal ({total_decisive}) exceeds pool ({total_all})"
-            )
+        if terminal_total > 0:
+            # Use match_distribution for terminal direction (not supporting/contrary
+            # which reflect same-disposition alignment, not ALLOW vs BLOCK)
+            if terminal_allow >= terminal_block:
+                majority = "ALLOW"
+                majority_pct = int(terminal_allow / terminal_total * 100)
+            else:
+                majority = "BLOCK"
+                majority_pct = int(terminal_block / terminal_total * 100)
             parts.append(
-                f"Of {total_all} comparable cases, {total_decisive} have reached "
+                f"Of {total_all} comparable cases, {terminal_total} have reached "
                 f"terminal resolution — {majority_pct}% resulted in "
-                f"{majority.replace('_', ' ')}. Current case is pending EDD; "
-                f"terminal guidance is directional."
+                f"{majority.replace('_', ' ')}"
+            )
+            if terminal_allow > 0 and terminal_block > 0:
+                minority = "BLOCK" if terminal_allow >= terminal_block else "ALLOW"
+                minority_count = terminal_block if terminal_allow >= terminal_block else terminal_allow
+                minority_pct = 100 - majority_pct
+                parts[-1] += (
+                    f", {minority_pct}% in {minority} ({minority_count} of {terminal_total})"
+                )
+            parts[-1] += (
+                ". Current case is pending EDD; "
+                "terminal guidance is directional."
             )
         elif edd_count > 0:
             parts.append(
@@ -3018,9 +3065,6 @@ def _derive_decision_drivers(
         if mapped and mapped not in drivers:
             drivers.append(mapped)
 
-    if not drivers:
-        drivers.append("No indicators meeting suspicion threshold identified")
-
     # When Tier 1 = 0, frame remaining items as investigative triggers
     # (Tier 2 context) — not suspicion indicators.
     tier1_empty = not any(
@@ -3106,6 +3150,7 @@ def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[di
         "CONFIRMED": "Established — sufficient corroboration, pattern validated",
     }
     _POSITIONAL_LABELS = {"primary", "secondary", "tertiary", "main", "default"}
+    _NO_TYPOLOGY = "No suspicious typology identified"
     for typology in layer4_typologies.get("typologies", []) or []:
         if isinstance(typology, dict):
             name = typology.get("name") or "Typology"
@@ -3114,7 +3159,20 @@ def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[di
             # If name is a positional label (e.g. "primary"), use resolved primary_typology
             if mapped_name.lower() in _POSITIONAL_LABELS and primary_typology:
                 mapped_name = primary_typology
-            if maturity:
+            # Never combine "No suspicious typology" or "Typology indicators present"
+            # with redundant maturity labels — these already convey the status.
+            _is_no_typology = mapped_name == _NO_TYPOLOGY
+            _is_indicator_label = mapped_name.startswith("Typology indicators present")
+            if (_is_no_typology or _is_indicator_label) and maturity:
+                if maturity.upper() == "FORMING":
+                    value = (
+                        f"Typology indicators present — below maturity threshold "
+                        f"({_MATURITY_LABELS.get(maturity.upper(), maturity)}) [{name}/{maturity}]"
+                    )
+                else:
+                    readable_maturity = _MATURITY_LABELS.get(maturity.upper(), maturity)
+                    value = f"Typology indicators ({readable_maturity}) [{name}/{maturity}]"
+            elif maturity:
                 readable_maturity = _MATURITY_LABELS.get(maturity.upper(), maturity)
                 value = f"{mapped_name} ({readable_maturity}) [{name}/{maturity}]"
             else:

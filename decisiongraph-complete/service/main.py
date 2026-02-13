@@ -2818,7 +2818,7 @@ def query_similar_precedents(
                 "decided_at": payload.decided_at,
                 "classification": classification,
                 "overlap": overlap,
-                "similarity_pct": int(round(score * 100)),
+                "similarity_pct": min(int(round(score * 100)), 100),
                 "exact_match": exact_match,
                 "outcome": payload.outcome_code,
                 "outcome_normalized": prec_canonical.disposition,
@@ -3339,8 +3339,10 @@ def query_similar_precedents_v3(
             non_transferable_reasons = []
             matched_drivers = []
             mismatched_drivers = []
+            raw_similarity = score  # fallback to combined if sim_result unavailable
             if sim_data:
                 sr, _ = sim_data
+                raw_similarity = sr.score  # use normalized similarity, not combined ranking score
                 field_scores_pct = {
                     k: int(round(v * 100)) for k, v in sr.field_scores.items()
                 }
@@ -3359,7 +3361,7 @@ def query_similar_precedents_v3(
                 "decided_at": payload.decided_at,
                 "classification": classification,
                 "overlap": overlap,
-                "similarity_pct": int(round(score * 100)),
+                "similarity_pct": min(int(round(raw_similarity * 100)), 100),
                 "exact_match": exact_match,
                 "outcome": payload.outcome_code,
                 "outcome_normalized": prec_canonical.disposition,

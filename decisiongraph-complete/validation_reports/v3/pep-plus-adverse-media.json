@@ -1,0 +1,1953 @@
+{
+  "format": "json",
+  "generated_at": "2026-02-13T01:50:36.037468Z",
+  "report": {
+    "decision_id": "f8ca53bcd4c3bdf6dbdc980472436f93d7e5c8b14bdc67118adbb529eac0a800",
+    "decision_id_short": "f8ca53bcd4c3bdf6",
+    "case_id": "pep-plus-adverse-media",
+    "timestamp": "2026-02-13T01:50:36.037446",
+    "jurisdiction": "CA",
+    "engine_version": "2.1.1",
+    "policy_version": "1.0.0",
+    "domain": "banking_aml",
+    "report_schema_version": "DecisionReportSchema v1",
+    "narrative_compiler_version": "DecisionNarrativeCompiler v1",
+    "classifier_version": "SuspicionClassifier v1",
+    "report_sections": [
+      "Administrative Details",
+      "Investigation Outcome Summary",
+      "Canonical Outcome",
+      "Case Classification",
+      "Regulatory Determination",
+      "Suspicion Classification",
+      "Decision Drivers",
+      "Gate Evaluation",
+      "Rules Evaluated",
+      "Precedent Intelligence",
+      "Defensibility Check",
+      "Risk Factors",
+      "Evidence Considered",
+      "Recommended Actions",
+      "Timeline",
+      "Auditability & Governance"
+    ],
+    "input_hash": "c19593db0612c6a2622cc55e2bd4a2dc15cada6458b1d90a1fffd5778963410c",
+    "input_hash_short": "c19593db0612c6a2",
+    "policy_hash": "7dbc3567f93ab289f74b45b386f045aadce3328d08be59268642a56b98b0fcfe",
+    "policy_hash_short": "7dbc3567f93ab289",
+    "source_type": "Production",
+    "seed_category": "N/A",
+    "scenario_code": "N/A",
+    "is_seed": false,
+    "escalation_summary": "Suspicion indicators triggered reporting thresholds under FINTRAC guidance. While Enhanced Due Diligence is required to complete the investigation, the current suspicion level independently meets the reporting threshold.",
+    "decision_confidence": "High",
+    "decision_confidence_reason": "Deterministic rule activation with corroborating precedent alignment.",
+    "decision_confidence_score": 70,
+    "similarity_summary": "Primary similarity features: PEP status, amount band, rule activation.",
+    "decision_drivers": [
+      "Suspicion indicators detected",
+      "Intent indicators identified",
+      "Cross-border transaction with elevated corridor risk",
+      "PEP exposure",
+      "Adverse media \u2014 confirmed MLTF link (hard stop)"
+    ],
+    "transaction_facts": [
+      {
+        "field": "Case ID",
+        "value": "pep-plus-adverse-media"
+      },
+      {
+        "field": "Jurisdiction",
+        "value": "CA"
+      }
+    ],
+    "verdict": "STR_REQUIRED",
+    "engine_verdict": "HARD_STOP",
+    "action": "BLOCK_AND_ESCALATE",
+    "decision_status": "escalate",
+    "decision_explainer": "Classifier sovereignty applied: reporting obligation upgraded to STR based on Tier 1 suspicion indicators.",
+    "str_required": true,
+    "escalation_reasons": [
+      "Decision path: PATH_1_HARD_STOP"
+    ],
+    "regulatory_status": "STR REQUIRED",
+    "investigation_state": "STR REQUIRED",
+    "primary_typology": "Adverse Media Mltf",
+    "regulatory_obligation": "STR filing required under FINTRAC guidance",
+    "regulatory_position": "Reporting threshold met under applicable regulatory guidance.",
+    "engine_disposition": "ESCALATE",
+    "governed_disposition": "STR_REQUIRED",
+    "gate1_passed": true,
+    "gate1_decision": "PERMITTED",
+    "gate1_sections": [
+      {
+        "id": "A_fact_hard_stop",
+        "name": "Fact-Based Hard Stop Check",
+        "passed": true,
+        "reason": "Hard stop condition detected - immediate escalation required"
+      },
+      {
+        "id": "B_instrument_context",
+        "name": "Instrument Context Validation",
+        "passed": true,
+        "reason": "If any mismatch exists -> invalidate related indicators and re-evaluate."
+      },
+      {
+        "id": "C_obligation_isolation",
+        "name": "Obligation Isolation Check",
+        "passed": true,
+        "reason": "If this cannot be stated -> system design is invalid. Fix before proceeding."
+      },
+      {
+        "id": "D_indicator_corroboration",
+        "name": "Indicator Corroboration",
+        "passed": true,
+        "reason": "If indicators fail corroboration -> escalation prohibited."
+      },
+      {
+        "id": "E_typology_maturity",
+        "name": "Typology Maturity Assessment",
+        "passed": true,
+        "reason": "Escalation from FORMING typology is illegal."
+      },
+      {
+        "id": "F_mitigation_override",
+        "name": "Mitigation Override Check",
+        "passed": false,
+        "reason": "Mitigations insufficient to explain behavior."
+      },
+      {
+        "id": "G_suspicion_definition",
+        "name": "Suspicion Definition Test",
+        "passed": true,
+        "reason": "If NONE apply -> escalation is forbidden."
+      }
+    ],
+    "gate2_decision": "INSUFFICIENT",
+    "gate2_status": "EVALUATED",
+    "gate2_sections": [
+      {
+        "id": "S1_legal_suspicion",
+        "name": "Legal Suspicion Threshold",
+        "passed": true,
+        "reason": "If none apply -> NO STR (stop here)"
+      },
+      {
+        "id": "S2_evidence_quality",
+        "name": "Evidence Quality Check",
+        "passed": false,
+        "reason": "If any fail -> NO STR"
+      }
+    ],
+    "rules_fired": [
+      {
+        "code": "ADVERSE_MEDIA_CONFIRMED",
+        "result": "TRIGGERED",
+        "reason": "ADVERSE_MEDIA_CONFIRMED typology detected",
+        "citation_ref": "FINTRAC Guideline 4 \u2014 Risk Assessment, OSFI B-10 s. 7",
+        "citation_text": "Confirmed adverse media linking a client to money laundering, terrorist financing, fraud, corruption, or organized crime is a key risk factor requiring enhanced due diligence measures and potential STR filing."
+      },
+      {
+        "code": "HARD_STOP_CHECK",
+        "result": "TRIGGERED",
+        "reason": "Hard stop conditions detected",
+        "citation_ref": "PCMLTFA s. 7(1), FINTRAC Guideline 3",
+        "citation_text": "Proceeds of Crime (Money Laundering) and Terrorist Financing Act \u2014 Where a reporting entity has reasonable grounds to suspect that a transaction or attempted transaction is related to the commission or attempted commission of a money laundering offence or a terrorist activity financing offence, the entity shall report the transaction or attempted transaction to the Centre."
+      },
+      {
+        "code": "PEP_ISOLATION",
+        "result": "APPLIED",
+        "reason": "PEP status alone cannot escalate",
+        "citation_ref": "PCMLTFA s. 9.3, FINTRAC Guideline 4 \u2014 PEP/HIO",
+        "citation_text": "A reporting entity shall take reasonable measures to determine whether a person is a politically exposed foreign person, a politically exposed domestic person, or a head of an international organization. PEP status alone does not constitute reasonable grounds to suspect \u2014 additional risk factors must be present."
+      },
+      {
+        "code": "SUSPICION_TEST",
+        "result": "ACTIVATED",
+        "reason": "HARD_STOP",
+        "citation_ref": "PCMLTFA s. 7(1)(a), FINTRAC Guideline 3 \u2014 STR",
+        "citation_text": "A suspicious transaction report shall be submitted when there are reasonable grounds to suspect that the transaction is related to the commission of a money laundering offence or a terrorist activity financing offence. Suspicion must be fact-based and articulable."
+      }
+    ],
+    "evidence_used": [
+      {
+        "field": "customer.cash_intensive",
+        "value": false
+      },
+      {
+        "field": "customer.high_risk_industry",
+        "value": false
+      },
+      {
+        "field": "customer.high_risk_jurisdiction",
+        "value": false
+      },
+      {
+        "field": "customer.pep",
+        "value": true
+      },
+      {
+        "field": "customer.relationship_length",
+        "value": "established"
+      },
+      {
+        "field": "customer.type",
+        "value": "individual"
+      },
+      {
+        "field": "facts.adverse_media_mltf",
+        "value": true
+      },
+      {
+        "field": "facts.sanctions_result",
+        "value": "NO_MATCH"
+      },
+      {
+        "field": "flag.layering",
+        "value": false
+      },
+      {
+        "field": "flag.rapid_movement",
+        "value": false
+      },
+      {
+        "field": "flag.shell_company",
+        "value": false
+      },
+      {
+        "field": "flag.structuring",
+        "value": false
+      },
+      {
+        "field": "flag.third_party",
+        "value": false
+      },
+      {
+        "field": "flag.unusual_for_profile",
+        "value": false
+      },
+      {
+        "field": "indicator.ADVERSE_MEDIA",
+        "value": true
+      },
+      {
+        "field": "mitigations.count",
+        "value": 0
+      },
+      {
+        "field": "obligations.count",
+        "value": 1
+      },
+      {
+        "field": "prior.account_closures",
+        "value": false
+      },
+      {
+        "field": "prior.sars_filed",
+        "value": 0
+      },
+      {
+        "field": "screening.adverse_media",
+        "value": true
+      },
+      {
+        "field": "screening.adverse_media_level",
+        "value": "confirmed_mltf"
+      },
+      {
+        "field": "screening.pep_match",
+        "value": true
+      },
+      {
+        "field": "screening.sanctions_match",
+        "value": false
+      },
+      {
+        "field": "suspicion.has_deception",
+        "value": false
+      },
+      {
+        "field": "suspicion.has_intent",
+        "value": true
+      },
+      {
+        "field": "suspicion.has_sustained_pattern",
+        "value": false
+      },
+      {
+        "field": "txn.amount_band",
+        "value": "100k_500k"
+      },
+      {
+        "field": "txn.cross_border",
+        "value": true
+      },
+      {
+        "field": "txn.destination_country_risk",
+        "value": "medium"
+      },
+      {
+        "field": "txn.just_below_threshold",
+        "value": false
+      },
+      {
+        "field": "txn.multiple_same_day",
+        "value": true
+      },
+      {
+        "field": "txn.pattern_matches_profile",
+        "value": true
+      },
+      {
+        "field": "txn.round_amount",
+        "value": true
+      },
+      {
+        "field": "txn.source_of_funds_clear",
+        "value": false
+      },
+      {
+        "field": "txn.stated_purpose",
+        "value": "investment"
+      },
+      {
+        "field": "txn.type",
+        "value": "wire_international"
+      },
+      {
+        "field": "typology.maturity",
+        "value": "CONFIRMED"
+      }
+    ],
+    "risk_factors": [
+      {
+        "field": "Hard stop",
+        "value": "ADVERSE_MEDIA_MLTF"
+      },
+      {
+        "field": "Regulatory obligation",
+        "value": "PEP_FOREIGN"
+      },
+      {
+        "field": "ADVERSE_MEDIA",
+        "value": "Corroborated"
+      },
+      {
+        "field": "Typology",
+        "value": "Adverse Media Mltf (Established \u2014 sufficient corroboration, pattern validated) [primary/CONFIRMED]"
+      },
+      {
+        "field": "Suspicion element",
+        "value": "Intent indicators present in transaction behavior [has_intent]"
+      }
+    ],
+    "decision_path_trace": "PATH_1_HARD_STOP",
+    "summary": "Classifier sovereignty applied: reporting obligation upgraded to STR based on Tier 1 suspicion indicators.",
+    "engine_rationale": "Hard stop triggered. Immediate escalation required. 2 Tier 1 suspicion indicator(s) identified. Typology indicators present (maturity: confirmed).",
+    "precedent_analysis": {
+      "available": true,
+      "match_count": 86,
+      "sample_size": 32,
+      "raw_overlap_count": 203,
+      "overlap_outcome_distribution": {
+        "EDD": 164,
+        "BLOCK": 27,
+        "ALLOW": 12
+      },
+      "raw_outcome_distribution": {
+        "EDD": 164,
+        "BLOCK": 27,
+        "ALLOW": 12
+      },
+      "match_outcome_distribution": {
+        "EDD": 69,
+        "BLOCK": 11,
+        "ALLOW": 6
+      },
+      "outcome_distribution": {
+        "EDD": 69,
+        "BLOCK": 11,
+        "ALLOW": 6
+      },
+      "appeal_statistics": {
+        "total_appealed": 0,
+        "upheld": 0,
+        "overturned": 0,
+        "upheld_rate": 1.0
+      },
+      "precedent_confidence": 0.5,
+      "supporting_precedents": 11,
+      "contrary_precedents": 6,
+      "neutral_precedents": 15,
+      "decisive_total": 17,
+      "decisive_supporting": 11,
+      "governed_alignment_count": 11,
+      "governed_alignment_total": 86,
+      "exact_match_count": 0,
+      "caution_precedents": [],
+      "sample_cases": [
+        {
+          "precedent_id": "00fb3ddb...",
+          "decision_level": "manager",
+          "decided_at": "2025-12-12T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 79,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 50,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 50,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 100,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 79,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 50,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "f7a09b23...",
+          "decision_level": "manager",
+          "decided_at": "2025-12-05T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 78,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 100,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 50,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 78,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 50,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "21f20404...",
+          "decision_level": "manager",
+          "decided_at": "2025-11-21T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 76,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 0,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 100,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 76,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 100,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "4da1883b...",
+          "decision_level": "manager",
+          "decided_at": "2025-11-28T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 75,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 0,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 50,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 75,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 50,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "ecf823e1...",
+          "decision_level": "manager",
+          "decided_at": "2025-10-24T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 73,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 0,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 100,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 73,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 100,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "bea1694f...",
+          "decision_level": "manager",
+          "decided_at": "2025-09-26T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 73,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 100,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 100,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 73,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 100,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "baef661e...",
+          "decision_level": "manager",
+          "decided_at": "2025-10-10T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 72,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 0,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 100,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 72,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 100,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "18600e69...",
+          "decision_level": "manager",
+          "decided_at": "2025-09-05T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 70,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 100,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 50,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 70,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 50,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "b82a7ec5...",
+          "decision_level": "manager",
+          "decided_at": "2025-08-22T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 69,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 0,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 100,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 69,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 100,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        },
+        {
+          "precedent_id": "192a07bb...",
+          "decision_level": "manager",
+          "decided_at": "2025-08-01T01:50:33Z",
+          "classification": "supporting",
+          "overlap": 3,
+          "similarity_pct": 67,
+          "exact_match": false,
+          "outcome": "deny",
+          "outcome_normalized": "BLOCK",
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "disposition": "BLOCK",
+          "disposition_basis": "DISCRETIONARY",
+          "reporting": "UNKNOWN",
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "appealed": false,
+          "appeal_outcome": null,
+          "code_similarity_pct": 72,
+          "fingerprint_similarity_pct": 12,
+          "field_scores": {
+            "customer.relationship_length": 0,
+            "customer.pep": 100,
+            "customer.high_risk_jurisdiction": 0,
+            "customer.high_risk_industry": 100,
+            "customer.cash_intensive": 100,
+            "txn.amount_band": 100,
+            "txn.cross_border": 100,
+            "txn.destination_country_risk": 100,
+            "txn.round_amount": 0,
+            "txn.just_below_threshold": 100,
+            "txn.multiple_same_day": 0,
+            "txn.pattern_matches_profile": 0,
+            "txn.source_of_funds_clear": 100,
+            "txn.stated_purpose": 0,
+            "flag.structuring": 100,
+            "flag.rapid_movement": 100,
+            "flag.layering": 100,
+            "flag.unusual_for_profile": 100,
+            "flag.third_party": 100,
+            "flag.shell_company": 100,
+            "screening.sanctions_match": 100,
+            "screening.pep_match": 100,
+            "screening.adverse_media_level": 100,
+            "screening.adverse_media": 100,
+            "prior.sars_filed": 100,
+            "prior.account_closures": 100
+          },
+          "non_transferable": false,
+          "non_transferable_reasons": [],
+          "matched_drivers": [
+            "customer.pep",
+            "screening.pep_match",
+            "screening.adverse_media_level"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true,
+          "similarity_components": {
+            "rules_overlap": 100,
+            "gate_match": 67,
+            "typology_overlap": 100,
+            "amount_bucket": 100,
+            "channel_method": 0,
+            "corridor_match": 100,
+            "pep_match": 100,
+            "customer_profile": 0,
+            "geo_risk": 0
+          }
+        }
+      ],
+      "reason_codes_searched": [
+        "RC-KYC-PEP-APPROVED",
+        "RC-TXN-PEP",
+        "RC-TXN-PEP-EDD",
+        "RC-KYC-ADVERSE-MAJOR"
+      ],
+      "proposed_outcome_normalized": "deny",
+      "proposed_outcome_label": "BLOCKED \u2014 NO STR",
+      "proposed_canonical": {
+        "disposition": "BLOCK",
+        "disposition_basis": "DISCRETIONARY",
+        "reporting": "UNKNOWN"
+      },
+      "outcome_model_version": "v2",
+      "min_similarity_pct": 60,
+      "threshold_used": 0.6,
+      "threshold_mode": "prod",
+      "scoring_version": "v3",
+      "precedent_scoring_version": "v3",
+      "gate_excluded_count": 115,
+      "gate_passed_count": 88,
+      "non_transferable_count": 0,
+      "similarity_floor_used": 0.55,
+      "typology_detected": "adverse_media",
+      "weights_version": "v3",
+      "why_low_match": [],
+      "avg_top_k_similarity": 0.87,
+      "confidence_model_version": "v3",
+      "confidence_level": "MODERATE",
+      "confidence_dimensions": [
+        {
+          "name": "pool_adequacy",
+          "value": 36.0,
+          "level": "HIGH",
+          "bottleneck": false,
+          "note": ""
+        },
+        {
+          "name": "similarity_quality",
+          "value": 0.779,
+          "level": "HIGH",
+          "bottleneck": false,
+          "note": ""
+        },
+        {
+          "name": "outcome_consistency",
+          "value": 0.6471,
+          "level": "MODERATE",
+          "bottleneck": true,
+          "note": ""
+        },
+        {
+          "name": "evidence_completeness",
+          "value": 1.0,
+          "level": "VERY_HIGH",
+          "bottleneck": false,
+          "note": ""
+        }
+      ],
+      "confidence_bottleneck": "outcome_consistency",
+      "confidence_hard_rule": null,
+      "regime_analysis": {
+        "shifts_detected": [
+          {
+            "id": "pep_risk_appetite",
+            "name": "PEP Risk Appetite Tightened",
+            "description": "PEP + \u2265$25K \u2192 Senior Management sign-off",
+            "effective_date": "2026-04-01"
+          }
+        ],
+        "total_pool": 86,
+        "pre_shift_count": 50,
+        "post_shift_count": 36,
+        "regime_limited_count": 50,
+        "pct_regime_limited": 58.1,
+        "magnitude": "high",
+        "guidance": "Majority of precedent pool predates policy change. Confidence reflects post-shift experience only.",
+        "pre_shift_distribution": {
+          "EDD": 34,
+          "BLOCK": 11,
+          "ALLOW": 5
+        },
+        "post_shift_distribution": {
+          "EDD": 35,
+          "ALLOW": 1
+        },
+        "effective_pool_size": 36
+      },
+      "similarity_summary": "Primary similarity features: PEP status, amount band, rule activation."
+    },
+    "classification": {
+      "outcome": "STR_REQUIRED",
+      "outcome_reason": "1 suspicion indicator(s) detected. Reasonable Grounds to Suspect (RGS) threshold met. STR filing required under PCMLTFA/FINTRAC guidance.",
+      "tier1_signals": [
+        {
+          "code": "ADVERSE_MEDIA_MLTF",
+          "source": "evidence",
+          "field": "screening.adverse_media_level",
+          "detail": "Adverse media: confirmed, linked to ML/TF"
+        }
+      ],
+      "tier2_signals": [
+        {
+          "code": "HIGH_VALUE",
+          "source": "evidence",
+          "field": "txn.amount_band",
+          "detail": "Amount band: 100k_500k"
+        },
+        {
+          "code": "CROSS_BORDER",
+          "source": "evidence",
+          "field": "txn.cross_border",
+          "detail": "Evidence flag txn.cross_border = True"
+        },
+        {
+          "code": "UNCLASSIFIED_HAS_INTENT",
+          "source": "suspicion_element",
+          "field": "has_intent",
+          "detail": "Suspicion element 'has_intent' could not be mapped to a known Tier 1 indicator code. Classified as Tier 2 (investigative) pending manual review. If this element represents genuine suspicion, a compliance officer must explicitly reclassify it.",
+          "classification_gap": true,
+          "requires_manual_review": true
+        }
+      ],
+      "suspicion_count": 1,
+      "investigative_count": 3,
+      "mitigation_applied": false,
+      "mitigation_reason": "",
+      "precedent_consistency_alert": false,
+      "precedent_consistency_detail": "",
+      "classifier_version": "SuspicionClassifier v1"
+    },
+    "classification_outcome": "STR_REQUIRED",
+    "classification_reason": "1 suspicion indicator(s) detected. Reasonable Grounds to Suspect (RGS) threshold met. STR filing required under PCMLTFA/FINTRAC guidance.",
+    "tier1_signals": [
+      {
+        "code": "ADVERSE_MEDIA_MLTF",
+        "source": "evidence",
+        "field": "screening.adverse_media_level",
+        "detail": "Adverse media: confirmed, linked to ML/TF"
+      }
+    ],
+    "tier2_signals": [
+      {
+        "code": "HIGH_VALUE",
+        "source": "evidence",
+        "field": "txn.amount_band",
+        "detail": "Amount band: 100k_500k"
+      },
+      {
+        "code": "CROSS_BORDER",
+        "source": "evidence",
+        "field": "txn.cross_border",
+        "detail": "Evidence flag txn.cross_border = True"
+      },
+      {
+        "code": "UNCLASSIFIED_HAS_INTENT",
+        "source": "suspicion_element",
+        "field": "has_intent",
+        "detail": "Suspicion element 'has_intent' could not be mapped to a known Tier 1 indicator code. Classified as Tier 2 (investigative) pending manual review. If this element represents genuine suspicion, a compliance officer must explicitly reclassify it.",
+        "classification_gap": true,
+        "requires_manual_review": true
+      }
+    ],
+    "suspicion_count": 1,
+    "investigative_count": 3,
+    "precedent_consistency_alert": false,
+    "precedent_consistency_detail": "",
+    "decision_integrity_alert": {
+      "type": "CLASSIFIER_UPGRADE",
+      "severity": "INFO",
+      "message": "Classifier identified 1 Tier 1 suspicion indicator(s) with STR_REQUIRED outcome. Reporting obligation upgraded from UNKNOWN to FILE_STR per classifier sovereignty.",
+      "original_verdict": "HARD_STOP",
+      "classifier_outcome": "STR_REQUIRED"
+    },
+    "override_justification": {
+      "override_type": "CLASSIFIER_UPGRADE",
+      "overridden_gate": "Gate 2 (STR Threshold)",
+      "gate_decision": "INSUFFICIENT",
+      "gate_deficiencies": [
+        {
+          "section": "Evidence Quality Check",
+          "reason": "If any fail -> NO STR"
+        }
+      ],
+      "classifier_decision": "STR_REQUIRED",
+      "justifying_signals": [
+        {
+          "code": "ADVERSE_MEDIA_MLTF",
+          "source": "evidence",
+          "detail": "Adverse media: confirmed, linked to ML/TF"
+        }
+      ],
+      "justification": "Gate 2 returned INSUFFICIENT due to evidence quality concerns. However, the Suspicion Classifier identified 1 Tier 1 suspicion indicator(s) that independently meet the Reasonable Grounds to Suspect (RGS) threshold under PCMLTFA/FINTRAC guidance. Under the classifier sovereignty framework, any single Tier 1 indicator is sufficient for STR determination regardless of gate evidence scoring.",
+      "regulatory_basis": "PCMLTFA s. 7 \u2014 Reasonable Grounds to Suspect (RGS) threshold",
+      "severity": "INFO"
+    },
+    "precedent_deviation_alert": null,
+    "corrections_applied": {
+      "str_required": true,
+      "regulatory_status": "STR REQUIRED",
+      "investigation_state": "STR REQUIRED"
+    },
+    "classifier_is_sovereign": true,
+    "canonical_outcome": {
+      "disposition": "STR_REQUIRED",
+      "disposition_basis": "MANDATORY",
+      "reporting": "FILE_STR",
+      "reporting_note": ""
+    },
+    "precedent_alignment_pct": 64,
+    "precedent_match_rate": 37,
+    "scored_precedent_count": 32,
+    "total_comparable_pool": 86,
+    "precedent_pool_warning": null,
+    "defensibility_check": {
+      "status": "PASS",
+      "message": "No reporting deviation detected.",
+      "action": "",
+      "note": "Current reporting determination is consistent with precedent filing patterns."
+    },
+    "enhanced_precedent": {
+      "pattern_summary": "Of 32 comparable cases, 64% (11 of 17 terminal) resulted in STR REQUIRED. 15 case(s) resolved through enhanced review processes (EDD/review states) rather than immediate determination.",
+      "outcome_distribution": {
+        "supporting": 11,
+        "contrary": 6,
+        "neutral": 15,
+        "total": 32,
+        "typical_outcome": "STR_REQUIRED"
+      },
+      "governed_alignment_count": 11,
+      "governed_alignment_total": 86,
+      "alignment_context": [
+        "50 of 86 precedents (58%) were decided under superseded policy (PEP Risk Appetite Tightened). Alignment reflects policy divergence, not decisional error. Under current policy, 0% align."
+      ],
+      "case_thumbnails": [
+        {
+          "precedent_id": "00fb3ddb...",
+          "similarity_pct": 79,
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "disposition": "BLOCK",
+          "reporting": "UNKNOWN",
+          "description": "BLOCKED \u2014 NO STR. Key factors: PEP customer, adverse media, PEP customer.",
+          "key_matches": [
+            "PEP status (driver)",
+            "High-risk industry",
+            "Cash-intensive business"
+          ],
+          "key_differences": [],
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true
+        },
+        {
+          "precedent_id": "f7a09b23...",
+          "similarity_pct": 78,
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "disposition": "BLOCK",
+          "reporting": "UNKNOWN",
+          "description": "BLOCKED \u2014 NO STR. Key factors: PEP customer, adverse media, PEP customer.",
+          "key_matches": [
+            "Relationship length",
+            "PEP status (driver)",
+            "High-risk industry"
+          ],
+          "key_differences": [],
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true
+        },
+        {
+          "precedent_id": "21f20404...",
+          "similarity_pct": 76,
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "disposition": "BLOCK",
+          "reporting": "UNKNOWN",
+          "description": "BLOCKED \u2014 NO STR. Key factors: PEP customer, adverse media, PEP customer.",
+          "key_matches": [
+            "PEP status (driver)",
+            "High-risk industry",
+            "Cash-intensive business"
+          ],
+          "key_differences": [],
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true
+        },
+        {
+          "precedent_id": "4da1883b...",
+          "similarity_pct": 75,
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "disposition": "BLOCK",
+          "reporting": "UNKNOWN",
+          "description": "BLOCKED \u2014 NO STR. Key factors: PEP customer, adverse media, PEP customer.",
+          "key_matches": [
+            "PEP status (driver)",
+            "High-risk industry",
+            "Cash-intensive business"
+          ],
+          "key_differences": [],
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true
+        },
+        {
+          "precedent_id": "ecf823e1...",
+          "similarity_pct": 73,
+          "outcome_label": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "disposition": "BLOCK",
+          "reporting": "UNKNOWN",
+          "description": "BLOCKED \u2014 NO STR. Key factors: PEP customer, adverse media, PEP customer.",
+          "key_matches": [
+            "PEP status (driver)",
+            "High-risk industry",
+            "Cash-intensive business"
+          ],
+          "key_differences": [],
+          "reason_codes": [
+            "RC-TXN-PEP",
+            "RC-KYC-ADVERSE-MAJOR",
+            "RC-KYC-PEP-APPROVED",
+            "RC-KYC-ADVERSE-MINOR"
+          ],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": [],
+          "regime_limited": true
+        }
+      ],
+      "transferable_count": 5,
+      "non_transferable_count": 0,
+      "feature_comparison_matrix": [
+        {
+          "precedent_id": "00fb3ddb...",
+          "similarity_pct": 79,
+          "outcome": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "matching_features": [
+            "PEP status \u2605",
+            "High-risk industry",
+            "Cash-intensive business",
+            "Amount band",
+            "Cross-border",
+            "Below threshold",
+            "Source of funds",
+            "Stated purpose",
+            "Structuring",
+            "Rapid movement",
+            "Layering",
+            "Unusual activity",
+            "Third-party payment",
+            "Shell company",
+            "Sanctions match",
+            "PEP screening \u2605",
+            "Adverse media",
+            "Prior SARs",
+            "Account closures"
+          ],
+          "differing_features": [],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": []
+        },
+        {
+          "precedent_id": "f7a09b23...",
+          "similarity_pct": 78,
+          "outcome": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "matching_features": [
+            "Relationship length",
+            "PEP status \u2605",
+            "High-risk industry",
+            "Cash-intensive business",
+            "Amount band",
+            "Cross-border",
+            "Below threshold",
+            "Source of funds",
+            "Structuring",
+            "Rapid movement",
+            "Layering",
+            "Unusual activity",
+            "Third-party payment",
+            "Shell company",
+            "Sanctions match",
+            "PEP screening \u2605",
+            "Adverse media",
+            "Prior SARs",
+            "Account closures"
+          ],
+          "differing_features": [],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": []
+        },
+        {
+          "precedent_id": "21f20404...",
+          "similarity_pct": 76,
+          "outcome": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "matching_features": [
+            "PEP status \u2605",
+            "High-risk industry",
+            "Cash-intensive business",
+            "Amount band",
+            "Cross-border",
+            "Destination risk",
+            "Below threshold",
+            "Source of funds",
+            "Structuring",
+            "Rapid movement",
+            "Layering",
+            "Unusual activity",
+            "Third-party payment",
+            "Shell company",
+            "Sanctions match",
+            "PEP screening \u2605",
+            "Adverse media",
+            "Prior SARs",
+            "Account closures"
+          ],
+          "differing_features": [],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": []
+        },
+        {
+          "precedent_id": "4da1883b...",
+          "similarity_pct": 75,
+          "outcome": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "matching_features": [
+            "PEP status \u2605",
+            "High-risk industry",
+            "Cash-intensive business",
+            "Amount band",
+            "Cross-border",
+            "Below threshold",
+            "Source of funds",
+            "Structuring",
+            "Rapid movement",
+            "Layering",
+            "Unusual activity",
+            "Third-party payment",
+            "Shell company",
+            "Sanctions match",
+            "PEP screening \u2605",
+            "Adverse media",
+            "Prior SARs",
+            "Account closures"
+          ],
+          "differing_features": [],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": []
+        },
+        {
+          "precedent_id": "ecf823e1...",
+          "similarity_pct": 73,
+          "outcome": "BLOCKED \u2014 NO STR",
+          "classification": "supporting",
+          "matching_features": [
+            "PEP status \u2605",
+            "High-risk industry",
+            "Cash-intensive business",
+            "Amount band",
+            "Cross-border",
+            "Destination risk",
+            "Below threshold",
+            "Source of funds",
+            "Structuring",
+            "Rapid movement",
+            "Layering",
+            "Unusual activity",
+            "Third-party payment",
+            "Shell company",
+            "Sanctions match",
+            "PEP screening \u2605",
+            "Adverse media",
+            "Prior SARs",
+            "Account closures"
+          ],
+          "differing_features": [],
+          "matched_drivers": [
+            "PEP status",
+            "PEP screening"
+          ],
+          "mismatched_drivers": []
+        }
+      ],
+      "institutional_posture": "Institutional precedent is mixed but leans toward STR REQUIRED. 64% of comparable terminal precedents support the current disposition.",
+      "divergence_justification": null,
+      "temporal_context": [
+        {
+          "precedent_id": "00fb3ddb...",
+          "timestamp": "2025-12-12T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "f7a09b23...",
+          "timestamp": "2025-12-05T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "21f20404...",
+          "timestamp": "2025-11-21T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "4da1883b...",
+          "timestamp": "2025-11-28T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "ecf823e1...",
+          "timestamp": "2025-10-24T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "bea1694f...",
+          "timestamp": "2025-09-26T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "baef661e...",
+          "timestamp": "2025-10-10T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "18600e69...",
+          "timestamp": "2025-09-05T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "b82a7ec5...",
+          "timestamp": "2025-08-22T01:50:33Z",
+          "classification": "supporting"
+        },
+        {
+          "precedent_id": "192a07bb...",
+          "timestamp": "2025-08-01T01:50:33Z",
+          "classification": "supporting"
+        }
+      ],
+      "override_statement": null,
+      "non_transferable_explanations": [],
+      "confidence_dimensions": [
+        {
+          "name": "pool_adequacy",
+          "value": 36.0,
+          "level": "HIGH",
+          "bottleneck": false,
+          "note": ""
+        },
+        {
+          "name": "similarity_quality",
+          "value": 0.779,
+          "level": "HIGH",
+          "bottleneck": false,
+          "note": ""
+        },
+        {
+          "name": "outcome_consistency",
+          "value": 0.6471,
+          "level": "MODERATE",
+          "bottleneck": true,
+          "note": ""
+        },
+        {
+          "name": "evidence_completeness",
+          "value": 1.0,
+          "level": "VERY_HIGH",
+          "bottleneck": false,
+          "note": ""
+        }
+      ],
+      "confidence_level": "MODERATE",
+      "confidence_bottleneck": "outcome_consistency",
+      "confidence_hard_rule": null,
+      "driver_causality": {
+        "shared_drivers": [
+          "customer.pep",
+          "screening.adverse_media_level",
+          "screening.pep_match"
+        ],
+        "divergent_drivers": []
+      },
+      "regime_analysis": {
+        "shifts_detected": [
+          {
+            "id": "pep_risk_appetite",
+            "name": "PEP Risk Appetite Tightened",
+            "description": "PEP + \u2265$25K \u2192 Senior Management sign-off",
+            "effective_date": "2026-04-01"
+          }
+        ],
+        "total_pool": 86,
+        "pre_shift_count": 50,
+        "post_shift_count": 36,
+        "regime_limited_count": 50,
+        "pct_regime_limited": 58.1,
+        "magnitude": "high",
+        "guidance": "Majority of precedent pool predates policy change. Confidence reflects post-shift experience only.",
+        "pre_shift_distribution": {
+          "EDD": 34,
+          "BLOCK": 11,
+          "ALLOW": 5
+        },
+        "post_shift_distribution": {
+          "EDD": 35,
+          "ALLOW": 1
+        },
+        "effective_pool_size": 36
+      }
+    },
+    "edd_recommendations": [],
+    "sla_timeline": {
+      "case_created": "2026-02-13T01:50:36.036873Z",
+      "edd_deadline": "2026-02-24T23:59:59.036889Z",
+      "final_disposition_due": "Populated when EDD completes",
+      "str_filing_window": "2026-03-15T01:50:36.036873Z (30 days per PCMLTFA s. 7)"
+    },
+    "analyst_actions": [
+      {
+        "label": "Acknowledge",
+        "role": "tier1_analyst",
+        "primary": true
+      },
+      {
+        "label": "Request Additional Information",
+        "role": "tier1_analyst",
+        "primary": false
+      },
+      {
+        "label": "Expand to Reviewer View",
+        "role": "tier1_analyst",
+        "primary": false
+      }
+    ],
+    "gate_override_explanations": [
+      {
+        "gate": "Gate 2: STR Threshold",
+        "gate_result": "INSUFFICIENT",
+        "final_disposition": "STR_REQUIRED",
+        "conflict": true,
+        "override_mechanism": "Classifier sovereignty \u2014 Tier 1 indicators independently meet RGS threshold",
+        "override_basis": [
+          "Evidence Quality Check: If any fail -> NO STR",
+          "Rule ADVERSE_MEDIA_CONFIRMED: ADVERSE_MEDIA_CONFIRMED typology detected",
+          "Rule HARD_STOP_CHECK: Hard stop conditions detected",
+          "Rule SUSPICION_TEST: HARD_STOP"
+        ],
+        "authority": "PCMLTFA s. 7(1) \u2014 Reasonable Grounds to Suspect threshold"
+      }
+    ],
+    "disposition_reconciliation": {
+      "consistent": false,
+      "summary": "2 disposition difference(s) detected between engine, classifier, and governed layers.",
+      "differences": [
+        {
+          "component_a": "Engine",
+          "value_a": "ESCALATE",
+          "component_b": "Governed",
+          "value_b": "STR_REQUIRED",
+          "mechanism": "Governance correction",
+          "reason": "Reporting upgraded \u2014 Tier 1 suspicion indicators independently meet RGS threshold",
+          "authority": "Classifier sovereignty framework \u2014 governed disposition is authoritative"
+        },
+        {
+          "component_a": "Engine",
+          "value_a": "ESCALATE",
+          "component_b": "Classification",
+          "value_b": "STR_REQUIRED",
+          "mechanism": "Independent assessment",
+          "reason": "Engine produced ESCALATE from rules/gates. Classifier independently determined STR_REQUIRED from suspicion indicators.",
+          "authority": "Both assessments feed into governed disposition"
+        }
+      ]
+    },
+    "precedent_divergence": {
+      "divergent": true,
+      "alignment_pct": 12,
+      "alignment_count": 11,
+      "alignment_total": 86,
+      "dominant_historical": "EDD",
+      "dominant_count": 69,
+      "pool_breakdown": {
+        "EDD": 69,
+        "BLOCK": 11,
+        "ALLOW": 6
+      },
+      "divergence_reasons": [
+        "Classifier sovereignty: Tier 1 suspicion indicators triggered STR upgrade despite historical pattern favoring lower disposition."
+      ]
+    },
+    "unmapped_indicator_checks": [
+      {
+        "indicator_code": "ADVERSE_MEDIA_MLTF",
+        "indicator_source": "evidence",
+        "independent": true,
+        "basis": "Hard stop rule independently triggers this disposition",
+        "mapped_tier1_count": 0,
+        "hard_stop_active": true
+      },
+      {
+        "indicator_code": "HIGH_VALUE",
+        "indicator_source": "evidence",
+        "independent": true,
+        "basis": "Hard stop rule independently triggers this disposition",
+        "mapped_tier1_count": 0,
+        "hard_stop_active": true
+      },
+      {
+        "indicator_code": "CROSS_BORDER",
+        "indicator_source": "evidence",
+        "independent": true,
+        "basis": "Hard stop rule independently triggers this disposition",
+        "mapped_tier1_count": 0,
+        "hard_stop_active": true
+      },
+      {
+        "indicator_code": "UNCLASSIFIED_HAS_INTENT",
+        "indicator_source": "suspicion_element",
+        "independent": true,
+        "basis": "Hard stop rule independently triggers this disposition",
+        "mapped_tier1_count": 0,
+        "hard_stop_active": true
+      }
+    ],
+    "policy_regime_exception": null,
+    "risk_heatmap_context": null,
+    "required_actions": [
+      {
+        "action": "File STR by 2026-03-15T01:50:36.036873Z (30 days per PCMLTFA s. 7)",
+        "priority": "MANDATORY"
+      },
+      {
+        "action": "Transaction hold: ASSESS \u2014 determine if block required based on risk level",
+        "priority": "REQUIRED"
+      },
+      {
+        "action": "EDD status: COMPLETE if all evidence present",
+        "priority": "REQUIRED"
+      },
+      {
+        "action": "Account restriction: RECOMMENDED \u2014 PEP + STR disposition",
+        "priority": "RECOMMENDED"
+      },
+      {
+        "action": "Related party review: REQUIRED",
+        "priority": "REQUIRED"
+      }
+    ],
+    "related_activity": {
+      "prior_sars_filed": 0,
+      "prior_account_closures": false,
+      "pep_status": true,
+      "screening": {
+        "sanctions_match": false,
+        "pep_match": true,
+        "adverse_media": true
+      },
+      "flags": [],
+      "connected_accounts": "Not assessed \u2014 requires manual review"
+    },
+    "decision_conflict_alert": {
+      "classifier": "STR REQUIRED",
+      "engine": "ESCALATE",
+      "governed": "STR REQUIRED",
+      "resolution": "Gate 1 (Typology Maturity), Gate 2 (STR Threshold) blocked escalation \u2014 Mitigations insufficient to explain behavior.. Engine followed gate logic.",
+      "blocking_gates": [
+        {
+          "gate": "Gate 1 (Typology Maturity)",
+          "reason": "Mitigations insufficient to explain behavior.",
+          "name": "Mitigation Override Check"
+        },
+        {
+          "gate": "Gate 2 (STR Threshold)",
+          "reason": "If any fail -> NO STR",
+          "name": "Evidence Quality Check"
+        }
+      ]
+    }
+  }
+}

@@ -135,6 +135,10 @@ def score_similarity(
 
     # Normalize
     normalized = raw_score / total_weight if total_weight > 0 else 0.0
+    assert 0.0 <= normalized <= 1.0, (
+        f"Similarity score {normalized:.4f} out of bounds "
+        f"(raw={raw_score:.4f}, weight={total_weight:.4f})"
+    )
 
     return SimilarityResult(
         score=normalized,
