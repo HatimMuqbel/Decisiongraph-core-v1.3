@@ -1,4 +1,4 @@
-"""Regulatory checks (R1-R3): Verify regulatory determination consistency."""
+"""Regulatory checks (R1-R3, R7-R8): Verify regulatory determination consistency."""
 from __future__ import annotations
 
 from ..catalog import register_check
@@ -165,3 +165,87 @@ def check_r3(ctx: dict, case_id: str) -> list[Violation]:
                 ),
             )]
     return []
+
+
+# ── R7: No UNDETERMINED in two_axis_pool composite labels ────────────────
+
+@register_check(
+    id="R7",
+    category=CheckCategory.R,
+    severity=Severity.ERROR,
+    description="No *_REG_PENDING composite labels when all seeds have terminal reporting",
+)
+def check_r7(ctx: dict, case_id: str) -> list[Violation]:
+    tap = _tap(ctx)
+    if not tap or tap.get("total", 0) == 0:
+        return []
+
+    dist = tap.get("composite_label_distribution", {}) or {}
+    pending_labels = {k: v for k, v in dist.items() if "REG_PENDING" in k}
+
+    if pending_labels:
+        pending_total = sum(pending_labels.values())
+        return [Violation(
+            check_id="R7",
+            severity=Severity.ERROR,
+            case_id=case_id,
+            message=(
+                f"Pool contains {pending_total} precedents with REG_PENDING "
+                f"composite labels: {pending_labels}. All seeds should have "
+                f"terminal reporting (STR or NO_REPORT)."
+            ),
+            current_value=pending_labels,
+            expected_value="no REG_PENDING labels",
+            fix_suggestion=FixSuggestion(
+                file="src/domains/banking_aml/seed_generator.py",
+                function="_apply_edd_reporting_determination",
+                line_range="976-998",
+                before_snippet="UNDETERMINED seeds produce REG_PENDING composite labels",
+                after_snippet="All EDD seeds must resolve to FILE_STR or NO_REPORT",
+                root_cause_id="seed-undetermined-reporting",
+                explanation="Seeds with UNDETERMINED reporting_obligation poison the regulatory axis",
+            ),
+        )]
+    return []
+
+
+# ── R8: Every sample_case has terminal reporting (STR or NO_REPORT) ──────
+
+@register_check(
+    id="R8",
+    category=CheckCategory.R,
+    severity=Severity.ERROR,
+    description="Every sample_case reporting is terminal (not UNDETERMINED/PENDING_EDD)",
+)
+def check_r8(ctx: dict, case_id: str) -> list[Violation]:
+    pa = _pa(ctx)
+    sample_cases = pa.get("sample_cases", []) or []
+    if not sample_cases:
+        return []
+
+    _TERMINAL = {"FILE_STR", "NO_REPORT", "FILE_LCTR", "FILE_TPR", "STR", "NO_STR"}
+    violations = []
+    for sc in sample_cases:
+        reporting = sc.get("reporting", "")
+        if reporting and reporting not in _TERMINAL:
+            violations.append(Violation(
+                check_id="R8",
+                severity=Severity.ERROR,
+                case_id=case_id,
+                message=(
+                    f"sample_case {sc.get('precedent_id', '?')} has "
+                    f"non-terminal reporting='{reporting}'"
+                ),
+                current_value=reporting,
+                expected_value="one of FILE_STR, NO_REPORT, FILE_LCTR",
+                fix_suggestion=FixSuggestion(
+                    file="src/domains/banking_aml/seed_generator.py",
+                    function="_apply_edd_reporting_determination",
+                    line_range="976-998",
+                    before_snippet="UNDETERMINED seeds leak into sample_cases",
+                    after_snippet="All seeds must have terminal reporting_obligation",
+                    root_cause_id="seed-undetermined-reporting",
+                    explanation="Historical seeds must have completed reporting determination",
+                ),
+            ))
+    return violations

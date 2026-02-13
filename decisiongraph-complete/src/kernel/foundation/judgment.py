@@ -233,7 +233,7 @@ class JudgmentPayload:
     # v2 outcome model — three-field canonicalization
     # See docs/PRECEDENT_OUTCOME_MODEL_V2.md
     disposition_basis: str = "UNKNOWN"       # MANDATORY | DISCRETIONARY | UNKNOWN
-    reporting_obligation: str = "UNKNOWN"    # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR | PENDING_EDD | UNKNOWN
+    reporting_obligation: str = "UNKNOWN"    # NO_REPORT | FILE_STR | FILE_LCTR | FILE_TPR  (UNKNOWN only before resolution)
 
     # Domain (banking or insurance) — controls validation rules
     domain: str = "insurance"  # backward compat: default to insurance

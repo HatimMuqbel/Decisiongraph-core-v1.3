@@ -1,4 +1,4 @@
-"""Consistency checks (C1-C5): Verify cross-field consistency."""
+"""Consistency checks (C1-C5, C9): Verify cross-field consistency."""
 from __future__ import annotations
 
 from ..catalog import register_check
@@ -265,4 +265,90 @@ def check_c5(ctx: dict, case_id: str) -> list[Violation]:
                 explanation="Every scored_match has exactly one composite_label, so distribution must sum to total",
             ),
         )]
+    return []
+
+
+# ── C9: suspicion_posture STR count matches actual STR in pool ───────────
+
+def _ep(ctx: dict) -> dict:
+    return ctx.get("enhanced_precedent", {}) or {}
+
+
+@register_check(
+    id="C9",
+    category=CheckCategory.C,
+    severity=Severity.WARNING,
+    description="str_filing_count == number of pool precedents with STR reporting",
+)
+def check_c9(ctx: dict, case_id: str) -> list[Violation]:
+    tap = _tap(ctx)
+    if not tap or tap.get("total", 0) == 0:
+        return []
+
+    str_count = tap.get("str_filing_count", 0)
+    total = tap["total"]
+
+    # str_filing_count should be > 0 when there are STR seeds in the pool,
+    # and should be 0 only when no STR seeds exist.
+    # We cross-check via sample_cases where available.
+    pa = _pa(ctx)
+    sample_cases = pa.get("sample_cases", []) or []
+    if not sample_cases:
+        return []
+
+    # Count STR in sample_cases via two_axis.precedent_suspicion
+    sample_str = sum(
+        1 for sc in sample_cases
+        if (sc.get("two_axis") or {}).get("precedent_suspicion") == "STR"
+    )
+    sample_total = len(sample_cases)
+
+    # If sample covers full pool, exact match required
+    sample_size = int(pa.get("sample_size", 0) or 0)
+    match_count = int(pa.get("match_count", 0) or 0)
+
+    if sample_size == match_count and sample_total >= sample_size:
+        # Full coverage — exact check
+        if sample_str != str_count:
+            return [Violation(
+                check_id="C9",
+                severity=Severity.WARNING,
+                case_id=case_id,
+                message=(
+                    f"str_filing_count ({str_count}) != STR count in "
+                    f"sample_cases ({sample_str}/{sample_total})"
+                ),
+                current_value=str_count,
+                expected_value=sample_str,
+                fix_suggestion=FixSuggestion(
+                    file="service/main.py",
+                    function="check_precedent (two-axis pool)",
+                    line_range="3445-3446",
+                    before_snippet="if ta.precedent_suspicion == 'STR': str_filing_count += 1",
+                    after_snippet="STR filing count must match precedent_suspicion=='STR' count",
+                    root_cause_id="main-str-filing-count",
+                    explanation="str_filing_count counts ta.precedent_suspicion=='STR' over scored_matches",
+                ),
+            )]
+    else:
+        # Sampled — proportional sanity check
+        # If sample has 0 STR but pool claims > 0, or vice versa,
+        # and the sample is representative (>= 10 cases), flag it
+        if sample_total >= 10:
+            sample_str_rate = sample_str / sample_total
+            pool_str_rate = str_count / total if total > 0 else 0
+            # Allow 30% deviation for sampling noise
+            if sample_str == 0 and str_count > 0 and pool_str_rate > 0.3:
+                return [Violation(
+                    check_id="C9",
+                    severity=Severity.WARNING,
+                    case_id=case_id,
+                    message=(
+                        f"str_filing_count ({str_count}, {pool_str_rate:.0%} of pool) "
+                        f"but 0 STR in {sample_total} sample_cases"
+                    ),
+                    current_value=str_count,
+                    expected_value=f"~{int(sample_str_rate * total)} based on sample",
+                )]
+
     return []

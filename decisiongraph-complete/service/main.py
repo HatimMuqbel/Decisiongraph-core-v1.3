@@ -2032,14 +2032,19 @@ def normalize_outcome_v2(
     # INV-001 compliant: reads classifier/gate output, not inferred from disposition
     # Classifier STR takes precedence — represents institutional suspicion assessment
     # even when gate blocks filing for procedural reasons (typology maturity).
+    #
+    # DecisionGraph architectural invariant: every case and precedent in the system
+    # has a fully resolved reporting posture.  There is no "pending" state — if a
+    # bank hasn't decided, it doesn't exist in our corpus.  The classifier always
+    # provides a determination before precedent analysis runs.
     if case_facts and reporting == "UNKNOWN":
         classifier_str = case_facts.get("classifier_str_required")
         g2 = case_facts.get("gate2_str_required")
         if classifier_str is True or g2 is True:
             reporting = "FILE_STR"
-        elif disposition == "EDD":
-            reporting = "PENDING_EDD"
-        elif disposition in ("ALLOW", "BLOCK") and g2 is not None:
+        elif classifier_str is False or g2 is False:
+            reporting = "NO_REPORT"
+        elif disposition in ("ALLOW", "BLOCK"):
             reporting = "NO_REPORT"
 
     # ── Disposition Basis ─────────────────────────────────────────────
@@ -2827,6 +2832,15 @@ def query_similar_precedents(
                 exact_match_count += 1
 
             prec_canonical = normalize_outcome_v2(payload.outcome_code, reason_codes=payload.reason_codes)
+            # Apply stored reporting/basis override (same as scoring loop)
+            _sb = getattr(payload, "disposition_basis", "UNKNOWN")
+            _sr = getattr(payload, "reporting_obligation", "UNKNOWN")
+            if _sb != "UNKNOWN" or _sr != "UNKNOWN":
+                prec_canonical = CanonicalOutcome(
+                    disposition=prec_canonical.disposition,
+                    disposition_basis=_sb if _sb != "UNKNOWN" else prec_canonical.disposition_basis,
+                    reporting=_sr if _sr != "UNKNOWN" else prec_canonical.reporting,
+                )
             outcome_label = map_aml_outcome_label_v2(prec_canonical)
             similarity_components = {
                 "rules_overlap": int(round(component_scores.get("rules_overlap", 0) * 100)),
@@ -3358,6 +3372,15 @@ def query_similar_precedents_v3(
             prec_canonical = normalize_outcome_v2(
                 payload.outcome_code, reason_codes=payload.reason_codes,
             )
+            # Apply stored reporting/basis override (same as scoring loop)
+            _sb = getattr(payload, "disposition_basis", "UNKNOWN")
+            _sr = getattr(payload, "reporting_obligation", "UNKNOWN")
+            if _sb != "UNKNOWN" or _sr != "UNKNOWN":
+                prec_canonical = CanonicalOutcome(
+                    disposition=prec_canonical.disposition,
+                    disposition_basis=_sb if _sb != "UNKNOWN" else prec_canonical.disposition_basis,
+                    reporting=_sr if _sr != "UNKNOWN" else prec_canonical.reporting,
+                )
             outcome_label = map_aml_outcome_label_v2(prec_canonical)
 
             # v3-specific data from sim_result

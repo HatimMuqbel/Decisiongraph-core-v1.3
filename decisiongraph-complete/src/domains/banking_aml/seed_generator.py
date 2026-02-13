@@ -969,10 +969,6 @@ def _extract_facts_from_seed(seed: JudgmentPayload) -> dict[str, Any]:
     return {af.field_id: af.value for af in seed.anchor_facts}
 
 
-# Fraction of EDD seeds marked UNDETERMINED (abandoned mid-review)
-_ABANDONED_RATE = 0.025  # ~2.5%
-
-
 def _apply_edd_reporting_determination(
     seeds: list[JudgmentPayload],
     rng: random.Random,
@@ -980,8 +976,8 @@ def _apply_edd_reporting_determination(
     """Apply deterministic reporting determination to all EDD seeds.
 
     Replaces PENDING_EDD with a terminal reporting outcome (FILE_STR or
-    NO_REPORT) derived from the seed's fact set.  ~2-3% of EDD seeds are
-    marked UNDETERMINED to represent abandoned mid-review cases.
+    NO_REPORT) derived from the seed's fact set.  Every historical seed
+    must have a terminal reporting status — no UNDETERMINED allowed.
 
     Mutates seeds in place.
     """
@@ -990,21 +986,8 @@ def _apply_edd_reporting_determination(
         if s.reporting_obligation == "PENDING_EDD"
     ]
 
-    # Select ~2.5% as abandoned (UNDETERMINED)
-    abandoned_count = max(0, round(len(edd_indices) * _ABANDONED_RATE))
-    abandoned_set = set(rng.sample(edd_indices, min(abandoned_count, len(edd_indices))))
-
     for idx in edd_indices:
         seed = seeds[idx]
-        if idx in abandoned_set:
-            # Abandoned mid-review — no terminal outcome
-            object.__setattr__(seed, "reporting_obligation", "UNDETERMINED")
-            object.__setattr__(
-                seed, "reporting_rationale",
-                "Review abandoned mid-process. No reporting determination reached.",
-            )
-            continue
-
         facts = _extract_facts_from_seed(seed)
         status, rationale = derive_reporting_status_and_rationale(facts)
 
@@ -1052,6 +1035,17 @@ def generate_all_banking_seeds(
     # ── Post-EDD reporting determination ────────────────────────────
     # Derive terminal reporting status for all PENDING_EDD seeds
     _apply_edd_reporting_determination(seeds, rng)
+
+    # ── Hard assertion: every seed must have terminal reporting ────
+    _TERMINAL_REPORTING = {"FILE_STR", "NO_REPORT", "FILE_LCTR", "FILE_TPR"}
+    for s in seeds:
+        ro = getattr(s, "reporting_obligation", None)
+        if ro not in _TERMINAL_REPORTING:
+            raise ValueError(
+                f"Seed {s.precedent_id} has non-terminal "
+                f"reporting_obligation='{ro}'. "
+                f"All historical seeds must have terminal reporting."
+            )
 
     return seeds
 

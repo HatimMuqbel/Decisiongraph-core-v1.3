@@ -218,7 +218,9 @@ _SUSPICION_NEGATIVE: frozenset[str] = frozenset({
     "NO_REPORT", "FILE_LCTR", "FILE_TPR",
 })
 
-# Undetermined reporting values (EDD not yet resolved)
+# Fallback set — these should never appear in a well-formed DecisionGraph corpus.
+# Every case and precedent must have a fully resolved reporting posture.
+# Kept as a defensive guard; any match here is an upstream invariant violation.
 _SUSPICION_UNDETERMINED: frozenset[str] = frozenset({
     "PENDING_EDD", "UNDETERMINED", "UNKNOWN", "",
 })
