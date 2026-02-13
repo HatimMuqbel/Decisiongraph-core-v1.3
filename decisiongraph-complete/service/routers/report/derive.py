@@ -195,7 +195,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
     )
 
     # ── 7. Risk factors ──────────────────────────────────────────────────
-    risk_factors = _build_risk_factors(normalized)
+    risk_factors = _build_risk_factors(normalized, primary_typology=primary_typology)
 
     # ── 8. Confidence ─────────────────────────────────────────────────────
     # HARD-STOP CONTRACT: When a CRITICAL integrity alert exists,
@@ -2948,7 +2948,7 @@ def _dedupe_drivers(drivers: list[str], cap: int = 5) -> list[str]:
 
 # ── Risk factors ─────────────────────────────────────────────────────────────
 
-def _build_risk_factors(normalized: dict) -> list[dict]:
+def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[dict]:
     """Build risk-factor list from normalized layers."""
     layer1_facts = normalized["layer1_facts"]
     layer2_obligations = normalized["layer2_obligations"]
@@ -2991,11 +2991,15 @@ def _build_risk_factors(normalized: dict) -> list[dict]:
         "VALIDATING": "Intermediate — evidence accumulating, pattern emerging",
         "CONFIRMED": "Established — sufficient corroboration, pattern validated",
     }
+    _POSITIONAL_LABELS = {"primary", "secondary", "tertiary", "main", "default"}
     for typology in layer4_typologies.get("typologies", []) or []:
         if isinstance(typology, dict):
             name = typology.get("name") or "Typology"
             maturity = typology.get("maturity")
             mapped_name = _TYPOLOGY_CODE_MAP.get(name.lower().replace(" ", "_").replace("-", "_"), name)
+            # If name is a positional label (e.g. "primary"), use resolved primary_typology
+            if mapped_name.lower() in _POSITIONAL_LABELS and primary_typology:
+                mapped_name = primary_typology
             if maturity:
                 readable_maturity = _MATURITY_LABELS.get(maturity.upper(), maturity)
                 value = f"{mapped_name} ({readable_maturity}) [{name}/{maturity}]"

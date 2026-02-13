@@ -207,6 +207,9 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         "risk_heatmap_context": derived.get("risk_heatmap_context"),
         "required_actions": derived.get("required_actions", []),
         "related_activity": derived.get("related_activity", {}),
+
+        # Decision Conflict Alert
+        "decision_conflict_alert": derived.get("decision_conflict_alert"),
     }
 
 
