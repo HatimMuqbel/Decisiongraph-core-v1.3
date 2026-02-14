@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { ReportViewModel, ReportTier } from '../../types';
 import TierBadge from './TierBadge';
 import Badge, { dispositionVariant } from '../Badge';
+import { useReportHtml, useReportPdf } from '../../hooks/useApi';
 
 interface ReportShellProps {
   report: ReportViewModel;
@@ -11,6 +12,35 @@ interface ReportShellProps {
 }
 
 export default function ReportShell({ report, currentTier, onChangeTier, children }: ReportShellProps) {
+  const htmlMutation = useReportHtml();
+  const pdfMutation = useReportPdf();
+
+  const handleHtmlExport = () => {
+    htmlMutation.mutate(report.decision_id, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compliance_report_${report.case_id}_${report.decision_id_short}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  };
+
+  const handlePdfExport = () => {
+    pdfMutation.mutate(report.decision_id, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compliance_report_${report.case_id}_${report.decision_id_short}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Header Bar */}
@@ -59,9 +89,25 @@ export default function ReportShell({ report, currentTier, onChangeTier, childre
             </div>
           </div>
 
-          {/* Right: Tier tabs */}
-          <div className="flex-shrink-0">
+          {/* Right: Tier tabs + Export buttons */}
+          <div className="flex flex-col items-end gap-3 flex-shrink-0">
             <TierBadge currentTier={currentTier} report={report} onChangeTier={onChangeTier} />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleHtmlExport}
+                disabled={htmlMutation.isPending}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50"
+              >
+                {htmlMutation.isPending ? '...' : 'Export HTML'}
+              </button>
+              <button
+                onClick={handlePdfExport}
+                disabled={pdfMutation.isPending}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-500 transition-colors disabled:opacity-50"
+              >
+                {pdfMutation.isPending ? '...' : 'Export PDF'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
