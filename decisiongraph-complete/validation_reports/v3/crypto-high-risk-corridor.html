@@ -165,7 +165,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Export PDF
       </button>
-      <a class="btn-export primary" href="/report/136b4bc5e4255b17f7858ef9137ff57e22a79a00eabc8e56e7a08755d427809b/export-html" download="decision-report-136b4bc5e4255b17-2026-02-13.html" title="Download self-contained HTML report file">
+      <a class="btn-export primary" href="/report/136b4bc5e4255b17f7858ef9137ff57e22a79a00eabc8e56e7a08755d427809b/export-html" download="decision-report-136b4bc5e4255b17-2026-02-14.html" title="Download self-contained HTML report file">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export HTML
       </a>
@@ -185,6 +185,8 @@
           <li>Administrative Details</li>
         
           <li>Investigation Outcome Summary</li>
+        
+          <li>Decision Path</li>
         
           <li>Canonical Outcome</li>
         
@@ -243,7 +245,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">crypto-high-risk-corridor</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-13T20:33:30.522735</div>
+        <div class="value mono">2026-02-14T16:50:22.938639</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -294,7 +296,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--warn);">[REQUIRED]</strong>
           
-          Complete EDD by 2026-02-20T23:59:59.522221Z
+          Complete EDD by 2026-02-20T23:59:59.938374Z
         </li>
         
         <li style="margin:4px 0;">
@@ -324,7 +326,7 @@
         <div class="label">Investigation State</div>
         <div class="value">COMPLIANCE REVIEW REQUIRED</div>
         <div class="label">Primary Typology</div>
-        <div class="value">Evasion behavior</div>
+        <div class="value">Virtual asset laundering</div>
         <div class="label">Typology Assessment</div>
         <div class="value">
           
@@ -405,6 +407,82 @@
         
       </tbody>
     </table>
+
+    
+    
+    <h2>Decision Path</h2>
+    <div class="card break" style="border-left:4px solid #1f2937;">
+      
+      <div style="">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ① Classifier Assessment
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">2 Tier 1 suspicion indicator(s) detected: EVASION_BEHAVIOR, VIRTUAL_ASSET_LAUNDERING.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">4 Tier 2 investigative signal(s) noted.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Classifier recommends: STR REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ② Gate 1 — Zero-False-Escalation Check
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Primary typology: Virtual asset laundering (stage: FORMING).</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Rule: Direct escalation requires ESTABLISHED or CONFIRMED typology. FORMING typologies must complete EDD.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Blocking section — Typology Maturity Assessment: Escalation from FORMING typology is illegal..</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 1: BLOCKED — Escalation from FORMING typology is illegal
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ③ Gate 2 — STR Threshold
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Pre-condition: Gate 1 clearance required.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 2: NOT EVALUATED — upstream gate blocked
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ④ Governed Resolution
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Classifier recommended STR REQUIRED → Gate 1 BLOCKED → Gate 2 INSUFFICIENT → Fallback: EDD REQUIRED.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Conflict resolution: Gate 1 (Typology Maturity), Gate 2 (STR Threshold) blocked escalation — Escalation from FORMING typology is illegal. Engine followed gate logic.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Governed disposition: EDD REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ⑤ Terminal Disposition
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Enhanced due diligence required before final determination.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Terminal disposition: EDD REQUIRED
+        </div>
+      </div>
+      
+    </div>
+    
 
     <h2>Case Classification</h2>
     <div class="card break">
@@ -839,7 +917,7 @@ Combined alignment: 16/45 (35%)</p>
     
     <details class="pi-case break regime-limited" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">7ca77f2d...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">a6391f64...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">78%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -882,7 +960,7 @@ Combined alignment: 16/45 (35%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">9aea41d4...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">cd6070a3...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -925,7 +1003,7 @@ Combined alignment: 16/45 (35%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">7490f682...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">498e88e2...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">80%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -968,7 +1046,7 @@ Combined alignment: 16/45 (35%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">d539e6e8...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">1921f653...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">83%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -1011,7 +1089,7 @@ Combined alignment: 16/45 (35%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">84f72da4...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">92b93157...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">80%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -1086,11 +1164,11 @@ Combined alignment: 16/45 (35%)</p>
       <strong>Non-Transferable Precedents (3)</strong>
       <ul class="small" style="margin-top:6px;">
         
-        <li>64532f22...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>8112513f...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
-        <li>d8cfbd64...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>dc08a626...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
-        <li>2276140d...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
+        <li>3aabf285...: Source of funds clarity: precedent=True, current=False — driver contradiction</li>
         
       </ul>
       <span class="small">These precedents were scored but cannot be classified as "supporting" due to driver mismatches.</span>
@@ -1523,7 +1601,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">7ca77f2d...</span>
+            <span class="match-id">a6391f64...</span>
             <span class="match-sim">78%
               
               
@@ -1596,7 +1674,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">9aea41d4...</span>
+            <span class="match-id">cd6070a3...</span>
             <span class="match-sim">77%
               
               
@@ -1669,7 +1747,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">7490f682...</span>
+            <span class="match-id">498e88e2...</span>
             <span class="match-sim">80%
               
               
@@ -1742,7 +1820,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d539e6e8...</span>
+            <span class="match-id">1921f653...</span>
             <span class="match-sim">83%
               
               
@@ -1815,7 +1893,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">84f72da4...</span>
+            <span class="match-id">92b93157...</span>
             <span class="match-sim">80%
               
               
@@ -1888,7 +1966,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">686a52d0...</span>
+            <span class="match-id">f2994cf4...</span>
             <span class="match-sim">81%
               
               
@@ -1961,7 +2039,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">52bf9bec...</span>
+            <span class="match-id">69fe002a...</span>
             <span class="match-sim">80%
               
               
@@ -2034,7 +2112,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">64532f22...</span>
+            <span class="match-id">8112513f...</span>
             <span class="match-sim">81%
               
               
@@ -2103,7 +2181,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d8cfbd64...</span>
+            <span class="match-id">dc08a626...</span>
             <span class="match-sim">79%
               
               
@@ -2176,7 +2254,7 @@ Combined alignment: 16/45 (35%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">2276140d...</span>
+            <span class="match-id">3aabf285...</span>
             <span class="match-sim">79%
               
               
@@ -2404,7 +2482,7 @@ Combined alignment: 16/45 (35%)</p>
           <td class="mono">Typology</td>
           <td>
             
-              Evasion behavior (Early-stage — pattern forming, not yet established) [primary/FORMING]
+              Virtual asset laundering (Early-stage — pattern forming, not yet established) [primary/FORMING]
             
           </td>
         </tr>
@@ -2688,9 +2766,9 @@ Combined alignment: 16/45 (35%)</p>
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-13T20:33:30.522221Z</div>
+        <div class="value mono">2026-02-14T16:50:22.938374Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-20T23:59:59.522221Z</div>
+        <div class="value mono">2026-02-20T23:59:59.938374Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
@@ -2739,7 +2817,7 @@ Combined alignment: 16/45 (35%)</p>
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-13T20:33:30.522735
+      Generated 2026-02-14T16:50:22.938639
     </div>
   </div>
 </body>

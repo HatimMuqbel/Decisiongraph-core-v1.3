@@ -165,7 +165,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Export PDF
       </button>
-      <a class="btn-export primary" href="/report/e8c0a7ecd7c928f0925a8756cba3eb9aa28fe050cff731b83fb06dd4e08b4882/export-html" download="decision-report-e8c0a7ecd7c928f0-2026-02-13.html" title="Download self-contained HTML report file">
+      <a class="btn-export primary" href="/report/e8c0a7ecd7c928f0925a8756cba3eb9aa28fe050cff731b83fb06dd4e08b4882/export-html" download="decision-report-e8c0a7ecd7c928f0-2026-02-14.html" title="Download self-contained HTML report file">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export HTML
       </a>
@@ -185,6 +185,8 @@
           <li>Administrative Details</li>
         
           <li>Investigation Outcome Summary</li>
+        
+          <li>Decision Path</li>
         
           <li>Canonical Outcome</li>
         
@@ -243,7 +245,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">beneficial-owner-pep</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-13T20:33:31.423897</div>
+        <div class="value mono">2026-02-14T16:50:23.933209</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -289,7 +291,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--warn);">[REQUIRED]</strong>
           
-          Complete EDD by 2026-02-20T23:59:59.423650Z
+          Complete EDD by 2026-02-20T23:59:59.932919Z
         </li>
         
         <li style="margin:4px 0;">
@@ -406,6 +408,82 @@
         
       </tbody>
     </table>
+
+    
+    
+    <h2>Decision Path</h2>
+    <div class="card break" style="border-left:4px solid #1f2937;">
+      
+      <div style="">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ① Classifier Assessment
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">2 Tier 1 suspicion indicator(s) detected: LAYERING, SHELL_ENTITY.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">3 Tier 2 investigative signal(s) noted.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Classifier recommends: STR REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ② Gate 1 — Zero-False-Escalation Check
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Primary typology: Layering (stage: ESTABLISHED).</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Rule: Typology maturity confirmed at ESTABLISHED level.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Blocking section — Typology Maturity Assessment: Escalation from FORMING typology is illegal..</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 1: BLOCKED — Escalation from FORMING typology is illegal
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ③ Gate 2 — STR Threshold
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Pre-condition: Gate 1 clearance required.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 2: NOT EVALUATED — upstream gate blocked
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ④ Governed Resolution
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Classifier recommended STR REQUIRED → Gate 1 BLOCKED → Gate 2 INSUFFICIENT → Fallback: EDD REQUIRED.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Conflict resolution: Gate 1 (Typology Maturity), Gate 2 (STR Threshold) blocked escalation — Escalation from FORMING typology is illegal. Engine followed gate logic.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Governed disposition: EDD REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ⑤ Terminal Disposition
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Enhanced due diligence required before final determination.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Terminal disposition: EDD REQUIRED
+        </div>
+      </div>
+      
+    </div>
+    
 
     <h2>Case Classification</h2>
     <div class="card break">
@@ -834,7 +912,7 @@ High operational alignment indicates institutional consensus on adverse action. 
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">43e4cb98...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">b714d69e...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">72%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -873,50 +951,7 @@ High operational alignment indicates institutional consensus on adverse action. 
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">33074091...</span>
-        <span style="font-weight:700; font-size:16px; margin:0 4px;">72%</span>
-        
-        <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
-        
-        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
-        
-      </summary>
-      <div class="pi-case-body">
-        
-        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
-        
-        
-        
-        <div style="margin:0 0 8px 0; padding:6px 10px; background:rgba(30,64,175,0.06); border-radius:4px; font-size:12px; line-height:1.7;">
-          <div style="display:flex; gap:16px;">
-            <span>Operational: <strong style="color:var(--ok);">ALIGNED</strong></span>
-            
-            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
-            
-          </div>
-          <div style="margin-top:2px; color:#475569;">&#9656; Same operational action, different suspicion finding.</div>
-        </div>
-        
-        <p style="margin:0 0 6px 0;">EDD REQUIRED. Key factors: PEP customer, PEP customer, PEP customer.</p>
-        
-        <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status (driver), High-risk industry</span></div>
-        
-        
-        
-        <div style="margin-top:4px;"><span class="pi-chip driver">PEP status</span><span class="pi-chip driver">Amount band</span><span class="pi-chip driver">PEP screening</span></div>
-        
-        
-        
-        <div style="margin-top:6px; padding:6px 10px; background:rgba(30,64,175,0.04); border-left:2px solid #93c5fd; border-radius:2px; font-size:12px; color:#334155; line-height:1.5;">
-          <span style="font-weight:600;">Reporting rationale:</span> Activity aligned with expectations (Source of funds verified). EDD found insufficient grounds for STR.
-        </div>
-        
-      </div>
-    </details>
-    
-    <details class="pi-case break regime-limited" >
-      <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">331ed3eb...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">cd835dce...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">72%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -959,7 +994,7 @@ High operational alignment indicates institutional consensus on adverse action. 
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">732c6e49...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">a9cb594a...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">72%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -1002,7 +1037,50 @@ High operational alignment indicates institutional consensus on adverse action. 
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">ef741a9a...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">9ff90700...</span>
+        <span style="font-weight:700; font-size:16px; margin:0 4px;">72%</span>
+        
+        <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
+        
+        <span class="pi-chip pre-shift" style="margin-left:4px;">PRE-SHIFT</span>
+        
+      </summary>
+      <div class="pi-case-body">
+        
+        <div class="regime-warning">&#9888; Decided under superseded policy. Outcome may not reflect current institutional posture.</div>
+        
+        
+        
+        <div style="margin:0 0 8px 0; padding:6px 10px; background:rgba(30,64,175,0.06); border-radius:4px; font-size:12px; line-height:1.7;">
+          <div style="display:flex; gap:16px;">
+            <span>Operational: <strong style="color:var(--ok);">ALIGNED</strong></span>
+            
+            <span>Regulatory: <strong style="color:var(--bad);">CONTRARY</strong></span>
+            
+          </div>
+          <div style="margin-top:2px; color:#475569;">&#9656; Same operational action, different suspicion finding.</div>
+        </div>
+        
+        <p style="margin:0 0 6px 0;">EDD REQUIRED. Key factors: PEP customer, PEP customer, PEP customer.</p>
+        
+        <div style="margin-bottom:4px;"><span class="small" style="color:var(--ok); font-weight:600;">Matching:</span> <span class="small" style="color:var(--ok);">Relationship length, PEP status (driver), High-risk industry</span></div>
+        
+        
+        
+        <div style="margin-top:4px;"><span class="pi-chip driver">PEP status</span><span class="pi-chip driver">Amount band</span><span class="pi-chip driver">PEP screening</span></div>
+        
+        
+        
+        <div style="margin-top:6px; padding:6px 10px; background:rgba(30,64,175,0.04); border-left:2px solid #93c5fd; border-radius:2px; font-size:12px; color:#334155; line-height:1.5;">
+          <span style="font-weight:600;">Reporting rationale:</span> Activity aligned with expectations (Source of funds verified). EDD found insufficient grounds for STR.
+        </div>
+        
+      </div>
+    </details>
+    
+    <details class="pi-case break regime-limited" >
+      <summary>
+        <span class="mono" style="font-weight:600; min-width:80px;">f92d6039...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">73%</span>
         
         <span class="pill req" style="margin-left:auto; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">ALIGNED</span>
@@ -1500,7 +1578,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">43e4cb98...</span>
+            <span class="match-id">b714d69e...</span>
             <span class="match-sim">72%
               
               
@@ -1573,7 +1651,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">33074091...</span>
+            <span class="match-id">cd835dce...</span>
             <span class="match-sim">72%
               
               
@@ -1646,7 +1724,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">331ed3eb...</span>
+            <span class="match-id">a9cb594a...</span>
             <span class="match-sim">72%
               
               
@@ -1719,7 +1797,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">732c6e49...</span>
+            <span class="match-id">9ff90700...</span>
             <span class="match-sim">72%
               
               
@@ -1792,7 +1870,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">ef741a9a...</span>
+            <span class="match-id">f92d6039...</span>
             <span class="match-sim">73%
               
               
@@ -1865,7 +1943,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">b5741ba6...</span>
+            <span class="match-id">5fda99e8...</span>
             <span class="match-sim">61%
               
               
@@ -1938,7 +2016,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">37b70a84...</span>
+            <span class="match-id">b3309946...</span>
             <span class="match-sim">72%
               
               
@@ -2011,7 +2089,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">47419486...</span>
+            <span class="match-id">53d7ed13...</span>
             <span class="match-sim">63%
               
               
@@ -2084,7 +2162,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">bc4d7c5b...</span>
+            <span class="match-id">db7a662c...</span>
             <span class="match-sim">71%
               
               
@@ -2157,7 +2235,7 @@ High operational alignment indicates institutional consensus on adverse action. 
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">7e4e6a0b...</span>
+            <span class="match-id">0cd0f9b5...</span>
             <span class="match-sim">72%
               
               
@@ -2649,9 +2727,9 @@ High operational alignment indicates institutional consensus on adverse action. 
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-13T20:33:31.423650Z</div>
+        <div class="value mono">2026-02-14T16:50:23.932919Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-20T23:59:59.423650Z</div>
+        <div class="value mono">2026-02-20T23:59:59.932919Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
@@ -2700,7 +2778,7 @@ High operational alignment indicates institutional consensus on adverse action. 
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-13T20:33:31.423897
+      Generated 2026-02-14T16:50:23.933209
     </div>
   </div>
 </body>

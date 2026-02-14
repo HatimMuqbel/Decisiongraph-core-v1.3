@@ -165,7 +165,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Export PDF
       </button>
-      <a class="btn-export primary" href="/report/a64e7dff76eac3406ce13be046874a3204eee3c1b7756fc10094f874638e75cc/export-html" download="decision-report-a64e7dff76eac340-2026-02-13.html" title="Download self-contained HTML report file">
+      <a class="btn-export primary" href="/report/a64e7dff76eac3406ce13be046874a3204eee3c1b7756fc10094f874638e75cc/export-html" download="decision-report-a64e7dff76eac340-2026-02-14.html" title="Download self-contained HTML report file">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export HTML
       </a>
@@ -185,6 +185,8 @@
           <li>Administrative Details</li>
         
           <li>Investigation Outcome Summary</li>
+        
+          <li>Decision Path</li>
         
           <li>Canonical Outcome</li>
         
@@ -243,7 +245,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">everything-adverse</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-13T20:33:39.753233</div>
+        <div class="value mono">2026-02-14T16:50:32.112599</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -292,7 +294,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--bad);">[MANDATORY]</strong>
           
-          File STR by 2026-03-15T20:33:39.752779Z (30 days per PCMLTFA s. 7)
+          File STR by 2026-03-16T16:50:32.112329Z (30 days per PCMLTFA s. 7)
         </li>
         
         <li style="margin:4px 0;">
@@ -328,11 +330,11 @@
         <div class="label">Investigation State</div>
         <div class="value">STR REQUIRED</div>
         <div class="label">Primary Typology</div>
-        <div class="value">Structuring</div>
+        <div class="value">Sanctions exposure</div>
         <div class="label">Typology Assessment</div>
         <div class="value">
           
-          Confirmed typology: Structuring. Pattern established &mdash; meets escalation criteria.
+          Confirmed typology: Sanctions exposure. Pattern established &mdash; meets escalation criteria.
           
         </div>
         
@@ -412,6 +414,82 @@
         
       </tbody>
     </table>
+
+    
+    
+    <h2>Decision Path</h2>
+    <div class="card break" style="border-left:4px solid #1f2937;">
+      
+      <div style="">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ① Classifier Assessment
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Hard stop triggered: SANCTIONS_MATCH.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">8 Tier 1 suspicion indicator(s) detected: LAYERING, EVASION_BEHAVIOR, SHELL_ENTITY, STRUCTURING_PATTERN, THIRD_PARTY_UNEXPLAINED, ADVERSE_MEDIA_MLTF, SANCTIONS_SIGNAL, COMBO_HIGH_RISK_MULTI_FLAG.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">5 Tier 2 investigative signal(s) noted.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Classifier recommends: STR REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ② Gate 1 — Zero-False-Escalation Check
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Hard stop active — Gate 1 fast-tracks (Section A passes immediately).</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 1: PERMITTED — PERMITTED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ③ Gate 2 — STR Threshold
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Legal Suspicion Threshold: PASS — If none apply -&gt; NO STR (stop here)</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Evidence Quality Check: FAIL — If any fail -&gt; NO STR</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 2: INSUFFICIENT
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ④ Governed Resolution
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Classifier recommended STR REQUIRED → Gate 1 PERMITTED → Gate 2 INSUFFICIENT → Fallback: STR REQUIRED.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Conflict resolution: Gate 1 (Typology Maturity), Gate 2 (STR Threshold) blocked escalation — Mitigations insufficient to explain behavior. Engine followed gate logic.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Governed disposition: STR REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ⑤ Terminal Disposition
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">File STR within statutory timeframe.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Terminal disposition: STR REQUIRED
+        </div>
+      </div>
+      
+    </div>
+    
 
     <h2>Case Classification</h2>
     <div class="card break">
@@ -1650,7 +1728,7 @@
           <td class="mono">Typology</td>
           <td>
             
-              Structuring (Established — sufficient corroboration, pattern validated) [primary/CONFIRMED]
+              Sanctions exposure (Established — sufficient corroboration, pattern validated) [primary/CONFIRMED]
             
           </td>
         </tr>
@@ -1981,13 +2059,13 @@
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-13T20:33:39.752779Z</div>
+        <div class="value mono">2026-02-14T16:50:32.112329Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-24T23:59:59.752807Z</div>
+        <div class="value mono">2026-02-24T23:59:59.112346Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
-        <div class="value">2026-03-15T20:33:39.752779Z (30 days per PCMLTFA s. 7)</div>
+        <div class="value">2026-03-16T16:50:32.112329Z (30 days per PCMLTFA s. 7)</div>
       </div>
     </div>
     
@@ -2038,7 +2116,7 @@
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-13T20:33:39.753233
+      Generated 2026-02-14T16:50:32.112599
     </div>
   </div>
 </body>

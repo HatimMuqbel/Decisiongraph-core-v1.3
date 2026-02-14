@@ -165,7 +165,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Export PDF
       </button>
-      <a class="btn-export primary" href="/report/1961c1b3a907050accda8db93f174a00fb6c94797ae0f057bcf5a1e198de4f4f/export-html" download="decision-report-1961c1b3a907050a-2026-02-13.html" title="Download self-contained HTML report file">
+      <a class="btn-export primary" href="/report/1961c1b3a907050accda8db93f174a00fb6c94797ae0f057bcf5a1e198de4f4f/export-html" download="decision-report-1961c1b3a907050a-2026-02-14.html" title="Download self-contained HTML report file">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export HTML
       </a>
@@ -185,6 +185,8 @@
           <li>Administrative Details</li>
         
           <li>Investigation Outcome Summary</li>
+        
+          <li>Decision Path</li>
         
           <li>Canonical Outcome</li>
         
@@ -243,7 +245,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">allow-with-str-controlled-delivery</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-13T20:33:38.893164</div>
+        <div class="value mono">2026-02-14T16:50:31.039556</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -292,7 +294,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--bad);">[MANDATORY]</strong>
           
-          File STR by 2026-03-15T20:33:38.892735Z (30 days per PCMLTFA s. 7)
+          File STR by 2026-03-16T16:50:31.039278Z (30 days per PCMLTFA s. 7)
         </li>
         
         <li style="margin:4px 0;">
@@ -406,6 +408,82 @@
         
       </tbody>
     </table>
+
+    
+    
+    <h2>Decision Path</h2>
+    <div class="card break" style="border-left:4px solid #1f2937;">
+      
+      <div style="">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ① Classifier Assessment
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Hard stop triggered: ADVERSE_MEDIA_MLTF.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">2 Tier 1 suspicion indicator(s) detected: STRUCTURING_PATTERN, ADVERSE_MEDIA_MLTF.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">2 Tier 2 investigative signal(s) noted.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Classifier recommends: STR REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ② Gate 1 — Zero-False-Escalation Check
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Hard stop active — Gate 1 fast-tracks (Section A passes immediately).</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 1: PERMITTED — PERMITTED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ③ Gate 2 — STR Threshold
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Legal Suspicion Threshold: PASS — If none apply -&gt; NO STR (stop here)</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Evidence Quality Check: FAIL — If any fail -&gt; NO STR</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 2: INSUFFICIENT
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ④ Governed Resolution
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Classifier recommended STR REQUIRED → Gate 1 PERMITTED → Gate 2 INSUFFICIENT → Fallback: STR REQUIRED.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Conflict resolution: Gate 1 (Typology Maturity), Gate 2 (STR Threshold) blocked escalation — Mitigations insufficient to explain behavior. Engine followed gate logic.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Governed disposition: STR REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ⑤ Terminal Disposition
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">File STR within statutory timeframe.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Terminal disposition: STR REQUIRED
+        </div>
+      </div>
+      
+    </div>
+    
 
     <h2>Case Classification</h2>
     <div class="card break">
@@ -750,7 +828,7 @@ Combined alignment: 0/25 (0%)</p>
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">712daa79...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">ace2f4bf...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">79%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
@@ -783,7 +861,7 @@ Combined alignment: 0/25 (0%)</p>
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">44eaa429...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">bc0cc845...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">77%</span>
         
         <span class="pill trig" style="margin-left:auto;">NO REPORT</span>
@@ -816,7 +894,7 @@ Combined alignment: 0/25 (0%)</p>
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">331a11ec...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">40863efa...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">80%</span>
         
         <span class="pill req" style="margin-left:auto;">EDD REQUIRED</span>
@@ -853,7 +931,7 @@ Combined alignment: 0/25 (0%)</p>
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">d5ac5346...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">f3f93cd3...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">80%</span>
         
         <span class="pill req" style="margin-left:auto;">STR REQUIRED</span>
@@ -890,7 +968,7 @@ Combined alignment: 0/25 (0%)</p>
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">e4b9163d...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">b03d4169...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">81%</span>
         
         <span class="pill req" style="margin-left:auto;">STR REQUIRED</span>
@@ -965,9 +1043,9 @@ Combined alignment: 0/25 (0%)</p>
       <p class="small" style="margin-bottom:6px;"><em>Contrary precedent dates — older cases may reflect superseded guidance.</em></p>
       <ul style="font-size:13px; margin:0; padding-left:20px;">
         
-        <li><span class="mono">712daa79...</span>: 2026-01-23T20:33:23Z</li>
+        <li><span class="mono">ace2f4bf...</span>: 2026-01-24T16:50:16Z</li>
         
-        <li><span class="mono">44eaa429...</span>: 2026-01-09T20:33:23Z</li>
+        <li><span class="mono">bc0cc845...</span>: 2026-01-10T16:50:16Z</li>
         
       </ul>
     </div>
@@ -1432,7 +1510,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">712daa79...</span>
+            <span class="match-id">ace2f4bf...</span>
             <span class="match-sim">79%
               
               
@@ -1501,7 +1579,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">44eaa429...</span>
+            <span class="match-id">bc0cc845...</span>
             <span class="match-sim">77%
               
               
@@ -1570,7 +1648,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">331a11ec...</span>
+            <span class="match-id">40863efa...</span>
             <span class="match-sim">80%
               
               
@@ -1643,7 +1721,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d5ac5346...</span>
+            <span class="match-id">f3f93cd3...</span>
             <span class="match-sim">80%
               
               
@@ -1716,7 +1794,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">e4b9163d...</span>
+            <span class="match-id">b03d4169...</span>
             <span class="match-sim">81%
               
               
@@ -1789,7 +1867,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d9b95348...</span>
+            <span class="match-id">b2e59e60...</span>
             <span class="match-sim">81%
               
               
@@ -1862,7 +1940,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">0a5b14e5...</span>
+            <span class="match-id">fcfa94c5...</span>
             <span class="match-sim">83%
               
               
@@ -1935,7 +2013,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">382d77ec...</span>
+            <span class="match-id">4e0c53ba...</span>
             <span class="match-sim">78%
               
               
@@ -2008,7 +2086,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">4b2582f7...</span>
+            <span class="match-id">31a4e6be...</span>
             <span class="match-sim">81%
               
               
@@ -2081,7 +2159,7 @@ Combined alignment: 0/25 (0%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">bb039b21...</span>
+            <span class="match-id">c8136379...</span>
             <span class="match-sim">80%
               
               
@@ -2578,13 +2656,13 @@ Combined alignment: 0/25 (0%)</p>
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-13T20:33:38.892735Z</div>
+        <div class="value mono">2026-02-14T16:50:31.039278Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-24T23:59:59.892762Z</div>
+        <div class="value mono">2026-02-24T23:59:59.039297Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
-        <div class="value">2026-03-15T20:33:38.892735Z (30 days per PCMLTFA s. 7)</div>
+        <div class="value">2026-03-16T16:50:31.039278Z (30 days per PCMLTFA s. 7)</div>
       </div>
     </div>
     
@@ -2635,7 +2713,7 @@ Combined alignment: 0/25 (0%)</p>
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-13T20:33:38.893164
+      Generated 2026-02-14T16:50:31.039556
     </div>
   </div>
 </body>

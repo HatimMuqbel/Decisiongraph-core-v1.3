@@ -165,7 +165,7 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Export PDF
       </button>
-      <a class="btn-export primary" href="/report/5e72226b6403086c4d9a7ae4731106d195eada4b211bc3df4b2ca384bfdfff8b/export-html" download="decision-report-5e72226b6403086c-2026-02-13.html" title="Download self-contained HTML report file">
+      <a class="btn-export primary" href="/report/5e72226b6403086c4d9a7ae4731106d195eada4b211bc3df4b2ca384bfdfff8b/export-html" download="decision-report-5e72226b6403086c-2026-02-14.html" title="Download self-contained HTML report file">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export HTML
       </a>
@@ -185,6 +185,8 @@
           <li>Administrative Details</li>
         
           <li>Investigation Outcome Summary</li>
+        
+          <li>Decision Path</li>
         
           <li>Canonical Outcome</li>
         
@@ -243,7 +245,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">adverse-media-unconfirmed</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-13T20:33:35.281543</div>
+        <div class="value mono">2026-02-14T16:50:27.446745</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -284,7 +286,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--warn);">[REQUIRED]</strong>
           
-          Complete EDD by 2026-02-20T23:59:59.281211Z
+          Complete EDD by 2026-02-20T23:59:59.446530Z
         </li>
         
         <li style="margin:4px 0;">
@@ -389,6 +391,82 @@
         
       </tbody>
     </table>
+
+    
+    
+    <h2>Decision Path</h2>
+    <div class="card break" style="border-left:4px solid #1f2937;">
+      
+      <div style="">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ① Classifier Assessment
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">No Tier 1 suspicion indicators found.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">1 Tier 2 investigative signal(s) noted.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Classifier recommends: EDD REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ② Gate 1 — Zero-False-Escalation Check
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Primary typology: Unclassified behavioral indicators (maturity: forming) (stage: FORMING).</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Rule: Direct escalation requires ESTABLISHED or CONFIRMED typology. FORMING typologies must complete EDD.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Blocking section — Indicator Corroboration: If indicators fail corroboration -&gt; escalation prohibited..</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 1: BLOCKED — If indicators fail corroboration -&gt; escalation prohibited
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ③ Gate 2 — STR Threshold
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Pre-condition: Gate 1 clearance required.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Gate 2: NOT EVALUATED — upstream gate blocked
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ④ Governed Resolution
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Classifier recommended EDD REQUIRED → Gate 1 BLOCKED → Gate 2 PROHIBITED → Fallback: EDD REQUIRED.</div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">All components agree. Disposition confirmed: EDD REQUIRED.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Governed disposition: EDD REQUIRED
+        </div>
+      </div>
+      
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">
+          ⑤ Terminal Disposition
+        </div>
+        
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Enhanced due diligence required before final determination.</div>
+        
+        <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
+          &rarr; Terminal disposition: EDD REQUIRED
+        </div>
+      </div>
+      
+    </div>
+    
 
     <h2>Case Classification</h2>
     <div class="card break">
@@ -700,7 +778,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">0a081644...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">60ec92c5...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">94%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -735,7 +813,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">a11bdca6...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">43671291...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">94%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -770,7 +848,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">9ff569b1...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">7e09c419...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">95%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -805,7 +883,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">f81e71e3...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">54751d6b...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">91%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -840,7 +918,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     
     <details class="pi-case break" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">fddd3b17...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">132502b1...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">89%</span>
         
         <span class="pill req" style="margin-left:auto;">NO REPORT</span>
@@ -1311,7 +1389,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">0a081644...</span>
+            <span class="match-id">60ec92c5...</span>
             <span class="match-sim">94%
               
               
@@ -1380,7 +1458,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">a11bdca6...</span>
+            <span class="match-id">43671291...</span>
             <span class="match-sim">94%
               
               
@@ -1449,7 +1527,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">9ff569b1...</span>
+            <span class="match-id">7e09c419...</span>
             <span class="match-sim">95%
               
               
@@ -1518,7 +1596,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">f81e71e3...</span>
+            <span class="match-id">54751d6b...</span>
             <span class="match-sim">91%
               
               
@@ -1587,7 +1665,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">fddd3b17...</span>
+            <span class="match-id">132502b1...</span>
             <span class="match-sim">89%
               
               
@@ -1656,7 +1734,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">77539217...</span>
+            <span class="match-id">22c504dc...</span>
             <span class="match-sim">90%
               
               
@@ -1725,7 +1803,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">0c6590cd...</span>
+            <span class="match-id">2b2b4d12...</span>
             <span class="match-sim">95%
               
               
@@ -1794,7 +1872,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">6de1ce9d...</span>
+            <span class="match-id">13b59aac...</span>
             <span class="match-sim">90%
               
               
@@ -1863,7 +1941,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">4028e038...</span>
+            <span class="match-id">c212ee6a...</span>
             <span class="match-sim">95%
               
               
@@ -1932,7 +2010,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">8953fbcb...</span>
+            <span class="match-id">d6e49240...</span>
             <span class="match-sim">93%
               
               
@@ -2353,9 +2431,9 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-13T20:33:35.281211Z</div>
+        <div class="value mono">2026-02-14T16:50:27.446530Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-20T23:59:59.281211Z</div>
+        <div class="value mono">2026-02-20T23:59:59.446530Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
@@ -2404,7 +2482,7 @@ High regulatory alignment indicates consistent suspicion findings. Low operation
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-13T20:33:35.281543
+      Generated 2026-02-14T16:50:27.446745
     </div>
   </div>
 </body>
