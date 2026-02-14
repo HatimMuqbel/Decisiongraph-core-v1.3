@@ -540,35 +540,6 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
         )}
       </div>
 
-      {/* Export options */}
-      <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-white font-medium">Export Options</p>
-            <p className="text-[10px] text-white mt-0.5">
-              All three tiers are included in exported documents. Use
-              <kbd className="mx-1 rounded bg-slate-700 px-1.5 py-0.5 text-[10px]">Ctrl+P</kbd>
-              for browser print, or export as HTML or PDF.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleHtmlExport}
-              disabled={htmlMutation.isPending}
-              className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-emerald-600 transition-colors disabled:opacity-50"
-            >
-              📄 Download HTML
-            </button>
-            <button
-              onClick={handlePdfExport}
-              disabled={pdfMutation.isPending}
-              className="flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-600 transition-colors disabled:opacity-50"
-            >
-              📄 Download PDF
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
