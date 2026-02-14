@@ -582,6 +582,10 @@ export interface ReportViewModel {
   // SLA
   sla_timeline?: SlaTimeline;
 
+  // Mandatory hard stop (sanctions, etc.)
+  is_mandatory_hard_stop?: boolean;
+  hard_stop_reason?: string;
+
   // Decision Path Narrative (5-step trace)
   decision_path_narrative?: {
     steps: {

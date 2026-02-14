@@ -101,6 +101,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
     layer1_facts = normalized["layer1_facts"]
     layer4_typologies = normalized["layer4_typologies"]
     layer6_suspicion = normalized["layer6_suspicion"]
+
+    # ── Mandatory hard stop detection (sanctions, etc.) ───────────────
+    is_mandatory_hard_stop = bool(layer1_facts.get("hard_stop_triggered"))
     precedent_analysis = normalized["precedent_analysis"]
     rationale_summary = normalized["rationale_summary"]
     classifier_override = normalized["classifier_override"]
@@ -695,6 +698,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         gate1_passed=gate1_passed,
         gate1_sections=normalized.get("gate1_sections", []),
         gate2_sections=normalized.get("gate2_sections", []),
+        is_mandatory_hard_stop=is_mandatory_hard_stop,
     )
 
     # ── Decision Path Narrative Trace ────────────────────────────────
@@ -719,9 +723,21 @@ def derive_regulatory_model(normalized: dict) -> dict:
         layer6_suspicion=layer6_suspicion,
         decision_conflict_alert=decision_conflict_alert,
         integrity_alert=integrity_alert,
+        is_mandatory_hard_stop=is_mandatory_hard_stop,
     )
 
+    # For mandatory hard stops, override confidence to CERTAIN (deterministic)
+    if is_mandatory_hard_stop:
+        enhanced_precedent["confidence_level"] = "CERTAIN"
+        enhanced_precedent["confidence_bottleneck"] = None
+        enhanced_precedent["confidence_hard_rule"] = None
+        enhanced_precedent["confidence_dimensions"] = []
+
     return {
+        # Mandatory hard stop (sanctions, etc.)
+        "is_mandatory_hard_stop": is_mandatory_hard_stop,
+        "hard_stop_reason": layer1_facts.get("hard_stop_reason", "") if is_mandatory_hard_stop else "",
+
         # Classification
         "classification": classification.to_dict(),
         "classification_outcome": classification.outcome,
@@ -3130,6 +3146,14 @@ def _derive_decision_drivers(
     txn = facts.get("transaction", {}) or {}
     customer = facts.get("customer", {}) or {}
 
+    # ── CASE 0: Sanctions hard stop — only the match matters ────────────
+    if facts.get("hard_stop_triggered") and "SANCTIONS" in str(facts.get("hard_stop_reason", "")).upper():
+        drivers = ["Sanctions screening match — immediate block"]
+        method = txn.get("method") or ev_map.get("txn.method") or ev_map.get("txn.type") or ""
+        if method:
+            drivers.append(f"{str(method).replace('_', ' ').title()} channel")
+        return drivers
+
     typologies = layer4_typologies.get("typologies", []) or []
     elements = layer6_suspicion.get("elements", {}) or {}
 
@@ -3389,8 +3413,11 @@ def _build_decision_conflict_alert(
     gate1_passed: bool,
     gate1_sections: list,
     gate2_sections: list,
+    is_mandatory_hard_stop: bool = False,
 ) -> dict | None:
     """Build at-a-glance conflict alert when classifier != engine."""
+    if is_mandatory_hard_stop:
+        return None  # Sanctions are not conflicts — they're terminal prohibitions
     if not classification_outcome or classification_outcome == engine_disposition:
         return None
 
@@ -3455,6 +3482,7 @@ def _build_decision_path_narrative(
     layer6_suspicion: dict,
     decision_conflict_alert: dict | None,
     integrity_alert: dict | None,
+    is_mandatory_hard_stop: bool = False,
 ) -> dict:
     """Build 5-step narrative trace explaining the decision path."""
 
@@ -3537,7 +3565,10 @@ def _build_decision_path_narrative(
 
     # ── Step ③ — Gate 2 — STR Threshold ──────────────────────────────────
     detail_3: list[str] = []
-    if not gate1_passed:
+    if is_mandatory_hard_stop:
+        detail_3.append("Not applicable \u2014 sanctions hard stop supersedes suspicion threshold test.")
+        arrow_3 = "Gate 2: NOT APPLICABLE \u2014 mandatory enforcement"
+    elif not gate1_passed:
         detail_3.append("Pre-condition: Gate 1 clearance required.")
         arrow_3 = "Gate 2: NOT EVALUATED \u2014 upstream gate blocked"
     elif (gate2_status or "").upper() == "SKIPPED":

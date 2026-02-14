@@ -215,6 +215,10 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
 
         # Decision Path Narrative Trace
         "decision_path_narrative": derived.get("decision_path_narrative", {}),
+
+        # Mandatory hard stop (sanctions, etc.)
+        "is_mandatory_hard_stop": derived.get("is_mandatory_hard_stop", False),
+        "hard_stop_reason": derived.get("hard_stop_reason", ""),
     }
 
 

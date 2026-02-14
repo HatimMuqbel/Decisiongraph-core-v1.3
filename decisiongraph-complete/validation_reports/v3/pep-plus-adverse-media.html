@@ -245,7 +245,7 @@
         <div class="label">Case ID</div>
         <div class="value mono">pep-plus-adverse-media</div>
         <div class="label">Timestamp</div>
-        <div class="value mono">2026-02-14T17:24:56.354027</div>
+        <div class="value mono">2026-02-14T18:24:13.175439</div>
         <div class="label">Jurisdiction</div>
         <div class="value">CA</div>
         <div class="label">Engine Version</div>
@@ -294,7 +294,7 @@
         <li style="margin:4px 0;">
           <strong style="color:var(--bad);">[MANDATORY]</strong>
           
-          File STR by 2026-03-16T17:24:56.353727Z (30 days per PCMLTFA s. 7)
+          File STR by 2026-03-16T18:24:13.175183Z (30 days per PCMLTFA s. 7)
         </li>
         
         <li style="margin:4px 0;">
@@ -369,7 +369,7 @@
           </tr>
           <tr>
             <td>Precedent Match Rate</td>
-            <td class="mono">42% (36 / 84)</td>
+            <td class="mono">43% (36 / 83)</td>
             <td class="small">Percentage of comparable pool meeting similarity threshold</td>
           </tr>
         </tbody>
@@ -430,12 +430,10 @@
           ③ Gate 2 — STR Threshold
         </div>
         
-        <div class="small" style="margin-left:24px; margin-bottom:2px;">Legal Suspicion Threshold: PASS — If none apply -&gt; NO STR (stop here)</div>
-        
-        <div class="small" style="margin-left:24px; margin-bottom:2px;">Evidence Quality Check: FAIL — If any fail -&gt; NO STR</div>
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">Not applicable — sanctions hard stop supersedes suspicion threshold test.</div>
         
         <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
-          &rarr; Gate 2: INSUFFICIENT
+          &rarr; Gate 2: NOT APPLICABLE — mandatory enforcement
         </div>
       </div>
       
@@ -446,7 +444,7 @@
         
         <div class="small" style="margin-left:24px; margin-bottom:2px;">Classifier recommended STR REQUIRED → Gate 1 PERMITTED → Gate 2 INSUFFICIENT → Fallback: STR REQUIRED.</div>
         
-        <div class="small" style="margin-left:24px; margin-bottom:2px;">Conflict resolution: Gate 1 (Typology Maturity), Gate 2 (STR Threshold) blocked escalation — Mitigations insufficient to explain behavior. Engine followed gate logic.</div>
+        <div class="small" style="margin-left:24px; margin-bottom:2px;">All components agree. Disposition confirmed: STR REQUIRED.</div>
         
         <div style="margin-left:24px; margin-top:6px; font-weight:600; font-size:13px; color:var(--muted);">
           &rarr; Governed disposition: STR REQUIRED
@@ -506,23 +504,15 @@
 
     <h2>Regulatory Determination</h2>
     
-      <div class="status bad break">
-        <h3>FILE_STR — Suspicious Transaction Report Required</h3>
-        <p>Suspicion threshold met under PCMLTFA/FINTRAC guidance. Reasonable grounds exist to suspect that the transaction or attempted transaction is related to the commission or attempted commission of a money laundering or terrorist financing offence.</p>
-        
-          <p style="margin-top:12px;"><strong>Primary Suspicion Drivers:</strong></p>
-          <ul>
-            
-              <li>Decision path: PATH_1_HARD_STOP</li>
-            
-          </ul>
-        
-        <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>
+      <div class="status bad break" style="border-left:6px solid #991b1b;">
+        <h3>SANCTIONS MATCH — TRANSACTION PROHIBITED</h3>
+        <p>Screening match detected against designated sanctions list. Transaction blocked under mandatory regulatory obligation. This is not a discretionary determination.</p>
+        <p style="margin-top:12px;" class="small"><strong>Required Actions:</strong></p>
         <ul class="small">
-          <li>File STR within 30 days of suspicion formation</li>
-          <li>Apply Enhanced Due Diligence measures</li>
-          <li>Implement ongoing monitoring with elevated parameters</li>
-          <li>Document investigative rationale in case file</li>
+          <li>File STR within statutory timeframe — mandatory</li>
+          <li>Freeze transaction pending compliance review</li>
+          <li>Notify MLRO / Chief Compliance Officer</li>
+          <li>Preserve all transaction records for regulatory examination</li>
         </ul>
       </div>
     
@@ -537,7 +527,7 @@
       
       
       
-      <p class="small" style="margin-top:10px;"><strong>Precedent alignment:</strong> 11/84 (13%) of comparable precedents match the governed disposition.</p>
+      <p class="small" style="margin-top:10px;"><strong>Precedent alignment:</strong> 11/83 (13%) of comparable precedents match the governed disposition.</p>
       
     </div>
 
@@ -695,7 +685,7 @@
         
         
         <div class="pi-big" style="color:var(--bad);">
-          11/84 <span style="font-size:16px; font-weight:400;">(13%)</span>
+          11/83 <span style="font-size:16px; font-weight:400;">(13%)</span>
         </div>
         <div class="bar" style="margin:8px 0;"><span style="width:13%; background:#dc2626;"></span></div>
         
@@ -705,14 +695,14 @@
         <div style="margin-top:8px; font-size:12px; line-height:1.8;">
           <div style="display:flex; justify-content:space-between;">
             <span>Operational alignment:</span>
-            <span style="font-weight:600; color:var(--bad);">11/84 (13%)</span>
+            <span style="font-weight:600; color:var(--bad);">11/83 (13%)</span>
           </div>
           <div style="font-size:11px; color:#fff; margin:0 0 6px 0; line-height:1.5;">
             What did the bank decide to do? ALLOW the transaction, require Enhanced Due Diligence, or BLOCK/exit. This shows what percentage of comparable past cases the bank made the same operational decision on.
           </div>
           <div style="display:flex; justify-content:space-between;">
             <span>Regulatory alignment:</span>
-            <span style="font-weight:600; color:var(--bad);">27/84 (32%)</span>
+            <span style="font-weight:600; color:var(--bad);">26/83 (31%)</span>
           </div>
           <div style="font-size:11px; color:#fff; margin:0 0 6px 0; line-height:1.5;">
             What did the bank decide to report? File an STR with FINTRAC, or no filing required. This shows what percentage of comparable past cases the bank made the same reporting decision on.
@@ -720,16 +710,16 @@
           
           <div style="display:flex; justify-content:space-between;">
             <span>Combined alignment:</span>
-            <span style="font-weight:600; color:var(--bad);">10/84 (12%)</span>
+            <span style="font-weight:600; color:var(--bad);">10/83 (12%)</span>
           </div>
           <div style="font-size:11px; color:#fff; margin:0 0 2px 0; line-height:1.5;">
             How many comparable past cases match the current case on both decisions — same operational action AND same reporting decision? Only cases where the bank decided the same thing on both fronts count here.
           </div>
         </div>
         
-        <p class="small" style="margin:6px 0 0 0; font-style:italic;">Operational alignment: 11/84 (13%)
-Regulatory alignment: 27/84 (32%)
-Combined alignment: 10/84 (11%)</p>
+        <p class="small" style="margin:6px 0 0 0; font-style:italic;">Operational alignment: 11/83 (13%)
+Regulatory alignment: 26/83 (31%)
+Combined alignment: 10/83 (12%)</p>
         
         
         
@@ -738,58 +728,8 @@ Combined alignment: 10/84 (11%)</p>
       <div class="pi-card" style="border-left:4px solid #2563eb;">
         <h4>Terminal Confidence</h4>
         
-        
-        
-        <div class="pi-big" style="color:#fd7e14;">LOW</div>
-        
-        <p class="small" style="margin:2px 0 8px 0;">Bottleneck: Outcome Consistency</p>
-        
-        
-        
-        <div style="margin-bottom:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:11px;">
-            <span>Pool Adequacy</span>
-            <span style="font-weight:600;">HIGH</span>
-          </div>
-          
-          
-          <div class="pi-dim-bar"><span style="width:75%; background:#28a745;"></span></div>
-          
-        </div>
-        
-        <div style="margin-bottom:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:11px;">
-            <span>Similarity Quality</span>
-            <span style="font-weight:600;">HIGH</span>
-          </div>
-          
-          
-          <div class="pi-dim-bar"><span style="width:75%; background:#28a745;"></span></div>
-          
-        </div>
-        
-        <div style="margin-bottom:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:11px;">
-            <span>Outcome Consistency</span>
-            <span style="font-weight:600;">LOW ★</span>
-          </div>
-          
-          
-          <div class="pi-dim-bar"><span style="width:25%; background:#fd7e14;"></span></div>
-          
-        </div>
-        
-        <div style="margin-bottom:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:11px;">
-            <span>Evidence Completeness</span>
-            <span style="font-weight:600;">VERY HIGH</span>
-          </div>
-          
-          
-          <div class="pi-dim-bar"><span style="width:95%; background:#20c997;"></span></div>
-          
-        </div>
-        
+        <div class="pi-big" style="color:#059669;">CERTAIN</div>
+        <p class="small" style="margin:2px 0 8px 0;">Mandatory determination — no discretion applicable.</p>
         
       </div>
     </div>
@@ -804,7 +744,7 @@ Combined alignment: 10/84 (11%)</p>
       
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
         
-        <p style="font-size:14px; line-height:1.6; margin:0 0 0 0;">Suspicion posture: Of 84 comparable cases, 27 resulted in STR filing (32%).</p>
+        <p style="font-size:14px; line-height:1.6; margin:0 0 0 0;">Suspicion posture: Of 83 comparable cases, 26 resulted in STR filing (31%).</p>
         
       </div>
       
@@ -815,14 +755,14 @@ Combined alignment: 10/84 (11%)</p>
       
       <div style="margin-top:10px; padding:10px 12px; background:rgba(220,38,38,0.08); border-left:3px solid var(--bad); border-radius:4px;">
         <p style="font-size:13px; font-weight:600; color:var(--bad); margin:0;">&#9888; FIRST-OF-KIND DETERMINATION</p>
-        <p class="small" style="margin:4px 0 0 0;">No post-shift precedent supports STR_REQUIRED for this case profile. All 35 post-shift cases resolved as ALLOW: 2, EDD: 33. This is a first-of-kind STR_REQUIRED under current policy — senior compliance review required.</p>
+        <p class="small" style="margin:4px 0 0 0;">No post-shift precedent supports STR_REQUIRED for this case profile. All 34 post-shift cases resolved as ALLOW: 2, EDD: 32. This is a first-of-kind STR_REQUIRED under current policy — senior compliance review required.</p>
       </div>
       
       
       
       
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
-        <p class="small" style="color:#d97706; font-style:italic;">Note: Historical practice spans two policy regimes. Under current policy (post 2026-04-01), 35 comparable cases available. 58.3% of pool decided under prior policy. Current posture reflects PEP Risk Appetite Tightened.</p>
+        <p class="small" style="color:#d97706; font-style:italic;">Note: Historical practice spans two policy regimes. Under current policy (post 2026-04-01), 34 comparable cases available. 59.0% of pool decided under prior policy. Current posture reflects PEP Risk Appetite Tightened.</p>
       </div>
       
     </div>
@@ -864,10 +804,10 @@ Combined alignment: 10/84 (11%)</p>
             <strong class="small" style="text-transform:uppercase; letter-spacing:0.5px; color:#059669;">Post-Shift</strong>
             <span class="small" style="color:#059669;">Current policy &#10003;</span>
           </div>
-          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">35 <span class="small" style="font-weight:400;">cases</span></div>
+          <div style="font-size:20px; font-weight:700; margin-bottom:6px;">34 <span class="small" style="font-weight:400;">cases</span></div>
           
           
-          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>33 (94%)</span></div>
+          <div style="display:flex; justify-content:space-between;" class="small"><span>EDD</span><span>32 (94%)</span></div>
           <div class="regime-bar"><span class="bar-edd" style="width:94%;"></span></div>
           
           
@@ -878,7 +818,7 @@ Combined alignment: 10/84 (11%)</p>
       </div>
       
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid #fcd34d;">
-        <p class="small"><strong style="color:#d97706;">58.3%</strong> of comparable pool decided under superseded policy. Post-shift pool: <strong>35</strong> cases (effective pool for confidence).</p>
+        <p class="small"><strong style="color:#d97706;">59.0%</strong> of comparable pool decided under superseded policy. Post-shift pool: <strong>34</strong> cases (effective pool for confidence).</p>
         
         <p class="small" style="color:var(--muted); font-style:italic; margin-top:4px;">Majority of precedent pool predates policy change. Confidence reflects post-shift experience only.</p>
         
@@ -900,7 +840,7 @@ Combined alignment: 10/84 (11%)</p>
     
     <details class="pi-case break regime-limited" open>
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">645da032...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">749ab513...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">84%</span>
         
         <span class="pill pass" style="margin-left:auto;">STR REQUIRED</span>
@@ -939,7 +879,7 @@ Combined alignment: 10/84 (11%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">b7a7160c...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">907bec9f...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">84%</span>
         
         <span class="pill pass" style="margin-left:auto;">STR REQUIRED</span>
@@ -978,7 +918,7 @@ Combined alignment: 10/84 (11%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">e1e350e9...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">90cc5fe9...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">86%</span>
         
         <span class="pill pass" style="margin-left:auto;">STR REQUIRED</span>
@@ -1017,7 +957,7 @@ Combined alignment: 10/84 (11%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">d1fca202...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">1adf605b...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">87%</span>
         
         <span class="pill pass" style="margin-left:auto;">STR REQUIRED</span>
@@ -1056,7 +996,7 @@ Combined alignment: 10/84 (11%)</p>
     
     <details class="pi-case break regime-limited" >
       <summary>
-        <span class="mono" style="font-weight:600; min-width:80px;">fb0afcee...</span>
+        <span class="mono" style="font-weight:600; min-width:80px;">af36e3c7...</span>
         <span style="font-weight:700; font-size:16px; margin:0 4px;">85%</span>
         
         <span class="pill pass" style="margin-left:auto;">STR REQUIRED</span>
@@ -1236,46 +1176,14 @@ Combined alignment: 10/84 (11%)</p>
     </div>
 
     <h3>Gate 2: STR Threshold</h3>
+    
     <div class="gate-block break">
-      <h4>
-        STR Required:
-        
-          <span class="pill trig">YES — FILE STR</span>
-        
-      </h4>
-      
-      
-        
-        <div class="gate-section" >
-          
-            <span class="pill pass">PASS</span>
-          
-          <div>
-            <div class="section-name">Legal Suspicion Threshold</div>
-            <div class="section-reason">
-              
-                If none apply -&gt; NO STR (stop here)
-              
-            </div>
-          </div>
-        </div>
-        
-        <div class="gate-section" >
-          
-            <span class="pill req">REVIEW</span>
-          
-          <div>
-            <div class="section-name">Evidence Quality Check</div>
-            <div class="section-reason">
-              
-                If any fail -&gt; NO STR
-              
-            </div>
-          </div>
-        </div>
-        
-      
+      <h4><span class="pill na">NOT APPLICABLE</span></h4>
+      <p class="small" style="margin-bottom:12px;">
+        Sanctions hard stop supersedes suspicion threshold assessment. STR is mandatory under regulatory obligation, not suspicion-based.
+      </p>
     </div>
+    
 
     
     
@@ -1489,9 +1397,9 @@ Combined alignment: 10/84 (11%)</p>
           <div class="label">Neutral / Procedural</div>
           <div class="value" style="color: var(--muted);">15 <span class="small">(enhanced review)</span></div>
           <div class="label">Comparable Matches</div>
-          <div class="value">84</div>
+          <div class="value">83</div>
           <div class="label">Raw Overlaps</div>
-          <div class="value">217</div>
+          <div class="value">276</div>
           <div class="label">Exact Matches</div>
           <div class="value">0</div>
         </div>
@@ -1508,7 +1416,7 @@ Combined alignment: 10/84 (11%)</p>
           
           <tr>
             <td>EDD</td>
-            <td class="mono">63</td>
+            <td class="mono">62</td>
             <td><div class="bar"><span style="width: 75%;"></span></div></td>
           </tr>
           
@@ -1540,22 +1448,22 @@ Combined alignment: 10/84 (11%)</p>
           
           <tr>
             <td>EDD</td>
-            <td class="mono">163</td>
-            <td><div class="bar"><span style="width: 75%;"></span></div></td>
+            <td class="mono">162</td>
+            <td><div class="bar"><span style="width: 59%;"></span></div></td>
           </tr>
           
           
           <tr>
             <td>BLOCK</td>
-            <td class="mono">27</td>
-            <td><div class="bar"><span style="width: 12%;"></span></div></td>
+            <td class="mono">87</td>
+            <td><div class="bar"><span style="width: 32%;"></span></div></td>
           </tr>
           
           
           <tr>
             <td>ALLOW</td>
             <td class="mono">27</td>
-            <td><div class="bar"><span style="width: 12%;"></span></div></td>
+            <td><div class="bar"><span style="width: 10%;"></span></div></td>
           </tr>
           
           
@@ -1571,7 +1479,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">645da032...</span>
+            <span class="match-id">749ab513...</span>
             <span class="match-sim">84%
               
               
@@ -1640,7 +1548,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">b7a7160c...</span>
+            <span class="match-id">907bec9f...</span>
             <span class="match-sim">84%
               
               
@@ -1709,7 +1617,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">e1e350e9...</span>
+            <span class="match-id">90cc5fe9...</span>
             <span class="match-sim">86%
               
               
@@ -1778,7 +1686,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">d1fca202...</span>
+            <span class="match-id">1adf605b...</span>
             <span class="match-sim">87%
               
               
@@ -1847,7 +1755,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">fb0afcee...</span>
+            <span class="match-id">af36e3c7...</span>
             <span class="match-sim">85%
               
               
@@ -1916,7 +1824,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">5d4dc938...</span>
+            <span class="match-id">7a42a47c...</span>
             <span class="match-sim">86%
               
               
@@ -1985,7 +1893,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">8d6abf8f...</span>
+            <span class="match-id">6cd12f9e...</span>
             <span class="match-sim">87%
               
               
@@ -2054,7 +1962,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">366d83ae...</span>
+            <span class="match-id">b9f870d8...</span>
             <span class="match-sim">84%
               
               
@@ -2123,7 +2031,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">75f7b39d...</span>
+            <span class="match-id">4abfd065...</span>
             <span class="match-sim">84%
               
               
@@ -2192,7 +2100,7 @@ Combined alignment: 10/84 (11%)</p>
         
         <div class="match-card break">
           <div class="match-card-header">
-            <span class="match-id">75f6f10f...</span>
+            <span class="match-id">3cb43e98...</span>
             <span class="match-sim">85%
               
               
@@ -2670,13 +2578,13 @@ Combined alignment: 10/84 (11%)</p>
     <div class="card break">
       <div class="kv">
         <div class="label">Case Created</div>
-        <div class="value mono">2026-02-14T17:24:56.353727Z</div>
+        <div class="value mono">2026-02-14T18:24:13.175183Z</div>
         <div class="label">EDD Deadline</div>
-        <div class="value mono">2026-02-24T23:59:59.353744Z</div>
+        <div class="value mono">2026-02-24T23:59:59.175201Z</div>
         <div class="label">Final Disposition Due</div>
         <div class="value">Populated when EDD completes</div>
         <div class="label">STR Filing Window</div>
-        <div class="value">2026-03-16T17:24:56.353727Z (30 days per PCMLTFA s. 7)</div>
+        <div class="value">2026-03-16T18:24:13.175183Z (30 days per PCMLTFA s. 7)</div>
       </div>
     </div>
     
@@ -2727,7 +2635,7 @@ Combined alignment: 10/84 (11%)</p>
 
     <div class="foot">
       <strong>DecisionGraph</strong> — Deterministic - Reproducible - Auditable<br>
-      Generated 2026-02-14T17:24:56.354027
+      Generated 2026-02-14T18:24:13.175439
     </div>
   </div>
 </body>

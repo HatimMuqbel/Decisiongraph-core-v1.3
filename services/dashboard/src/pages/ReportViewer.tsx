@@ -170,8 +170,17 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         </div>
       </div>
 
-      {/* Decision Conflict Alert */}
-      {report.classification_outcome && report.classification_outcome !== report.engine_disposition && (
+      {/* Decision Conflict Alert OR Hard Stop Enforcement */}
+      {report.is_mandatory_hard_stop ? (
+        <div className="rounded-xl border-2 border-red-600/60 bg-red-950/40 p-5">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-red-400">
+            Hard Stop Enforcement — {report.hard_stop_reason?.replace(/_/g, ' ')}
+          </h3>
+          <p className="text-sm text-white">
+            STR filing mandatory under regulatory obligation. This is not a discretionary determination.
+          </p>
+        </div>
+      ) : report.classification_outcome && report.classification_outcome !== report.engine_disposition && (
         <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-5">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-amber-400">
             ⚠ Decision Conflict
@@ -201,35 +210,49 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
       )}
 
       {/* 3. Key Signals Summary (top 5) */}
-      <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
-          Key Signals
-        </h3>
-        {report.decision_drivers && report.decision_drivers.length > 0 ? (
+      {report.is_mandatory_hard_stop ? (
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
+            Key Signals
+          </h3>
           <ul className="space-y-2">
-            {report.decision_drivers.slice(0, 5).map((d, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-slate-300">
-                  {i + 1}
-                </span>
-                <span className="text-sm text-slate-300">{d}</span>
-              </li>
-            ))}
+            <li className="flex items-start gap-2">
+              <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-900 text-[10px] font-bold text-red-300">!</span>
+              <span className="text-sm text-white">Sanctions screening match — immediate block</span>
+            </li>
           </ul>
-        ) : (
-          <div className="space-y-2">
-            {report.tier1_signals?.slice(0, 5).map((s, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <Badge variant="danger" className="flex-shrink-0">{s.code}</Badge>
-                <span className="text-xs text-white">{s.detail}</span>
-              </div>
-            ))}
-            {(report.tier1_signals?.length ?? 0) === 0 && (
-              <p className="text-sm text-white">No suspicious signals detected.</p>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
+            Key Signals
+          </h3>
+          {report.decision_drivers && report.decision_drivers.length > 0 ? (
+            <ul className="space-y-2">
+              {report.decision_drivers.slice(0, 5).map((d, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-slate-300">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-slate-300">{d}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="space-y-2">
+              {report.tier1_signals?.slice(0, 5).map((s, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <Badge variant="danger" className="flex-shrink-0">{s.code}</Badge>
+                  <span className="text-xs text-white">{s.detail}</span>
+                </div>
+              ))}
+              {(report.tier1_signals?.length ?? 0) === 0 && (
+                <p className="text-sm text-white">No suspicious signals detected.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 4. Evidence Snapshot (top 5 critical fields) */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">

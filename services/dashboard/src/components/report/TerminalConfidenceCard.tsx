@@ -35,6 +35,21 @@ const DIM_LABELS: Record<string, string> = {
 };
 
 export default function TerminalConfidenceCard({ level, dimensions, bottleneck, hardRule, firstImpressionAlert, transferableCount, comparableCount }: Props) {
+  // Mandatory hard stop — deterministic confidence
+  if (level === 'CERTAIN') {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-slate-800 p-5">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
+          Terminal Confidence
+        </h4>
+        <div className="text-3xl font-bold text-emerald-400">CERTAIN</div>
+        <p className="mt-1 text-xs text-white">
+          Mandatory determination — no discretion applicable.
+        </p>
+      </div>
+    );
+  }
+
   const levelCfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG.NONE;
 
   return (

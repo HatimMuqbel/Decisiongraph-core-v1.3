@@ -439,7 +439,19 @@
     </div>
 
     <h2>Regulatory Determination</h2>
-    {% if governed_disposition == "NO_REPORT" %}
+    {% if is_mandatory_hard_stop %}
+      <div class="status bad break" style="border-left:6px solid #991b1b;">
+        <h3>SANCTIONS MATCH — TRANSACTION PROHIBITED</h3>
+        <p>Screening match detected against designated sanctions list. Transaction blocked under mandatory regulatory obligation. This is not a discretionary determination.</p>
+        <p style="margin-top:12px;" class="small"><strong>Required Actions:</strong></p>
+        <ul class="small">
+          <li>File STR within statutory timeframe — mandatory</li>
+          <li>Freeze transaction pending compliance review</li>
+          <li>Notify MLRO / Chief Compliance Officer</li>
+          <li>Preserve all transaction records for regulatory examination</li>
+        </ul>
+      </div>
+    {% elif governed_disposition == "NO_REPORT" %}
       <div class="status ok break">
         <h3>NO_REPORT — Alert Cleared</h3>
         <p>Based on available information at time of review, the totality of indicators does not meet the threshold for reasonable grounds to suspect money laundering or terrorist financing activity.</p>
@@ -755,7 +767,10 @@
 
       <div class="pi-card" style="border-left:4px solid #2563eb;">
         <h4>Terminal Confidence</h4>
-        {% if enhanced_precedent.confidence_dimensions is defined and enhanced_precedent.confidence_dimensions %}
+        {% if is_mandatory_hard_stop %}
+        <div class="pi-big" style="color:#059669;">CERTAIN</div>
+        <p class="small" style="margin:2px 0 8px 0;">Mandatory determination — no discretion applicable.</p>
+        {% elif enhanced_precedent.confidence_dimensions is defined and enhanced_precedent.confidence_dimensions %}
         {% set cl = enhanced_precedent.confidence_level | default('NONE') | upper %}
         {% set cl_color = {'VERY_HIGH': '#059669', 'HIGH': '#28a745', 'MODERATE': '#d97706', 'LOW': '#fd7e14', 'NONE': '#dc2626'}.get(cl, '#6c757d') %}
         <div class="pi-big" style="color:{{ cl_color }};">{{ cl | replace('_', ' ') }}</div>
@@ -1131,6 +1146,14 @@
     </div>
 
     <h3>Gate 2: STR Threshold</h3>
+    {% if is_mandatory_hard_stop %}
+    <div class="gate-block break">
+      <h4><span class="pill na">NOT APPLICABLE</span></h4>
+      <p class="small" style="margin-bottom:12px;">
+        Sanctions hard stop supersedes suspicion threshold assessment. STR is mandatory under regulatory obligation, not suspicion-based.
+      </p>
+    </div>
+    {% else %}
     <div class="gate-block break">
       <h4>
         STR Required:
@@ -1171,6 +1194,7 @@
         <p class="small">No sections evaluated</p>
       {% endif %}
     </div>
+    {% endif %}
 
     {# ── FIX-028: Gate Override Analysis ──────────────────────────── #}
     {% if gate_override_explanations %}

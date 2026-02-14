@@ -9,14 +9,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 11.0,
+        "value": 10.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8541,
+        "value": 0.8553,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -45,7 +45,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   },
   {
     "case_id": "high-value-explained",
@@ -57,21 +57,21 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 72.0,
+        "value": 89.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8054,
+        "value": 0.7947,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
+        "value": 0.9861,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -92,7 +92,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "71/72"
+    "governed_alignment": "71/89"
   },
   {
     "case_id": "cross-border-routine",
@@ -145,39 +145,10 @@
     "case_id": "sanctions-hit",
     "name": "Sanctions Match - OFAC (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "HIGH",
+    "confidence_level": "CERTAIN",
     "confidence_bottleneck": "pool_adequacy",
     "confidence_hard_rule": null,
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 16.0,
-        "level": "HIGH",
-        "bottleneck": true,
-        "note": ""
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.8859,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 0.963,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      }
-    ],
+    "confidence_dimensions": [],
     "driver_causality": {
       "shared_drivers": [
         "screening.sanctions_match"
@@ -197,14 +168,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 35.0,
+        "value": 37.0,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7624,
+        "value": 0.7883,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -237,7 +208,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "38/47"
+    "governed_alignment": "68/78"
   },
   {
     "case_id": "shell-company-layering",
@@ -249,14 +220,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 70.0,
+        "value": 75.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8305,
+        "value": 0.8261,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -286,45 +257,16 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "42/70"
+    "governed_alignment": "47/75"
   },
   {
     "case_id": "pep-plus-adverse-media",
     "name": "PEP + Adverse Media (EDGE)",
     "category": "EDGE",
-    "confidence_level": "LOW",
+    "confidence_level": "CERTAIN",
     "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 35.0,
-        "level": "HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.7766,
-        "level": "HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 0.5238,
-        "level": "LOW",
-        "bottleneck": true,
-        "note": ""
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      }
-    ],
+    "confidence_dimensions": [],
     "driver_causality": {
       "shared_drivers": [
         "customer.pep",
@@ -334,7 +276,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "11/84"
+    "governed_alignment": "11/83"
   },
   {
     "case_id": "crypto-high-risk-corridor",
@@ -346,14 +288,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 1.0,
+        "value": 2.0,
         "level": "LOW",
         "bottleneck": true,
         "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
-        "value": 0.747,
+        "value": 0.7691,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -375,17 +317,13 @@
     ],
     "driver_causality": {
       "shared_drivers": [
-        "flag.rapid_movement",
-        "flag.unusual_for_profile",
         "txn.destination_country_risk",
-        "txn.pattern_matches_profile"
-      ],
-      "divergent_drivers": [
         "txn.source_of_funds_clear"
-      ]
+      ],
+      "divergent_drivers": []
     },
-    "non_transferable_count": 3,
-    "governed_alignment": "26/45"
+    "non_transferable_count": 0,
+    "governed_alignment": "49/71"
   },
   {
     "case_id": "velocity-spike",
@@ -397,14 +335,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 85.0,
+        "value": 124.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7038,
+        "value": 0.7044,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -435,7 +373,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "48/85"
+    "governed_alignment": "85/124"
   },
   {
     "case_id": "beneficial-owner-pep",
@@ -454,7 +392,7 @@
       },
       {
         "name": "similarity_quality",
-        "value": 0.704,
+        "value": 0.7022,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -495,14 +433,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 26.0,
+        "value": 25.0,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8838,
+        "value": 0.8816,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -530,7 +468,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "36/37"
+    "governed_alignment": "35/36"
   },
   {
     "case_id": "cash-intensive-lctr",
@@ -542,21 +480,21 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 29.0,
+        "value": 30.0,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8521,
-        "level": "VERY_HIGH",
+        "value": 0.8397,
+        "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
+        "value": 0.9615,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -577,45 +515,16 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "27/29"
+    "governed_alignment": "25/30"
   },
   {
     "case_id": "sanctions-exact-match",
     "name": "Sanctions Exact Match - SEMA (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "MODERATE",
+    "confidence_level": "CERTAIN",
     "confidence_bottleneck": "pool_adequacy",
     "confidence_hard_rule": null,
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 10.0,
-        "level": "MODERATE",
-        "bottleneck": true,
-        "note": ""
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.8917,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 0.963,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      }
-    ],
+    "confidence_dimensions": [],
     "driver_causality": {
       "shared_drivers": [
         "screening.sanctions_match"
@@ -635,14 +544,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 60.0,
+        "value": 59.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8131,
+        "value": 0.8152,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -671,7 +580,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   },
   {
     "case_id": "structuring-three-deposits",
@@ -683,14 +592,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 35.0,
+        "value": 37.0,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7578,
+        "value": 0.7811,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -723,7 +632,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "38/47"
+    "governed_alignment": "68/78"
   },
   {
     "case_id": "trade-finance-unusual-docs",
@@ -735,14 +644,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 9.0,
-        "level": "MODERATE",
+        "value": 87.0,
+        "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7074,
+        "value": 0.8289,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -764,18 +673,13 @@
     ],
     "driver_causality": {
       "shared_drivers": [
-        "txn.cross_border",
-        "txn.pattern_matches_profile"
+        "trade.goods_description",
+        "trade.pricing_consistent"
       ],
-      "divergent_drivers": [
-        "flag.rapid_movement",
-        "flag.shell_company",
-        "flag.unusual_for_profile",
-        "txn.source_of_funds_clear"
-      ]
+      "divergent_drivers": []
     },
-    "non_transferable_count": 9,
-    "governed_alignment": "0/9"
+    "non_transferable_count": 0,
+    "governed_alignment": "6/87"
   },
   {
     "case_id": "profile-deviation-complete-evidence",
@@ -881,14 +785,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 104.0,
+        "value": 126.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7182,
+        "value": 0.7089,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -913,12 +817,13 @@
         "flag.layering",
         "flag.shell_company",
         "txn.amount_band",
-        "txn.cross_border"
+        "txn.cross_border",
+        "txn.source_of_funds_clear"
       ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "68/104"
+    "governed_alignment": "89/126"
   },
   {
     "case_id": "pep-foreign-large-wire-clean",
@@ -930,14 +835,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 11.0,
+        "value": 10.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8583,
+        "value": 0.8595,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -966,7 +871,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   },
   {
     "case_id": "pep-domestic-low-value-clean",
@@ -978,14 +883,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 60.0,
+        "value": 59.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7788,
+        "value": 0.781,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1014,51 +919,24 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   },
   {
     "case_id": "crypto-unhosted-wallet-high-risk",
     "name": "Crypto to Sanctioned Destination (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "NONE",
+    "confidence_level": "CERTAIN",
     "confidence_bottleneck": "pool_adequacy",
-    "confidence_hard_rule": "0 precedents above floor",
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 0.0,
-        "level": "NONE",
-        "bottleneck": true,
-        "note": "No comparable precedents above similarity threshold"
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.0,
-        "level": "LOW",
-        "bottleneck": false,
-        "note": "No strongly comparable cases found"
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 0.0,
-        "level": "MODERATE",
-        "bottleneck": false,
-        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      }
-    ],
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [],
     "driver_causality": {
-      "shared_drivers": [],
+      "shared_drivers": [
+        "screening.sanctions_match"
+      ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "0/0"
+    "governed_alignment": "24/24"
   },
   {
     "case_id": "shell-company-layering-prior-strs",
@@ -1166,14 +1044,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 11.0,
+        "value": 10.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8748,
+        "value": 0.8764,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -1202,45 +1080,16 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   },
   {
     "case_id": "allow-with-str-controlled-delivery",
     "name": "Allow + STR Controlled Delivery (EDGE)",
     "category": "EDGE",
-    "confidence_level": "LOW",
+    "confidence_level": "CERTAIN",
     "confidence_bottleneck": "outcome_consistency",
     "confidence_hard_rule": null,
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 25.0,
-        "level": "HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.796,
-        "level": "HIGH",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 0.0,
-        "level": "LOW",
-        "bottleneck": true,
-        "note": ""
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      }
-    ],
+    "confidence_dimensions": [],
     "driver_causality": {
       "shared_drivers": [
         "screening.adverse_media_level"
@@ -1301,64 +1150,38 @@
     "case_id": "everything-adverse",
     "name": "Everything Adverse - Maximum Flags (ESCALATE)",
     "category": "ESCALATE",
-    "confidence_level": "NONE",
+    "confidence_level": "CERTAIN",
     "confidence_bottleneck": "pool_adequacy",
-    "confidence_hard_rule": "0 precedents above floor",
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 0.0,
-        "level": "NONE",
-        "bottleneck": true,
-        "note": "No comparable precedents above similarity threshold"
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.0,
-        "level": "LOW",
-        "bottleneck": false,
-        "note": "No strongly comparable cases found"
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 0.0,
-        "level": "MODERATE",
-        "bottleneck": false,
-        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 1.0,
-        "level": "VERY_HIGH",
-        "bottleneck": false,
-        "note": ""
-      }
-    ],
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [],
     "driver_causality": {
-      "shared_drivers": [],
+      "shared_drivers": [
+        "customer.pep",
+        "screening.sanctions_match"
+      ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "0/0"
+    "governed_alignment": "13/13"
   },
   {
     "case_id": "first-case-new-policy-regime",
     "name": "First Case Under New Policy (EDGE)",
     "category": "EDGE",
-    "confidence_level": "NONE",
+    "confidence_level": "LOW",
     "confidence_bottleneck": "pool_adequacy",
-    "confidence_hard_rule": "0 precedents above floor",
+    "confidence_hard_rule": "pool below minimum (5)",
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 0.0,
-        "level": "NONE",
+        "value": 1.0,
+        "level": "LOW",
         "bottleneck": true,
-        "note": "No comparable precedents above similarity threshold"
+        "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
-        "value": 0.6811,
+        "value": 0.6988,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
@@ -1380,21 +1203,15 @@
     ],
     "driver_causality": {
       "shared_drivers": [
-        "flag.shell_company",
-        "flag.unusual_for_profile",
-        "txn.amount_band",
-        "txn.cross_border",
+        "trade.goods_description",
+        "trade.pricing_consistent",
         "txn.destination_country_risk",
-        "txn.pattern_matches_profile",
-        "txn.round_amount"
-      ],
-      "divergent_drivers": [
-        "flag.layering",
         "txn.source_of_funds_clear"
-      ]
+      ],
+      "divergent_drivers": []
     },
-    "non_transferable_count": 7,
-    "governed_alignment": "16/33"
+    "non_transferable_count": 0,
+    "governed_alignment": "30/47"
   },
   {
     "case_id": "all-precedents-non-transferable",
@@ -1406,14 +1223,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 117.0,
+        "value": 140.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7468,
+        "value": 0.7394,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1438,12 +1255,13 @@
         "flag.layering",
         "flag.shell_company",
         "txn.amount_band",
-        "txn.cross_border"
+        "txn.cross_border",
+        "txn.source_of_funds_clear"
       ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "81/117"
+    "governed_alignment": "103/140"
   },
   {
     "case_id": "single-comparable-precedent",
@@ -1455,65 +1273,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 9.0,
-        "level": "MODERATE",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "similarity_quality",
-        "value": 0.6955,
-        "level": "MODERATE",
-        "bottleneck": false,
-        "note": ""
-      },
-      {
-        "name": "outcome_consistency",
-        "value": 0.0,
-        "level": "LOW",
-        "bottleneck": true,
-        "note": ""
-      },
-      {
-        "name": "evidence_completeness",
-        "value": 1.0,
+        "value": 87.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
-      }
-    ],
-    "driver_causality": {
-      "shared_drivers": [
-        "txn.cross_border",
-        "txn.pattern_matches_profile"
-      ],
-      "divergent_drivers": [
-        "flag.shell_company",
-        "flag.structuring",
-        "txn.source_of_funds_clear"
-      ]
-    },
-    "non_transferable_count": 9,
-    "governed_alignment": "0/9"
-  },
-  {
-    "case_id": "classifier-str-all-precedents-no-report",
-    "name": "Classifier STR vs All-Clear Pool (EDGE)",
-    "category": "EDGE",
-    "confidence_level": "LOW",
-    "confidence_bottleneck": "pool_adequacy",
-    "confidence_hard_rule": "0 terminal precedents (ALLOW/BLOCK)",
-    "confidence_dimensions": [
-      {
-        "name": "pool_adequacy",
-        "value": 4.0,
-        "level": "LOW",
-        "bottleneck": true,
-        "note": "Precedent pool below minimum threshold"
       },
       {
         "name": "similarity_quality",
-        "value": 0.7839,
+        "value": 0.8215,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1521,9 +1288,9 @@
       {
         "name": "outcome_consistency",
         "value": 0.0,
-        "level": "MODERATE",
-        "bottleneck": false,
-        "note": "No terminal precedents. All comparable cases are non-terminal (EDD/UNKNOWN). Confidence scoring requires resolved precedents."
+        "level": "LOW",
+        "bottleneck": true,
+        "note": ""
       },
       {
         "name": "evidence_completeness",
@@ -1535,12 +1302,31 @@
     ],
     "driver_causality": {
       "shared_drivers": [
+        "trade.goods_description",
+        "trade.pricing_consistent"
+      ],
+      "divergent_drivers": []
+    },
+    "non_transferable_count": 0,
+    "governed_alignment": "6/87"
+  },
+  {
+    "case_id": "classifier-str-all-precedents-no-report",
+    "name": "Classifier STR vs All-Clear Pool (EDGE)",
+    "category": "EDGE",
+    "confidence_level": "CERTAIN",
+    "confidence_bottleneck": "pool_adequacy",
+    "confidence_hard_rule": null,
+    "confidence_dimensions": [],
+    "driver_causality": {
+      "shared_drivers": [
+        "flag.structuring",
         "screening.adverse_media_level"
       ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "0/4"
+    "governed_alignment": "24/28"
   },
   {
     "case_id": "classifier-no-report-half-str",
@@ -1552,21 +1338,21 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 72.0,
+        "value": 89.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8446,
+        "value": 0.8345,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
+        "value": 0.9861,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -1587,7 +1373,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "71/72"
+    "governed_alignment": "71/89"
   },
   {
     "case_id": "mixed-undetermined-determined-pool",
@@ -1599,14 +1385,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 11.0,
+        "value": 10.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8264,
+        "value": 0.8274,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1635,7 +1421,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   },
   {
     "case_id": "forming-typology-strong-classifier",
@@ -1647,14 +1433,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 141.0,
+        "value": 155.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7192,
+        "value": 0.7201,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1683,7 +1469,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "128/141"
+    "governed_alignment": "141/155"
   },
   {
     "case_id": "established-typology-weak-evidence",
@@ -1695,15 +1481,15 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 5.0,
+        "value": 6.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8406,
-        "level": "HIGH",
+        "value": 0.9043,
+        "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
@@ -1725,18 +1511,12 @@
     "driver_causality": {
       "shared_drivers": [
         "flag.structuring",
-        "txn.amount_band",
-        "txn.just_below_threshold",
-        "txn.pattern_matches_profile",
-        "txn.source_of_funds_clear"
+        "txn.just_below_threshold"
       ],
-      "divergent_drivers": [
-        "txn.multiple_same_day",
-        "txn.round_amount"
-      ]
+      "divergent_drivers": []
     },
-    "non_transferable_count": 8,
-    "governed_alignment": "13/15"
+    "non_transferable_count": 0,
+    "governed_alignment": "42/45"
   },
   {
     "case_id": "multiple-typologies-same-case",
@@ -1748,14 +1528,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 69.0,
+        "value": 74.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7164,
+        "value": 0.716,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1780,12 +1560,13 @@
         "flag.layering",
         "flag.shell_company",
         "txn.amount_band",
-        "txn.cross_border"
+        "txn.cross_border",
+        "txn.source_of_funds_clear"
       ],
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "48/69"
+    "governed_alignment": "53/74"
   },
   {
     "case_id": "near-threshold-typology",
@@ -1797,14 +1578,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 153.0,
+        "value": 167.0,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.7429,
+        "value": 0.7426,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1835,7 +1616,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "132/153"
+    "governed_alignment": "145/167"
   },
   {
     "case_id": "no-typology-pure-obligation",
@@ -1847,21 +1628,21 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 29.0,
+        "value": 30.0,
         "level": "HIGH",
         "bottleneck": true,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8521,
-        "level": "VERY_HIGH",
+        "value": 0.8397,
+        "level": "HIGH",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "outcome_consistency",
-        "value": 1.0,
+        "value": 0.9615,
         "level": "VERY_HIGH",
         "bottleneck": false,
         "note": ""
@@ -1882,7 +1663,7 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "27/29"
+    "governed_alignment": "25/30"
   },
   {
     "case_id": "duplicate-indicator-names",
@@ -1894,14 +1675,14 @@
     "confidence_dimensions": [
       {
         "name": "pool_adequacy",
-        "value": 11.0,
+        "value": 10.0,
         "level": "MODERATE",
         "bottleneck": false,
         "note": ""
       },
       {
         "name": "similarity_quality",
-        "value": 0.8255,
+        "value": 0.8257,
         "level": "HIGH",
         "bottleneck": false,
         "note": ""
@@ -1931,6 +1712,6 @@
       "divergent_drivers": []
     },
     "non_transferable_count": 0,
-    "governed_alignment": "41/60"
+    "governed_alignment": "40/59"
   }
 ]
