@@ -96,6 +96,20 @@ _SCENARIO_REASON_CODES: dict[str, list[str]] = {
     "velocity_spike_cleared":   ["RC-TXN-RAPID", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
     "structuring_cleared":      ["RC-TXN-STRUCT", "RC-TXN-UNUSUAL", "RC-TXN-NORMAL"],
     "controlled_delivery_pep":  ["RC-TXN-PEP", "RC-KYC-ADVERSE-MAJOR", "RC-TXN-MONITOR"],
+    # Gap-fill scenarios
+    "crypto_sanctions_block":   ["RC-SCR-SANCTION", "RC-SCR-OFAC", "RC-TXN-FATF-GREY"],
+    "maximum_adversity_block":  ["RC-SCR-SANCTION", "RC-SCR-OFAC", "RC-TXN-PEP", "RC-KYC-ADVERSE-MAJOR", "RC-TXN-STRUCT", "RC-TXN-LAYER", "RC-TXN-RAPID"],
+    "structuring_single_deposit": ["RC-TXN-STRUCT", "RC-TXN-UNUSUAL"],
+    "mltf_structuring_domestic": ["RC-KYC-ADVERSE-MAJOR", "RC-TXN-STRUCT", "RC-TXN-UNUSUAL"],
+    "trade_based_ml_unclear_funds": ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH", "RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
+    "trade_based_ml_lc_inconsistent": ["RC-TXN-NORMAL", "RC-TXN-PROFILE-MATCH", "RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
+    "crypto_corridor_unclear_funds": ["RC-TXN-FATF-GREY", "RC-TXN-UNUSUAL"],
+    "layering_unclear_funds":   ["RC-TXN-LAYER", "RC-TXN-UNUSUAL"],
+    "high_risk_industry_edd":   ["RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
+    "two_prior_sars":           ["RC-MON-ALERT", "RC-MON-VELOCITY"],
+    "adverse_media_unconfirmed": ["RC-KYC-ADVERSE-MINOR", "RC-TXN-UNUSUAL"],
+    "trade_goods_adequate":     ["RC-TXN-NORMAL", "RC-TXN-UNUSUAL"],
+    "trade_goods_missing_block": ["RC-TXN-NORMAL", "RC-TXN-UNUSUAL", "RC-TXN-DEVIATION"],
 }
 
 # Map scenario names → typology key for STR weight lookup
@@ -107,6 +121,10 @@ _SCENARIO_TYPOLOGY_MAP: dict[str, str] = {
     "heavy_sar_history": "heavy_sar_history",
     "structuring_cleared": "structuring",
     "crypto_corridor_cleared": "crypto_corridor",
+    "crypto_corridor_unclear_funds": "crypto_corridor",
+    "layering_unclear_funds": "layering",
+    "trade_based_ml_unclear_funds": "trade_based_ml",
+    "trade_based_ml_lc_inconsistent": "trade_based_ml",
 }
 
 
@@ -666,6 +684,280 @@ SCENARIOS = [
         "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
         "driver_typology": "trade_based",
     },
+
+    # ── GAP-FILL: Crypto + Sanctions (for crypto-unhosted-wallet-high-risk) ──
+    {
+        "name": "crypto_sanctions_block",
+        "description": "Crypto transaction to sanctioned destination — mandatory block",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "txn.type": "crypto",
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+            "customer.high_risk_jurisdiction": True,
+            "screening.sanctions_match": True,
+            "txn.source_of_funds_clear": False,
+            "txn.pattern_matches_profile": False,
+            "flag.rapid_movement": True,
+            "flag.unusual_for_profile": True,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "MANDATORY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.02,
+        "decision_drivers": ["screening.sanctions_match", "txn.type"],
+        "driver_typology": "sanctions",
+    },
+
+    # ── GAP-FILL: Maximum adversity (for everything-adverse) ──
+    {
+        "name": "maximum_adversity_block",
+        "description": "PEP + sanctions + MLTF + shell + layering + structuring + prior SARs",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.pep": True,
+            "screening.pep_match": True,
+            "screening.sanctions_match": True,
+            "screening.adverse_media_level": "confirmed_mltf",
+            "screening.adverse_media": True,
+            "flag.structuring": True,
+            "flag.layering": True,
+            "flag.shell_company": True,
+            "flag.rapid_movement": True,
+            "flag.unusual_for_profile": True,
+            "flag.third_party": True,
+            "prior.sars_filed": 4,
+            "prior.account_closures": True,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+            "customer.high_risk_jurisdiction": True,
+            "txn.source_of_funds_clear": False,
+            "txn.pattern_matches_profile": False,
+            "txn.amount_band": "over_1m",
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "MANDATORY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.02,
+        "decision_drivers": ["screening.sanctions_match", "customer.pep"],
+        "driver_typology": "sanctions",
+    },
+
+    # ── GAP-FILL: Structuring single-deposit (for established-typology-weak-evidence) ──
+    # Structuring detected from a single just-below-threshold deposit, no multiple_same_day
+    {
+        "name": "structuring_single_deposit",
+        "description": "Single cash deposit just below threshold — structuring flag without multiple same-day",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "txn.amount_band": "3k_10k",
+            "txn.type": "cash",
+            "txn.just_below_threshold": True,
+            "txn.multiple_same_day": False,
+            "flag.structuring": True,
+            "txn.round_amount": False,
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "analyst",
+        "weight": 0.03,
+        "decision_drivers": ["flag.structuring", "txn.just_below_threshold"],
+        "driver_typology": "structuring",
+    },
+
+    # ── GAP-FILL: MLTF + structuring (for classifier-str-all-precedents-no-report) ──
+    {
+        "name": "mltf_structuring_domestic",
+        "description": "Confirmed MLTF + structuring pattern, domestic, cash — clean docs",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "txn.type": "cash",
+            "txn.amount_band": "25k_100k",
+            "screening.adverse_media_level": "confirmed_mltf",
+            "screening.adverse_media": True,
+            "flag.structuring": True,
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": True,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.02,
+        "decision_drivers": ["screening.adverse_media_level", "flag.structuring"],
+        "driver_typology": "pep_adverse_media",
+    },
+
+    # ── GAP-FILL: Trade finance with unclear funds (for trade-finance-unusual-docs / single-comparable-precedent) ──
+    {
+        "name": "trade_based_ml_unclear_funds",
+        "description": "Trade-based ML with unclear source of funds — no LC, vague goods, inconsistent pricing",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
+            "txn.cross_border": True,
+            "txn.source_of_funds_clear": False,
+            "txn.pattern_matches_profile": False,
+            "trade.goods_description": "vague",
+            "trade.pricing_consistent": False,
+            "trade.is_letter_of_credit": False,
+            "txn.destination_country_risk": "medium",
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
+        "driver_typology": "trade_based",
+    },
+    # Trade-based ML with LC — same driver profile as trade_based_ml but with pricing_consistent=False as driver
+    {
+        "name": "trade_based_ml_lc_inconsistent",
+        "description": "Trade-based ML via LC: vague goods + inconsistent pricing + unclear funds",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
+            "txn.cross_border": True,
+            "txn.source_of_funds_clear": False,
+            "txn.pattern_matches_profile": False,
+            "trade.goods_description": "vague",
+            "trade.pricing_consistent": False,
+            "trade.is_letter_of_credit": True,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.03,
+        "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
+        "driver_typology": "trade_based",
+    },
+
+    # ── GAP-FILL: Crypto corridor with unclear funds (for crypto-high-risk-corridor) ──
+    {
+        "name": "crypto_corridor_unclear_funds",
+        "description": "Crypto to high-risk destination — source of funds NOT clear",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "txn.type": "crypto",
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "high",
+            "flag.unusual_for_profile": True,
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": False,
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["txn.type", "txn.destination_country_risk", "txn.source_of_funds_clear"],
+        "driver_typology": "",
+    },
+
+    # ── GAP-FILL: Layering with unclear funds (for first-case-new-policy-regime) ──
+    {
+        "name": "layering_unclear_funds",
+        "description": "Layering pattern with source of funds NOT verified",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "flag.layering": True,
+            "flag.unusual_for_profile": True,
+            "txn.cross_border": True,
+            "txn.destination_country_risk": "medium",
+            "txn.pattern_matches_profile": False,
+            "txn.source_of_funds_clear": False,
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["flag.layering", "txn.source_of_funds_clear"],
+        "driver_typology": "",
+    },
+
+    # ── GAP-FILL: High-risk industry (coverage gap: customer.high_risk_industry) ──
+    {
+        "name": "high_risk_industry_edd",
+        "description": "Customer in high-risk industry (MSB, crypto exchange) — EDD required",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.high_risk_industry": True,
+            "customer.type": "corporation",
+            "txn.amount_band": "25k_100k",
+            "txn.pattern_matches_profile": False,
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "analyst",
+        "weight": 0.02,
+        "decision_drivers": ["customer.high_risk_industry"],
+        "driver_typology": "",
+    },
+
+    # ── GAP-FILL: Prior SARs = 2 (coverage gap) ──
+    {
+        "name": "two_prior_sars",
+        "description": "Customer with exactly 2 prior SARs — heightened monitoring",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "prior.sars_filed": 2,
+            "flag.unusual_for_profile": True,
+            "txn.pattern_matches_profile": False,
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+        "weight": 0.02,
+        "decision_drivers": ["prior.sars_filed", "flag.unusual_for_profile"],
+        "driver_typology": "",
+    },
+
+    # ── GAP-FILL: Unconfirmed adverse media (coverage gap) ──
+    {
+        "name": "adverse_media_unconfirmed",
+        "description": "Unconfirmed adverse media — EDD to investigate",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "screening.adverse_media_level": "unconfirmed",
+            "screening.adverse_media": True,
+            "txn.pattern_matches_profile": False,
+        },
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "analyst",
+        "weight": 0.02,
+        "decision_drivers": ["screening.adverse_media_level"],
+        "driver_typology": "adverse_media",
+    },
+
+    # ── GAP-FILL: Trade goods adequate/missing (coverage gaps) ──
+    {
+        "name": "trade_goods_adequate",
+        "description": "Trade finance with adequate (not detailed) goods description",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
+            "txn.cross_border": True,
+            "trade.goods_description": "adequate",
+            "trade.pricing_consistent": True,
+            "trade.is_letter_of_credit": True,
+            "txn.source_of_funds_clear": True,
+            "txn.pattern_matches_profile": True,
+        },
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "analyst",
+        "weight": 0.01,
+        "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
+        "driver_typology": "trade_based",
+    },
+    {
+        "name": "trade_goods_missing_block",
+        "description": "Trade finance with missing goods description — block for investigation",
+        "base_facts": {
+            **_CLEAN_PROFILE,
+            "customer.type": "corporation",
+            "txn.cross_border": True,
+            "trade.goods_description": "missing",
+            "trade.pricing_consistent": False,
+            "trade.is_letter_of_credit": True,
+            "txn.source_of_funds_clear": False,
+            "txn.pattern_matches_profile": False,
+        },
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+        "weight": 0.01,
+        "decision_drivers": ["trade.goods_description", "trade.pricing_consistent"],
+        "driver_typology": "trade_based",
+    },
 ]
 
 
@@ -959,6 +1251,35 @@ _NOISE_OUTCOMES: dict[str, dict] = {
     },
     "structuring_cleared": {
         "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    # Gap-fill noise variants
+    "structuring_single_deposit": {
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "senior_analyst",
+    },
+    "crypto_corridor_unclear_funds": {
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+    },
+    "layering_unclear_funds": {
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+    },
+    "trade_based_ml_unclear_funds": {
+        "outcome": {"disposition": "BLOCK", "disposition_basis": "DISCRETIONARY", "reporting": "FILE_STR"},
+        "decision_level": "manager",
+    },
+    "trade_based_ml_lc_inconsistent": {
+        "outcome": {"disposition": "EDD", "disposition_basis": "DISCRETIONARY", "reporting": "PENDING_EDD"},
+        "decision_level": "senior_analyst",
+    },
+    "high_risk_industry_edd": {
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
+        "decision_level": "senior_analyst",
+    },
+    "adverse_media_unconfirmed": {
+        "outcome": {"disposition": "ALLOW", "disposition_basis": "DISCRETIONARY", "reporting": "NO_REPORT"},
         "decision_level": "senior_analyst",
     },
 }
