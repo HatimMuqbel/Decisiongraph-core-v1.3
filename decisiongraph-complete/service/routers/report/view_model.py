@@ -60,6 +60,7 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
     report_sections = [
         "Administrative Details",
         "Investigation Outcome Summary",
+        "Decision Path",
         "Canonical Outcome",
         "Case Classification",
         "Regulatory Determination",
@@ -211,6 +212,9 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
 
         # Decision Conflict Alert
         "decision_conflict_alert": derived.get("decision_conflict_alert"),
+
+        # Decision Path Narrative Trace
+        "decision_path_narrative": derived.get("decision_path_narrative", {}),
     }
 
 

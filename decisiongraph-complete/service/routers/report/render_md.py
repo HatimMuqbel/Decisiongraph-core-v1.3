@@ -274,6 +274,18 @@ def render_markdown(ctx: dict) -> str:
         )
     safe_path = _md_escape(ctx["decision_path_trace"] or "N/A")
 
+    # ── Decision Path Narrative Trace ────────────────────────────────────
+    decision_path_narrative = ctx.get("decision_path_narrative", {})
+    decision_path_md = ""
+    if decision_path_narrative and decision_path_narrative.get("steps"):
+        decision_path_md = "## Decision Path\n\n"
+        for step in decision_path_narrative["steps"]:
+            decision_path_md += f"**{step['symbol']} {step['title']}**\n\n"
+            for line in step.get("detail_lines", []):
+                decision_path_md += f"   {_md_escape(line)}\n\n"
+            decision_path_md += f"   \u2192 {_md_escape(step['arrow_line'])}\n\n"
+        decision_path_md += "---\n\n"
+
     # ── FIX-001: Canonical outcome block ────────────────────────────────
     canonical = ctx.get("canonical_outcome", {})
     reporting_display = canonical.get("reporting", "UNKNOWN")
@@ -1086,6 +1098,7 @@ def render_markdown(ctx: dict) -> str:
 
 ---
 
+{decision_path_md}
 ## Canonical Outcome
 
 *Authoritative three-field outcome record per v2 specification. All other sections must be consistent with these values.*
@@ -1285,6 +1298,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         decision_id_short=ctx.get("decision_id_short"),
         decision_confidence_block=decision_confidence_block,
         decision_drivers_md=decision_drivers_md,
+        decision_path_md=decision_path_md,
         defensibility_md=defensibility_md,
         deviation_alert_md=deviation_alert_md,
         edd_md=edd_md,

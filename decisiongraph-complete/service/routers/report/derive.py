@@ -697,6 +697,30 @@ def derive_regulatory_model(normalized: dict) -> dict:
         gate2_sections=normalized.get("gate2_sections", []),
     )
 
+    # ── Decision Path Narrative Trace ────────────────────────────────
+    decision_path_narrative = _build_decision_path_narrative(
+        classification_outcome=classification.outcome,
+        tier1_signals=classification.tier1_signals,
+        tier2_signals=classification.tier2_signals,
+        suspicion_count=classification.suspicion_count,
+        investigative_count=classification.investigative_count,
+        gate1_passed=gate1_passed,
+        gate1_decision=normalized.get("gate1_decision", "N/A"),
+        gate1_sections=normalized.get("gate1_sections", []),
+        gate2_decision=normalized.get("gate2_decision", "N/A"),
+        gate2_status=normalized.get("gate2_status", "N/A"),
+        gate2_sections=normalized.get("gate2_sections", []),
+        primary_typology=primary_typology,
+        typology_stage=_derive_typology_stage(layer4_typologies, primary_typology),
+        engine_disposition=engine_disposition,
+        governed_disposition=governed_disposition,
+        str_required=str_required,
+        layer1_facts=layer1_facts,
+        layer6_suspicion=layer6_suspicion,
+        decision_conflict_alert=decision_conflict_alert,
+        integrity_alert=integrity_alert,
+    )
+
     return {
         # Classification
         "classification": classification.to_dict(),
@@ -797,6 +821,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # Decision Conflict Alert
         "decision_conflict_alert": decision_conflict_alert,
+
+        # Decision Path Narrative Trace
+        "decision_path_narrative": decision_path_narrative,
     }
 
 
@@ -3401,6 +3428,199 @@ def _build_decision_conflict_alert(
         "governed": governed_disposition.replace("_", " "),
         "resolution": resolution,
         "blocking_gates": blocking_gates,
+    }
+
+
+# ── Decision Path Narrative Trace ────────────────────────────────────────────
+
+def _build_decision_path_narrative(
+    *,
+    classification_outcome: str,
+    tier1_signals: list[dict],
+    tier2_signals: list[dict],
+    suspicion_count: int,
+    investigative_count: int,
+    gate1_passed: bool,
+    gate1_decision: str,
+    gate1_sections: list[dict],
+    gate2_decision: str,
+    gate2_status: str,
+    gate2_sections: list[dict],
+    primary_typology: str,
+    typology_stage: str,
+    engine_disposition: str,
+    governed_disposition: str,
+    str_required: bool,
+    layer1_facts: dict,
+    layer6_suspicion: dict,
+    decision_conflict_alert: dict | None,
+    integrity_alert: dict | None,
+) -> dict:
+    """Build 5-step narrative trace explaining the decision path."""
+
+    steps: list[dict] = []
+
+    # ── Step ① — Classifier Assessment ───────────────────────────────────
+    detail_1: list[str] = []
+    hard_stop = layer1_facts.get("hard_stop_triggered")
+    if hard_stop:
+        reason = layer1_facts.get("hard_stop_reason", "mandatory rule trigger")
+        detail_1.append(f"Hard stop triggered: {reason}.")
+    t1_codes = [s.get("code", "UNKNOWN") for s in tier1_signals]
+    t2_count = len(tier2_signals)
+    if suspicion_count > 0:
+        detail_1.append(
+            f"{suspicion_count} Tier 1 suspicion indicator(s) detected: "
+            f"{', '.join(t1_codes)}."
+        )
+    else:
+        detail_1.append("No Tier 1 suspicion indicators found.")
+    if t2_count > 0:
+        detail_1.append(f"{t2_count} Tier 2 investigative signal(s) noted.")
+    arrow_1 = f"Classifier recommends: {classification_outcome.replace('_', ' ')}"
+    steps.append({
+        "number": 1,
+        "symbol": "\u2460",
+        "title": "Classifier Assessment",
+        "detail_lines": detail_1,
+        "arrow_line": arrow_1,
+    })
+
+    # ── Step ② — Gate 1 — Zero-False-Escalation Check ────────────────────
+    detail_2: list[str] = []
+    if hard_stop:
+        detail_2.append("Hard stop active — Gate 1 fast-tracks (Section A passes immediately).")
+    else:
+        stage_upper = (typology_stage or "NONE").upper()
+        if stage_upper == "FORMING":
+            detail_2.append(
+                f"Primary typology: {primary_typology} (stage: FORMING)."
+            )
+            detail_2.append(
+                "Rule: Direct escalation requires ESTABLISHED or CONFIRMED typology. "
+                "FORMING typologies must complete EDD."
+            )
+        elif stage_upper == "ESTABLISHED":
+            detail_2.append(
+                f"Primary typology: {primary_typology} (stage: ESTABLISHED)."
+            )
+            detail_2.append("Rule: Typology maturity confirmed at ESTABLISHED level.")
+        else:
+            detail_2.append("No typology pattern detected.")
+
+    # Include first failing section reason if gate blocked
+    if not gate1_passed:
+        for section in gate1_sections:
+            if not section.get("passed"):
+                detail_2.append(
+                    f"Blocking section — {section.get('name', 'Unknown')}: "
+                    f"{section.get('reason', 'failed')}."
+                )
+                break
+
+    if gate1_passed:
+        arrow_2 = f"Gate 1: PERMITTED \u2014 {gate1_decision or 'escalation allowed'}"
+    else:
+        fail_reason = "escalation blocked"
+        for section in gate1_sections:
+            if not section.get("passed") and section.get("reason"):
+                fail_reason = section["reason"].rstrip(".")
+                break
+        arrow_2 = f"Gate 1: BLOCKED \u2014 {fail_reason}"
+    steps.append({
+        "number": 2,
+        "symbol": "\u2461",
+        "title": "Gate 1 \u2014 Zero-False-Escalation Check",
+        "detail_lines": detail_2,
+        "arrow_line": arrow_2,
+    })
+
+    # ── Step ③ — Gate 2 — STR Threshold ──────────────────────────────────
+    detail_3: list[str] = []
+    if not gate1_passed:
+        detail_3.append("Pre-condition: Gate 1 clearance required.")
+        arrow_3 = "Gate 2: NOT EVALUATED \u2014 upstream gate blocked"
+    elif (gate2_status or "").upper() == "SKIPPED":
+        detail_3.append("Gate 2 evaluation skipped (not required for this path).")
+        arrow_3 = "Gate 2: SKIPPED \u2014 not applicable"
+    else:
+        for section in gate2_sections:
+            status = "PASS" if section.get("passed") else "FAIL"
+            detail_3.append(
+                f"{section.get('name', 'Unknown')}: {status}"
+                + (f" \u2014 {section.get('reason', '')}" if section.get("reason") else "")
+            )
+        arrow_3 = f"Gate 2: {gate2_decision or 'N/A'}"
+    steps.append({
+        "number": 3,
+        "symbol": "\u2462",
+        "title": "Gate 2 \u2014 STR Threshold",
+        "detail_lines": detail_3,
+        "arrow_line": arrow_3,
+    })
+
+    # ── Step ④ — Governed Resolution ─────────────────────────────────────
+    detail_4: list[str] = []
+    clf_label = classification_outcome.replace("_", " ")
+    g1_label = "PERMITTED" if gate1_passed else "BLOCKED"
+    g2_label = gate2_decision or ("NOT EVALUATED" if not gate1_passed else "N/A")
+    detail_4.append(
+        f"Classifier recommended {clf_label} \u2192 "
+        f"Gate 1 {g1_label} \u2192 "
+        f"Gate 2 {g2_label} \u2192 "
+        f"Fallback: {governed_disposition.replace('_', ' ')}."
+    )
+    if decision_conflict_alert:
+        detail_4.append(
+            f"Conflict resolution: {decision_conflict_alert.get('resolution', '')}"
+        )
+    else:
+        detail_4.append(
+            f"All components agree. Disposition confirmed: "
+            f"{governed_disposition.replace('_', ' ')}."
+        )
+
+    arrow_4 = f"Governed disposition: {governed_disposition.replace('_', ' ')}"
+    steps.append({
+        "number": 4,
+        "symbol": "\u2463",
+        "title": "Governed Resolution",
+        "detail_lines": detail_4,
+        "arrow_line": arrow_4,
+    })
+
+    # ── Step ⑤ — Terminal Disposition ─────────────────────────────────────
+    detail_5: list[str] = []
+    gd_upper = governed_disposition.upper().replace(" ", "_")
+    if gd_upper == "STR_REQUIRED" or str_required:
+        detail_5.append("File STR within statutory timeframe.")
+    elif gd_upper == "EDD_REQUIRED" or gd_upper in ("REVIEW", "ESCALATE", "PENDING_REVIEW", "PASS_WITH_EDD"):
+        detail_5.append("Enhanced due diligence required before final determination.")
+    elif gd_upper == "NO_REPORT" or gd_upper in ("CLEARED", "ALLOW", "PASS"):
+        detail_5.append("No reporting obligation. Case cleared.")
+    else:
+        detail_5.append("Awaiting compliance officer determination.")
+
+    arrow_5 = f"Terminal disposition: {governed_disposition.replace('_', ' ')}"
+    steps.append({
+        "number": 5,
+        "symbol": "\u2464",
+        "title": "Terminal Disposition",
+        "detail_lines": detail_5,
+        "arrow_line": arrow_5,
+    })
+
+    # Original path code for cross-reference
+    if gd_upper in ("STR_REQUIRED",) or str_required:
+        path_code = "PATH_2_SUSPICION"
+    elif hard_stop:
+        path_code = "PATH_1_HARD_STOP"
+    else:
+        path_code = "NO_ESCALATION"
+
+    return {
+        "steps": steps,
+        "path_code": path_code,
     }
 
 
