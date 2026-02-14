@@ -383,24 +383,6 @@
     </div>
     {% endif %}
 
-    <h3>Case Facts</h3>
-    <table class="break">
-      <thead>
-        <tr>
-          <th>Field</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for fact in transaction_facts %}
-        <tr>
-          <td>{{ fact.field }}</td>
-          <td class="mono">{{ fact.value }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
     {# ── Decision Path (5-step narrative trace) ──────────────────── #}
     {% if decision_path_narrative and decision_path_narrative.steps %}
     <h2>Decision Path</h2>
@@ -420,6 +402,24 @@
       {% endfor %}
     </div>
     {% endif %}
+
+    <h3>Case Facts</h3>
+    <table class="break">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fact in transaction_facts %}
+        <tr>
+          <td>{{ fact.field }}</td>
+          <td class="mono">{{ fact.value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
     <h2>Case Classification</h2>
     <div class="card break">

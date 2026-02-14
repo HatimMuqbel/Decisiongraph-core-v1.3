@@ -12,7 +12,6 @@ import {
   TypologyMap,
   NegativePathSearch,
   EvidenceGapTracker,
-  BranchPathViz,
   VerbatimCitations,
   CausalChain,
   AuditMetadata,
@@ -133,7 +132,10 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
       {/* 1. Linchpin Statement */}
       <LinchpinStatement report={report} />
 
-      {/* 2. Risk Heatmap + Quick Decision side by side */}
+      {/* 2. Decision Path (5-step visual flow) */}
+      <DecisionPathNarrative report={report} />
+
+      {/* 3. Risk Heatmap + Quick Decision side by side */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <RiskHeatmap report={report} />
 
@@ -236,9 +238,6 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         </h3>
         <SnapshotTable report={report} />
       </div>
-
-      {/* 4b. Decision Path (5-step narrative trace) */}
-      <DecisionPathNarrative report={report} />
 
       {/* 5. One-Click Action Buttons */}
       {(() => {
@@ -365,16 +364,6 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
         onToggle={toggle}
       >
         <ReportEvidenceTable report={report} />
-      </CollapsibleSection>
-
-      {/* Branch Path Visualization */}
-      <CollapsibleSection
-        id="branch-path"
-        title="Decision Path Navigation"
-        expanded={expandedSections.has('branch-path')}
-        onToggle={toggle}
-      >
-        <BranchPathViz report={report} />
       </CollapsibleSection>
 
       {/* Signal Details */}
