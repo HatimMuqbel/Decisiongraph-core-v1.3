@@ -18,6 +18,7 @@ import {
   AuditMetadata,
   ReportEvidenceTable,
   PrecedentIntelligence,
+  DecisionPathNarrative,
 } from '../components/report';
 import type { ReportTier, ReportViewModel } from '../types';
 import { getMinimumTier } from '../types';
@@ -235,6 +236,9 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         </h3>
         <SnapshotTable report={report} />
       </div>
+
+      {/* 4b. Decision Path (5-step narrative trace) */}
+      <DecisionPathNarrative report={report} />
 
       {/* 5. One-Click Action Buttons */}
       {(() => {

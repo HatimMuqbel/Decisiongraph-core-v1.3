@@ -581,6 +581,18 @@ export interface ReportViewModel {
 
   // SLA
   sla_timeline?: SlaTimeline;
+
+  // Decision Path Narrative (5-step trace)
+  decision_path_narrative?: {
+    steps: {
+      number: number;
+      symbol: string;
+      title: string;
+      detail_lines: string[];
+      arrow_line: string;
+    }[];
+    path_code: string;
+  };
 }
 
 // ── Demo Cases ──────────────────────────────────────────────────────────────
