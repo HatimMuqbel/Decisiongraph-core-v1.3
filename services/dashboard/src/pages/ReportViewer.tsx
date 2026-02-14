@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { useReportJson, useReportPdf } from '../hooks/useApi';
+import { useReportJson, useReportPdf, useReportHtml } from '../hooks/useApi';
 import { Loading, ErrorMessage, Badge, StatsCard } from '../components';
 import { dispositionVariant, confidenceVariant } from '../components/Badge';
 import { getLabel } from '../components/EvidenceTable';
@@ -455,6 +455,7 @@ function Tier2Content({ report }: { report: ReportViewModel }) {
 
 function Tier3Content({ report }: { report: ReportViewModel }) {
   const pdfMutation = useReportPdf();
+  const htmlMutation = useReportHtml();
 
   const handlePdfExport = () => {
     pdfMutation.mutate(report.decision_id, {
@@ -469,24 +470,51 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
     });
   };
 
+  const handleHtmlExport = () => {
+    htmlMutation.mutate(report.decision_id, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compliance_report_${report.case_id}_${report.decision_id_short}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  };
+
   return (
     <div className="space-y-5 border-t border-slate-700/40 pt-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-wider text-red-400">
           Regulator View — Full Audit Package
         </h2>
-        <button
-          onClick={handlePdfExport}
-          disabled={pdfMutation.isPending}
-          className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
-        >
-          {pdfMutation.isPending ? (
-            <span className="animate-spin">⏳</span>
-          ) : (
-            <span>📄</span>
-          )}
-          Export PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleHtmlExport}
+            disabled={htmlMutation.isPending}
+            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50"
+          >
+            {htmlMutation.isPending ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <span>📄</span>
+            )}
+            Export HTML
+          </button>
+          <button
+            onClick={handlePdfExport}
+            disabled={pdfMutation.isPending}
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+          >
+            {pdfMutation.isPending ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <span>📄</span>
+            )}
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Verbatim Citations */}
@@ -520,16 +548,25 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
             <p className="text-[10px] text-white mt-0.5">
               All three tiers are included in exported documents. Use
               <kbd className="mx-1 rounded bg-slate-700 px-1.5 py-0.5 text-[10px]">Ctrl+P</kbd>
-              for browser print, or click Export PDF for a formatted compliance document.
+              for browser print, or export as HTML or PDF.
             </p>
           </div>
-          <button
-            onClick={handlePdfExport}
-            disabled={pdfMutation.isPending}
-            className="flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-600 transition-colors disabled:opacity-50"
-          >
-            📄 Download PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleHtmlExport}
+              disabled={htmlMutation.isPending}
+              className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            >
+              📄 Download HTML
+            </button>
+            <button
+              onClick={handlePdfExport}
+              disabled={pdfMutation.isPending}
+              className="flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-600 transition-colors disabled:opacity-50"
+            >
+              📄 Download PDF
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -71,6 +71,12 @@ export function useReportPdf() {
   });
 }
 
+export function useReportHtml() {
+  return useMutation({
+    mutationFn: (decisionId: string) => api.reportHtml(decisionId),
+  });
+}
+
 // ── Templates ───────────────────────────────────────────────────────────────
 
 export function useTemplates() {

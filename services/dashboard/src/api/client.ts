@@ -90,6 +90,11 @@ export const api = {
     if (!res.ok) throw new Error(`PDF export failed: ${res.status}`);
     return res.blob();
   },
+  reportHtml: async (decisionId: string): Promise<Blob> => {
+    const res = await fetch(`${API_BASE}/report/${decisionId}/export-html`);
+    if (!res.ok) throw new Error(`HTML export failed: ${res.status}`);
+    return res.blob();
+  },
 
   // Templates
   templates: () => request<TemplateInfo[]>('/templates'),
