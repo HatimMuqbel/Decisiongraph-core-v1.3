@@ -1189,9 +1189,7 @@ def render_markdown(ctx: dict) -> str:
 | Field | Value |
 |-------|-------|
 | Source | {source_type} |
-| Seed Category | {seed_category} |
-| Scenario Code | `{scenario_code}` |
-
+{seed_fields_md}
 {seed_notice}
 
 ---
@@ -1361,7 +1359,17 @@ The decision may be independently verified using the `/verify` endpoint. Complet
             + (facts_rows or "| No data available | - |\n")
         )
 
+    # Only show seed fields for synthetic cases
+    if ctx.get("is_seed"):
+        seed_fields_md = (
+            f"| Seed Category | {_md_escape(ctx.get('seed_category'))} |\n"
+            f"| Scenario Code | `{_md_escape(ctx.get('scenario_code'))}` |"
+        )
+    else:
+        seed_fields_md = ""
+
     return md_template.format(
+        seed_fields_md=seed_fields_md,
         senior_summary_md=senior_summary_md,
         case_facts_md=case_facts_md,
         str_authority_md=str_authority_md,

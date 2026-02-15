@@ -509,10 +509,12 @@
       <div class="kv">
         <div class="label">Source</div>
         <div class="value">{{ source_type }}</div>
+        {% if is_seed %}
         <div class="label">Seed Category</div>
         <div class="value">{{ seed_category }}</div>
         <div class="label">Scenario Code</div>
         <div class="value mono">{{ scenario_code }}</div>
+        {% endif %}
       </div>
       {% if is_seed %}
         <p class="small" style="margin-top:10px;">
