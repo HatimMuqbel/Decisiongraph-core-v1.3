@@ -683,9 +683,9 @@
       {% for diff in disposition_reconciliation.differences %}
       <div style="border-left:3px solid var(--warn); padding-left:12px; margin-bottom:12px;">
         <p style="margin:0 0 4px 0; font-size:13px;">
-          <strong>{{ diff.component_a }}</strong> determined <code class="mono">{{ diff.value_a | replace('_', ' ') }}</code>
-          — <strong>{{ diff.component_b }}</strong> {% if diff.value_a != diff.value_b %}overrode to{% else %}agrees:{% endif %}
-          <code class="mono" style="font-weight:700;">{{ diff.value_b | replace('_', ' ') }}</code>
+          <strong>{{ diff.component_a }}</strong> produced <code class="mono">{{ diff.value_a | replace('_', ' ') }}</code>.
+          <strong>{{ diff.component_b }}</strong> {% if diff.value_a != diff.value_b %}independently determined{% else %}agrees:{% endif %}
+          <code class="mono" style="font-weight:700;">{{ diff.value_b | replace('_', ' ') }}</code>.
         </p>
         <p class="small" style="margin:0 0 2px 0;">{{ diff.reason }}</p>
         <p class="small" style="margin:0; color:var(--muted); font-style:italic;">Authority: {{ diff.authority }}</p>

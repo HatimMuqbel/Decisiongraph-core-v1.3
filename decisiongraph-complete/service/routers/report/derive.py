@@ -1141,7 +1141,7 @@ def _rebuild_corrected_explainer(
                 gate_reason = failed[0].get("reason", "")
                 gate_basis = (
                     f" Escalation blocked by Gate 1 ({gate_name})"
-                    + (f" — {gate_reason}." if gate_reason else ".")
+                    + (f" — {_clean_period(gate_reason)}." if gate_reason else ".")
                 )
         return (
             f"Classifier identified {tier1_count} Tier 1 suspicion indicators "
@@ -1225,13 +1225,14 @@ def _resolve_typology(
             _positional = {"primary", "secondary", "tertiary", "main", "default"}
             for _typ in (layer4_typologies.get("typologies", []) or []):
                 _mat = (_typ.get("maturity") or "").upper() if isinstance(_typ, dict) else ""
-                if _mat in ("FORMING", "VALIDATING"):
+                if _is_pre_established(_mat):
+                    _raw_mat = _mat.lower()
                     _name = (_typ.get("name") or "") if isinstance(_typ, dict) else ""
                     _code = _name.lower().replace(" ", "_").replace("-", "_")
                     _resolved = _TYPOLOGY_CODE_MAP.get(_code, "")
                     if _resolved and _name.lower() not in _positional:
-                        return f"{_resolved} (maturity: forming)"
-                    return "Unclassified behavioral indicators (maturity: forming)"
+                        return f"{_resolved} (maturity: {_raw_mat})"
+                    return f"Unclassified behavioral indicators (maturity: {_raw_mat})"
             return "No suspicious typology identified"
 
         tier1_codes = {
@@ -1282,41 +1283,56 @@ def _resolve_typology(
     return "No suspicious typology identified"
 
 
-def _canonical_maturity(raw: str) -> str:
-    """Map raw maturity labels to canonical form: FORMING or ESTABLISHED.
+_PRE_ESTABLISHED = {"FORMING", "VALIDATING", "EMERGING"}
 
-    VALIDATING/EMERGING → FORMING, CONFIRMED/VALIDATED → ESTABLISHED.
+
+def _canonical_maturity(raw: str) -> str:
+    """Normalise maturity labels, preserving the original name.
+
+    CONFIRMED/VALIDATED → ESTABLISHED.  All others pass through as-is
+    so that EMERGING stays EMERGING (matches evidence table).
     """
     upper = (raw or "").upper().strip()
-    if upper in ("VALIDATING", "EMERGING"):
-        return "FORMING"
     if upper in ("CONFIRMED", "VALIDATED"):
         return "ESTABLISHED"
-    return upper  # FORMING, ESTABLISHED, or passthrough
+    return upper  # FORMING, EMERGING, VALIDATING, ESTABLISHED, or passthrough
+
+
+def _is_pre_established(stage: str) -> bool:
+    """True when maturity is below ESTABLISHED (FORMING, EMERGING, VALIDATING)."""
+    return (stage or "").upper().strip() in _PRE_ESTABLISHED
 
 
 def _derive_typology_stage(
     layer4_typologies: dict,
     primary_typology: str,
 ) -> str:
-    """Derive typology stage: NONE, FORMING, or ESTABLISHED.
+    """Derive typology stage: NONE, raw maturity label, or ESTABLISHED.
 
-    Used for consistent rendering across Typology Map, Evidence Snapshot,
-    and Primary Typology display.
+    Returns the original maturity label (EMERGING, FORMING, VALIDATING)
+    so the narrative matches the evidence table.
     """
     _pt_lower = primary_typology.lower()
     if "indicators present" in _pt_lower or "unclassified behavioral" in _pt_lower:
+        # Extract raw maturity from primary_typology if available
+        _mat_match = _pt_lower.split("(maturity: ")
+        if len(_mat_match) > 1:
+            return _mat_match[1].rstrip(")").upper()
         return "FORMING"
-    if "(maturity: forming)" in _pt_lower:
+    if "(maturity:" in _pt_lower:
+        _mat_match = _pt_lower.split("(maturity: ")
+        if len(_mat_match) > 1:
+            return _mat_match[1].rstrip(")").upper()
         return "FORMING"
     if primary_typology == "No suspicious typology identified":
         return "NONE"
-    # Has a named typology → use canonical mapping
-    highest = _canonical_maturity(layer4_typologies.get("highest_maturity") or "")
+    # Has a named typology → use raw maturity from layer4
+    raw_highest = (layer4_typologies.get("highest_maturity") or "").upper().strip()
+    highest = _canonical_maturity(raw_highest)
     if highest == "ESTABLISHED":
         return "ESTABLISHED"
-    if highest == "FORMING":
-        return "FORMING"
+    if _is_pre_established(raw_highest):
+        return raw_highest  # Preserve original label (EMERGING, FORMING, VALIDATING)
     if primary_typology and primary_typology != "No suspicious typology identified":
         return "ESTABLISHED"
     return "NONE"
@@ -2684,9 +2700,9 @@ def _build_enhanced_precedent_analysis(
     # Two-axis alignment narrative (Part 6)
     two_axis_alignment_narrative = ""
     if ta_total > 0:
-        op_pct = int(ta_op_aligned / ta_total * 100) if ta_total > 0 else 0
-        reg_pct = int(ta_reg_aligned / ta_total * 100) if ta_total > 0 else 0
-        combined_pct = int(ta_combined / ta_total * 100) if ta_total > 0 else 0
+        op_pct = round(ta_op_aligned / ta_total * 100) if ta_total > 0 else 0
+        reg_pct = round(ta_reg_aligned / ta_total * 100) if ta_total > 0 else 0
+        combined_pct = round(ta_combined / ta_total * 100) if ta_total > 0 else 0
         two_axis_alignment_narrative = (
             f"Operational alignment: {ta_op_aligned}/{ta_total} ({op_pct}%)\n"
             f"Regulatory alignment: {ta_reg_aligned}/{ta_total} ({reg_pct}%)\n"
@@ -3551,6 +3567,8 @@ def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[di
 
     _MATURITY_LABELS = {
         "FORMING": "Early-stage — pattern forming, not yet established",
+        "EMERGING": "Early-stage — pattern emerging, not yet established",
+        "VALIDATING": "Early-stage — pattern under validation, not yet established",
         "ESTABLISHED": "Established — sufficient corroboration, pattern validated",
     }
     _POSITIONAL_LABELS = {"primary", "secondary", "tertiary", "main", "default"}
@@ -3572,7 +3590,7 @@ def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[di
                 or "(maturity: forming)" in mapped_name
             )
             if (_is_no_typology or _is_indicator_label) and maturity:
-                if maturity.upper() == "FORMING":
+                if _is_pre_established(maturity):
                     value = (
                         f"Typology indicators present — below maturity threshold "
                         f"({_MATURITY_LABELS.get(maturity.upper(), maturity)}) [{name}/{maturity}]"
@@ -3771,13 +3789,13 @@ def _build_decision_path_narrative(
         detail_2.append("Hard stop active — Gate 1 fast-tracks (Section A passes immediately).")
     else:
         stage_upper = (typology_stage or "NONE").upper()
-        if stage_upper == "FORMING":
+        if _is_pre_established(stage_upper):
             detail_2.append(
-                f"Primary typology: {primary_typology} (stage: FORMING)."
+                f"Primary typology: {primary_typology} (stage: {stage_upper})."
             )
             detail_2.append(
-                "Institutional policy: Escalation not permitted absent ESTABLISHED typology. "
-                "FORMING typologies require EDD before escalation determination."
+                f"Institutional policy: Escalation not permitted absent ESTABLISHED typology. "
+                f"{stage_upper} typologies require EDD before escalation determination."
             )
         elif stage_upper == "ESTABLISHED":
             detail_2.append(
