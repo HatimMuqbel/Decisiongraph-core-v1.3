@@ -341,12 +341,14 @@
         <div class="value">{{ primary_typology }}</div>
         <div class="label">Typology Assessment</div>
         <div class="value">
-          {% if typology_stage == 'FORMING' %}
-          Typology indicators detected at FORMING stage. Pattern not yet established &mdash; below escalation threshold.
+          {% if typology_stage in ['FORMING', 'EMERGING', 'VALIDATING'] %}
+          Typology indicators detected at {{ typology_stage }} stage. Pattern not yet established &mdash; below escalation threshold.
           {% elif typology_stage == 'ESTABLISHED' %}
           Confirmed typology: {{ primary_typology }}. Pattern established &mdash; meets escalation criteria.
-          {% else %}
+          {% elif typology_stage == 'NONE' %}
           No suspicious typology patterns detected.
+          {% else %}
+          Typology assessment: {{ typology_stage }}.
           {% endif %}
         </div>
         {% if regulatory_obligation %}
@@ -613,7 +615,13 @@
         {% endif %}
         {% if engine_disposition != governed_disposition %}
         <p class="small" style="margin-top:8px; font-style:italic;">
+          {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
+          Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Classifier determined STR REQUIRED, but Gate 1 blocked escalation — governed outcome is {{ governed_disposition | replace('_', ' ') }} pending compliance review.
+          {% elif classification_outcome == governed_disposition %}
           Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Classifier sovereignty applied — {{ governed_disposition | replace('_', ' ') }} is the governed outcome.
+          {% else %}
+          Engine originally suggested {{ engine_disposition | replace('_', ' ') }}. Governance correction applied — {{ governed_disposition | replace('_', ' ') }} is the governed outcome.
+          {% endif %}
         </p>
         {% endif %}
         <p style="margin-top:12px;" class="small"><strong>Recommended Actions:</strong></p>

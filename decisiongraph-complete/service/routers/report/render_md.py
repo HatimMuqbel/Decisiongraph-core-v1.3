@@ -299,7 +299,17 @@ def render_markdown(ctx: dict) -> str:
     else:
         decision_header = "### **EDD_REQUIRED** — Enhanced Due Diligence Required"
     if engine != governed:
-        decision_header += f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. Classifier sovereignty applied — governed outcome is authoritative.*"
+        clf_outcome = ctx.get("classification_outcome", "")
+        if clf_outcome == "STR_REQUIRED" and governed != "STR_REQUIRED":
+            decision_header += (
+                f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. "
+                f"Classifier determined STR REQUIRED, but Gate 1 blocked escalation — "
+                f"governed outcome is {governed.replace('_', ' ')} pending compliance review.*"
+            )
+        elif clf_outcome == governed:
+            decision_header += f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. Classifier sovereignty applied — governed outcome is authoritative.*"
+        else:
+            decision_header += f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. Governance correction applied — governed outcome is authoritative.*"
     # Disposition ladder display values
     governed_display = governed.replace("_", " ")
     action_val = ctx.get("action", "")
