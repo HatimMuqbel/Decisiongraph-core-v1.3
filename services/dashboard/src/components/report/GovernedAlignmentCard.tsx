@@ -10,12 +10,13 @@ interface Props {
   regTotal?: number;
   combinedAligned?: number;
   regAllUndetermined?: boolean;
+  transferableCount?: number;
 }
 
 export default function GovernedAlignmentCard({
   count, total, alignmentContext,
   opAligned, opTotal, regAligned, regTotal, combinedAligned,
-  regAllUndetermined,
+  regAllUndetermined, transferableCount,
 }: Props) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   const color = pct >= 80 ? 'emerald' : pct >= 50 ? 'amber' : 'red';
@@ -37,8 +38,19 @@ export default function GovernedAlignmentCard({
         Governed Disposition Alignment
       </h4>
 
-      {/* Two-axis split when available */}
-      {hasTA ? (
+      {/* Zero transferable precedents — alignment cannot be calculated */}
+      {transferableCount === 0 && total > 0 ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-white">No transferable precedents available.</p>
+          <p className="text-xs text-white">
+            {total} comparable case{total !== 1 ? 's' : ''} identified, but all excluded due to driver contradictions.
+          </p>
+          <p className="text-xs text-white italic">
+            Alignment cannot be calculated without valid comparables.
+          </p>
+        </div>
+      ) : /* Two-axis split when available */
+      hasTA ? (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>

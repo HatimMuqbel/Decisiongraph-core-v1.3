@@ -42,7 +42,6 @@ export default function PrecedentIntelligence({ report }: Props) {
   const driverCausality = ep?.driver_causality;
   const divergence = ep?.divergence_justification;
   const regimeAnalysis = ep?.regime_analysis;
-  const isV3 = !!confidenceLevel && dimensions.length > 0;
 
   return (
     <div className="space-y-4">
@@ -55,22 +54,50 @@ export default function PrecedentIntelligence({ report }: Props) {
         </span>
       </div>
 
-      {/* Row 1: Alignment + Confidence side by side */}
+      {/* Row 1: Governed Disposition Alignment */}
+      <GovernedAlignmentCard
+        count={alignCount}
+        total={alignTotal}
+        alignmentContext={ep?.alignment_context}
+        opAligned={ep?.op_alignment_count}
+        opTotal={ep?.op_alignment_total}
+        regAligned={ep?.reg_alignment_count}
+        regTotal={ep?.reg_alignment_total}
+        combinedAligned={ep?.combined_alignment_count}
+        regAllUndetermined={ep?.reg_alignment_all_undetermined}
+        transferableCount={ep?.transferable_count}
+      />
+
+      {/* Row 2: Precedent Confidence (vote count) + Terminal Confidence (4-factor) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <GovernedAlignmentCard
-          count={alignCount}
-          total={alignTotal}
-          alignmentContext={ep?.alignment_context}
-          opAligned={ep?.op_alignment_count}
-          opTotal={ep?.op_alignment_total}
-          regAligned={ep?.reg_alignment_count}
-          regTotal={ep?.reg_alignment_total}
-          combinedAligned={ep?.combined_alignment_count}
-          regAllUndetermined={ep?.reg_alignment_all_undetermined}
-        />
-        {isV3 ? (
+        {/* Precedent Confidence — always shown */}
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
+            Precedent Confidence
+          </h4>
+          <div className="text-3xl font-bold text-slate-200">
+            {Math.round((pa.precedent_confidence ?? 0) * 100)}%
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
+            <div>
+              <p className="text-white">Supporting</p>
+              <p className="text-lg font-bold text-emerald-400">{pa.supporting_precedents ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-white">Contrary</p>
+              <p className="text-lg font-bold text-red-400">{pa.contrary_precedents ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-white">Neutral</p>
+              <p className="text-lg font-bold text-white">{pa.neutral_precedents ?? 0}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Terminal Confidence (4-factor) — shown when dimensions exist */}
+        {confidenceLevel && dimensions.length > 0 && (
           <TerminalConfidenceCard
-            level={confidenceLevel!}
+            level={confidenceLevel}
             dimensions={dimensions}
             bottleneck={bottleneck}
             hardRule={hardRule}
@@ -78,30 +105,6 @@ export default function PrecedentIntelligence({ report }: Props) {
             transferableCount={ep?.transferable_count}
             comparableCount={cases.length}
           />
-        ) : (
-          /* v2 fallback: flat confidence */
-          <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
-            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
-              Precedent Confidence
-            </h4>
-            <div className="text-3xl font-bold text-slate-200">
-              {Math.round((pa.precedent_confidence ?? 0) * 100)}%
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
-              <div>
-                <p className="text-white">Supporting</p>
-                <p className="text-lg font-bold text-emerald-400">{pa.supporting_precedents ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-white">Contrary</p>
-                <p className="text-lg font-bold text-red-400">{pa.contrary_precedents ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-white">Neutral</p>
-                <p className="text-lg font-bold text-white">{pa.neutral_precedents ?? 0}</p>
-              </div>
-            </div>
-          </div>
         )}
       </div>
 

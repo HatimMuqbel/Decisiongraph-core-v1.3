@@ -254,7 +254,9 @@ class TestEnhancedPrecedentV3:
             ],
         }
         result = build(analysis, "ALLOW — NO REPORT", None)
-        assert "confidence_dimensions" not in result
+        # confidence_dimensions is now always present (4-factor model renders for all cases)
+        assert result.get("confidence_dimensions") == []
+        assert result.get("confidence_level") is None
         assert "non_transferable_explanations" not in result
         assert "driver_causality" not in result
 

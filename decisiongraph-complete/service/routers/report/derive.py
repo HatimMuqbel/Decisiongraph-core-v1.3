@@ -87,6 +87,11 @@ _T1_CODE_TO_TYPOLOGY: dict[str, str] = {
 }
 
 
+def _clean_period(text: str) -> str:
+    """Strip trailing dots from text so callers can append exactly one period."""
+    return (text or "").rstrip(".")
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def derive_regulatory_model(normalized: dict) -> dict:
@@ -246,21 +251,24 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # The decision_explainer may contain a stale count from validate_output
     # (using the first classifier's investigative_count). Replace it with
     # the actual number of decision drivers so the two always agree.
+    # Determine correct tier label based on classifier output
+    _has_tier1 = classification.suspicion_count > 0
+    _correct_tier_label = "Tier 1 suspicion indicator(s)" if _has_tier1 else "Tier 2 investigative signal(s)"
     _signal_match = re.search(
-        r"(\d+)\s+Tier\s+2\s+investigative\s+signal\(s\)",
+        r"(\d+)\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)",
         decision_explainer,
     )
     if _signal_match:
         _stated = int(_signal_match.group(1))
         _actual = len(decision_drivers)
-        if _stated != _actual:
+        if _stated != _actual or _signal_match.group(0) != f"{_actual} {_correct_tier_label}":
             decision_explainer = decision_explainer.replace(
                 _signal_match.group(0),
-                f"{_actual} Tier 2 investigative signal(s)",
+                f"{_actual} {_correct_tier_label}",
             )
     # Post-reconciliation assertion: summary count must match rendered count
     _post_match = re.search(
-        r"(\d+)\s+Tier\s+2\s+investigative\s+signal\(s\)",
+        r"(\d+)\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)",
         decision_explainer,
     )
     if _post_match:
@@ -629,6 +637,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         integrity_alert=integrity_alert,
         rules_fired=rules_fired,
         classification_outcome=classification.outcome,
+        is_mandatory_hard_stop=is_mandatory_hard_stop,
     )
 
     # ── FIX-029: Disposition Reconciliation ────────────────────────────
@@ -1064,6 +1073,19 @@ def _resolve_typology(
     return "No suspicious typology identified"
 
 
+def _canonical_maturity(raw: str) -> str:
+    """Map raw maturity labels to canonical form: FORMING or ESTABLISHED.
+
+    VALIDATING/EMERGING → FORMING, CONFIRMED/VALIDATED → ESTABLISHED.
+    """
+    upper = (raw or "").upper().strip()
+    if upper in ("VALIDATING", "EMERGING"):
+        return "FORMING"
+    if upper in ("CONFIRMED", "VALIDATED"):
+        return "ESTABLISHED"
+    return upper  # FORMING, ESTABLISHED, or passthrough
+
+
 def _derive_typology_stage(
     layer4_typologies: dict,
     primary_typology: str,
@@ -1080,11 +1102,11 @@ def _derive_typology_stage(
         return "FORMING"
     if primary_typology == "No suspicious typology identified":
         return "NONE"
-    # Has a named typology → ESTABLISHED
-    highest = (layer4_typologies.get("highest_maturity") or "").upper()
-    if highest in ("CONFIRMED", "ESTABLISHED", "VALIDATED"):
+    # Has a named typology → use canonical mapping
+    highest = _canonical_maturity(layer4_typologies.get("highest_maturity") or "")
+    if highest == "ESTABLISHED":
         return "ESTABLISHED"
-    if highest in ("FORMING", "VALIDATING"):
+    if highest == "FORMING":
         return "FORMING"
     if primary_typology and primary_typology != "No suspicious typology identified":
         return "ESTABLISHED"
@@ -2703,6 +2725,14 @@ def _build_enhanced_precedent_analysis(
         )
     result["override_statement"] = override_statement
 
+    # ── Confidence dimensions (4-factor model) — always computed ──────
+    # The 4-factor model (pool_adequacy, similarity_quality,
+    # outcome_consistency, evidence_completeness) renders for all cases.
+    result["confidence_dimensions"] = precedent_analysis.get("confidence_dimensions", [])
+    result["confidence_level"] = precedent_analysis.get("confidence_level")
+    result["confidence_bottleneck"] = precedent_analysis.get("confidence_bottleneck")
+    result["confidence_hard_rule"] = precedent_analysis.get("confidence_hard_rule")
+
     # ── v3 enhancements (only when scoring_version == "v3") ──────
     if precedent_analysis.get("scoring_version") == "v3":
         # i) Non-transferable explanations
@@ -2715,12 +2745,6 @@ def _build_enhanced_precedent_analysis(
                     "mismatched_drivers": sc.get("mismatched_drivers", []),
                 })
         result["non_transferable_explanations"] = nt_explanations
-
-        # j) Confidence dimensions (4-bar breakdown data)
-        result["confidence_dimensions"] = precedent_analysis.get("confidence_dimensions", [])
-        result["confidence_level"] = precedent_analysis.get("confidence_level")
-        result["confidence_bottleneck"] = precedent_analysis.get("confidence_bottleneck")
-        result["confidence_hard_rule"] = precedent_analysis.get("confidence_hard_rule")
 
         # j2) First-impression / first-of-kind alert
         _ra = precedent_analysis.get("policy_regime_analysis") or precedent_analysis.get("regime_analysis") or {}
@@ -3146,12 +3170,22 @@ def _derive_decision_drivers(
     txn = facts.get("transaction", {}) or {}
     customer = facts.get("customer", {}) or {}
 
-    # ── CASE 0: Sanctions hard stop — only the match matters ────────────
-    if facts.get("hard_stop_triggered") and "SANCTIONS" in str(facts.get("hard_stop_reason", "")).upper():
-        drivers = ["Sanctions screening match — immediate block"]
+    # ── CASE 0: Hard stop — only the hard stop reason matters ───────────
+    # For any hard stop (sanctions, adverse media, etc.), suspicion-flavored
+    # signals are irrelevant — the hard stop is the sole decision driver.
+    if facts.get("hard_stop_triggered"):
+        hard_stop_reason = str(facts.get("hard_stop_reason", "")).upper()
+        if "SANCTIONS" in hard_stop_reason:
+            drivers = ["Sanctions screening match — immediate block"]
+        elif "ADVERSE_MEDIA" in hard_stop_reason:
+            drivers = ["Adverse media — confirmed MLTF link (hard stop)"]
+        else:
+            drivers = [f"Hard stop triggered: {facts.get('hard_stop_reason', 'mandatory rule trigger')}"]
         method = txn.get("method") or ev_map.get("txn.method") or ev_map.get("txn.type") or ""
         if method:
             drivers.append(f"{str(method).replace('_', ' ').title()} channel")
+        if ev_map.get("txn.cross_border") or ev_map.get("flag.cross_border") or txn.get("cross_border"):
+            drivers.append("Cross-border transaction")
         return drivers
 
     typologies = layer4_typologies.get("typologies", []) or []
@@ -3301,15 +3335,14 @@ def _build_risk_factors(normalized: dict, primary_typology: str = "") -> list[di
 
     _MATURITY_LABELS = {
         "FORMING": "Early-stage — pattern forming, not yet established",
-        "VALIDATING": "Intermediate — evidence accumulating, pattern emerging",
-        "CONFIRMED": "Established — sufficient corroboration, pattern validated",
+        "ESTABLISHED": "Established — sufficient corroboration, pattern validated",
     }
     _POSITIONAL_LABELS = {"primary", "secondary", "tertiary", "main", "default"}
     _NO_TYPOLOGY = "No suspicious typology identified"
     for typology in layer4_typologies.get("typologies", []) or []:
         if isinstance(typology, dict):
             name = typology.get("name") or "Typology"
-            maturity = typology.get("maturity")
+            maturity = _canonical_maturity(typology.get("maturity") or "")
             mapped_name = _TYPOLOGY_CODE_MAP.get(name.lower().replace(" ", "_").replace("-", "_"), name)
             # If name is a positional label (e.g. "primary"), use resolved primary_typology
             if mapped_name.lower() in _POSITIONAL_LABELS and primary_typology:
@@ -3429,19 +3462,21 @@ def _build_decision_conflict_alert(
                 "reason": section.get("reason", ""),
                 "name": section.get("name", ""),
             })
-    for section in gate2_sections:
-        if not section.get("passed"):
-            blocking_gates.append({
-                "gate": "Gate 2 (STR Threshold)",
-                "reason": section.get("reason", ""),
-                "name": section.get("name", ""),
-            })
+    # Only evaluate gate2 when gate1 passed — otherwise gate2 was never reached
+    if gate1_passed:
+        for section in gate2_sections:
+            if not section.get("passed"):
+                blocking_gates.append({
+                    "gate": "Gate 2 (STR Threshold)",
+                    "reason": section.get("reason", ""),
+                    "name": section.get("name", ""),
+                })
 
     if blocking_gates:
-        gate_names = [g["gate"] for g in blocking_gates]
+        gate_names = list(dict.fromkeys(g["gate"] for g in blocking_gates))
         resolution = (
             f"{', '.join(gate_names)} blocked escalation"
-            + (f" — {blocking_gates[0]['reason'].rstrip('.')}" if blocking_gates[0]['reason'] else "")
+            + (f" — {_clean_period(blocking_gates[0]['reason'])}" if blocking_gates[0]['reason'] else "")
             + ". Engine followed gate logic."
         )
     elif engine_disposition != governed_disposition:
@@ -3542,7 +3577,7 @@ def _build_decision_path_narrative(
             if not section.get("passed"):
                 detail_2.append(
                     f"Blocking section — {section.get('name', 'Unknown')}: "
-                    f"{section.get('reason', 'failed')}."
+                    f"{_clean_period(section.get('reason', 'failed'))}."
                 )
                 break
 
@@ -3669,6 +3704,7 @@ def _build_gate_override_explanations(
     integrity_alert: dict | None,
     rules_fired: list,
     classification_outcome: str = "",
+    is_mandatory_hard_stop: bool = False,
 ) -> list[dict]:
     """Build explanations for each gate whose result conflicts with final disposition."""
     final_is_escalation = governed_disposition in ("STR_REQUIRED", "ESCALATE") or str_required
@@ -3723,7 +3759,38 @@ def _build_gate_override_explanations(
                 "authority": "PCMLTFA s. 7 — STR requires Tier 1 suspicion, not risk alone",
             })
 
-    # Gate 2 conflict: insufficient but STR filed
+    # Gate 2 conflict: skip entirely when gate1 blocked (gate2 was not evaluated)
+    # or when mandatory hard stop (sanctions bypass suspicion threshold)
+    if gate1_blocked or is_mandatory_hard_stop:
+        if not explanations and gate1_blocked:
+            classifier_wanted_str = classification_outcome in ("STR_REQUIRED",)
+            governed_is_not_str = governed_disposition not in ("STR_REQUIRED", "ESCALATE")
+            if classifier_wanted_str and governed_is_not_str:
+                upheld_basis = []
+                for section in gate1_sections:
+                    if not section.get("passed"):
+                        upheld_basis.append(
+                            f"{section.get('name', 'Unknown')}: {section.get('reason', '')}"
+                        )
+                explanations.append({
+                    "gate": "Gate 1: Zero-False-Escalation Check",
+                    "gate_result": gate1_decision or "PROHIBITED",
+                    "final_disposition": governed_disposition,
+                    "conflict": False,
+                    "upheld": True,
+                    "classifier_recommendation": classification_outcome,
+                    "upheld_detail": (
+                        f"Gate determination followed. Classifier recommendation "
+                        f"({classification_outcome.replace('_', ' ')}) was not applied. "
+                        f"Governed disposition reflects gate authority."
+                    ),
+                    "upheld_basis": upheld_basis,
+                    "authority": "PCMLTFA s. 7 — Gate authority over classifier recommendation",
+                })
+        if not explanations:
+            return [{"gate": "All Gates", "conflict": False, "final_disposition": governed_disposition}]
+        return explanations
+
     gate2_says_str = "STR" in str(gate2_decision).upper() or "STR" in str(gate2_status).upper()
     gate2_says_insufficient = (
         "INSUFFICIENT" in str(gate2_decision).upper()

@@ -51,6 +51,7 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
   }
 
   const levelCfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG.NONE;
+  const allHighOrAbove = dimensions.length > 0 && dimensions.every(d => d.level === 'HIGH' || d.level === 'VERY_HIGH');
 
   return (
     <div className="rounded-xl border border-blue-500/30 bg-slate-800 p-5">
@@ -62,9 +63,14 @@ export default function TerminalConfidenceCard({ level, dimensions, bottleneck, 
         {level.replace('_', ' ')}
       </div>
 
-      {bottleneck && (
+      {bottleneck && !allHighOrAbove && (
         <p className="mt-1 text-xs text-white">
           Bottleneck: {DIM_LABELS[bottleneck] ?? bottleneck}
+        </p>
+      )}
+      {allHighOrAbove && (
+        <p className="mt-1 text-xs text-white">
+          No bottleneck — all factors HIGH or above.
         </p>
       )}
 
