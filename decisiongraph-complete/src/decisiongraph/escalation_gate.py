@@ -429,7 +429,7 @@ class EscalationGateValidator:
         section = SectionResult(
             section_id="E",
             section_name="TYPOLOGY MATURITY GATE",
-            gate_message="Escalation from FORMING typology is illegal."
+            gate_message="Escalation prohibited by policy (Typology Maturity not met)."
         )
 
         maturity_upper = typology_maturity.upper() if typology_maturity else "NONE"
