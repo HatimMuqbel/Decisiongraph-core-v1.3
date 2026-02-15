@@ -304,6 +304,8 @@ export interface EnhancedPrecedent {
   suspicion_posture?: string[];
   two_axis_alignment_narrative?: string;
   pool_composite_finding?: string;
+  // GAP-D: Backend-sourced precedent disclaimer
+  precedent_disclaimer?: string;
 }
 
 export interface PrecedentAnalysis {
@@ -462,6 +464,42 @@ export interface SlaTimeline {
   str_filing_window: string;
 }
 
+// ── GAP-E: Senior Summary ────────────────────────────────────────────────────
+export interface SeniorSummary {
+  alert_trigger: string;
+  suspicious_elements: string;
+  not_established: string;
+  current_decision: string;
+  str_pending: string;
+  next_evidence_deadline: string;
+}
+
+// ── GAP-B: STR Decision Authority ───────────────────────────────────────────
+export interface StrDecisionOwner {
+  role: string;
+  basis: string;
+}
+
+export interface StrDecisionOption {
+  option: string;
+  conditions: string;
+}
+
+export interface StrDecisionFrame {
+  decision_owner: StrDecisionOwner;
+  decision_options: StrDecisionOption[];
+  decision_deadline: string;
+  minimum_evidence: string[];
+  authority_basis: string;
+}
+
+// ── GAP-C: Case Facts Sections ──────────────────────────────────────────────
+export interface CaseFactsSections {
+  transaction: EvidenceUsed[];
+  customer: EvidenceUsed[];
+  screening: EvidenceUsed[];
+}
+
 export interface ReportViewModel {
   // Administrative
   decision_id: string;
@@ -585,6 +623,15 @@ export interface ReportViewModel {
   // Mandatory hard stop (sanctions, etc.)
   is_mandatory_hard_stop?: boolean;
   hard_stop_reason?: string;
+
+  // GAP-E: Senior Summary
+  senior_summary?: SeniorSummary;
+
+  // GAP-B: STR Decision Authority
+  str_decision_frame?: StrDecisionFrame;
+
+  // GAP-C: Case Facts Sections (structured)
+  case_facts_sections?: CaseFactsSections;
 
   // Decision Path Narrative (5-step trace)
   decision_path_narrative?: {

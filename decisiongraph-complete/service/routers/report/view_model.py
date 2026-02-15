@@ -219,15 +219,30 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         # Mandatory hard stop (sanctions, etc.)
         "is_mandatory_hard_stop": derived.get("is_mandatory_hard_stop", False),
         "hard_stop_reason": derived.get("hard_stop_reason", ""),
+
+        # GAP-E: Senior Summary
+        "senior_summary": derived.get("senior_summary", {}),
+
+        # GAP-B: STR Decision Authority
+        "str_decision_frame": derived.get("str_decision_frame", {}),
+
+        # GAP-C: Case Facts Sections (structured)
+        "case_facts_sections": _build_case_facts_sections(normalized),
     }
 
 
 # ── Transaction facts ────────────────────────────────────────────────────────
 
 def _build_transaction_facts(normalized: dict) -> list[dict]:
-    """Build formatted transaction facts from normalized layer-1 data."""
+    """Build formatted transaction facts from normalized layer-1 data.
+
+    Expanded for GAP-C: pulls additional fields from layer1_facts and
+    evidence_used while keeping backward-compatible flat list format.
+    """
     facts: list[dict] = []
     layer1 = normalized["layer1_facts"]
+    evidence_used = normalized.get("evidence_used", []) or []
+    ev_map = {str(ev.get("field", "")): ev.get("value") for ev in evidence_used}
 
     customer = layer1.get("customer", {}) or {}
     if customer.get("pep_flag") is not None:
@@ -236,20 +251,47 @@ def _build_transaction_facts(normalized: dict) -> list[dict]:
         facts.append({"field": "Customer Type", "value": customer["type"]})
     if customer.get("residence"):
         facts.append({"field": "Residence Country", "value": customer["residence"]})
+    if customer.get("tenure_years") is not None:
+        facts.append({"field": "Customer Tenure", "value": f"{customer['tenure_years']} years"})
+    if customer.get("risk_rating"):
+        facts.append({"field": "Customer Risk Rating", "value": customer["risk_rating"]})
 
     txn = layer1.get("transaction", {}) or {}
     if txn.get("amount_cad") is not None:
         facts.append({"field": "Amount (CAD)", "value": f"${txn['amount_cad']:,.2f}"})
     if txn.get("method"):
         facts.append({"field": "Payment Method", "value": txn["method"]})
+    if txn.get("channel"):
+        facts.append({"field": "Channel", "value": txn["channel"]})
     if txn.get("destination"):
         facts.append({"field": "Destination", "value": txn["destination"]})
+    if txn.get("cross_border") is not None:
+        facts.append({"field": "Cross-Border", "value": "Yes" if txn["cross_border"] else "No"})
+    if txn.get("currency"):
+        facts.append({"field": "Currency", "value": txn["currency"]})
+    if txn.get("purpose"):
+        facts.append({"field": "Transaction Purpose", "value": txn["purpose"]})
+    # Evidence-sourced transaction fields
+    for ev_key, label in [
+        ("txn.amount_band", "Amount Band"),
+        ("txn.count", "Transaction Count"),
+    ]:
+        if ev_key in ev_map and ev_map[ev_key] is not None:
+            facts.append({"field": label, "value": str(ev_map[ev_key])})
 
     screening = layer1.get("screening", {}) or {}
+    if screening.get("sanctions_match") is not None:
+        facts.append({"field": "Sanctions Match", "value": "Yes" if screening["sanctions_match"] else "No"})
+    if screening.get("pep_match") is not None:
+        facts.append({"field": "PEP Match", "value": "Yes" if screening["pep_match"] else "No"})
+    if screening.get("adverse_media") is not None:
+        facts.append({"field": "Adverse Media", "value": "Yes" if screening["adverse_media"] else "No"})
     if screening.get("match_score") is not None:
         facts.append({"field": "Match Score", "value": f"{screening['match_score']}%"})
     if screening.get("list_type"):
         facts.append({"field": "List Type", "value": screening["list_type"]})
+    if screening.get("mltf_linked") is not None:
+        facts.append({"field": "ML/TF Linked", "value": "Yes" if screening["mltf_linked"] else "No"})
 
     if not facts:
         facts = [
@@ -258,3 +300,90 @@ def _build_transaction_facts(normalized: dict) -> list[dict]:
         ]
 
     return facts
+
+
+def _build_case_facts_sections(normalized: dict) -> dict:
+    """Build structured case facts in three sections for GAP-C rendering.
+
+    Returns {transaction: [...], customer: [...], screening: [...]}.
+    """
+    layer1 = normalized["layer1_facts"]
+    evidence_used = normalized.get("evidence_used", []) or []
+    ev_map = {str(ev.get("field", "")): ev.get("value") for ev in evidence_used}
+
+    # ── Transaction context ──────────────────────────────────────────
+    txn_facts: list[dict] = []
+    txn = layer1.get("transaction", {}) or {}
+    _txn_fields = [
+        ("channel", "Channel"),
+        ("method", "Payment Method"),
+        ("amount_cad", "Amount (CAD)"),
+        ("currency", "Currency"),
+        ("destination", "Destination"),
+        ("purpose", "Transaction Purpose"),
+    ]
+    for key, label in _txn_fields:
+        val = txn.get(key)
+        if val is not None:
+            if key == "amount_cad":
+                txn_facts.append({"field": label, "value": f"${val:,.2f}"})
+            else:
+                txn_facts.append({"field": label, "value": str(val)})
+    if txn.get("cross_border") is not None:
+        txn_facts.append({"field": "Cross-Border", "value": "Yes" if txn["cross_border"] else "No"})
+    for ev_key, label in [
+        ("txn.amount_band", "Amount Band"),
+        ("txn.count", "Transaction Count"),
+    ]:
+        if ev_key in ev_map and ev_map[ev_key] is not None:
+            txn_facts.append({"field": label, "value": str(ev_map[ev_key])})
+
+    # ── Customer context ─────────────────────────────────────────────
+    cust_facts: list[dict] = []
+    customer = layer1.get("customer", {}) or {}
+    _cust_fields = [
+        ("type", "Customer Type"),
+        ("residence", "Residence Country"),
+        ("risk_rating", "Risk Rating"),
+    ]
+    for key, label in _cust_fields:
+        val = customer.get(key)
+        if val is not None:
+            cust_facts.append({"field": label, "value": str(val)})
+    if customer.get("pep_flag") is not None:
+        cust_facts.append({"field": "PEP Status", "value": "Yes" if customer["pep_flag"] else "No"})
+    if customer.get("tenure_years") is not None:
+        cust_facts.append({"field": "Tenure (Years)", "value": str(customer["tenure_years"])})
+    for ev_key, label in [
+        ("customer.source_verified", "Source of Funds Verified"),
+        ("customer.ownership_clear", "Ownership Structure Clear"),
+    ]:
+        if ev_key in ev_map and ev_map[ev_key] is not None:
+            val = ev_map[ev_key]
+            if isinstance(val, bool):
+                val = "Yes" if val else "No"
+            cust_facts.append({"field": label, "value": str(val)})
+
+    # ── Screening context ────────────────────────────────────────────
+    screen_facts: list[dict] = []
+    screening = layer1.get("screening", {}) or {}
+    _screen_fields = [
+        ("sanctions_match", "Sanctions Match"),
+        ("adverse_media", "Adverse Media"),
+        ("pep_match", "PEP Match"),
+        ("mltf_linked", "ML/TF Linked"),
+    ]
+    for key, label in _screen_fields:
+        val = screening.get(key)
+        if val is not None:
+            screen_facts.append({"field": label, "value": "Yes" if val else "No"})
+    if screening.get("match_score") is not None:
+        screen_facts.append({"field": "Match Score", "value": f"{screening['match_score']}%"})
+    if screening.get("list_type"):
+        screen_facts.append({"field": "List Type", "value": screening["list_type"]})
+
+    return {
+        "transaction": txn_facts,
+        "customer": cust_facts,
+        "screening": screen_facts,
+    }

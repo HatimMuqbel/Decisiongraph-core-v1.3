@@ -54,7 +54,8 @@ export default function PrecedentIntelligence({ report }: Props) {
         </span>
       </div>
       <p className="text-[10px] text-white italic">
-        Precedent analysis is advisory only and does not influence statutory reporting determination.
+        {ep?.precedent_disclaimer
+          ?? 'Precedent analysis is non-authoritative; used only for consistency review and peer comparison; never overrides gates, rules, or statutory reporting determinations.'}
       </p>
 
       {/* Row 1: Governed Disposition Alignment */}

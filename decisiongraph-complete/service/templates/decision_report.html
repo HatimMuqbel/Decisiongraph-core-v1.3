@@ -187,6 +187,27 @@
       </ul>
     </div>
 
+    {# ── GAP-E: Senior Officer Summary ──────────────────────────── #}
+    {% if senior_summary %}
+    <div class="card break" style="border:2px solid #2563eb; border-radius:10px; background:#eff6ff; margin-bottom:16px;">
+      <h3 style="margin:0 0 10px 0; font-size:15px; color:#1e40af;">Senior Officer Summary</h3>
+      <div class="kv">
+        <div class="label">Alert Trigger</div>
+        <div class="value">{{ senior_summary.alert_trigger | default('N/A') }}</div>
+        <div class="label">Suspicious Elements</div>
+        <div class="value">{{ senior_summary.suspicious_elements | default('None') }}</div>
+        <div class="label">Not Yet Established</div>
+        <div class="value">{{ senior_summary.not_established | default('N/A') }}</div>
+        <div class="label">Current Decision</div>
+        <div class="value" style="font-weight:700;">{{ senior_summary.current_decision | default('N/A') }}</div>
+        <div class="label">STR Pending</div>
+        <div class="value">{{ senior_summary.str_pending | default('N/A') }}</div>
+        <div class="label">Next Deadline</div>
+        <div class="value">{{ senior_summary.next_evidence_deadline | default('N/A') }}</div>
+      </div>
+    </div>
+    {% endif %}
+
     {% if decision_integrity_alert %}
     <div class="integrity-alert {% if decision_integrity_alert.severity == 'WARNING' %}warning{% elif decision_integrity_alert.severity == 'INFO' %}info{% endif %} break">
       <div class="alert-header {% if decision_integrity_alert.severity == 'CRITICAL' %}critical{% elif decision_integrity_alert.severity == 'WARNING' %}warning{% else %}info{% endif %}">
@@ -383,6 +404,45 @@
     </div>
     {% endif %}
 
+    {# ── GAP-B: STR Decision Authority ──────────────────────────── #}
+    {% if str_decision_frame and str_decision_frame.decision_owner %}
+    <h3>STR Decision Authority</h3>
+    <div class="card break" style="border-left:4px solid #1e40af;">
+      <div class="kv">
+        <div class="label">Decision Owner</div>
+        <div class="value" style="font-weight:700;">{{ str_decision_frame.decision_owner.role }}</div>
+        <div class="label">Basis</div>
+        <div class="value small">{{ str_decision_frame.decision_owner.basis }}</div>
+        <div class="label">Decision Deadline</div>
+        <div class="value mono">{{ str_decision_frame.decision_deadline | default('N/A') }}</div>
+        <div class="label">Authority</div>
+        <div class="value small">{{ str_decision_frame.authority_basis | default('N/A') }}</div>
+      </div>
+      {% if str_decision_frame.decision_options %}
+      <h4 style="margin:14px 0 6px 0; font-size:13px;">Decision Options</h4>
+      <table style="font-size:12px;">
+        <thead><tr><th>Option</th><th>Conditions</th></tr></thead>
+        <tbody>
+          {% for opt in str_decision_frame.decision_options %}
+          <tr>
+            <td style="font-weight:600;">{{ opt.option }}</td>
+            <td>{{ opt.conditions }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if str_decision_frame.minimum_evidence %}
+      <h4 style="margin:14px 0 6px 0; font-size:13px;">Minimum Evidence Required</h4>
+      <ol style="margin:0; padding-left:20px; font-size:13px;">
+        {% for item in str_decision_frame.minimum_evidence %}
+        <li style="margin:3px 0;">{{ item }}</li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {# ── Decision Path (5-step narrative trace) ──────────────────── #}
     {% if decision_path_narrative and decision_path_narrative.steps %}
     <h2>Decision Path</h2>
@@ -404,6 +464,28 @@
     {% endif %}
 
     <h3>Case Facts</h3>
+    {# GAP-C: Structured 3-section case facts when available #}
+    {% if case_facts_sections and (case_facts_sections.transaction or case_facts_sections.customer or case_facts_sections.screening) %}
+      {% for section_key, section_title in [('transaction', 'Transaction Context'), ('customer', 'Customer Context'), ('screening', 'Screening Context')] %}
+        {% set items = case_facts_sections[section_key] %}
+        {% if items and items|length > 0 %}
+        <h4 style="margin:12px 0 6px 0; font-size:13px; color:var(--muted);">{{ section_title }}</h4>
+        <table class="break" style="margin-bottom:8px;">
+          <thead>
+            <tr><th>Field</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for fact in items %}
+            <tr>
+              <td>{{ fact.field }}</td>
+              <td class="mono">{{ fact.value }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      {% endfor %}
+    {% else %}
     <table class="break">
       <thead>
         <tr>
@@ -420,6 +502,7 @@
         {% endfor %}
       </tbody>
     </table>
+    {% endif %}
 
     <h2>Case Classification</h2>
     <div class="card break">
@@ -689,7 +772,8 @@
     {# ══════════════════════════════════════════════════════════════ #}
     {% if precedent_analysis and precedent_analysis.available %}
     <h2>Precedent Intelligence</h2>
-    <p class="small"><em>Precedent analysis is advisory only and does not influence statutory reporting determination. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
+    {# GAP-D: Backend-sourced precedent disclaimer #}
+    <p class="small"><em>{{ enhanced_precedent.precedent_disclaimer | default('Precedent analysis is non-authoritative; used only for consistency review and peer comparison; never overrides gates, rules, or statutory reporting determinations.') }} Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
 
     {% if precedent_pool_warning %}
     <div class="integrity-alert warning break">

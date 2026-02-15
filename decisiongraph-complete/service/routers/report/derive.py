@@ -699,6 +699,29 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # ── FIX-035: Related Activity ──────────────────────────────────────
     related_activity = _build_related_activity(evidence_used=evidence_used)
 
+    # ── GAP-E: Senior Summary Box ──────────────────────────────────────
+    senior_summary = _build_senior_summary(
+        governed_disposition=governed_disposition,
+        str_required=str_required,
+        classification=classification,
+        decision_drivers=decision_drivers,
+        risk_factors=risk_factors,
+        edd_recommendations=edd_recommendations,
+        sla_timeline=sla_timeline,
+        integrity_alert=integrity_alert,
+        defensibility_check=defensibility_check,
+    )
+
+    # ── GAP-B: STR Decision Authority Frame ────────────────────────────
+    str_decision_frame = _build_str_decision_frame(
+        governed_disposition=governed_disposition,
+        str_required=str_required,
+        classification=classification,
+        sla_timeline=sla_timeline,
+        edd_recommendations=edd_recommendations,
+        integrity_alert=integrity_alert,
+    )
+
     # ── Decision Conflict Alert ─────────────────────────────────────
     decision_conflict_alert = _build_decision_conflict_alert(
         classification_outcome=classification.outcome,
@@ -849,6 +872,186 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # Decision Path Narrative Trace
         "decision_path_narrative": decision_path_narrative,
+
+        # GAP-E: Senior Summary
+        "senior_summary": senior_summary,
+
+        # GAP-B: STR Decision Authority
+        "str_decision_frame": str_decision_frame,
+    }
+
+
+# ── GAP-E: Senior Summary ────────────────────────────────────────────────────
+
+def _build_senior_summary(
+    governed_disposition: str,
+    str_required: bool,
+    classification,
+    decision_drivers: list[str],
+    risk_factors: list[dict],
+    edd_recommendations: list[dict],
+    sla_timeline: dict,
+    integrity_alert: dict | None,
+    defensibility_check: dict,
+) -> dict:
+    """Build a 6-line officer summary for the top of every report."""
+    # Alert trigger — first decision driver
+    alert_trigger = decision_drivers[0] if decision_drivers else "No specific trigger identified"
+
+    # Suspicious elements — Tier 1 codes
+    tier1_codes = [
+        s.get("code", "") for s in (classification.tier1_signals or [])
+        if s.get("present", True)
+    ]
+    if classification.suspicion_count > 0 and tier1_codes:
+        suspicious_elements = (
+            f"{classification.suspicion_count} Tier 1 indicator(s): "
+            + ", ".join(tier1_codes[:3])
+        )
+    elif classification.investigative_count > 0:
+        suspicious_elements = (
+            f"{classification.investigative_count} Tier 2 investigative signal(s)"
+        )
+    else:
+        suspicious_elements = "No suspicion indicators detected"
+
+    # Not established — what's missing (from EDD recommendations)
+    if edd_recommendations:
+        not_established = "; ".join(
+            r.get("action", "") for r in edd_recommendations[:2]
+        )
+    else:
+        not_established = "No additional evidence gaps identified"
+
+    # Current decision — governed disposition label
+    current_decision = governed_disposition.replace("_", " ")
+
+    # STR pending
+    if str_required:
+        str_pending = "Yes — STR filing required"
+    elif governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
+        str_pending = "Pending EDD completion"
+    else:
+        str_pending = "No — threshold not met"
+
+    # Next evidence deadline
+    edd_deadline = sla_timeline.get("edd_deadline", "N/A")
+    str_window = sla_timeline.get("str_filing_window", "N/A")
+    if str_required and str_window != "N/A":
+        next_evidence_deadline = f"STR filing: {str_window}"
+    elif edd_deadline != "N/A":
+        next_evidence_deadline = f"EDD due: {edd_deadline}"
+    else:
+        next_evidence_deadline = "No pending deadline"
+
+    return {
+        "alert_trigger": alert_trigger,
+        "suspicious_elements": suspicious_elements,
+        "not_established": not_established,
+        "current_decision": current_decision,
+        "str_pending": str_pending,
+        "next_evidence_deadline": next_evidence_deadline,
+    }
+
+
+# ── GAP-B: STR Decision Authority Frame ─────────────────────────────────────
+
+def _build_str_decision_frame(
+    governed_disposition: str,
+    str_required: bool,
+    classification,
+    sla_timeline: dict,
+    edd_recommendations: list[dict],
+    integrity_alert: dict | None,
+) -> dict:
+    """Build decision authority model: who decides, what, by when, minimum evidence."""
+    has_tier1 = classification.suspicion_count > 0
+    is_critical = (
+        integrity_alert is not None
+        and integrity_alert.get("severity") == "CRITICAL"
+    )
+
+    # Decision owner
+    if is_critical:
+        decision_owner = {
+            "role": "Chief Compliance Officer (CCO)",
+            "basis": "Critical integrity alert requires CCO-level review",
+        }
+    elif str_required:
+        decision_owner = {
+            "role": "MLRO (Money Laundering Reporting Officer)",
+            "basis": "STR filing determination under PCMLTFA s. 7",
+        }
+    elif governed_disposition in ("EDD_REQUIRED", "ESCALATE") and has_tier1:
+        decision_owner = {
+            "role": "Senior Analyst",
+            "basis": "EDD case with Tier 1 suspicion indicators present",
+        }
+    else:
+        decision_owner = {
+            "role": "Tier 1 Analyst",
+            "basis": "Standard review — no elevated signals",
+        }
+
+    # Decision options
+    gd = governed_disposition.upper()
+    if gd == "STR_REQUIRED":
+        decision_options = [
+            {"option": "File STR", "conditions": "Reasonable grounds to suspect ML/TF established"},
+            {"option": "Request additional EDD", "conditions": "Evidence gaps identified before filing"},
+            {"option": "Escalate to CCO", "conditions": "Complex case or novel typology requiring senior review"},
+        ]
+    elif gd in ("EDD_REQUIRED", "ESCALATE") and has_tier1:
+        decision_options = [
+            {"option": "File STR after EDD completion", "conditions": "EDD confirms suspicion indicators"},
+            {"option": "Continue monitoring", "conditions": "Indicators inconclusive, additional observation needed"},
+            {"option": "Clear with documentation", "conditions": "EDD resolves all suspicion indicators"},
+        ]
+    elif gd in ("EDD_REQUIRED", "ESCALATE"):
+        decision_options = [
+            {"option": "Complete EDD review", "conditions": "Address all identified evidence gaps"},
+            {"option": "Escalate to senior analyst", "conditions": "Complexity exceeds Tier 1 authority"},
+        ]
+    else:
+        decision_options = [
+            {"option": "Confirm clearance", "conditions": "No suspicion indicators present"},
+            {"option": "Reopen for monitoring", "conditions": "New information warrants further review"},
+        ]
+
+    # Deadline
+    if str_required:
+        decision_deadline = sla_timeline.get("str_filing_window", "30 days from suspicion formation")
+    else:
+        decision_deadline = sla_timeline.get("edd_deadline", "N/A")
+
+    # Minimum evidence (first 3 EDD recommendations)
+    minimum_evidence = [
+        rec.get("action", "") for rec in (edd_recommendations or [])[:3]
+    ]
+    if not minimum_evidence:
+        if str_required:
+            minimum_evidence = [
+                "Documented basis for reasonable grounds to suspect",
+                "Transaction analysis and customer due diligence review",
+                "Screening results (sanctions, PEP, adverse media)",
+            ]
+        else:
+            minimum_evidence = ["Standard review documentation"]
+
+    # Authority basis
+    if str_required:
+        authority_basis = "PCMLTFA s. 7; FINTRAC Guidance — STR filing"
+    elif has_tier1:
+        authority_basis = "Institutional compliance policy — Tier 1 signal protocol"
+    else:
+        authority_basis = "Institutional compliance policy — standard review authority"
+
+    return {
+        "decision_owner": decision_owner,
+        "decision_options": decision_options,
+        "decision_deadline": decision_deadline,
+        "minimum_evidence": minimum_evidence,
+        "authority_basis": authority_basis,
     }
 
 
@@ -2799,6 +3002,13 @@ def _build_enhanced_precedent_analysis(
                     if sc.get("precedent_id") == pid_prefix and sc.get("regime_limited"):
                         thumb["regime_limited"] = True
                         break
+
+    # GAP-D: Precedent disclaimer (backend-sourced)
+    result["precedent_disclaimer"] = (
+        "Precedent analysis is non-authoritative; used only for consistency "
+        "review and peer comparison; never overrides gates, rules, or "
+        "statutory reporting determinations."
+    )
 
     return result
 

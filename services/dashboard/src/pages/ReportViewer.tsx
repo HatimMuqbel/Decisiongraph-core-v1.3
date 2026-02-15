@@ -129,6 +129,30 @@ export default function ReportViewer() {
 function Tier1Content({ report }: { report: ReportViewModel }) {
   return (
     <div className="space-y-5">
+      {/* GAP-E: Senior Officer Summary */}
+      {report.senior_summary && (
+        <div className="rounded-xl border-2 border-blue-600/50 bg-blue-950/30 p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-blue-400">
+            Senior Officer Summary
+          </h3>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {([
+              ['Alert Trigger', report.senior_summary.alert_trigger],
+              ['Suspicious Elements', report.senior_summary.suspicious_elements],
+              ['Not Yet Established', report.senior_summary.not_established],
+              ['Current Decision', report.senior_summary.current_decision],
+              ['STR Pending', report.senior_summary.str_pending],
+              ['Next Deadline', report.senior_summary.next_evidence_deadline],
+            ] as const).map(([label, value]) => (
+              <div key={label} className="flex gap-2 text-sm">
+                <span className="text-xs text-blue-300/70 min-w-[130px]">{label}</span>
+                <span className="text-slate-200 font-medium">{value || 'N/A'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 1. Linchpin Statement */}
       <LinchpinStatement report={report} />
 
@@ -322,6 +346,50 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         />
       </div>
 
+      {/* GAP-B: STR Decision Authority */}
+      {report.str_decision_frame?.decision_owner && (
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">
+            STR Decision Authority
+          </h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[10px] text-white">Decision Owner</p>
+              <p className="text-sm font-bold text-slate-100">{report.str_decision_frame.decision_owner.role}</p>
+              <p className="text-[10px] text-white mt-0.5">{report.str_decision_frame.decision_owner.basis}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white">Deadline</p>
+              <p className="text-sm font-mono text-slate-200">{report.str_decision_frame.decision_deadline ?? 'N/A'}</p>
+              <p className="text-[10px] text-white mt-0.5">{report.str_decision_frame.authority_basis}</p>
+            </div>
+          </div>
+          {report.str_decision_frame.decision_options && report.str_decision_frame.decision_options.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] text-white mb-1">Decision Options</p>
+              <div className="space-y-1">
+                {report.str_decision_frame.decision_options.map((opt, i) => (
+                  <div key={i} className="flex gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-xs">
+                    <span className="font-semibold text-slate-200 min-w-[150px]">{opt.option}</span>
+                    <span className="text-white">{opt.conditions}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {report.str_decision_frame.minimum_evidence && report.str_decision_frame.minimum_evidence.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] text-white mb-1">Minimum Evidence Required</p>
+              <ol className="list-decimal list-inside space-y-0.5 text-xs text-slate-300">
+                {report.str_decision_frame.minimum_evidence.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 6. Precedent Intelligence Panel */}
       {report.precedent_analysis?.available && (
         <PrecedentIntelligence report={report} />
@@ -490,7 +558,37 @@ function Tier3Content({ report }: { report: ReportViewModel }) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function SnapshotTable({ report }: { report: ReportViewModel }) {
-  // Show the most critical evidence items with proper registry labels
+  const sections = report.case_facts_sections;
+  // If structured sections available, show them categorized
+  if (sections && (sections.transaction?.length || sections.customer?.length || sections.screening?.length)) {
+    const categories = [
+      { label: 'Transaction', items: sections.transaction ?? [] },
+      { label: 'Customer', items: sections.customer ?? [] },
+      { label: 'Screening', items: sections.screening ?? [] },
+    ].filter(c => c.items.length > 0);
+
+    return (
+      <div className="space-y-3">
+        {categories.map((cat) => (
+          <div key={cat.label}>
+            <p className="text-[10px] font-semibold uppercase text-white mb-1">{cat.label}</p>
+            <table className="w-full text-sm">
+              <tbody>
+                {cat.items.slice(0, 4).map((item, i) => (
+                  <tr key={i} className="border-b border-slate-800/50">
+                    <td className="px-3 py-1 text-xs text-white">{item.field}</td>
+                    <td className="px-3 py-1 text-xs text-slate-200">{String(item.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback: flat list from risk_factors + transaction_facts
   const critical = [
     ...(report.risk_factors ?? []).map((rf) => ({ field: rf.field, value: rf.value })),
     ...(report.transaction_facts ?? []).slice(0, 5),

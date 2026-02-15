@@ -174,7 +174,14 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
     scored_count = supporting + contrary + neutral
     threshold_pct_global = int(round((precedent_analysis.get("threshold_used") or 0.5) * 100))
 
-    return f"""*Precedent analysis is advisory only and does not influence statutory reporting determination.*
+    # GAP-D: Use backend-sourced disclaimer with sensible fallback
+    _disclaimer = (
+        precedent_analysis.get("_precedent_disclaimer")
+        or "Precedent analysis is non-authoritative; used only for consistency "
+           "review and peer comparison; never overrides gates, rules, or "
+           "statutory reporting determinations."
+    )
+    return f"""*{_disclaimer}*
 *Absence of precedent matches does not imply the recommendation is incorrect.*
 
 ### Tier 1 — Scored Matches (≥{threshold_pct_global}% Similarity)
@@ -231,9 +238,39 @@ def render_markdown(ctx: dict) -> str:
     """Render the complete Markdown report from a ReportViewModel."""
 
     # ── Build table rows ─────────────────────────────────────────────────
+    # ── GAP-E: Senior Summary Box ─────────────────────────────────
+    senior = ctx.get("senior_summary", {})
+    senior_summary_md = ""
+    if senior:
+        senior_summary_md = (
+            "## Senior Officer Summary\n\n"
+            "| | |\n|---|---|\n"
+            f"| **Alert Trigger** | {_md_escape(senior.get('alert_trigger', 'N/A'))} |\n"
+            f"| **Suspicious Elements** | {_md_escape(senior.get('suspicious_elements', 'None'))} |\n"
+            f"| **Not Yet Established** | {_md_escape(senior.get('not_established', 'N/A'))} |\n"
+            f"| **Current Decision** | {_md_escape(senior.get('current_decision', 'N/A'))} |\n"
+            f"| **STR Pending** | {_md_escape(senior.get('str_pending', 'N/A'))} |\n"
+            f"| **Next Deadline** | {_md_escape(senior.get('next_evidence_deadline', 'N/A'))} |\n\n"
+            "---\n\n"
+        )
+
+    # ── GAP-C: Case Facts (structured sections if available) ─────
+    case_sections = ctx.get("case_facts_sections", {})
+
     facts_rows = ""
     for fact in ctx.get("transaction_facts", []):
         facts_rows += f"| {_md_escape(fact['field'])} | `{_md_escape(fact['value'])}` |\n"
+
+    case_facts_structured_md = ""
+    if case_sections and any(case_sections.get(k) for k in ("transaction", "customer", "screening")):
+        case_facts_structured_md = "### Case Facts\n\n"
+        for section_key, section_title in [("transaction", "Transaction Context"), ("customer", "Customer Context"), ("screening", "Screening Context")]:
+            items = case_sections.get(section_key, [])
+            if items:
+                case_facts_structured_md += f"**{section_title}**\n\n| Field | Value |\n|-------|-------|\n"
+                for item in items:
+                    case_facts_structured_md += f"| {_md_escape(item.get('field', ''))} | `{_md_escape(item.get('value', ''))}` |\n"
+                case_facts_structured_md += "\n"
 
     gate1_rows = ""
     for section in ctx.get("gate1_sections", []):
@@ -629,6 +666,32 @@ def render_markdown(ctx: dict) -> str:
             related_activity_md += f"> {_md_escape(flag)}\n\n"
         related_activity_md += f"Connected accounts: {_md_escape(related.get('connected_accounts', 'N/A'))}\n\n"
 
+    # ── GAP-B: STR Decision Authority ────────────────────────────────────
+    str_frame = ctx.get("str_decision_frame", {})
+    str_authority_md = ""
+    if str_frame and str_frame.get("decision_owner"):
+        owner = str_frame["decision_owner"]
+        str_authority_md = (
+            "## STR Decision Authority\n\n"
+            "| | |\n|---|---|\n"
+            f"| **Decision Owner** | {_md_escape(owner.get('role', 'N/A'))} |\n"
+            f"| **Basis** | {_md_escape(owner.get('basis', ''))} |\n"
+            f"| **Decision Deadline** | {_md_escape(str_frame.get('decision_deadline', 'N/A'))} |\n"
+            f"| **Authority** | {_md_escape(str_frame.get('authority_basis', ''))} |\n\n"
+        )
+        options = str_frame.get("decision_options", [])
+        if options:
+            str_authority_md += "### Decision Options\n\n| Option | Conditions |\n|--------|------------|\n"
+            for opt in options:
+                str_authority_md += f"| {_md_escape(opt.get('option', ''))} | {_md_escape(opt.get('conditions', ''))} |\n"
+            str_authority_md += "\n"
+        evidence = str_frame.get("minimum_evidence", [])
+        if evidence:
+            str_authority_md += "### Minimum Evidence Required\n\n"
+            for i, item in enumerate(evidence, 1):
+                str_authority_md += f"{i}. {_md_escape(item)}\n"
+            str_authority_md += "\n"
+
     # ── FIX-009: SLA timeline ─────────────────────────────────────────────
     sla = ctx.get("sla_timeline", {})
     timeline_md = ""
@@ -671,7 +734,13 @@ def render_markdown(ctx: dict) -> str:
     rules_rows_output = rules_rows or "| No rules evaluated | - | - |"
     evidence_rows_output = evidence_rows or "| No evidence recorded | - | - |"
 
-    precedent_markdown = _build_precedent_markdown(ctx.get("precedent_analysis", {}))
+    # GAP-D: Pass backend-sourced disclaimer through to precedent builder
+    _prec_analysis = ctx.get("precedent_analysis", {})
+    _ep_disclaimer = ctx.get("enhanced_precedent", {}).get("precedent_disclaimer", "")
+    if _ep_disclaimer:
+        _prec_analysis = dict(_prec_analysis)
+        _prec_analysis["_precedent_disclaimer"] = _ep_disclaimer
+    precedent_markdown = _build_precedent_markdown(_prec_analysis)
 
     # FIX-018 + FIX-027: Enhanced precedent analysis sections
     enhanced_prec = ctx.get("enhanced_precedent", {})
@@ -1055,7 +1124,7 @@ def render_markdown(ctx: dict) -> str:
 
 **Deterministic Regulatory Decision Engine (Zero LLM)**
 
----
+{senior_summary_md}---
 
 ## Administrative Details
 
@@ -1090,11 +1159,7 @@ def render_markdown(ctx: dict) -> str:
 
 {decision_explainer}
 
-### Case Facts
-
-| Field | Value |
-|-------|-------|
-{facts_rows}
+{case_facts_md}
 
 ---
 
@@ -1114,6 +1179,8 @@ def render_markdown(ctx: dict) -> str:
 {override_justification_md}
 
 {required_actions_md}
+
+{str_authority_md}
 
 ---
 
@@ -1283,7 +1350,21 @@ The decision may be independently verified using the `/verify` endpoint. Complet
 *Generated {timestamp}*
 """
 
+    # Build case facts display: use structured sections if available, else flat table
+    if case_facts_structured_md:
+        case_facts_md = case_facts_structured_md
+    else:
+        case_facts_md = (
+            "### Case Facts\n\n"
+            "| Field | Value |\n"
+            "|-------|-------|\n"
+            + (facts_rows or "| No data available | - |\n")
+        )
+
     return md_template.format(
+        senior_summary_md=senior_summary_md,
+        case_facts_md=case_facts_md,
+        str_authority_md=str_authority_md,
         action=ctx.get("action"),
         engine_verdict=ctx.get("engine_verdict", ctx.get("action", "N/A")),
         canonical_outcome_md=canonical_outcome_md,
