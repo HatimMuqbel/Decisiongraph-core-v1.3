@@ -272,10 +272,14 @@ def render_markdown(ctx: dict) -> str:
                     case_facts_structured_md += f"| {_md_escape(item.get('field', ''))} | `{_md_escape(item.get('value', ''))}` |\n"
                 case_facts_structured_md += "\n"
 
+    gate1_passed = ctx.get("gate1_passed", False)
     gate1_rows = ""
     for section in ctx.get("gate1_sections", []):
         status = "PASS" if section.get("passed") else "FAIL"
-        gate1_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {_md_escape(section.get('reason', ''))} |\n"
+        reason = _md_escape(section.get("reason", ""))
+        if not section.get("passed") and gate1_passed:
+            reason += " *(Sub-check failed but overall gate PERMITTED — hard stop or classifier sovereignty overrides this check.)*"
+        gate1_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {reason} |\n"
 
     gate2_rows = ""
     for section in ctx.get("gate2_sections", []):

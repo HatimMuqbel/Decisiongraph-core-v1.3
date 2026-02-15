@@ -216,6 +216,10 @@ def derive_regulatory_model(normalized: dict) -> dict:
         )
         conf_score = 0
         # Intentionally skip _compute_confidence_score — not even for debug.
+    elif is_mandatory_hard_stop:
+        conf_label = "Certain"
+        conf_reason = "Mandatory determination — no discretion applicable."
+        conf_score = 100
     else:
         conf_label, conf_reason, conf_score = _compute_confidence_score(
             rules_fired=rules_fired,
@@ -3839,12 +3843,17 @@ def _build_decision_path_narrative(
     detail_4: list[str] = []
     clf_label = classification_outcome.replace("_", " ")
     g1_label = "PERMITTED" if gate1_passed else "BLOCKED"
-    g2_label = gate2_decision or ("NOT EVALUATED" if not gate1_passed else "N/A")
+    if is_mandatory_hard_stop:
+        g2_label = "NOT APPLICABLE"
+    elif not gate1_passed:
+        g2_label = "NOT EVALUATED"
+    else:
+        g2_label = gate2_decision or "N/A"
     detail_4.append(
         f"Classifier recommended {clf_label} \u2192 "
         f"Gate 1 {g1_label} \u2192 "
         f"Gate 2 {g2_label} \u2192 "
-        f"Fallback: {governed_disposition.replace('_', ' ')}."
+        f"Governed: {governed_disposition.replace('_', ' ')}."
     )
     if decision_conflict_alert:
         detail_4.append(
@@ -4171,11 +4180,12 @@ def _build_disposition_reconciliation(
                 "authority": f"Final disposition follows governed authority per policy framework",
             })
 
-    # Engine vs Classification
+    # Engine vs Classification — skip when Classification == Governed (already covered above)
     if engine_disposition != classification_outcome:
         _eng_norm = engine_disposition.upper().replace(" ", "_")
         _clf_norm = classification_outcome.upper().replace(" ", "_")
-        if _eng_norm != _clf_norm:
+        _gov_norm2 = governed_disposition.upper().replace(" ", "_")
+        if _eng_norm != _clf_norm and _clf_norm != _gov_norm2:
             differences.append({
                 "component_a": "Engine",
                 "value_a": engine_disposition,
