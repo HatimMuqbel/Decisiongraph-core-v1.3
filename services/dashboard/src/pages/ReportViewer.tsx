@@ -240,10 +240,19 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
             Key Signals
           </h3>
           <ul className="space-y-2">
-            <li className="flex items-start gap-2">
-              <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-900 text-[10px] font-bold text-red-300">!</span>
-              <span className="text-sm text-white">Sanctions screening match — immediate block</span>
-            </li>
+            {report.decision_drivers && report.decision_drivers.length > 0 ? (
+              report.decision_drivers.slice(0, 5).map((d, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-900 text-[10px] font-bold text-red-300">!</span>
+                  <span className="text-sm text-white">{d}</span>
+                </li>
+              ))
+            ) : (
+              <li className="flex items-start gap-2">
+                <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-900 text-[10px] font-bold text-red-300">!</span>
+                <span className="text-sm text-white">Hard stop — mandatory regulatory action required</span>
+              </li>
+            )}
           </ul>
         </div>
       ) : (
