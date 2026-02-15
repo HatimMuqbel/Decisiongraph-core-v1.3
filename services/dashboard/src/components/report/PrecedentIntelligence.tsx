@@ -53,6 +53,9 @@ export default function PrecedentIntelligence({ report }: Props) {
           {pa.scoring_version === 'v3' ? 'v3 Governed Model' : 'v2 Legacy'}
         </span>
       </div>
+      <p className="text-[10px] text-white italic">
+        Precedent analysis is advisory only and does not influence statutory reporting determination.
+      </p>
 
       {/* Row 1: Governed Disposition Alignment */}
       <GovernedAlignmentCard

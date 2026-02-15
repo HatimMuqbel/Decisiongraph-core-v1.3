@@ -956,8 +956,8 @@ def build_report_context(decision: dict) -> dict:
             "message": (
                 "Decision Integrity Alert: Regulatory status is STR REQUIRED "
                 "but Suspicion Classifier found 0 Tier 1 indicators. "
-                "These statements cannot legally coexist. "
-                "Suspicion threshold not met — STR filing would be unjustified."
+                "These outcomes are inconsistent under institutional policy. "
+                "Suspicion threshold not met — STR filing not supported."
             ),
             "original_verdict": verdict,
             "classifier_outcome": classification.outcome,

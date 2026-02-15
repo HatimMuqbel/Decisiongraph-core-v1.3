@@ -1242,8 +1242,8 @@ def _detect_integrity_issues(
             "message": (
                 "Decision Integrity Alert: Regulatory status is STR REQUIRED "
                 "but Suspicion Classifier found 0 Tier 1 indicators. "
-                "These statements cannot legally coexist. "
-                "Suspicion threshold not met — STR filing would be unjustified."
+                "These outcomes are inconsistent under institutional policy. "
+                "Suspicion threshold not met — STR filing not supported."
             ),
             "original_verdict": verdict,
             "classifier_outcome": classification.outcome,
@@ -1444,14 +1444,14 @@ def _build_override_justification(
             "override_type": "CONTROL_CONTRADICTION",
             "overridden_gate": "Rules Engine / STR Determination",
             "gate_decision": "STR REQUIRED (engine)",
-            "gate_deficiencies": [{"section": "STR Determination", "reason": "0 Tier 1 indicators — STR filing would be unjustified"}],
+            "gate_deficiencies": [{"section": "STR Determination", "reason": "0 Tier 1 indicators — STR filing not supported under institutional policy"}],
             "classifier_decision": classification.outcome if hasattr(classification, "outcome") else "EDD_REQUIRED",
             "justifying_signals": [],
             "justification": (
                 "Regulatory status was STR REQUIRED but Suspicion Classifier "
-                "found 0 Tier 1 indicators. These statements cannot legally coexist "
-                "under PCMLTFA/FINTRAC. Suspicion threshold not met — corrected to "
-                "prevent unjustified STR filing."
+                "found 0 Tier 1 indicators. These outcomes are inconsistent "
+                "under PCMLTFA/FINTRAC guidance. Suspicion threshold not met — corrected to "
+                "prevent unsupported STR filing."
             ),
             "regulatory_basis": "PCMLTFA s. 7 — STR requires RGS threshold (Tier 1 ≥ 1)",
             "severity": "CRITICAL",
@@ -3560,8 +3560,8 @@ def _build_decision_path_narrative(
                 f"Primary typology: {primary_typology} (stage: FORMING)."
             )
             detail_2.append(
-                "Rule: Direct escalation requires ESTABLISHED or CONFIRMED typology. "
-                "FORMING typologies must complete EDD."
+                "Institutional policy: Escalation not permitted absent ESTABLISHED typology. "
+                "FORMING typologies require EDD before escalation determination."
             )
         elif stage_upper == "ESTABLISHED":
             detail_2.append(
@@ -3735,7 +3735,7 @@ def _build_gate_override_explanations(
             override_basis.append("Hard stop rule triggered — mandatory escalation")
         explanations.append({
             "gate": "Gate 1: Zero-False-Escalation Check",
-            "gate_result": gate1_decision or "PROHIBITED",
+            "gate_result": gate1_decision or "BLOCKED",
             "final_disposition": governed_disposition,
             "conflict": True,
             "override_mechanism": override_mechanism,
@@ -3748,13 +3748,13 @@ def _build_gate_override_explanations(
         if integrity_alert and integrity_alert.get("type") in (
             "CONTROL_CONTRADICTION", "ESCALATION_WITHOUT_SUSPICION",
         ):
-            override_basis = ["0 Tier 1 suspicion indicators — escalation not justified"]
+            override_basis = ["0 Tier 1 suspicion indicators — escalation not permitted under institutional policy"]
             explanations.append({
                 "gate": "Gate 1: Zero-False-Escalation Check",
                 "gate_result": gate1_decision or "ALLOWED",
                 "final_disposition": governed_disposition,
                 "conflict": True,
-                "override_mechanism": "Governance correction — false escalation prevention",
+                "override_mechanism": "Governance correction — escalation prohibited pending corroboration",
                 "override_basis": override_basis,
                 "authority": "PCMLTFA s. 7 — STR requires Tier 1 suspicion, not risk alone",
             })
@@ -3774,7 +3774,7 @@ def _build_gate_override_explanations(
                         )
                 explanations.append({
                     "gate": "Gate 1: Zero-False-Escalation Check",
-                    "gate_result": gate1_decision or "PROHIBITED",
+                    "gate_result": gate1_decision or "BLOCKED",
                     "final_disposition": governed_disposition,
                     "conflict": False,
                     "upheld": True,
@@ -3831,7 +3831,7 @@ def _build_gate_override_explanations(
             "gate_result": gate2_decision or "STR_REQUIRED",
             "final_disposition": governed_disposition,
             "conflict": True,
-            "override_mechanism": "Governance correction — false STR prevention",
+            "override_mechanism": "Governance correction — STR threshold not satisfied",
             "override_basis": override_basis,
             "authority": "PCMLTFA s. 7 — STR requires Tier 1 suspicion indicators",
         })
@@ -3849,7 +3849,7 @@ def _build_gate_override_explanations(
                     )
             explanations.append({
                 "gate": "Gate 1: Zero-False-Escalation Check",
-                "gate_result": gate1_decision or "PROHIBITED",
+                "gate_result": gate1_decision or "BLOCKED",
                 "final_disposition": governed_disposition,
                 "conflict": False,
                 "upheld": True,
@@ -3906,7 +3906,7 @@ def _build_disposition_reconciliation(
             mechanism = "Governance correction"
             alert_type = integrity_alert.get("type", "") if integrity_alert else ""
             if alert_type == "CONTROL_CONTRADICTION":
-                reason = "STR REQUIRED removed — 0 Tier 1 indicators; STR filing would be unjustified (PCMLTFA s. 7)"
+                reason = "STR REQUIRED removed — 0 Tier 1 indicators; suspicion threshold not met (PCMLTFA s. 7)"
             elif alert_type == "ESCALATION_WITHOUT_SUSPICION":
                 reason = "Escalation downgraded — 0 Tier 1 indicators; risk indicators alone insufficient"
             elif alert_type == "CLASSIFIER_UPGRADE":
