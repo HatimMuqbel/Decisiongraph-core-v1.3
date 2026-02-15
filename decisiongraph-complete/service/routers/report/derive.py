@@ -284,8 +284,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # ── 9a2. Append LOW confidence warning to decision_explainer ────────
     # The decision summary (Investigation Outcome Summary) must surface
     # the confidence bottleneck so a compliance officer doesn't miss it.
+    # Skip for hard stops — mandatory determinations are not discretionary.
     _expl_conf_level = (precedent_analysis.get("confidence_level") or "").upper()
-    if _expl_conf_level == "LOW" and "Terminal confidence" not in decision_explainer:
+    if _expl_conf_level == "LOW" and "Terminal confidence" not in decision_explainer and not is_mandatory_hard_stop:
         _expl_bottleneck = (
             precedent_analysis.get("confidence_bottleneck", "")
             .replace("_", " ")
@@ -334,8 +335,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
     escalation_summary = _build_escalation_summary(decision_status, str_required)
 
     # ── 11b. Append LOW confidence warning to summary ─────────────────────
+    # Skip for hard stops — mandatory determinations are not discretionary.
     _v3_conf_level = (precedent_analysis.get("confidence_level") or "").upper()
-    if _v3_conf_level == "LOW":
+    if _v3_conf_level == "LOW" and not is_mandatory_hard_stop:
         _v3_bottleneck = (
             precedent_analysis.get("confidence_bottleneck", "")
             .replace("_", " ")
