@@ -912,7 +912,7 @@ def _build_senior_summary(
     if classification.suspicion_count > 0 and tier1_codes:
         suspicious_elements = (
             f"{classification.suspicion_count} Tier 1 indicator(s): "
-            + ", ".join(tier1_codes[:3])
+            + ", ".join(tier1_codes)
         )
     elif classification.investigative_count > 0:
         suspicious_elements = (
