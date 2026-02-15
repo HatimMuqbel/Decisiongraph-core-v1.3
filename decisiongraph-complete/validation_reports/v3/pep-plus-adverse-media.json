@@ -108,7 +108,7 @@
         "id": "E_typology_maturity",
         "name": "Typology Maturity Assessment",
         "passed": true,
-        "reason": "Escalation from FORMING typology is illegal."
+        "reason": "Escalation prohibited by policy (Typology Maturity not met)."
       },
       {
         "id": "F_mitigation_override",
