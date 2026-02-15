@@ -289,7 +289,7 @@
       {% if engine_disposition != governed_disposition %}
       <p class="small" style="margin-top:10px; font-style:italic; color:var(--muted);">
         Engine output differs from governed disposition. Governance correction applied — governed outcome is authoritative.
-        This correction prevents false escalation and preserves STR threshold integrity.
+        This correction ensures escalation is consistent with suspicion threshold requirements.
       </p>
       {% endif %}
     </div>
@@ -689,7 +689,7 @@
     {# ══════════════════════════════════════════════════════════════ #}
     {% if precedent_analysis and precedent_analysis.available %}
     <h2>Precedent Intelligence</h2>
-    <p class="small"><em>Precedent analysis is advisory and does not override the deterministic engine verdict. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
+    <p class="small"><em>Precedent analysis is advisory only and does not influence statutory reporting determination. Absence of precedent matches does not imply the recommendation is incorrect.</em></p>
 
     {% if precedent_pool_warning %}
     <div class="integrity-alert warning break">

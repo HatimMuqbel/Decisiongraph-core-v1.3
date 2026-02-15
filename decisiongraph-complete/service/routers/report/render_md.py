@@ -174,7 +174,7 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
     scored_count = supporting + contrary + neutral
     threshold_pct_global = int(round((precedent_analysis.get("threshold_used") or 0.5) * 100))
 
-    return f"""*Precedent analysis is advisory and does not override the deterministic engine verdict.*
+    return f"""*Precedent analysis is advisory only and does not influence statutory reporting determination.*
 *Absence of precedent matches does not imply the recommendation is incorrect.*
 
 ### Tier 1 — Scored Matches (≥{threshold_pct_global}% Similarity)
@@ -270,7 +270,7 @@ def render_markdown(ctx: dict) -> str:
         disposition_note = (
             "\n> Engine output differs from governed disposition. "
             "Governance correction applied \u2014 governed outcome is authoritative. "
-            "This correction prevents false escalation and preserves STR threshold integrity.\n"
+            "This correction ensures escalation is consistent with suspicion threshold requirements.\n"
         )
     safe_path = _md_escape(ctx["decision_path_trace"] or "N/A")
 
@@ -930,8 +930,8 @@ def render_markdown(ctx: dict) -> str:
                 f"Suspicion Classifier determined that Tier 1 suspicion indicators are below "
                 f"the threshold required for escalation under the governance framework. "
                 f"Disposition corrected to {classifier_outcome} — enhanced review is warranted "
-                f"but escalation is not justified without suspicion indicators. "
-                f"This correction prevents false escalation and preserves STR threshold integrity "
+                f"but escalation is not permitted under institutional policy without suspicion indicators. "
+                f"This correction ensures escalation is consistent with suspicion threshold requirements "
                 f"(PCMLTFA s. 7).\n"
             )
             if dia.get("original_verdict"):

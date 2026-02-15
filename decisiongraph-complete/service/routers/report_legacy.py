@@ -1351,7 +1351,7 @@ def _build_precedent_markdown(precedent_analysis: dict) -> str:
 {overlap_rows or "| No data | - |"}
 """
 
-    return f"""*Precedent analysis is advisory and does not override the deterministic engine verdict.*
+    return f"""*Precedent analysis is advisory only and does not influence statutory reporting determination.*
 *Absence of precedent matches does not imply the recommendation is incorrect.*
 
 | Metric | Value |
