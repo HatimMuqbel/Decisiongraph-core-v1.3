@@ -646,7 +646,7 @@ def build_report(case: dict, seeds: list, registry: DomainRegistry | None = None
     # 12. Build risk factors and decision drivers
     # ------------------------------------------------------------------
     risk_factors: list[dict[str, str]] = []
-    decision_drivers_list: list[dict[str, str]] = []
+    decision_drivers_list: list[str] = []
 
     # Derive risk factors from case facts (flag fields that are True)
     _flag_labels = {
@@ -660,7 +660,7 @@ def build_report(case: dict, seeds: list, registry: DomainRegistry | None = None
     }
     for field_id, label in _flag_labels.items():
         if case_facts.get(field_id) is True:
-            risk_factors.append({"field_id": field_id, "label": label, "severity": "high"})
+            risk_factors.append({"field": field_id, "value": label})
 
     # Decision drivers from the highest-similarity comparable case
     if scored_pool:
@@ -668,19 +668,11 @@ def build_report(case: dict, seeds: list, registry: DomainRegistry | None = None
         for driver_field in top_sim.matched_drivers:
             fd = registry.fields.get(driver_field)
             driver_label = fd.label if fd else driver_field.replace(".", " ").replace("_", " ").title()
-            decision_drivers_list.append({
-                "field_id": driver_field,
-                "label": driver_label,
-                "impact": "aligned",
-            })
+            decision_drivers_list.append(f"{driver_label} (aligned)")
         for driver_field in top_sim.mismatched_drivers:
             fd = registry.fields.get(driver_field)
             driver_label = fd.label if fd else driver_field.replace(".", " ").replace("_", " ").title()
-            decision_drivers_list.append({
-                "field_id": driver_field,
-                "label": driver_label,
-                "impact": "divergent",
-            })
+            decision_drivers_list.append(f"{driver_label} (divergent)")
 
     # ------------------------------------------------------------------
     # 13. Build regime analysis from applicable shifts
@@ -699,9 +691,8 @@ def build_report(case: dict, seeds: list, registry: DomainRegistry | None = None
     transaction_facts: list[dict[str, str]] = []
     for f in case.get("facts", []):
         transaction_facts.append({
-            "label": f.get("label", f.get("field_id", "")),
-            "value": str(f.get("value", "")),
-            "field_id": f.get("field_id", ""),
+            "field": f.get("field_id", ""),
+            "value": f.get("value", ""),
         })
 
     # ------------------------------------------------------------------
