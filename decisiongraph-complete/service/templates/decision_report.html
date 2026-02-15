@@ -1610,7 +1610,7 @@
 
     {# ── FIX-031: Unmapped Indicator Independence Check ────────── #}
     {% if unmapped_indicator_checks %}
-    <div class="status {% if unmapped_indicator_checks | selectattr('independent_support') | list | length == unmapped_indicator_checks | length %}ok{% else %}warn{% endif %}" style="margin-top:12px; padding:12px;">
+    <div class="status {% if unmapped_indicator_checks | selectattr('independent') | list | length == unmapped_indicator_checks | length %}ok{% else %}warn{% endif %}" style="margin-top:12px; padding:12px;">
       <strong>Unmapped Indicator Independence Check</strong>
       <p class="small" style="margin:8px 0 6px;">Verifies that mapped Tier 1 indicators independently support the outcome without relying on unmapped signals.</p>
       <table style="width:100%; font-size:13px; border-collapse:collapse;">
@@ -1624,13 +1624,13 @@
         <tbody>
           {% for check in unmapped_indicator_checks %}
           <tr>
-            <td class="mono" style="padding:4px 8px;">{{ check.indicator }}</td>
-            <td class="small" style="padding:4px 8px;">{{ check.source | default('unmapped') }}</td>
+            <td class="mono" style="padding:4px 8px;">{{ check.indicator_code }}</td>
+            <td class="small" style="padding:4px 8px;">{{ check.indicator_source | default('—') }}</td>
             <td style="text-align:center; padding:4px 8px;">
-              {% if check.independent_support %}
-                <span style="color:#059669; font-weight:700;">Yes</span>
+              {% if check.independent %}
+                <span style="color:#059669; font-weight:700;">Yes</span> — {{ check.basis | default('') }}
               {% else %}
-                <span style="color:#dc2626; font-weight:700;">No</span> — {{ check.gap_note | default('') }}
+                <span style="color:#dc2626; font-weight:700;">No</span> — {{ check.basis | default('') }}
               {% endif %}
             </td>
           </tr>
