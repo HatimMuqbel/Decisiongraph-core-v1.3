@@ -16,11 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY decisiongraph-complete/src/kernel/ /app/kernel/
 COPY decisiongraph-complete/src/domains/ /app/domains/
 
-# Copy ClaimPilot application
+# Copy ClaimPilot application (includes dashboard SPA at api/static/dashboard/)
 COPY claimpilot/ /app/claimpilot/
-
-# Copy React dashboard build (shared with banking)
-COPY services/dashboard/dist/ /app/claimpilot/api/static/dashboard/
 
 # Purge stale bytecode
 RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
