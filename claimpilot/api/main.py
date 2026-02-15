@@ -198,6 +198,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:5173",
+        "https://claimpilot.pro",
         "https://claimpilot.io",
         "https://claimpilot.ca",
         "https://*.vercel.app",

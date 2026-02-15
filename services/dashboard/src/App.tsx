@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components';
@@ -34,6 +35,12 @@ function AppWithDomain() {
   const info = domainInfo ?? BANKING_DEFAULT;
   const branding = deriveBranding(info);
   const isInsurance = info.domain === 'insurance_claims';
+
+  useEffect(() => {
+    document.title = isInsurance
+      ? 'ClaimPilot — Insurance Claims Engine'
+      : 'DecisionGraph — AML Decision Engine';
+  }, [isInsurance]);
 
   return (
     <DomainContext.Provider value={{ info, branding, isInsurance }}>
