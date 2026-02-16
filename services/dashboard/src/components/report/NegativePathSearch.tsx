@@ -10,10 +10,13 @@ interface NegativePathSearchProps {
  * Critical for compliance — proves the system verified what doesn't apply.
  */
 export default function NegativePathSearch({ report }: NegativePathSearchProps) {
-  const allSections = [
-    ...(report.gate1_sections ?? []).map((s) => ({ ...s, gate: 'Gate 1' })),
-    ...(report.gate2_sections ?? []).map((s) => ({ ...s, gate: 'Gate 2' })),
-  ];
+  // PEP cases: gates not triggered — skip gate sub-check display
+  const allSections = report.is_pep_edd_no_suspicion
+    ? []
+    : [
+        ...(report.gate1_sections ?? []).map((s) => ({ ...s, gate: 'Gate 1' })),
+        ...(report.gate2_sections ?? []).map((s) => ({ ...s, gate: 'Gate 2' })),
+      ];
 
   const cleared = allSections.filter((s) => s.passed);
   const triggered = allSections.filter((s) => !s.passed);

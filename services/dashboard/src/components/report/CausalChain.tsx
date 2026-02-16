@@ -71,21 +71,29 @@ export default function CausalChain({ report }: CausalChainProps) {
           <div className="space-y-2">
             <div className="rounded-lg bg-slate-900 px-2 py-2 text-[11px]">
               <p className="text-white">Gate 1 (Escalation)</p>
-              <p className={clsx(
-                'mt-0.5 font-semibold',
-                report.gate1_passed ? 'text-emerald-400' : 'text-red-400',
-              )}>
-                {report.gate1_decision || 'N/A'}
-              </p>
+              {report.is_pep_edd_no_suspicion ? (
+                <p className="mt-0.5 font-semibold text-slate-400">NOT TRIGGERED</p>
+              ) : (
+                <p className={clsx(
+                  'mt-0.5 font-semibold',
+                  report.gate1_passed ? 'text-emerald-400' : 'text-red-400',
+                )}>
+                  {report.gate1_decision || 'N/A'}
+                </p>
+              )}
             </div>
             <div className="rounded-lg bg-slate-900 px-2 py-2 text-[11px]">
               <p className="text-white">Gate 2 (STR)</p>
-              <p className={clsx(
-                'mt-0.5 font-semibold',
-                report.gate2_status === 'CLEAR' ? 'text-emerald-400' : 'text-amber-400',
-              )}>
-                {report.gate2_decision || 'N/A'}
-              </p>
+              {report.is_pep_edd_no_suspicion ? (
+                <p className="mt-0.5 font-semibold text-slate-400">NOT TRIGGERED</p>
+              ) : (
+                <p className={clsx(
+                  'mt-0.5 font-semibold',
+                  report.gate2_status === 'CLEAR' ? 'text-emerald-400' : 'text-amber-400',
+                )}>
+                  {report.gate2_decision || 'N/A'}
+                </p>
+              )}
             </div>
             {report.classifier_is_sovereign && !report.is_pep_edd_no_suspicion && (
               <div className={clsx(

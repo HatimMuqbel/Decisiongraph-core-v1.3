@@ -80,21 +80,29 @@ export default function BranchPathViz({ report }: BranchPathVizProps) {
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
         <div className="rounded-lg bg-slate-900 p-3">
           <p className="text-white">Gate 1 (Escalation)</p>
-          <p className={clsx(
-            'mt-1 font-semibold',
-            report.gate1_passed ? 'text-emerald-400' : 'text-red-400',
-          )}>
-            {report.gate1_decision || 'N/A'}
-          </p>
+          {report.is_pep_edd_no_suspicion ? (
+            <p className="mt-1 font-semibold text-slate-400">NOT TRIGGERED</p>
+          ) : (
+            <p className={clsx(
+              'mt-1 font-semibold',
+              report.gate1_passed ? 'text-emerald-400' : 'text-red-400',
+            )}>
+              {report.gate1_decision || 'N/A'}
+            </p>
+          )}
         </div>
         <div className="rounded-lg bg-slate-900 p-3">
           <p className="text-white">Gate 2 (STR)</p>
-          <p className={clsx(
-            'mt-1 font-semibold',
-            report.gate2_status === 'CLEAR' ? 'text-emerald-400' : 'text-amber-400',
-          )}>
-            {report.gate2_decision || 'N/A'}
-          </p>
+          {report.is_pep_edd_no_suspicion ? (
+            <p className="mt-1 font-semibold text-slate-400">NOT TRIGGERED</p>
+          ) : (
+            <p className={clsx(
+              'mt-1 font-semibold',
+              report.gate2_status === 'CLEAR' ? 'text-emerald-400' : 'text-amber-400',
+            )}>
+              {report.gate2_decision || 'N/A'}
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -273,18 +273,21 @@ def render_markdown(ctx: dict) -> str:
                 case_facts_structured_md += "\n"
 
     gate1_passed = ctx.get("gate1_passed", False)
+    _is_pep_edd = ctx.get("is_pep_edd_no_suspicion", False)
     gate1_rows = ""
-    for section in ctx.get("gate1_sections", []):
-        status = "PASS" if section.get("passed") else "FAIL"
-        reason = _md_escape(section.get("reason", ""))
-        if not section.get("passed") and gate1_passed:
-            reason += " *(Sub-check failed but overall gate PERMITTED — hard stop or classifier sovereignty overrides this check.)*"
-        gate1_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {reason} |\n"
+    if not _is_pep_edd:
+        for section in ctx.get("gate1_sections", []):
+            status = "PASS" if section.get("passed") else "FAIL"
+            reason = _md_escape(section.get("reason", ""))
+            if not section.get("passed") and gate1_passed:
+                reason += " *(Sub-check failed but overall gate PERMITTED — hard stop or classifier sovereignty overrides this check.)*"
+            gate1_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {reason} |\n"
 
     gate2_rows = ""
-    for section in ctx.get("gate2_sections", []):
-        status = "PASS" if section.get("passed") else "REVIEW"
-        gate2_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {_md_escape(section.get('reason', ''))} |\n"
+    if not _is_pep_edd:
+        for section in ctx.get("gate2_sections", []):
+            status = "PASS" if section.get("passed") else "REVIEW"
+            gate2_rows += f"| {_md_escape(section.get('name', 'N/A'))} | {status} | {_md_escape(section.get('reason', ''))} |\n"
 
 
     # Decision header (governed — not engine)
@@ -298,7 +301,8 @@ def render_markdown(ctx: dict) -> str:
         decision_header = "### **ESCALATE** — Compliance Review Required"
     else:
         decision_header = "### **EDD_REQUIRED** — Enhanced Due Diligence Required"
-    if engine != governed:
+    is_pep = ctx.get("is_pep_edd_no_suspicion", False)
+    if engine != governed and not is_pep:
         clf_outcome = ctx.get("classification_outcome", "")
         if clf_outcome == "STR_REQUIRED" and governed != "STR_REQUIRED":
             decision_header += (
@@ -310,6 +314,11 @@ def render_markdown(ctx: dict) -> str:
             decision_header += f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. Classifier sovereignty applied — governed outcome is authoritative.*"
         else:
             decision_header += f"\n\n*Engine originally suggested: {engine.replace('_', ' ')}. Governance correction applied — governed outcome is authoritative.*"
+    elif is_pep and engine != governed:
+        decision_header += (
+            f"\n\n*PEP regulatory obligation — EDD required by screening result, "
+            f"not by suspicion analysis. No classifier conflict.*"
+        )
     # Disposition ladder display values
     governed_display = governed.replace("_", " ")
     action_val = ctx.get("action", "")
@@ -317,11 +326,16 @@ def render_markdown(ctx: dict) -> str:
     if action_val and action_val.lower() != "n/a":
         engine_display += f" \u2014 {action_val}"
     disposition_note = ""
-    if engine != governed:
+    if engine != governed and not is_pep:
         disposition_note = (
             "\n> Engine output differs from governed disposition. "
             "Governance correction applied \u2014 governed outcome is authoritative. "
             "This correction ensures escalation is consistent with suspicion threshold requirements.\n"
+        )
+    elif is_pep and engine != governed:
+        disposition_note = (
+            "\n> PEP regulatory obligation — engine output differs from governed disposition. "
+            "EDD determined by PEP screening, not suspicion analysis.\n"
         )
     safe_path = _md_escape(ctx["decision_path_trace"] or "N/A")
 
@@ -752,9 +766,14 @@ def render_markdown(ctx: dict) -> str:
 
     seed_notice = "> Synthetic training case (seeded)." if ctx.get("is_seed") else ""
     str_required_label = "Yes" if ctx.get("str_required") else "No"
-    gate1_label = "ALLOWED" if ctx.get("gate1_passed") else "BLOCKED"
-    gate1_rows_output = gate1_rows or "| No sections evaluated | - | - |"
-    gate2_rows_output = gate2_rows or "| No sections evaluated | - | - |"
+    if _is_pep_edd:
+        gate1_label = "NOT TRIGGERED"
+        gate1_rows_output = "| PEP regulatory pathway | N/A | Gate evaluation not applicable — EDD by regulatory obligation, not escalation logic. |"
+        gate2_rows_output = "| PEP regulatory pathway | N/A | STR threshold not applicable — no suspicion indicators detected. |"
+    else:
+        gate1_label = "ALLOWED" if ctx.get("gate1_passed") else "BLOCKED"
+        gate1_rows_output = gate1_rows or "| No sections evaluated | - | - |"
+        gate2_rows_output = gate2_rows or "| No sections evaluated | - | - |"
     rules_rows_output = rules_rows or "| No rules evaluated | - | - |"
     evidence_rows_output = evidence_rows or "| No evidence recorded | - | - |"
 

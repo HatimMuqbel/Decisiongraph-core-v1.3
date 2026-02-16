@@ -288,7 +288,9 @@
         <div class="value" style="font-size:16px;">{{ governed_disposition | replace('_', ' ') }}</div>
         <div class="label">&nbsp;</div>
         <div class="value small" style="color:var(--muted);">
-          {% if classification_outcome and classification_outcome != governed_disposition %}
+          {% if is_pep_edd_no_suspicion %}
+            PEP regulatory obligation — EDD required by screening result, not by suspicion analysis
+          {% elif classification_outcome and classification_outcome != governed_disposition %}
             {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
               Classifier recommends {{ classification_outcome | replace('_', ' ') }}. Governed: {{ governed_disposition | replace('_', ' ') }} per gate evaluation. Conflict deferred to compliance officer.
             {% elif classification_outcome == 'NO_REPORT' and governed_disposition != 'NO_REPORT' %}
@@ -709,7 +711,9 @@
         <div class="label">Classifier Outcome</div>
         <div class="value"><strong>{{ classification_outcome }}</strong></div>
         <div class="label">Classifier Authority</div>
-        {% if classification_outcome != governed_disposition %}
+        {% if is_pep_edd_no_suspicion %}
+        <div class="value" style="color:#3b82f6; font-weight:600;">NOT APPLICABLE — PEP regulatory obligation (no suspicion assessment required)</div>
+        {% elif classification_outcome != governed_disposition %}
         {% set _has_upheld_gate = gate_override_explanations | default([]) | selectattr('upheld', 'defined') | selectattr('upheld') | list | length > 0 %}
         {% if _has_upheld_gate %}
         <div class="value" style="color:#059669; font-weight:600;">GATE AUTHORITY — Gate blocked {{ classification_outcome | replace('_', ' ') }}; governed disposition is {{ governed_disposition | replace('_', ' ') }}</div>
@@ -728,7 +732,9 @@
       </div>
       <p class="small" style="margin-top:10px;">{{ classification_reason }}</p>
       <p class="small" style="margin-top:6px; color:var(--muted);">
-        {% if classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
+        {% if is_pep_edd_no_suspicion %}
+        Decision Hierarchy: Classifier found no suspicion indicators. EDD required by PEP regulatory obligation — separate pathway from suspicion-based escalation.
+        {% elif classification_outcome == 'STR_REQUIRED' and governed_disposition != 'STR_REQUIRED' %}
         Decision Hierarchy: Classifier recommends {{ classification_outcome | replace('_', ' ') }}, but gate evaluation produced {{ governed_disposition | replace('_', ' ') }}. Conflict deferred to compliance officer for final STR determination.
         {% elif suspicion_count == 0 %}
         Decision Hierarchy: Classifier → Rules → Narrative → Governance. STR is impossible when Tier 1 = 0. No rule, gate, or precedent can override this.
@@ -1215,6 +1221,14 @@
 
     <h2>Gate Evaluation</h2>
     <h3>Gate 1: Zero-False-Escalation Check</h3>
+    {% if is_pep_edd_no_suspicion %}
+    <div class="gate-block break">
+      <h4><span class="pill na">NOT TRIGGERED</span></h4>
+      <p class="small" style="margin-bottom:12px;">
+        PEP regulatory pathway — gate evaluation not applicable. EDD determination is by regulatory obligation, not escalation logic.
+      </p>
+    </div>
+    {% else %}
     <div class="gate-block break">
       <h4>
         {% if gate1_passed %}
@@ -1255,9 +1269,17 @@
         <p class="small">No sections evaluated</p>
       {% endif %}
     </div>
+    {% endif %}
 
     <h3>Gate 2: STR Threshold</h3>
-    {% if is_mandatory_hard_stop %}
+    {% if is_pep_edd_no_suspicion %}
+    <div class="gate-block break">
+      <h4><span class="pill na">NOT TRIGGERED</span></h4>
+      <p class="small" style="margin-bottom:12px;">
+        PEP regulatory pathway — STR threshold assessment not applicable. No suspicion indicators detected.
+      </p>
+    </div>
+    {% elif is_mandatory_hard_stop %}
     <div class="gate-block break">
       <h4><span class="pill na">NOT APPLICABLE</span></h4>
       <p class="small" style="margin-bottom:12px;">

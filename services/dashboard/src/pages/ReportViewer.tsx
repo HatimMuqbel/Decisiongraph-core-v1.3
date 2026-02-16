@@ -211,7 +211,7 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
             STR filing mandatory under regulatory obligation. This is not a discretionary determination.
           </p>
         </div>
-      ) : report.classification_outcome && report.classification_outcome !== report.engine_disposition && (
+      ) : !report.is_pep_edd_no_suspicion && report.classification_outcome && report.classification_outcome !== report.engine_disposition && (
         <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-5">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-amber-400">
             ⚠ Decision Conflict
