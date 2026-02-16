@@ -3,7 +3,7 @@
 FINTRAC-aligned, regulator-safe, production-grade.
 
 Classifies all signals into three tiers:
-  Tier 1 — Suspicion Indicators (RGS Contributors) → STR-capable
+  Tier 1 — Suspicion Indicators (Preliminary RGS Assessment) → STR-eligible
   Tier 2 — Investigative Signals (EDD Triggers) → EDD only
   Tier 3 — Normal Activity → No report
 
@@ -20,9 +20,10 @@ CLASSIFIER_VERSION = "SuspicionClassifier v1"
 
 from dataclasses import dataclass, field
 
-# ── Tier 1: Strong Suspicion Indicators (RGS Contributors) ──────────────────
-# ANY ONE of these is sufficient for STR. These are not risk indicators —
-# they are suspicion indicators under Reasonable Grounds to Suspect (RGS).
+# ── Tier 1: Strong Suspicion Indicators (Preliminary RGS Assessment) ─────────
+# ANY ONE of these is sufficient for preliminary STR recommendation.
+# These are suspicion indicators that inform a Reasonable Grounds to Suspect
+# (RGS) assessment. Final RGS determination is a compliance officer decision.
 
 TIER1_SUSPICION_CODES: dict[str, str] = {
     # Evidence flags (from evaluation trace)
@@ -562,9 +563,10 @@ def classify(
     if suspicion_count >= 1:
         outcome = "STR_REQUIRED"
         outcome_reason = (
-            f"{suspicion_count} suspicion indicator(s) detected. "
-            "Reasonable Grounds to Suspect (RGS) threshold met. "
-            "STR filing required under PCMLTFA/FINTRAC guidance."
+            f"{suspicion_count} Tier 1 suspicion indicator(s) identified. "
+            "Preliminary suspicion assessment: indicators consistent with "
+            "Reasonable Grounds to Suspect (RGS). Final RGS determination "
+            "requires compliance officer review."
         )
     # RULE 2: EDD Band
     elif investigative_count >= 1:

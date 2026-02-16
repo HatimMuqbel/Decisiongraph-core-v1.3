@@ -355,21 +355,28 @@ def render_markdown(ctx: dict) -> str:
         match_rate = ctx.get("precedent_match_rate", 0)
         scored_ct = ctx.get("scored_precedent_count", 0)
         total_pool = ctx.get("total_comparable_pool", 0)
-        conf_score = ctx.get("decision_confidence_score", 0)
+        conf_score = ctx.get("decision_confidence_score")
 
         # FIX-017: Institutional threshold indicator
-        if conf_score >= 70:
+        if conf_score is None:
+            # Integrity review — no numeric score
+            threshold_indicator = "Not Applicable — Integrity Review Required"
+            score_display = "N/A"
+        elif conf_score >= 70:
             threshold_indicator = "Above Threshold"
+            score_display = f"{conf_score}%"
         elif conf_score >= 40:
             threshold_indicator = "Within Band"
+            score_display = f"{conf_score}%"
         else:
             threshold_indicator = "Below Threshold — Manual Review Required"
+            score_display = f"{conf_score}%"
 
         decision_confidence_block = (
             f"### Confidence Metrics\n\n"
             f"| Metric | Value | Definition |\n"
             f"|--------|-------|------------|\n"
-            f"| Decision Confidence | {ctx['decision_confidence']} ({conf_score}%) | "
+            f"| Decision Confidence | {ctx['decision_confidence']} ({score_display}) | "
             f"Composite score reflecting evidence completeness and rule alignment |\n"
             f"| Institutional Threshold | {threshold_indicator} | "
             f"Bands: ≥70% High, 40–70% Moderate, <40% Low (manual review) |\n"
@@ -379,7 +386,7 @@ def render_markdown(ctx: dict) -> str:
             f"Percentage of comparable pool meeting similarity threshold |\n\n"
             f"{ctx['decision_confidence_reason']}"
         )
-        if conf_score < 40:
+        if conf_score is not None and conf_score < 40:
             decision_confidence_block += (
                 f"\n\n> **LOW CONFIDENCE FLAG:** Decision confidence ({conf_score}%) is below "
                 f"the institutional threshold of 40%. This decision requires senior analyst "
@@ -985,7 +992,7 @@ def render_markdown(ctx: dict) -> str:
     tier1_md = ""
     tier1_signals = ctx.get("tier1_signals", [])
     if tier1_signals:
-        tier1_md = "### Tier 1 — Suspicion Indicators (RGS Contributors)\n\n| Code | Source | Detail |\n|------|--------|--------|\n"
+        tier1_md = "### Tier 1 — Suspicion Indicators (Preliminary RGS Assessment)\n\n| Code | Source | Detail |\n|------|--------|--------|\n"
         for sig in tier1_signals:
             tier1_md += f"| `{_md_escape(sig.get('code', ''))}` | {_md_escape(sig.get('source', ''))} | {_md_escape(sig.get('detail', ''))} |\n"
 

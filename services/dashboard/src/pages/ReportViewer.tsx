@@ -176,14 +176,21 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
             >
               {report.verdict}
             </Badge>
-            {report.decision_confidence_score != null && (
+            {report.decision_confidence_score != null ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-white">Confidence:</span>
                 <Badge variant={confidenceVariant((report.decision_confidence_score ?? 0) / 100)}>
                   {report.decision_confidence ?? `${report.decision_confidence_score}%`}
                 </Badge>
               </div>
-            )}
+            ) : report.decision_confidence ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white">Confidence:</span>
+                <Badge variant="warning">
+                  {report.decision_confidence}
+                </Badge>
+              </div>
+            ) : null}
             <div className="flex flex-wrap justify-center gap-2 mt-2">
               {report.str_required && <Badge variant="danger" size="md">STR REQUIRED</Badge>}
               {report.regulatory_status && report.regulatory_status !== 'NO REPORT' && (

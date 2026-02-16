@@ -361,7 +361,7 @@
         {% endif %}
         {% if decision_confidence %}
         <div class="label">Confidence</div>
-        <div class="value">{{ decision_confidence }}{% if decision_confidence_score is defined %} ({{ decision_confidence_score }}%){% endif %}</div>
+        <div class="value">{{ decision_confidence }}{% if decision_confidence_score is defined and decision_confidence_score is not none %} ({{ decision_confidence_score }}%){% endif %}</div>
         {% endif %}
       </div>
       {% if decision_confidence %}
@@ -373,7 +373,7 @@
         <tbody>
           <tr>
             <td>Decision Confidence</td>
-            <td class="mono">{{ decision_confidence }} ({{ decision_confidence_score | default(0) }}%)</td>
+            <td class="mono">{{ decision_confidence }}{% if decision_confidence_score is not none %} ({{ decision_confidence_score }}%){% endif %}</td>
             <td class="small">Composite score reflecting evidence completeness and rule alignment</td>
           </tr>
           <tr>
@@ -739,7 +739,7 @@
         {% endif %}
       </p>
       {% if tier1_signals and tier1_signals|length > 0 %}
-      <h4 style="margin-top:14px; margin-bottom:6px; color:#b91c1c;">Tier 1 — Suspicion Indicators (RGS Contributors)</h4>
+      <h4 style="margin-top:14px; margin-bottom:6px; color:#b91c1c;">Tier 1 — Suspicion Indicators (Preliminary RGS Assessment)</h4>
       <table style="font-size:12px;">
         <thead><tr><th>Code</th><th>Source</th><th>Detail</th></tr></thead>
         <tbody>

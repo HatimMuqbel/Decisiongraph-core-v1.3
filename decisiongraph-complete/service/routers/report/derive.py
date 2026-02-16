@@ -212,10 +212,10 @@ def derive_regulatory_model(normalized: dict) -> dict:
     if integrity_alert and integrity_alert.get("severity") == "CRITICAL":
         conf_label = "Integrity Review Required"
         conf_reason = (
-            "Confidence cannot be computed when a control contradiction exists. "
-            "Rule outcome conflicts with suspicion classifier."
+            "Confidence score not applicable — active control conflict between "
+            "classifier and governance requires compliance officer review."
         )
-        conf_score = 0
+        conf_score = None  # Suppress numeric score — 0% reads as "zero confidence"
         # Intentionally skip _compute_confidence_score — not even for debug.
     elif is_mandatory_hard_stop:
         conf_label = "Certain"
@@ -1641,12 +1641,13 @@ def _build_override_justification(
                 f"Gate 2 returned {gate2_decision or gate2_status or 'INSUFFICIENT'} "
                 f"due to evidence quality concerns. However, the Suspicion Classifier "
                 f"identified {len(justifying_signals)} Tier 1 suspicion indicator(s) "
-                f"that independently meet the Reasonable Grounds to Suspect (RGS) "
-                f"threshold under PCMLTFA/FINTRAC guidance. Under the classifier "
-                f"sovereignty framework, any single Tier 1 indicator is sufficient "
-                f"for STR determination regardless of gate evidence scoring."
+                f"consistent with preliminary Reasonable Grounds to Suspect (RGS) "
+                f"assessment under PCMLTFA/FINTRAC guidance. Under the classifier "
+                f"sovereignty framework, any single Tier 1 indicator supports a "
+                f"preliminary STR recommendation regardless of gate evidence scoring. "
+                f"Final RGS determination requires compliance officer review."
             ),
-            "regulatory_basis": "PCMLTFA s. 7 — Reasonable Grounds to Suspect (RGS) threshold",
+            "regulatory_basis": "PCMLTFA s. 7 — Preliminary RGS assessment (compliance officer review required)",
             "severity": "INFO",
         }
 
@@ -1664,9 +1665,10 @@ def _build_override_justification(
             "justification": (
                 f"Rules engine produced {original_verdict} based on risk indicators, "
                 f"but the Suspicion Classifier found 0 Tier 1 suspicion indicators. "
-                f"Under PCMLTFA/FINTRAC guidance, STR filing requires Reasonable "
-                f"Grounds to Suspect — risk indicators alone are insufficient. "
-                f"Disposition corrected to preserve STR threshold integrity."
+                f"Under PCMLTFA/FINTRAC guidance, STR filing requires indicators "
+                f"consistent with Reasonable Grounds to Suspect — risk indicators "
+                f"alone are insufficient. Disposition corrected to preserve STR "
+                f"threshold integrity."
             ),
             "regulatory_basis": "PCMLTFA s. 7 — STR requires Tier 1 suspicion, not risk alone",
             "severity": "CRITICAL",
@@ -1687,7 +1689,7 @@ def _build_override_justification(
                 "under PCMLTFA/FINTRAC guidance. Suspicion threshold not met — corrected to "
                 "prevent unsupported STR filing."
             ),
-            "regulatory_basis": "PCMLTFA s. 7 — STR requires RGS threshold (Tier 1 ≥ 1)",
+            "regulatory_basis": "PCMLTFA s. 7 — STR requires Tier 1 suspicion indicators (preliminary RGS assessment)",
             "severity": "CRITICAL",
         }
 
@@ -3987,7 +3989,7 @@ def _build_gate_override_explanations(
     if gate1_blocked and final_is_escalation:
         override_mechanism = "Classifier sovereignty"
         override_basis = []
-        authority = "PCMLTFA s. 7(1) — Reasonable Grounds to Suspect"
+        authority = "PCMLTFA s. 7(1) — Preliminary suspicion assessment"
         if integrity_alert:
             atype = integrity_alert.get("type", "")
             if atype == "CLASSIFIER_UPGRADE":
@@ -4070,7 +4072,7 @@ def _build_gate_override_explanations(
     if gate2_says_insufficient and str_required:
         override_mechanism = "Classifier sovereignty"
         if integrity_alert and integrity_alert.get("type") == "CLASSIFIER_UPGRADE":
-            override_mechanism = "Classifier sovereignty — Tier 1 indicators independently meet RGS threshold"
+            override_mechanism = "Classifier sovereignty — Tier 1 indicators support preliminary RGS assessment"
         override_basis = []
         for section in gate2_sections:
             if not section.get("passed"):
@@ -4088,7 +4090,7 @@ def _build_gate_override_explanations(
             "conflict": True,
             "override_mechanism": override_mechanism,
             "override_basis": override_basis or ["Classifier identified sufficient Tier 1 indicators"],
-            "authority": "PCMLTFA s. 7(1) — Reasonable Grounds to Suspect threshold",
+            "authority": "PCMLTFA s. 7(1) — Preliminary RGS assessment (compliance officer review required)",
         })
 
     # Gate 2 conflict: said STR but didn't file
@@ -4180,7 +4182,7 @@ def _build_disposition_reconciliation(
             elif alert_type == "ESCALATION_WITHOUT_SUSPICION":
                 reason = "Escalation downgraded — 0 Tier 1 indicators; risk indicators alone insufficient"
             elif alert_type == "CLASSIFIER_UPGRADE":
-                reason = "Reporting upgraded — Tier 1 suspicion indicators independently meet RGS threshold"
+                reason = "Reporting upgraded — Tier 1 suspicion indicators support preliminary RGS assessment"
             elif alert_type == "CLASSIFIER_OVERRIDE":
                 reason = "Rules engine overridden — classifier found insufficient suspicion basis"
             else:
