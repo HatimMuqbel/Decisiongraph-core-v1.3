@@ -633,6 +633,9 @@ export interface ReportViewModel {
   // GAP-C: Case Facts Sections (structured)
   case_facts_sections?: CaseFactsSections;
 
+  // Case Evidence Summary (synthesized narrative)
+  case_evidence_summary?: string;
+
   // FIX-031: Unmapped Indicator Independence Check
   unmapped_indicator_checks?: {
     indicator_code: string;

@@ -1728,7 +1728,15 @@
     {% endif %}
 
     <h2>Evidence Considered</h2>
-    <p class="small" style="margin-bottom:8px;">Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.</p>
+    <p class="small" style="margin-bottom:8px;">Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report. Exact amounts, dates, counterparty details, and relationship histories reside in the institution's core transaction monitoring system. DecisionGraph evaluates the normalized fields below.</p>
+    {% if case_evidence_summary %}
+    <div class="card" style="margin-bottom:12px; background:rgba(30,64,175,0.06); border-left:3px solid #1e40af;">
+      <strong style="color:#1e40af;">Case Evidence Summary</strong>
+      {% for para in case_evidence_summary.split('\n\n') %}
+      <p style="font-size:13px; line-height:1.6; margin:{% if loop.first %}6px{% else %}4px{% endif %} 0 0 0;">{{ para }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% set scope_labels = {
       'risk.high_risk_jurisdiction': 'Customer domicile jurisdiction risk',
       'txn.destination_country': 'Transaction destination jurisdiction',

@@ -294,6 +294,23 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         </div>
       )}
 
+      {/* Case Evidence Summary (synthesized narrative) */}
+      {report.case_evidence_summary && (
+        <div className="rounded-xl border border-blue-500/20 bg-slate-800 p-5">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-400">
+            Case Evidence Summary
+          </h3>
+          <p className="text-[10px] text-white/60 mb-3">
+            Evidence fields reflect the normalized investigation record. Exact amounts, dates, and counterparty details reside in the institution's core TMS.
+          </p>
+          <div className="space-y-2">
+            {report.case_evidence_summary.split('\n\n').map((para, i) => (
+              <p key={i} className="text-sm leading-relaxed text-slate-300">{para}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 4. Evidence Snapshot (top 5 critical fields) */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-800 p-5">
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white">

@@ -720,6 +720,13 @@ def derive_regulatory_model(normalized: dict) -> dict:
         defensibility_check=defensibility_check,
     )
 
+    # ── Case Evidence Summary (synthesized narrative) ──────────────────
+    case_evidence_summary = _build_case_evidence_summary(
+        layer1_facts=layer1_facts,
+        evidence_used=evidence_used,
+        classification=classification,
+    )
+
     # ── GAP-B: STR Decision Authority Frame ────────────────────────────
     str_decision_frame = _build_str_decision_frame(
         governed_disposition=governed_disposition,
@@ -886,6 +893,9 @@ def derive_regulatory_model(normalized: dict) -> dict:
 
         # GAP-B: STR Decision Authority
         "str_decision_frame": str_decision_frame,
+
+        # Case Evidence Summary (synthesized narrative)
+        "case_evidence_summary": case_evidence_summary,
     }
 
 
@@ -960,6 +970,151 @@ def _build_senior_summary(
         "str_pending": str_pending,
         "next_evidence_deadline": next_evidence_deadline,
     }
+
+
+# ── Case Evidence Summary (synthesized narrative) ────────────────────────────
+
+def _build_case_evidence_summary(
+    layer1_facts: dict,
+    evidence_used: list[dict],
+    classification,
+) -> str:
+    """Synthesize flat evidence fields into a reviewer-readable narrative.
+
+    Four paragraphs: customer profile, transaction details, behavioral
+    indicators, screening results. Built from the same normalized fields
+    the decision engine evaluated — no raw PII.
+    """
+    ev_map = {str(ev.get("field", "")): ev.get("value") for ev in (evidence_used or [])}
+    txn = (layer1_facts or {}).get("transaction", {}) or {}
+    customer = (layer1_facts or {}).get("customer", {}) or {}
+    screening = (layer1_facts or {}).get("screening", {}) or {}
+
+    # ── Customer profile ──────────────────────────────────────────────
+    cust_type = customer.get("type", "Individual")
+    tenure = customer.get("tenure_years")
+    pep = customer.get("pep_flag")
+    residence = customer.get("residence", "")
+    risk_rating = customer.get("risk_rating", "")
+    parts_cust = [f"{cust_type} customer"]
+    if tenure is not None:
+        parts_cust.append(f"with {tenure}-year relationship")
+    if pep:
+        parts_cust.append("(PEP)")
+    elif pep is False:
+        parts_cust.append("(non-PEP)")
+    if residence:
+        parts_cust.append(f"resident in {residence}")
+    if risk_rating:
+        parts_cust.append(f"({risk_rating} risk rating)")
+    source_verified = ev_map.get("customer.source_verified")
+    ownership_clear = ev_map.get("customer.ownership_clear")
+    if source_verified is False or str(source_verified).lower() in ("false", "no"):
+        parts_cust.append("— source of funds not verified")
+    if ownership_clear is False or str(ownership_clear).lower() in ("false", "no"):
+        parts_cust.append("— ownership structure unclear")
+    customer_para = " ".join(parts_cust) + "."
+
+    # ── Transaction details ───────────────────────────────────────────
+    amount_band = ev_map.get("txn.amount_band") or txn.get("amount_band", "")
+    method = txn.get("method", "")
+    cross_border = txn.get("cross_border")
+    destination = txn.get("destination", "")
+    dest_risk = ev_map.get("txn.destination_country_risk", "")
+    purpose = txn.get("purpose", "")
+    count = ev_map.get("txn.count", "")
+    parts_txn = []
+    if amount_band:
+        band_display = amount_band.replace("_", "–").replace("over", ">")
+        parts_txn.append(f"Transaction amount band: {band_display}")
+    if method:
+        parts_txn.append(f"via {method}")
+    if cross_border:
+        cb_note = "cross-border"
+        if destination:
+            cb_note += f" to {destination}"
+            if dest_risk:
+                cb_note += f" ({dest_risk} risk)"
+        parts_txn.append(cb_note)
+    elif cross_border is False:
+        parts_txn.append("domestic")
+    if purpose:
+        parts_txn.append(f"for {purpose}")
+    if count:
+        parts_txn.append(f"({count} transactions)")
+    txn_para = (", ".join(parts_txn) + ".") if parts_txn else ""
+
+    # ── Behavioral indicators ─────────────────────────────────────────
+    _BEHAVIORAL_FLAGS = {
+        "flag.structuring_suspected": "structuring suspected",
+        "flag.layering": "layering detected",
+        "flag.rapid_movement": "rapid fund movement",
+        "flag.funnel_account": "funnel account pattern",
+        "flag.shell_entity": "shell entity indicators",
+        "flag.evasion": "evasion behavior",
+        "flag.unusual_for_profile": "activity unusual for customer profile",
+        "flag.third_party_unexplained": "unexplained third-party involvement",
+        "flag.false_source": "false source of funds indicators",
+    }
+    triggered = []
+    cleared = []
+    for flag_key, flag_label in _BEHAVIORAL_FLAGS.items():
+        val = ev_map.get(flag_key)
+        if val is True or str(val).lower() in ("true", "yes", "1"):
+            triggered.append(flag_label)
+        elif val is False or str(val).lower() in ("false", "no", "0"):
+            cleared.append(flag_label)
+
+    # Layer 6 suspicion elements
+    elements = (layer1_facts or {}).get("_raw", {}).get("layer6_suspicion", {}).get("elements", {}) or {}
+    _ELEMENT_LABELS = {
+        "has_sustained_pattern": "sustained transaction pattern",
+        "has_intent": "intent indicators",
+        "has_deception": "deception indicators",
+    }
+    for el_key, el_label in _ELEMENT_LABELS.items():
+        if elements.get(el_key) and el_label not in triggered:
+            triggered.append(el_label)
+
+    parts_behav = []
+    if triggered:
+        parts_behav.append(f"Behavioral indicators present: {', '.join(triggered)}.")
+    if cleared:
+        parts_behav.append(f"Checked and clear: {', '.join(cleared)}.")
+    if not triggered and not cleared:
+        parts_behav.append("No behavioral indicators evaluated.")
+    behavioral_para = " ".join(parts_behav)
+
+    # ── Screening results ─────────────────────────────────────────────
+    sanctions = screening.get("sanctions_match")
+    adverse_media = screening.get("adverse_media")
+    pep_match = screening.get("pep_match")
+    mltf_linked = screening.get("mltf_linked")
+    parts_screen = []
+    if sanctions:
+        parts_screen.append("sanctions match detected")
+    elif sanctions is False:
+        parts_screen.append("no sanctions match")
+    if adverse_media:
+        parts_screen.append("adverse media flagged")
+    elif adverse_media is False:
+        parts_screen.append("no adverse media")
+    if pep_match:
+        parts_screen.append("PEP match identified")
+    elif pep_match is False:
+        parts_screen.append("no PEP match")
+    if mltf_linked:
+        parts_screen.append("ML/TF linkage identified")
+    elif mltf_linked is False:
+        parts_screen.append("no ML/TF linkage")
+    screening_para = (
+        ("Screening results: " + "; ".join(parts_screen) + ".")
+        if parts_screen else "No screening results available."
+    )
+
+    # ── Assemble ──────────────────────────────────────────────────────
+    paragraphs = [p for p in [customer_para, txn_para, behavioral_para, screening_para] if p]
+    return "\n\n".join(paragraphs)
 
 
 # ── GAP-B: STR Decision Authority Frame ─────────────────────────────────────
@@ -3059,7 +3214,10 @@ def _build_enhanced_precedent_analysis(
     result["precedent_disclaimer"] = (
         "Precedent analysis is non-authoritative; used only for consistency "
         "review and peer comparison; never overrides gates, rules, or "
-        "statutory reporting determinations."
+        "statutory reporting determinations. Precedent does not influence "
+        "and cannot modify the Reasonable Grounds to Suspect (RGS) "
+        "determination, which is a legal assessment reserved for the "
+        "compliance officer."
     )
 
     return result
@@ -3236,7 +3394,17 @@ def _build_pattern_summary(
             f"the governed disposition of {governed_label}."
         )
 
-    return " ".join(parts) if parts else f"{total_all} comparable precedents found."
+    summary = " ".join(parts) if parts else f"{total_all} comparable precedents found."
+
+    # Advisory-only framing — where the reviewer's eye lands
+    summary += (
+        " Advisory only: precedent patterns inform consistency review but do not "
+        "determine, modify, or constrain the statutory reporting obligation. "
+        "The RGS determination is a legal assessment made by the compliance "
+        "officer independent of historical disposition patterns."
+    )
+
+    return summary
 
 
 def _build_institutional_posture(

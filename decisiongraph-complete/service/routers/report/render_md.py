@@ -758,6 +758,16 @@ def render_markdown(ctx: dict) -> str:
     rules_rows_output = rules_rows or "| No rules evaluated | - | - |"
     evidence_rows_output = evidence_rows or "| No evidence recorded | - | - |"
 
+    # Case Evidence Summary (synthesized narrative)
+    _ces = ctx.get("case_evidence_summary", "")
+    if _ces:
+        case_evidence_summary_md = "### Case Evidence Summary\n\n"
+        for para in _ces.split("\n\n"):
+            case_evidence_summary_md += f"> {_md_escape(para)}\n>\n"
+        case_evidence_summary_md = case_evidence_summary_md.rstrip(">\n") + "\n"
+    else:
+        case_evidence_summary_md = ""
+
     # GAP-D: Pass backend-sourced disclaimer through to precedent builder
     _prec_analysis = ctx.get("precedent_analysis", {})
     _ep_disclaimer = ctx.get("enhanced_precedent", {}).get("precedent_disclaimer", "")
@@ -1323,7 +1333,9 @@ def render_markdown(ctx: dict) -> str:
 
 ## Evidence Considered
 
-*Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report.*
+*Evidence fields reflect the normalized investigation record used for rule evaluation (booleans and buckets). Raw customer identifiers are not included in this report. Exact amounts, dates, counterparty details, and relationship histories reside in the institution's core transaction monitoring system. DecisionGraph evaluates the normalized fields below.*
+
+{case_evidence_summary_md}
 
 | Field | Scope | Value |
 |-------|-------|-------|
@@ -1418,6 +1430,7 @@ The decision may be independently verified using the `/verify` endpoint. Complet
         analyst_actions_md=analyst_actions_md,
         engine_version=ctx.get("engine_version"),
         evidence_rows_output=evidence_rows_output,
+        case_evidence_summary_md=case_evidence_summary_md,
         facts_rows=facts_rows,
         gate1_label=gate1_label,
         gate1_rows_output=gate1_rows_output,

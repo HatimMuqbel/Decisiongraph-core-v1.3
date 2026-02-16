@@ -55,7 +55,7 @@ export default function PrecedentIntelligence({ report }: Props) {
       </div>
       <p className="text-[10px] text-white italic">
         {ep?.precedent_disclaimer
-          ?? 'Precedent analysis is non-authoritative; used only for consistency review and peer comparison; never overrides gates, rules, or statutory reporting determinations.'}
+          ?? 'Precedent analysis is non-authoritative; used only for consistency review and peer comparison; never overrides gates, rules, or statutory reporting determinations. Precedent does not influence and cannot modify the Reasonable Grounds to Suspect (RGS) determination, which is a legal assessment reserved for the compliance officer.'}
       </p>
 
       {/* Row 1: Governed Disposition Alignment */}

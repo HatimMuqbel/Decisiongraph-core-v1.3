@@ -228,6 +228,9 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
 
         # GAP-C: Case Facts Sections (structured)
         "case_facts_sections": _build_case_facts_sections(normalized),
+
+        # Case Evidence Summary (synthesized narrative)
+        "case_evidence_summary": derived.get("case_evidence_summary", ""),
     }
 
 
