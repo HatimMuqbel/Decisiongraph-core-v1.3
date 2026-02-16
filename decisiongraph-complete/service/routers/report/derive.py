@@ -974,21 +974,28 @@ def _build_str_decision_frame(
 ) -> dict:
     """Build decision authority model: who decides, what, by when, minimum evidence."""
     has_tier1 = classification.suspicion_count > 0
-    is_critical = (
-        integrity_alert is not None
-        and integrity_alert.get("severity") == "CRITICAL"
-    )
+    alert_type = integrity_alert.get("type", "") if integrity_alert else ""
+
+    # CCO-level: systemic control failures only (override, contradiction)
+    # CLASSIFICATION_DISPOSITION_CONFLICT is a gate/classifier disagreement —
+    # that's an MLRO filing determination, not a CCO control issue.
+    _CCO_ALERT_TYPES = {"CLASSIFIER_OVERRIDE", "CONTROL_CONTRADICTION"}
+    is_cco = alert_type in _CCO_ALERT_TYPES
 
     # Decision owner
-    if is_critical:
+    if is_cco:
         decision_owner = {
             "role": "Chief Compliance Officer (CCO)",
-            "basis": "Critical integrity alert requires CCO-level review",
+            "basis": f"Control integrity issue ({alert_type.replace('_', ' ').title()}) requires CCO-level review",
         }
-    elif str_required:
+    elif str_required or (has_tier1 and alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT"):
         decision_owner = {
             "role": "MLRO (Money Laundering Reporting Officer)",
-            "basis": "STR filing determination under PCMLTFA s. 7",
+            "basis": (
+                "Classifier/gate conflict — MLRO must determine STR filing obligation"
+                if alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT"
+                else "STR filing determination under PCMLTFA s. 7"
+            ),
         }
     elif governed_disposition in ("EDD_REQUIRED", "ESCALATE") and has_tier1:
         decision_owner = {
