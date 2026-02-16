@@ -1226,8 +1226,10 @@
       <p class="small" style="margin-bottom:12px;">
         {% if gate1_passed %}
           Sufficient regulatory basis exists to permit enhanced review if warranted by suspicion indicators.
+        {% elif governed_disposition in ['EDD_REQUIRED', 'ESCALATE'] %}
+          Insufficient basis for automatic escalation. Enhanced review required — case remains open.
         {% else %}
-          Insufficient lawful basis to escalate. Case cleared — no regulatory reporting required.
+          Insufficient lawful basis to escalate. No regulatory reporting required at this time.
         {% endif %}
       </p>
       {% if gate1_sections and gate1_sections|length > 0 %}
@@ -1654,6 +1656,9 @@
                 <span style="color:#059669; font-weight:700;">Yes</span> — {{ check.basis | default('') }}
               {% else %}
                 <span style="color:#dc2626; font-weight:700;">No</span> — {{ check.basis | default('') }}
+              {% endif %}
+              {% if check.gate_narrative %}
+              <br><span class="small" style="color:var(--muted);">{{ check.gate_narrative }}</span>
               {% endif %}
             </td>
           </tr>

@@ -84,6 +84,7 @@ _T1_CODE_TO_TYPOLOGY: dict[str, str] = {
     "TERRORIST_FINANCING": "Terrorist financing",
     "SANCTIONS_SIGNAL": "Sanctions exposure",
     "ADVERSE_MEDIA_CONFIRMED": "Adverse media (confirmed)",
+    "SUSTAINED_SUSPICIOUS_PATTERN": "Sustained suspicious pattern",
 }
 
 
@@ -375,6 +376,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # ── 14. FIX-006: Defensibility check ─────────────────────────────────
     defensibility_check = _build_defensibility_check(
         reporting, reporting_note, deviation_alert,
+        integrity_alert=integrity_alert,
     )
 
     # ── 15. FIX-007: EDD recommendations ─────────────────────────────────
@@ -1158,7 +1160,7 @@ def _rebuild_corrected_explainer(
             )
         return (
             "Governance correction applied: STR determination removed due to "
-            "insufficient Tier 1 evidence. Case cleared — no reporting obligation."
+            "insufficient Tier 1 evidence. No reporting obligation at this time."
         )
 
     if alert_type == "ESCALATION_WITHOUT_SUSPICION":
@@ -1169,7 +1171,7 @@ def _rebuild_corrected_explainer(
             )
         return (
             "Escalation corrected: insufficient Tier 1 suspicion indicators. "
-            "Case cleared — no reporting obligation."
+            "No reporting obligation at this time."
         )
 
     if alert_type == "CLASSIFIER_UPGRADE":
@@ -1889,19 +1891,38 @@ def _build_defensibility_check(
     reporting: str,
     reporting_note: str,
     precedent_deviation_alert: Optional[dict],
+    integrity_alert: Optional[dict] = None,
 ) -> dict:
     """Build the defensibility check section.
 
     Always present in the report (even if deferred for EDD cases).
     """
-    if reporting == "UNKNOWN":
+    if reporting in ("UNKNOWN", "PENDING_COMPLIANCE_REVIEW"):
+        # Active classifier conflict: classifier wants STR but governance chose otherwise
+        alert_type = integrity_alert.get("type", "") if integrity_alert else ""
+        if alert_type == "CLASSIFICATION_DISPOSITION_CONFLICT":
+            governed = integrity_alert.get("governed_disposition", "EDD_REQUIRED")
+            return {
+                "status": "PENDING",
+                "message": (
+                    "Classifier determined STR REQUIRED, governed disposition is "
+                    f"{governed.replace('_', ' ')}. Deviation justified by Gate 1 "
+                    "(typology maturity)."
+                ),
+                "action": "Final defensibility depends on compliance officer review.",
+                "note": (
+                    "Reporting determination pending compliance officer review. "
+                    "Classifier identified reasonable grounds to suspect but gate "
+                    "evaluation blocked automatic escalation."
+                ),
+            }
         return {
             "status": "DEFERRED",
-            "message": "Reporting determination pending EDD completion.",
+            "message": "Reporting determination pending compliance review.",
             "action": "Defensibility Alert will be evaluated upon final disposition.",
             "note": (
                 "No historical filing pattern comparison performed. Reporting "
-                "obligation will be assessed when EDD is complete and a final "
+                "obligation will be assessed when review is complete and a final "
                 "disposition is rendered."
             ),
         }
@@ -3099,6 +3120,9 @@ def _build_pattern_summary(
             v for k, v in (match_distribution or {}).items()
             if "EDD" in str(k).upper() or "REVIEW" in str(k).upper()
         )
+        # Use distribution total as pool size (may differ from sample-based total_all)
+        dist_pool = sum((match_distribution or {}).values())
+        pool_size = max(total_all, dist_pool)
 
         if terminal_total > 0:
             # Use match_distribution for terminal direction (not supporting/contrary
@@ -3110,7 +3134,7 @@ def _build_pattern_summary(
                 majority = "BLOCK"
                 majority_pct = int(terminal_block / terminal_total * 100)
             parts.append(
-                f"Of {total_all} top comparable cases (by similarity), {terminal_total} have reached "
+                f"Of {pool_size} comparable cases (by similarity), {terminal_total} have reached "
                 f"terminal resolution — {majority_pct}% resulted in "
                 f"{majority.replace('_', ' ')}"
             )
@@ -3902,7 +3926,7 @@ def _build_decision_path_narrative(
     elif gd_upper == "EDD_REQUIRED" or gd_upper in ("REVIEW", "ESCALATE", "PENDING_REVIEW", "PASS_WITH_EDD"):
         detail_5.append("Enhanced due diligence required before final determination.")
     elif gd_upper == "NO_REPORT" or gd_upper in ("CLEARED", "ALLOW", "PASS"):
-        detail_5.append("No reporting obligation. Case cleared.")
+        detail_5.append("No reporting obligation at this time.")
     else:
         detail_5.append("Awaiting compliance officer determination.")
 
@@ -4348,15 +4372,23 @@ def _build_unmapped_indicator_checks(
 
     For each unmapped indicator, determine whether MAPPED Tier 1 indicators
     independently support the outcome via hard stop or gate logic.
+    Connects independence result to gate decision narrative.
     """
+    def _is_unmapped(s: dict) -> bool:
+        """Signal is unmapped if it has classification_gap or UNCLASSIFIED_ prefix."""
+        if s.get("classification_gap"):
+            return True
+        code = str(s.get("code", "")).upper()
+        return code.startswith("UNCLASSIFIED_")
+
     all_signals = list(tier1_signals or []) + list(tier2_signals or [])
-    unmapped = [s for s in all_signals if s.get("status", "").upper() in ("UNCLASSIFIED", "UNMAPPED", "")]
+    unmapped = [s for s in all_signals if _is_unmapped(s)]
 
     if not unmapped:
         return []
 
-    # Determine if mapped Tier 1 indicators independently reach the same outcome
-    mapped_tier1 = [s for s in (tier1_signals or []) if s.get("status", "").upper() not in ("UNCLASSIFIED", "UNMAPPED", "")]
+    # Mapped Tier 1 = all Tier 1 signals that are NOT unmapped
+    mapped_tier1 = [s for s in (tier1_signals or []) if not _is_unmapped(s)]
 
     # Check for hard-stop rules that independently support the outcome
     hard_stop_triggered = any(
@@ -4387,11 +4419,35 @@ def _build_unmapped_indicator_checks(
             independent = False
             basis = "No mapped Tier 1 indicators independently support this disposition"
 
+        # Gate narrative connection
+        if independent and not gate1_passed:
+            gate_narrative = (
+                "Gate 1 blocked automatic escalation. Independence confirmed — "
+                "this unmapped indicator is not load-bearing for the gate decision."
+            )
+        elif independent and gate1_passed:
+            gate_narrative = (
+                "Gate 1 passed. Mapped indicators independently support "
+                "the disposition without reliance on this unmapped signal."
+            )
+        elif not independent and not gate1_passed:
+            gate_narrative = (
+                "Gate 1 blocked escalation, but disposition may depend on "
+                "this unmapped indicator. Manual classification required "
+                "before final determination."
+            )
+        else:
+            gate_narrative = (
+                "Disposition may depend on this unmapped indicator. "
+                "Compliance officer must reclassify before filing."
+            )
+
         results.append({
             "indicator_code": code,
             "indicator_source": source,
             "independent": independent,
             "basis": basis,
+            "gate_narrative": gate_narrative,
             "mapped_tier1_count": len(mapped_tier1),
             "hard_stop_active": hard_stop_triggered,
         })

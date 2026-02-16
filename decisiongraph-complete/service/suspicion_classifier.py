@@ -79,6 +79,7 @@ TIER1_SUSPICION_ELEMENTS: dict[str, str] = {
     "adverse_media": "ADVERSE_MEDIA_CONFIRMED",
     "terrorist": "TERRORIST_FINANCING",
     "trade_based": "TRADE_BASED_LAUNDERING",
+    "sustained_pattern": "SUSTAINED_SUSPICIOUS_PATTERN",
 }
 
 # ── Tier 2: Investigative Signals (EDD Triggers) ────────────────────────────

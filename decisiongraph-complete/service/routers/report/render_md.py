@@ -628,6 +628,9 @@ def render_markdown(ctx: dict) -> str:
                     f"{_md_escape(check.get('basis', ''))}. "
                     "Manual classification required before filing.\n\n"
                 )
+            gate_narr = check.get("gate_narrative", "")
+            if gate_narr:
+                unmapped_md += f"> *{_md_escape(gate_narr)}*\n\n"
 
     # ── FIX-032: Policy Regime Exception ───────────────────────────────────
     regime_exception = ctx.get("policy_regime_exception")

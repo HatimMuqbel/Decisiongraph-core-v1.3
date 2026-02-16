@@ -633,6 +633,17 @@ export interface ReportViewModel {
   // GAP-C: Case Facts Sections (structured)
   case_facts_sections?: CaseFactsSections;
 
+  // FIX-031: Unmapped Indicator Independence Check
+  unmapped_indicator_checks?: {
+    indicator_code: string;
+    indicator_source: string;
+    independent: boolean;
+    basis: string;
+    gate_narrative: string;
+    mapped_tier1_count: number;
+    hard_stop_active: boolean;
+  }[];
+
   // Decision Path Narrative (5-step trace)
   decision_path_narrative?: {
     steps: {

@@ -399,6 +399,38 @@ function Tier1Content({ report }: { report: ReportViewModel }) {
         </div>
       )}
 
+      {/* FIX-031: Unmapped Indicator Independence Check */}
+      {report.unmapped_indicator_checks && report.unmapped_indicator_checks.length > 0 && (
+        <div className={`rounded-xl border p-5 ${
+          report.unmapped_indicator_checks.every(c => c.independent)
+            ? 'border-emerald-500/20 bg-emerald-500/5'
+            : 'border-amber-500/20 bg-amber-500/5'
+        }`}>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white">
+            Unmapped Indicator Independence Check
+          </h3>
+          <p className="text-[10px] text-white mb-3">
+            Verifies that mapped Tier 1 indicators independently support the outcome without relying on unmapped signals.
+          </p>
+          <div className="space-y-2">
+            {report.unmapped_indicator_checks.map((check, i) => (
+              <div key={i} className="rounded-lg bg-slate-800 px-3 py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-white">{check.indicator_code}</span>
+                  <span className={`font-bold ${check.independent ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {check.independent ? 'Independent' : 'Dependent'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-white mt-1">{check.basis}</p>
+                {check.gate_narrative && (
+                  <p className="text-[10px] text-white/70 mt-0.5 italic">{check.gate_narrative}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 6. Precedent Intelligence Panel */}
       {report.precedent_analysis?.available && (
         <PrecedentIntelligence report={report} />
