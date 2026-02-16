@@ -657,6 +657,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         corrections=corrections,
         gate1_passed=gate1_passed,
         str_required=str_required,
+        is_mandatory_hard_stop=is_mandatory_hard_stop,
     )
 
     # ── FIX-030: Precedent Divergence Narrative ────────────────────────
@@ -4382,6 +4383,7 @@ def _build_disposition_reconciliation(
     corrections: dict | None,
     gate1_passed: bool,
     str_required: bool,
+    is_mandatory_hard_stop: bool = False,
 ) -> dict:
     """Compare engine, governed, and classification dispositions.
 
@@ -4414,7 +4416,11 @@ def _build_disposition_reconciliation(
             elif alert_type == "ESCALATION_WITHOUT_SUSPICION":
                 reason = "Escalation downgraded — 0 Tier 1 indicators; risk indicators alone insufficient"
             elif alert_type == "CLASSIFIER_UPGRADE":
-                reason = "Reporting upgraded — Tier 1 suspicion indicators support preliminary RGS assessment"
+                reason = (
+                    "Reporting upgraded — sanctions screening match establishes mandatory filing obligation"
+                    if is_mandatory_hard_stop
+                    else "Reporting upgraded — Tier 1 suspicion indicators support preliminary RGS assessment"
+                )
             elif alert_type == "CLASSIFIER_OVERRIDE":
                 reason = "Rules engine overridden — classifier found insufficient suspicion basis"
             else:
