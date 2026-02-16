@@ -1200,7 +1200,7 @@ async def decide(request: Request):
             },
             "LAYERING": {
                 "ref": "FINTRAC ML/TF Typologies — Layering",
-                "text": "Layering is the second stage of money laundering, involving complex layers of financial transactions designed to distance illegally derived funds from their source. This may involve multiple transfers between accounts, use of shell companies, or cross-border movements.",
+                "text": "Layering is the second stage of money laundering, involving complex layers of financial transactions designed to distance illicitly derived funds from their source. This may involve multiple transfers between accounts, use of shell companies, or cross-border movements.",
             },
             "SHELL_ENTITY": {
                 "ref": "FINTRAC ML/TF Typologies — Shell Companies",

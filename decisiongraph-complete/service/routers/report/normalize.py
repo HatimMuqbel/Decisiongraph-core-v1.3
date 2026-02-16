@@ -160,7 +160,7 @@ def normalize_decision(decision: dict) -> dict:
         "decision_path_trace": eval_trace.get("decision_path", "") or "",
 
         # Rationale
-        "rationale_summary": rationale.get("summary", "") or "No summary available",
+        "rationale_summary": _sanitize_gate_text(rationale.get("summary", "") or "No summary available"),
         "absolute_rules_validated": rationale.get("absolute_rules_validated", []) or [],
 
         # Precedent
@@ -177,6 +177,28 @@ def normalize_decision(decision: dict) -> dict:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _sanitize_gate_text(text: str) -> str:
+    """Remove liability-triggering language from gate output.
+
+    Old engine runs may have baked "illegal" into stored decision packs.
+    This ensures all reports — including those from pre-fix data — use
+    institutional policy framing.
+    """
+    if not text:
+        return text
+    # "is illegal" → "prohibited by policy"
+    text = text.replace("is illegal", "prohibited by policy")
+    text = text.replace("is Illegal", "prohibited by policy")
+    text = text.replace("is ILLEGAL", "prohibited by policy")
+    # "illegal escalation" → "escalation prohibited by policy"
+    text = text.replace("illegal escalation", "escalation prohibited by policy")
+    text = text.replace("Illegal escalation", "Escalation prohibited by policy")
+    # Catch any remaining standalone "illegal" in gate context
+    text = text.replace("illegal", "prohibited by policy")
+    text = text.replace("Illegal", "Prohibited by policy")
+    return text
+
+
 def _normalize_sections(sections) -> list[dict]:
     """Normalize gate sections from either dict or list form to a sorted list."""
     if isinstance(sections, dict):
@@ -188,12 +210,18 @@ def _normalize_sections(sections) -> list[dict]:
                     "id": section_id,
                     "name": section_data.get("name", section_id),
                     "passed": section_data.get("passed", False),
-                    "reason": section_data.get("reason", ""),
+                    "reason": _sanitize_gate_text(section_data.get("reason", "")),
                 })
         return result
     if isinstance(sections, list):
+        sanitized = []
+        for s in sections:
+            if isinstance(s, dict) and "reason" in s:
+                s = dict(s)
+                s["reason"] = _sanitize_gate_text(s["reason"])
+            sanitized.append(s)
         return sorted(
-            sections,
+            sanitized,
             key=lambda s: (str(s.get("name", "")), str(s.get("id", ""))),
         )
     return []
