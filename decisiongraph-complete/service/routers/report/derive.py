@@ -788,7 +788,15 @@ def derive_regulatory_model(normalized: dict) -> dict:
         # Classification
         "classification": classification.to_dict(),
         "classification_outcome": classification.outcome,
-        "classification_reason": classification.outcome_reason,
+        "classification_reason": (
+            # Hard stops (sanctions, false docs, etc.) are statutory — no "preliminary" hedging.
+            # The softened RGS language is correct ONLY for classifier/gate conflicts where
+            # a compliance officer must make the final determination.
+            f"{layer1_facts.get('hard_stop_reason', 'Mandatory determination')} "
+            "establishes reporting obligation under PCMLTFA. STR filing mandatory."
+            if is_mandatory_hard_stop and classification.outcome == "STR_REQUIRED"
+            else classification.outcome_reason
+        ),
         "tier1_signals": classification.tier1_signals,
         "tier2_signals": classification.tier2_signals,
         "suspicion_count": classification.suspicion_count,

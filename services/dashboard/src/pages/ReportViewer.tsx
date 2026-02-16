@@ -699,7 +699,7 @@ function SignalDetails({ report }: { report: ReportViewModel }) {
       {tier1.length > 0 && (
         <div className="mb-4">
           <h4 className="mb-2 text-xs font-medium text-red-400">
-            Tier 1 — Suspicion Indicators (DISQUALIFIER / MANDATORY_ESCALATION)
+            Tier 1 — Suspicion Indicators ({report.is_mandatory_hard_stop ? 'Reporting Obligation — Mandatory' : 'Preliminary RGS Assessment'})
           </h4>
           <div className="space-y-1">
             {tier1.map((s, i) => (

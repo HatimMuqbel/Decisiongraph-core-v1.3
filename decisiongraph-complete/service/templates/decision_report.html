@@ -739,7 +739,7 @@
         {% endif %}
       </p>
       {% if tier1_signals and tier1_signals|length > 0 %}
-      <h4 style="margin-top:14px; margin-bottom:6px; color:#b91c1c;">Tier 1 — Suspicion Indicators (Preliminary RGS Assessment)</h4>
+      <h4 style="margin-top:14px; margin-bottom:6px; color:#b91c1c;">Tier 1 — Suspicion Indicators ({% if is_mandatory_hard_stop %}Reporting Obligation — Mandatory{% else %}Preliminary RGS Assessment{% endif %})</h4>
       <table style="font-size:12px;">
         <thead><tr><th>Code</th><th>Source</th><th>Detail</th></tr></thead>
         <tbody>

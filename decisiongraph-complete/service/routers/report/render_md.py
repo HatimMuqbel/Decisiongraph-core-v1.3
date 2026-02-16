@@ -1001,8 +1001,10 @@ def render_markdown(ctx: dict) -> str:
     # Classification sections
     tier1_md = ""
     tier1_signals = ctx.get("tier1_signals", [])
+    is_hard_stop = ctx.get("is_mandatory_hard_stop", False)
     if tier1_signals:
-        tier1_md = "### Tier 1 — Suspicion Indicators (Preliminary RGS Assessment)\n\n| Code | Source | Detail |\n|------|--------|--------|\n"
+        tier1_label = "Reporting Obligation — Mandatory" if is_hard_stop else "Preliminary RGS Assessment"
+        tier1_md = f"### Tier 1 — Suspicion Indicators ({tier1_label})\n\n| Code | Source | Detail |\n|------|--------|--------|\n"
         for sig in tier1_signals:
             tier1_md += f"| `{_md_escape(sig.get('code', ''))}` | {_md_escape(sig.get('source', ''))} | {_md_escape(sig.get('detail', ''))} |\n"
 

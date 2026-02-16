@@ -429,7 +429,6 @@ class EscalationGateValidator:
         section = SectionResult(
             section_id="E",
             section_name="TYPOLOGY MATURITY GATE",
-            gate_message="Escalation prohibited by policy (Typology Maturity not met)."
         )
 
         maturity_upper = typology_maturity.upper() if typology_maturity else "NONE"
@@ -451,6 +450,11 @@ class EscalationGateValidator:
 
         section.checks = checks
         section.passed = is_mature
+        section.gate_message = (
+            f"Typology maturity confirmed: {maturity_upper}."
+            if is_mature
+            else "Escalation prohibited by policy (Typology Maturity not met)."
+        )
         return section
 
     def _check_section_f(self, mitigations: List[str], indicators: List[Dict]) -> SectionResult:
