@@ -990,85 +990,136 @@ def _build_case_evidence_summary(
     customer = (layer1_facts or {}).get("customer", {}) or {}
     screening = (layer1_facts or {}).get("screening", {}) or {}
 
+    def _ev(key, default=None):
+        """Read a field from evidence_used first, then layer1 sub-dicts."""
+        val = ev_map.get(key)
+        if val is not None:
+            return val
+        # Try dotted path in layer1_facts (e.g. "customer.type" → layer1["customer"]["type"])
+        parts = key.split(".", 1)
+        if len(parts) == 2:
+            section = (layer1_facts or {}).get(parts[0], {}) or {}
+            val = section.get(parts[1])
+            if val is not None:
+                return val
+        return default
+
+    def _is_true(val) -> bool:
+        return val is True or str(val).lower() in ("true", "yes", "1")
+
+    def _is_false(val) -> bool:
+        return val is False or str(val).lower() in ("false", "no", "0")
+
     # ── Customer profile ──────────────────────────────────────────────
-    cust_type = customer.get("type", "Individual")
+    cust_type = _ev("customer.type") or customer.get("type")
     tenure = customer.get("tenure_years")
-    pep = customer.get("pep_flag")
+    pep = _ev("customer.pep_flag", customer.get("pep_flag"))
     residence = customer.get("residence", "")
     risk_rating = customer.get("risk_rating", "")
-    parts_cust = [f"{cust_type} customer"]
+    parts_cust = []
+    if cust_type:
+        parts_cust.append(f"{str(cust_type).capitalize()} customer")
+    else:
+        parts_cust.append("Customer")
     if tenure is not None:
         parts_cust.append(f"with {tenure}-year relationship")
-    if pep:
+    if _is_true(pep):
         parts_cust.append("(PEP)")
-    elif pep is False:
+    elif _is_false(pep):
         parts_cust.append("(non-PEP)")
     if residence:
         parts_cust.append(f"resident in {residence}")
     if risk_rating:
         parts_cust.append(f"({risk_rating} risk rating)")
-    source_verified = ev_map.get("customer.source_verified")
-    ownership_clear = ev_map.get("customer.ownership_clear")
-    if source_verified is False or str(source_verified).lower() in ("false", "no"):
+    source_verified = _ev("customer.source_verified")
+    ownership_clear = _ev("customer.ownership_clear")
+    if _is_false(source_verified):
         parts_cust.append("— source of funds not verified")
-    if ownership_clear is False or str(ownership_clear).lower() in ("false", "no"):
+    if _is_false(ownership_clear):
         parts_cust.append("— ownership structure unclear")
+    # Prior history
+    prior_sars = _ev("prior.sars_filed")
+    prior_closures = _ev("prior.account_closures")
+    if prior_sars is not None and not _is_true(prior_sars) and prior_sars in (0, "0"):
+        parts_cust.append("— no prior SARs filed")
+    if _is_false(prior_closures):
+        parts_cust.append("— no account closures")
     customer_para = " ".join(parts_cust) + "."
 
     # ── Transaction details ───────────────────────────────────────────
-    amount_band = ev_map.get("txn.amount_band") or txn.get("amount_band", "")
-    method = txn.get("method", "")
-    cross_border = txn.get("cross_border")
-    destination = txn.get("destination", "")
-    dest_risk = ev_map.get("txn.destination_country_risk", "")
-    purpose = txn.get("purpose", "")
-    count = ev_map.get("txn.count", "")
+    amount_band = _ev("txn.amount_band") or txn.get("amount_band", "")
+    method = txn.get("method") or _ev("txn.method", "")
+    cross_border = _ev("txn.cross_border", txn.get("cross_border"))
+    destination = txn.get("destination") or _ev("txn.destination_country", "")
+    dest_risk = _ev("txn.destination_country_risk", "")
+    purpose = txn.get("purpose") or _ev("txn.purpose", "")
+    count = _ev("txn.count", "")
+    round_amount = _ev("txn.round_amount")
+    same_day = _ev("txn.same_day_multiple")
     parts_txn = []
-    if amount_band:
-        band_display = amount_band.replace("_", "–").replace("over", ">")
-        parts_txn.append(f"Transaction amount band: {band_display}")
     if method:
-        parts_txn.append(f"via {method}")
-    if cross_border:
+        parts_txn.append(f"{str(method).replace('_', ' ').capitalize()}")
+    if amount_band:
+        band_display = str(amount_band).replace("_", "–").replace("over", ">")
+        parts_txn.append(f"${band_display} band")
+    if _is_true(cross_border):
         cb_note = "cross-border"
         if destination:
             cb_note += f" to {destination}"
             if dest_risk:
                 cb_note += f" ({dest_risk} risk)"
         parts_txn.append(cb_note)
-    elif cross_border is False:
+    elif _is_false(cross_border):
         parts_txn.append("domestic")
+    if _is_true(round_amount):
+        parts_txn.append("round amount")
+    if _is_true(same_day):
+        parts_txn.append("multiple same-day transactions")
     if purpose:
-        parts_txn.append(f"for {purpose}")
+        parts_txn.append(f"stated purpose: {purpose}")
     if count:
         parts_txn.append(f"({count} transactions)")
     txn_para = (", ".join(parts_txn) + ".") if parts_txn else ""
 
     # ── Behavioral indicators ─────────────────────────────────────────
+    # Labels are NEUTRAL — describe the indicator, not the finding.
+    # "layering" not "layering detected" — so cleared list reads correctly.
     _BEHAVIORAL_FLAGS = {
-        "flag.structuring_suspected": "structuring suspected",
-        "flag.layering": "layering detected",
+        "flag.structuring_suspected": "structuring",
+        "flag.structuring": "structuring",
+        "flag.layering": "layering",
         "flag.rapid_movement": "rapid fund movement",
-        "flag.funnel_account": "funnel account pattern",
-        "flag.shell_entity": "shell entity indicators",
+        "flag.funnel_account": "funnel account",
+        "flag.shell_entity": "shell entity",
+        "flag.shell_company": "shell company",
         "flag.evasion": "evasion behavior",
-        "flag.unusual_for_profile": "activity unusual for customer profile",
-        "flag.third_party_unexplained": "unexplained third-party involvement",
-        "flag.false_source": "false source of funds indicators",
+        "flag.unusual_for_profile": "unusual for profile",
+        "flag.third_party_unexplained": "third-party involvement",
+        "flag.third_party": "third-party involvement",
+        "flag.false_source": "false source of funds",
+        "flag.velocity_spike": "velocity spike",
+        "flag.adverse_media": "adverse media",
+        "flag.sanctions_proximity": "sanctions proximity",
     }
     triggered = []
     cleared = []
+    seen_labels: set[str] = set()
     for flag_key, flag_label in _BEHAVIORAL_FLAGS.items():
         val = ev_map.get(flag_key)
-        if val is True or str(val).lower() in ("true", "yes", "1"):
+        if val is None:
+            continue
+        if flag_label in seen_labels:
+            continue
+        seen_labels.add(flag_label)
+        if _is_true(val):
             triggered.append(flag_label)
-        elif val is False or str(val).lower() in ("false", "no", "0"):
+        elif _is_false(val):
             cleared.append(flag_label)
 
     # Layer 6 suspicion elements
     elements = (layer1_facts or {}).get("_raw", {}).get("layer6_suspicion", {}).get("elements", {}) or {}
     _ELEMENT_LABELS = {
-        "has_sustained_pattern": "sustained transaction pattern",
+        "has_sustained_pattern": "sustained pattern",
         "has_intent": "intent indicators",
         "has_deception": "deception indicators",
     }
@@ -1080,37 +1131,42 @@ def _build_case_evidence_summary(
     if triggered:
         parts_behav.append(f"Behavioral indicators present: {', '.join(triggered)}.")
     if cleared:
-        parts_behav.append(f"Checked and clear: {', '.join(cleared)}.")
+        parts_behav.append(f"No {', '.join(cleared)} flags.")
     if not triggered and not cleared:
         parts_behav.append("No behavioral indicators evaluated.")
     behavioral_para = " ".join(parts_behav)
 
     # ── Screening results ─────────────────────────────────────────────
-    sanctions = screening.get("sanctions_match")
-    adverse_media = screening.get("adverse_media")
-    pep_match = screening.get("pep_match")
-    mltf_linked = screening.get("mltf_linked")
+    # Read from BOTH layer1_facts.screening AND evidence_used fields
+    sanctions = _ev("screening.sanctions_match", screening.get("sanctions_match"))
+    adverse_media = _ev("screening.adverse_media", screening.get("adverse_media"))
+    pep_match = _ev("screening.pep_match", screening.get("pep_match"))
+    mltf_linked = _ev("screening.mltf_linked", screening.get("mltf_linked"))
+    # Also check facts.sanctions_result (some feeds use this)
+    sanctions_result = _ev("facts.sanctions_result")
+    if sanctions is None and sanctions_result is not None:
+        sanctions = str(sanctions_result).upper() != "NO_MATCH"
     parts_screen = []
-    if sanctions:
+    if _is_true(sanctions):
         parts_screen.append("sanctions match detected")
-    elif sanctions is False:
+    elif _is_false(sanctions) or str(sanctions_result or "").upper() == "NO_MATCH":
         parts_screen.append("no sanctions match")
-    if adverse_media:
+    if _is_true(adverse_media):
         parts_screen.append("adverse media flagged")
-    elif adverse_media is False:
+    elif _is_false(adverse_media):
         parts_screen.append("no adverse media")
-    if pep_match:
+    if _is_true(pep_match):
         parts_screen.append("PEP match identified")
-    elif pep_match is False:
+    elif _is_false(pep_match):
         parts_screen.append("no PEP match")
-    if mltf_linked:
+    if _is_true(mltf_linked):
         parts_screen.append("ML/TF linkage identified")
-    elif mltf_linked is False:
+    elif _is_false(mltf_linked):
         parts_screen.append("no ML/TF linkage")
-    screening_para = (
-        ("Screening results: " + "; ".join(parts_screen) + ".")
-        if parts_screen else "No screening results available."
-    )
+    if parts_screen:
+        screening_para = "Screening conducted: " + "; ".join(parts_screen) + "."
+    else:
+        screening_para = "No screening data in evaluation record."
 
     # ── Assemble ──────────────────────────────────────────────────────
     paragraphs = [p for p in [customer_para, txn_para, behavioral_para, screening_para] if p]
