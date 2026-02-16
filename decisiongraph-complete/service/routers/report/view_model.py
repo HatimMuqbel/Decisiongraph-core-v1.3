@@ -219,6 +219,8 @@ def build_view_model(normalized: dict, derived: dict) -> dict:
         # Mandatory hard stop (sanctions, etc.)
         "is_mandatory_hard_stop": derived.get("is_mandatory_hard_stop", False),
         "hard_stop_reason": derived.get("hard_stop_reason", ""),
+        # PEP regulatory EDD (no suspicion — parallel pathway)
+        "is_pep_edd_no_suspicion": derived.get("is_pep_edd_no_suspicion", False),
 
         # GAP-E: Senior Summary
         "senior_summary": derived.get("senior_summary", {}),

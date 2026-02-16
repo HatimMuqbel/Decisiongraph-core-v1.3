@@ -176,6 +176,22 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # Governed disposition is computed AFTER corrections are applied.
     governed_disposition = _disposition_label(decision_status, str_required)
 
+    # ── 5a. PEP-triggered EDD with no suspicion (parallel pathway) ────────
+    # PEP EDD is a regulatory obligation, not a suspicion-driven determination.
+    # The classifier and engine answered different questions — no conflict.
+    _ev_map = {str(ev.get("field", "")).lower(): ev.get("value") for ev in evidence_used}
+    _pep_detected = (
+        _ev_map.get("screening.pep_match") is True
+        or str(_ev_map.get("screening.pep_match", "")).lower() in ("true", "yes", "1")
+    )
+    is_pep_edd_no_suspicion = (
+        governed_disposition == "EDD_REQUIRED"
+        and classification.outcome in ("NO_REPORT", "NO_SUSPICION")
+        and classification.suspicion_count == 0
+        and classification.investigative_count == 0
+        and _pep_detected
+    )
+
     # ── 5b. FIX-022: Display verdict + governed rationale ─────────────────
     # The raw verdict ("PASS") and raw rationale ("Pass. No escalation
     # required.") must NOT appear as the primary display values when
@@ -221,6 +237,13 @@ def derive_regulatory_model(normalized: dict) -> dict:
         conf_label = "Certain"
         conf_reason = "Mandatory determination — no discretion applicable."
         conf_score = 100
+    elif is_pep_edd_no_suspicion:
+        conf_label = "High"
+        conf_reason = (
+            "Deterministic PEP regulatory obligation. No analytical uncertainty — "
+            "EDD required by PEP screening result, not by suspicion analysis."
+        )
+        conf_score = 85
     else:
         conf_label, conf_reason, conf_score = _compute_confidence_score(
             rules_fired=rules_fired,
@@ -256,38 +279,52 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # The decision_explainer may contain a stale count from validate_output
     # (using the first classifier's investigative_count). Replace it with
     # the actual number of decision drivers so the two always agree.
-    # Determine correct tier label based on classifier output
-    _has_tier1 = classification.suspicion_count > 0
-    _correct_tier_label = "Tier 1 suspicion indicator(s)" if _has_tier1 else "Tier 2 investigative signal(s)"
-    _signal_match = re.search(
-        r"(\d+)\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)",
-        decision_explainer,
-    )
-    if _signal_match:
-        _stated = int(_signal_match.group(1))
-        _actual = len(decision_drivers)
-        if _stated != _actual or _signal_match.group(0) != f"{_actual} {_correct_tier_label}":
+    if is_pep_edd_no_suspicion:
+        # PEP EDD: classifier found 0 signals. Don't label decision drivers
+        # as tier signals — they're regulatory triggers, not suspicion.
+        _signal_match = re.search(
+            r"\d+\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)\s*identified\.?",
+            decision_explainer,
+        )
+        if _signal_match:
             decision_explainer = decision_explainer.replace(
                 _signal_match.group(0),
-                f"{_actual} {_correct_tier_label}",
+                "No suspicion or investigative signals detected. "
+                "EDD required by PEP regulatory obligation.",
             )
-    # Post-reconciliation assertion: summary count must match rendered count
-    _post_match = re.search(
-        r"(\d+)\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)",
-        decision_explainer,
-    )
-    if _post_match:
-        assert int(_post_match.group(1)) == len(decision_drivers), (
-            f"Signal count mismatch: summary claims {_post_match.group(1)} "
-            f"but {len(decision_drivers)} decision drivers will render"
+    else:
+        # Determine correct tier label based on classifier output
+        _has_tier1 = classification.suspicion_count > 0
+        _correct_tier_label = "Tier 1 suspicion indicator(s)" if _has_tier1 else "Tier 2 investigative signal(s)"
+        _signal_match = re.search(
+            r"(\d+)\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)",
+            decision_explainer,
         )
+        if _signal_match:
+            _stated = int(_signal_match.group(1))
+            _actual = len(decision_drivers)
+            if _stated != _actual or _signal_match.group(0) != f"{_actual} {_correct_tier_label}":
+                decision_explainer = decision_explainer.replace(
+                    _signal_match.group(0),
+                    f"{_actual} {_correct_tier_label}",
+                )
+        # Post-reconciliation assertion: summary count must match rendered count
+        _post_match = re.search(
+            r"(\d+)\s+Tier\s+[12]\s+(?:suspicion indicator|investigative signal)\(s\)",
+            decision_explainer,
+        )
+        if _post_match:
+            assert int(_post_match.group(1)) == len(decision_drivers), (
+                f"Signal count mismatch: summary claims {_post_match.group(1)} "
+                f"but {len(decision_drivers)} decision drivers will render"
+            )
 
     # ── 9a2. Append LOW confidence warning to decision_explainer ────────
     # The decision summary (Investigation Outcome Summary) must surface
     # the confidence bottleneck so a compliance officer doesn't miss it.
     # Skip for hard stops — mandatory determinations are not discretionary.
     _expl_conf_level = (precedent_analysis.get("confidence_level") or "").upper()
-    if _expl_conf_level == "LOW" and "Terminal confidence" not in decision_explainer and not is_mandatory_hard_stop:
+    if _expl_conf_level == "LOW" and "Terminal confidence" not in decision_explainer and not is_mandatory_hard_stop and not is_pep_edd_no_suspicion:
         _expl_bottleneck = (
             precedent_analysis.get("confidence_bottleneck", "")
             .replace("_", " ")
@@ -338,7 +375,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
     # ── 11b. Append LOW confidence warning to summary ─────────────────────
     # Skip for hard stops — mandatory determinations are not discretionary.
     _v3_conf_level = (precedent_analysis.get("confidence_level") or "").upper()
-    if _v3_conf_level == "LOW" and not is_mandatory_hard_stop:
+    if _v3_conf_level == "LOW" and not is_mandatory_hard_stop and not is_pep_edd_no_suspicion:
         _v3_bottleneck = (
             precedent_analysis.get("confidence_bottleneck", "")
             .replace("_", " ")
@@ -365,7 +402,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         regulatory_position = "Suspicion threshold not met based on available indicators."
 
     # ── 13. FIX-001: Canonical outcome (three-field) ─────────────────────
-    reporting, reporting_note = _derive_reporting(governed_disposition, str_required)
+    reporting, reporting_note = _derive_reporting(governed_disposition, str_required, is_pep_edd_no_suspicion=is_pep_edd_no_suspicion)
     canonical_outcome = {
         "disposition": governed_disposition,
         "disposition_basis": disposition_basis,
@@ -658,6 +695,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         gate1_passed=gate1_passed,
         str_required=str_required,
         is_mandatory_hard_stop=is_mandatory_hard_stop,
+        is_pep_edd_no_suspicion=is_pep_edd_no_suspicion,
     )
 
     # ── FIX-030: Precedent Divergence Narrative ────────────────────────
@@ -747,6 +785,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         gate1_sections=normalized.get("gate1_sections", []),
         gate2_sections=normalized.get("gate2_sections", []),
         is_mandatory_hard_stop=is_mandatory_hard_stop,
+        is_pep_edd_no_suspicion=is_pep_edd_no_suspicion,
     )
 
     # ── Decision Path Narrative Trace ────────────────────────────────
@@ -771,6 +810,7 @@ def derive_regulatory_model(normalized: dict) -> dict:
         layer6_suspicion=layer6_suspicion,
         decision_conflict_alert=decision_conflict_alert,
         integrity_alert=integrity_alert,
+        is_pep_edd_no_suspicion=is_pep_edd_no_suspicion,
         is_mandatory_hard_stop=is_mandatory_hard_stop,
     )
 
@@ -785,6 +825,8 @@ def derive_regulatory_model(normalized: dict) -> dict:
         # Mandatory hard stop (sanctions, etc.)
         "is_mandatory_hard_stop": is_mandatory_hard_stop,
         "hard_stop_reason": layer1_facts.get("hard_stop_reason", "") if is_mandatory_hard_stop else "",
+        # PEP regulatory EDD (no suspicion — parallel pathway)
+        "is_pep_edd_no_suspicion": is_pep_edd_no_suspicion,
 
         # Classification
         "classification": classification.to_dict(),
@@ -2008,7 +2050,11 @@ def _derive_disposition_basis(rules_fired: list, governed_disposition: str) -> s
     return "PENDING_REVIEW"
 
 
-def _derive_reporting(governed_disposition: str, str_required: bool) -> tuple[str, str]:
+def _derive_reporting(
+    governed_disposition: str,
+    str_required: bool,
+    is_pep_edd_no_suspicion: bool = False,
+) -> tuple[str, str]:
     """Derive reporting determination and parenthetical reason.
 
     Returns (reporting_value, reporting_note).
@@ -2019,6 +2065,8 @@ def _derive_reporting(governed_disposition: str, str_required: bool) -> tuple[st
     """
     if str_required:
         return "FILE_STR", ""
+    if is_pep_edd_no_suspicion:
+        return "NOT_APPLICABLE", "no suspicion indicators detected — EDD is a regulatory obligation, not a reporting trigger"
     if governed_disposition in ("EDD_REQUIRED", "ESCALATE"):
         return "PENDING_COMPLIANCE_REVIEW", "reporting obligation deferred to compliance officer — see Decision Integrity Alert"
     if governed_disposition == "NO_REPORT":
@@ -3947,10 +3995,13 @@ def _build_decision_conflict_alert(
     gate1_sections: list,
     gate2_sections: list,
     is_mandatory_hard_stop: bool = False,
+    is_pep_edd_no_suspicion: bool = False,
 ) -> dict | None:
     """Build at-a-glance conflict alert when classifier != engine."""
     if is_mandatory_hard_stop:
         return None  # Sanctions are not conflicts — they're terminal prohibitions
+    if is_pep_edd_no_suspicion:
+        return None  # PEP EDD: classifier and engine answer different questions — no conflict
     if not classification_outcome or classification_outcome == engine_disposition:
         return None
 
@@ -4018,8 +4069,62 @@ def _build_decision_path_narrative(
     decision_conflict_alert: dict | None,
     integrity_alert: dict | None,
     is_mandatory_hard_stop: bool = False,
+    is_pep_edd_no_suspicion: bool = False,
 ) -> dict:
     """Build 5-step narrative trace explaining the decision path."""
+
+    # ── PEP EDD with no suspicion: parallel pathway narrative ────────────
+    # Gates are NOT TRIGGERED (not BLOCKED). Nothing tried to escalate.
+    if is_pep_edd_no_suspicion:
+        return {
+            "steps": [
+                {
+                    "number": 1, "symbol": "\u2460",
+                    "title": "Classifier Assessment",
+                    "detail_lines": [
+                        "No suspicion indicators detected.",
+                        "No reporting recommendation.",
+                    ],
+                    "arrow_line": "Classifier recommends: NO REPORT",
+                },
+                {
+                    "number": 2, "symbol": "\u2461",
+                    "title": "Gate 1 \u2014 Zero-False-Escalation Check",
+                    "detail_lines": [
+                        "NOT TRIGGERED \u2014 no escalation pathway active.",
+                        "EDD originates from PEP regulatory obligation, not suspicion analysis.",
+                    ],
+                    "arrow_line": "Gate 1: NOT TRIGGERED \u2014 no escalation pathway active",
+                },
+                {
+                    "number": 3, "symbol": "\u2462",
+                    "title": "Gate 2 \u2014 STR Threshold",
+                    "detail_lines": [
+                        "NOT TRIGGERED \u2014 no escalation pathway active.",
+                    ],
+                    "arrow_line": "Gate 2: NOT TRIGGERED \u2014 no escalation pathway active",
+                },
+                {
+                    "number": 4, "symbol": "\u2463",
+                    "title": "Governed Resolution",
+                    "detail_lines": [
+                        "Engine determined EDD REQUIRED (PEP regulatory obligation).",
+                        "Classifier found no suspicion indicators.",
+                        "No conflict exists \u2014 EDD and NO REPORT address different regulatory questions.",
+                    ],
+                    "arrow_line": "Governed disposition: EDD REQUIRED",
+                },
+                {
+                    "number": 5, "symbol": "\u2464",
+                    "title": "Terminal Disposition",
+                    "detail_lines": [
+                        "Enhanced due diligence required as standard PEP regulatory obligation.",
+                    ],
+                    "arrow_line": "Terminal disposition: EDD REQUIRED",
+                },
+            ],
+            "path_code": "PEP_REGULATORY_EDD",
+        }
 
     steps: list[dict] = []
 
@@ -4384,12 +4489,26 @@ def _build_disposition_reconciliation(
     gate1_passed: bool,
     str_required: bool,
     is_mandatory_hard_stop: bool = False,
+    is_pep_edd_no_suspicion: bool = False,
 ) -> dict:
     """Compare engine, governed, and classification dispositions.
 
     For each pair that differs, produce a dynamic explanation tracing
     back to the specific mechanism that produced the difference.
     """
+    # PEP EDD: classifier and engine answer different regulatory questions — no conflict.
+    if is_pep_edd_no_suspicion:
+        return {
+            "consistent": True,
+            "summary": (
+                "Engine and classifier are not in conflict. "
+                "Classifier found no suspicion (NO REPORT). "
+                "Engine determined EDD REQUIRED under PEP regulatory obligation. "
+                "Both assessments are correct and address different regulatory questions."
+            ),
+            "differences": [],
+        }
+
     components = {
         "engine": engine_disposition,
         "governed": governed_disposition,

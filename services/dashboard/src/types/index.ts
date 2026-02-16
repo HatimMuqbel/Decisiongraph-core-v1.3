@@ -623,6 +623,8 @@ export interface ReportViewModel {
   // Mandatory hard stop (sanctions, etc.)
   is_mandatory_hard_stop?: boolean;
   hard_stop_reason?: string;
+  // PEP regulatory EDD (no suspicion — parallel pathway)
+  is_pep_edd_no_suspicion?: boolean;
 
   // GAP-E: Senior Summary
   senior_summary?: SeniorSummary;

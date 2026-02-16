@@ -87,7 +87,7 @@ export default function CausalChain({ report }: CausalChainProps) {
                 {report.gate2_decision || 'N/A'}
               </p>
             </div>
-            {report.classifier_is_sovereign && (
+            {report.classifier_is_sovereign && !report.is_pep_edd_no_suspicion && (
               <div className={clsx(
                 'rounded-lg px-2 py-1.5 text-[10px]',
                 report.classification_outcome !== report.governed_disposition
@@ -97,6 +97,11 @@ export default function CausalChain({ report }: CausalChainProps) {
                 {report.classification_outcome !== report.governed_disposition
                   ? `OVERRIDDEN — Classifier recommends ${report.classification_outcome?.replace(/_/g, ' ')}, governed disposition is ${report.governed_disposition?.replace(/_/g, ' ')}`
                   : 'Classifier is sovereign — final authority'}
+              </div>
+            )}
+            {report.is_pep_edd_no_suspicion && (
+              <div className="rounded-lg px-2 py-1.5 text-[10px] bg-blue-500/5 border border-blue-500/10 text-blue-400">
+                NO SUSPICION DETECTED — EDD required by PEP regulatory obligation, not suspicion indicators
               </div>
             )}
           </div>
